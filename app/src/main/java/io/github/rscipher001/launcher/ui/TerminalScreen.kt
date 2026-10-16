@@ -249,7 +249,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         SuggestionStrip(suggestions, onPick = vm::onSuggestion)
         if (remember(configVersion) { config[Keys.KEYBAR_SHOW] }) {
             KeyBar(
-                spec = remember(configVersion) { config[Keys.KEYBAR] },
+                specs = remember(configVersion) { listOf(config[Keys.KEYBAR], config[Keys.KEYBAR2]) },
                 onKey = { key ->
                     if (key == KeyBarKey.KBD) {
                         runCatching { focus.requestFocus() }
@@ -274,7 +274,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
 }
 
 /** What a tap on a header item does. */
-enum class HeaderTarget { CLOCK, UNLOCKS, BATTERY, NETWORK, ALARM }
+enum class HeaderTarget { CLOCK, UNLOCKS, BATTERY, NETWORK, ALARM, SETTINGS }
 
 /**
  * Clock line plus a row of status items that wrap as whole items. Items are tappable
@@ -310,7 +310,7 @@ private fun Header(
     fun Item(label: String, value: String, valueColor: Color = Term.fg, onClick: () -> Unit) {
         Text(
             buildAnnotatedString {
-                withStyle(SpanStyle(color = Term.dim)) { append("$label ") }
+                if (label.isNotEmpty()) withStyle(SpanStyle(color = Term.dim)) { append("$label ") }
                 withStyle(SpanStyle(color = valueColor, fontWeight = FontWeight.Bold)) { append(value) }
             },
             style = small,
@@ -378,6 +378,7 @@ private fun Header(
             if (config[Keys.HEADER_ALARM] && status.nextAlarm != null) {
                 Item("alarm", alarmFmt.format(Date(status.nextAlarm))) { onTarget(HeaderTarget.ALARM) }
             }
+            Item("", "⚙", Term.dim) { onTarget(HeaderTarget.SETTINGS) }
             if (config[Keys.HEADER_PROFILES]) {
                 profiles.filter { it.kind != ProfileKind.PERSONAL && it.kind != ProfileKind.CLONE }.forEach { p ->
                     Item(p.kind.label, if (p.quiet) "off" else "on", if (p.quiet) Term.dim else Term.profileColor(p.kind)) {
@@ -467,7 +468,14 @@ private val REPEATING = setOf(KeyBarKey.UP, KeyBarKey.DOWN, KeyBarKey.LEFT, KeyB
  * Arrows and backspace repeat while held; dragging sideways across the bar moves the cursor.
  */
 @Composable
-private fun KeyBar(spec: String, onKey: (KeyBarKey) -> Unit, onText: (String) -> Unit) {
+private fun KeyBar(specs: List<String>, onKey: (KeyBarKey) -> Unit, onText: (String) -> Unit) {
+    Column(Modifier.fillMaxWidth().background(Term.surface)) {
+        specs.filter { it.isNotBlank() }.forEach { KeyRow(it, onKey, onText) }
+    }
+}
+
+@Composable
+private fun KeyRow(spec: String, onKey: (KeyBarKey) -> Unit, onText: (String) -> Unit) {
     val keys = remember(spec) {
         spec.split(',').map { it.trim() }.filter { it.isNotEmpty() }.map { token -> KeyBarKey.of(token) to token }
     }
@@ -479,7 +487,7 @@ private fun KeyBar(spec: String, onKey: (KeyBarKey) -> Unit, onText: (String) ->
     }
     val bar = Modifier
         .fillMaxWidth()
-        .height(48.dp)
+        .height(46.dp)
         .testTag("keybar")
         .background(Term.surface)
 

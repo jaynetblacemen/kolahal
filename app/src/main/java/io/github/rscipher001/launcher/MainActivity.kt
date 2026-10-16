@@ -14,6 +14,10 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.rscipher001.launcher.terminal.TerminalViewModel
+import io.github.rscipher001.launcher.terminal.Screen
+import io.github.rscipher001.launcher.data.Backup
+import io.github.rscipher001.launcher.ui.SettingsScreen
+import io.github.rscipher001.launcher.ui.ScriptsScreen
 import io.github.rscipher001.launcher.ui.KolahalTheme
 import io.github.rscipher001.launcher.ui.Palettes
 import io.github.rscipher001.launcher.ui.Term
@@ -31,6 +35,19 @@ class MainActivity : ComponentActivity() {
 
     private val pickFolder =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { vm.onScriptFolderPicked(it) }
+
+    private val exportBackup =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { vm.exportBackup(it) }
+
+    private val importBackup =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { vm.importBackup(it) }
+
+    // Many file managers label .lua / .js as octet-stream or text, so accept anything and filter by name.
+    private val importScripts =
+        registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { vm.importScriptFiles(it) }
+
+    private val exportScript =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { vm.finishExportScript(it) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
@@ -57,11 +74,27 @@ class MainActivity : ComponentActivity() {
                         onClose = vm::closeEditor,
                     )
                 } else {
-                    TerminalScreen(
-                        vm,
-                        onRequestNotifications = ::requestNotifications,
-                        onPickFolder = { pickFolder.launch(null) },
-                    )
+                    val screen by vm.screen.collectAsStateWithLifecycle()
+                    when (screen) {
+                        Screen.SETTINGS -> SettingsScreen(
+                            vm,
+                            onExportBackup = { exportBackup.launch(Backup.FILE_NAME) },
+                            onImportBackup = { importBackup.launch(arrayOf("application/json", "text/*", "application/octet-stream")) },
+                        )
+                        Screen.SCRIPTS -> ScriptsScreen(
+                            vm,
+                            onImportFiles = { importScripts.launch(arrayOf("*/*")) },
+                            onExportScript = { s ->
+                                vm.beginExportScript(s)
+                                exportScript.launch("${s.name}.${s.lang.ext}")
+                            },
+                        )
+                        Screen.TERMINAL -> TerminalScreen(
+                            vm,
+                            onRequestNotifications = ::requestNotifications,
+                            onPickFolder = { pickFolder.launch(null) },
+                        )
+                    }
                 }
             }
         }

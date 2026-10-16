@@ -38,7 +38,11 @@ import kotlinx.coroutines.launch
 import java.util.Date
 
 /** UI-only operations the processor cannot do from an application context. */
+/** Full-screen GUI pages besides the terminal (the script editor is separate). */
+enum class Screen { TERMINAL, SETTINGS, SCRIPTS }
+
 interface TerminalUi {
+    fun openScreen(screen: Screen)
     fun pickScriptFolder()
     fun openEditor(script: Script)
     fun requestNotificationPermission()
@@ -95,7 +99,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "unlocks" -> unlocks(args)
                 "clear", "cls" -> ui.clearScreen()
                 "history" -> history()
-                "script", "scripts" -> script(args)
+                "scripts" -> if (args.isEmpty()) ui.openScreen(Screen.SCRIPTS) else script(args)
+                "script" -> script(args)
                 "lua" -> eval(ScriptLang.LUA, rest)
                 "js" -> eval(ScriptLang.JS, rest)
                 "rss" -> rss(rest)
@@ -106,7 +111,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "status" -> statusCommand(args)
                 "usage-access" -> startActivity(unlocks.usageAccessIntent())
                 "battery" -> startSettings(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                "settings" -> startSettings(Settings.ACTION_SETTINGS)
+                "settings", "prefs" -> ui.openScreen(Screen.SETTINGS)
+                "system" -> startSettings(Settings.ACTION_SETTINGS)
                 "home" -> startSettings(Settings.ACTION_HOME_SETTINGS)
                 "date", "time" -> out(DateFormat.getDateTimeInstance().format(Date()))
                 "echo" -> out(rest)
@@ -717,9 +723,11 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("usage-access", "usage-access", "grant usage access (unlock count)"),
             CommandSpec("battery", "battery", "battery optimization settings"),
             CommandSpec("home", "home", "choose the default launcher"),
-            CommandSpec("settings", "settings", "system settings"),
+            CommandSpec("settings", "settings", "Kolahal settings screen (+ backup import/export)"),
+            CommandSpec("scripts", "scripts", "script manager screen (import files, timers)"),
+            CommandSpec("system", "system", "Android system settings"),
             CommandSpec("config", "config [set|get|reset] <key> <v>", "show or change settings"),
-            CommandSpec("theme", "theme <name>", "green amber mono dracula solarized"),
+            CommandSpec("theme", "theme <name>", "green amber mono dracula solarized gruvbox gruvbox-material"),
             CommandSpec("date", "date", "current date and time"),
             CommandSpec("echo", "echo <text>", "print text"),
             CommandSpec("alias", "alias [name = command]", "list or define aliases"),
@@ -733,9 +741,9 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val HELP_SECTIONS = linkedMapOf(
             "apps" to listOf("open", "apps", "info", "uninstall", "hide", "unhide", "rename", "search", "url"),
             "profiles" to listOf("work", "private"),
-            "scripts" to listOf("script", "lua", "js", "=", "rss", "status"),
+            "scripts" to listOf("scripts", "script", "lua", "js", "=", "rss", "status"),
             "terminal" to listOf("help", "history", "clear", "alias", "unalias", "config", "theme", "echo", "date"),
-            "device" to listOf("setup", "unlocks", "notifications", "usage-access", "battery", "home", "settings"),
+            "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "battery", "home", "system"),
         )
 
         val SCRIPT_SUBCOMMANDS = listOf("ls", "new", "edit", "run", "every", "at", "notify", "on", "off", "rm", "cat", "dir", "export", "import")

@@ -55,7 +55,21 @@ object Palettes {
         script = Color(0xFFB58900), personal = Color(0xFF859900), work = Color(0xFFCB4B16), private = Color(0xFF6C71C4),
     )
 
+    val gruvbox = Palette(
+        bg = Color(0xFF282828), surface = Color(0xFF3C3836), fg = Color(0xFFEBDBB2), dim = Color(0xFFA89984),
+        prompt = Color(0xFFB8BB26), error = Color(0xFFFB4934), info = Color(0xFF8EC07C), link = Color(0xFF83A598),
+        script = Color(0xFFFABD2F), personal = Color(0xFFB8BB26), work = Color(0xFFFE8019), private = Color(0xFFD3869B),
+    )
+    /** Gruvbox Material, dark "medium" background. */
+    val gruvboxMaterial = Palette(
+        bg = Color(0xFF292828), surface = Color(0xFF32302F), fg = Color(0xFFD4BE98), dim = Color(0xFFA89984),
+        prompt = Color(0xFFA9B665), error = Color(0xFFEA6962), info = Color(0xFF89B482), link = Color(0xFF7DAEA3),
+        script = Color(0xFFD8A657), personal = Color(0xFFA9B665), work = Color(0xFFE78A4E), private = Color(0xFFD3869B),
+    )
+
     fun named(name: String) = when (name) {
+        "gruvbox" -> gruvbox
+        "gruvbox-material" -> gruvboxMaterial
         "amber" -> amber
         "mono" -> mono
         "dracula" -> dracula

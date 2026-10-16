@@ -34,6 +34,13 @@ class AppPrefs private constructor(context: Context) {
         _version.value++
     }
 
+    fun hiddenKeys(): List<String> =
+        apps.all.keys.filter { it.startsWith("hidden:") }.map { it.removePrefix("hidden:") }.sorted()
+
+    fun labels(): Map<String, String> = apps.all.mapNotNull { (k, v) ->
+        if (k.startsWith("label:") && v is String) k.removePrefix("label:") to v else null
+    }.toMap()
+
     // ---- frecency -------------------------------------------------------------------------
 
     /** Records a launch: count plus last-used time, stored as "count:epochMillis". */

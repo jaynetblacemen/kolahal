@@ -1,0 +1,170 @@
+#+TITLE: Kolahal
+#+SUBTITLE: A keyboard-first terminal launcher for Android
+
+Kolahal (=io.github.rscipher001.launcher=) is a terminal-style home screen with first-class work
+profile support and scripts in *Lua 5.4* or *JavaScript (QuickJS)*.
+
+* Features
+
+- Terminal home screen ::
+  - Type a command or any part of an app name. Enter launches the best match, which is the
+    highlighted first suggestion chip.
+  - With an empty prompt, the strip shows your most-used apps, ranked by frecency.
+- Profiles ::
+  - Personal, work (managed profile), Android 15+ private space and clone profiles appear together.
+  - Apps are tagged =[W]= / =[S]= / =[C]= in their own colours. =[P]= is shown only when the same
+    app also exists in another profile.
+  - Apps in a paused profile are faded. Opening one offers to resume the profile and launch the
+    app in one tap.
+  - The header shows the work state; tapping it resumes, or asks for a second tap before pausing.
+- Readable log ::
+  - Each command and its output form a block with a coloured gutter (scripts and errors have their
+    own colours), and output older than the latest command is dimmed.
+  - Day separators and right-aligned times. Wrapped lines indent past their prefix.
+  - =help=, =config= and =script ls= render in two columns; =apps= is a grid of tappable chips.
+- Touch ::
+  - A two-row key bar (=ESC / - ⇤ ↑ ⇥ ⌫= and =TAB | . ← ↓ → ⏎=); arrows and backspace repeat
+    when held, and dragging sideways moves the cursor.
+  - Tap any line for its main action; long-press opens an action sheet.
+  - Pinch the log to resize text, swipe down on the header for notifications, tap empty space for
+    the keyboard.
+- Header :: Large clock and date, then unlocks, battery, network, next alarm, profile state and
+  ⚙ (settings). Every item is tappable.
+- Unlock counter :: Uses UsageStats =KEYGUARD_HIDDEN= events when Usage Access is granted, with an
+  =ACTION_USER_PRESENT= fallback. =unlocks 7= shows the last week.
+- Scripts ::
+  - Timers by interval (=every 30m=) and/or daily times (=at 08:00,18:30=), with optional
+    notifications.
+  - Scripts marked =@command= become terminal commands that take arguments.
+  - Each run gets a =── hn · 22:40 ──= header and a stable per-script colour; lines that arrived
+    while you were away are marked =•= under a "N new since you left" divider.
+  - =status(text)= pins a line into the header.
+- GUI screens ::
+  - *Settings* (=settings= or ⚙): every option as switches, chips, sliders and text fields, plus
+    backup export/import.
+  - *Script manager* (=scripts=): import =.lua= / =.js= files from the file manager, create, run,
+    edit, export and delete scripts, and set timers and notifications.
+- Themes :: green, amber, mono, dracula, solarized, gruvbox, gruvbox-material.
+- Hardware keyboard ::
+  - Prompt: =↑/↓= history, =Tab= complete, =Esc= clear, =Enter= run, =Ctrl+L= clear screen,
+    =Ctrl+U= kill line, =Ctrl+A/E= start/end.
+  - Editor: =Ctrl+S= save, =Ctrl+R= run, =Ctrl+Z= / =Ctrl+Shift+Z= undo/redo, =Esc= / Back save
+    and close.
+
+* Commands
+
+#+begin_example
+apps      open <app> [-w|-p|-s|-c]   apps [work|personal|private|hidden] [-l]
+          info <app>  uninstall <app>  hide / unhide <app>  rename <app> = <name>  search  url
+profiles  work [on|off|status]   private [on|off|status]
+scripts   scripts (manager)   script ls|new|edit|run|cat|rm|on|off|every|at|notify|dir|export|import
+          lua <code>   js <code>   = <expression>   rss <url>   status [clear <name|all>]
+terminal  help  history  clear  alias [name = command]  unalias  config  theme <name>  echo  date
+device    settings  setup  unlocks [days]  notifications  usage-access  battery  home  system
+#+end_example
+
+Anything that isn't a command, alias or script command is matched against app names. A mistyped
+command gets a tappable "did you mean".
+
+* Scripts
+
+=script new hn= creates =hn.lua= from an RSS template. Use =script new feed.js= for JavaScript and
+=--cmd= for a command template, or create scripts in the script manager. Both engines expose the
+same API:
+
+| Call                                                  | Result                                                                 |
+|-------------------------------------------------------+------------------------------------------------------------------------|
+| =log(text, ctx?)=                                     | Appends a line. =ctx.url= makes it a tappable link; other keys are kept. |
+| =notify(title, body, ctx?)=                           | Notification if enabled for the script; =ctx.url= opens on tap.        |
+| =status(text)=                                        | Pins one header line for this script; =status(nil)= clears it.         |
+| =http.get(url, headers?)=                             | ={ status, ok, body, headers }=                                        |
+| =http.request{ url, method, body, contentType, headers }= | Same as =http.get=; a table body is sent as JSON.                     |
+| =rss.fetch(url)= / =rss.parse(xml)=                   | ={ title, link, items = [{ title, link, id, date, summary }] }=        |
+| =rss.fresh(url)=                                      | Only items not returned before; marked seen only if the run succeeds.  |
+| =store.get(k)= / =store.set(k, v)=                    | Persistent per-script strings.                                         |
+| =json.encode= / =json.decode=                         | Lua only (JS has =JSON=).                                              |
+| =args=, =argline=                                     | Arguments when run as a command.                                       |
+
+In JS the network calls are =async= (=await http.get(...)=, and =Promise.all= works). Lua calls
+block, since scripts never run on the UI thread. A script's return value is printed. When a script
+fails, tapping the error opens the editor at the failing line.
+
+#+begin_src lua
+-- weather.lua  (script new weather --cmd)
+-- @command
+-- @desc current weather: weather [city]
+local city = argline ~= "" and argline or "London"
+return (http.get("https://wttr.in/" .. city .. "?format=3").body:gsub("%s+$", ""))
+#+end_src
+
+* Moving scripts and settings between devices
+
+- Backup file :: /Settings → backup → export…/ writes =kolahal-backup.json=: changed settings,
+  aliases, hidden/renamed apps, and every script with its code and timers. Edit it on a computer
+  and use /import…/ to load it back on any phone.
+
+  #+begin_src json
+  { "kolahal": 1,
+    "config":  { "theme": "gruvbox-material", "log.spacing": "16" },
+    "aliases": { "m": "open maps" },
+    "apps":    { "hidden": [], "labels": {} },
+    "scripts": [ { "name": "hn", "lang": "lua", "code": "...", "every": 30,
+                   "at": ["08:00"], "notify": true, "enabled": true } ] }
+  #+end_src
+
+- Single files :: /Script manager → import files…/ picks one or more =.lua= / =.js= files. The file
+  name becomes the script name, and importing again updates the script. /export…/ on a script
+  saves it as a file.
+- Folder sync :: =script dir= picks a folder; =script export= / =script import= sync every script
+  plus a =kolahal.json= with their timers.
+
+* Architecture
+
+#+begin_example
+MainActivity (HOME) ── TerminalViewModel ── CommandProcessor
+   screens: Terminal · Settings · Scripts · ScriptEditor
+                               │
+        AppRepository (LauncherApps, all profiles) + AppPrefs (hidden, labels, frecency, aliases)
+        UnlockCounter · DeviceStatus · Config · Backup
+        LogRepository / ScriptRepository / KvStore (SQLite, WAL)
+                               │
+        ScriptScheduler ──► WorkManager ──► ScriptWorker   [process :script]
+                                             ├─ LuaEngine (LuaJava, Lua 5.4 native)
+                                             └─ JsEngine  (quickjs-kt, QuickJS)
+                                                   └─ HostApi (http, rss, log, notify, store, status)
+#+end_example
+
+- Isolation :: Scripts run in a separate =:script= process (=RemoteCoroutineWorker=), so a native
+  engine crash can't take down the home screen. Results come back through the shared database plus
+  a package-scoped broadcast.
+- Lua sandbox ::
+  - Fresh state per run. =java=, =io=, =package=, =require=, =debug=, =dofile=, =loadfile= and
+    process-level =os= functions are removed, and only text chunks can be loaded.
+  - An instruction-count hook, also installed on coroutines, enforces the 60 s timeout and a 64 MB
+    memory cap. =pcall=, =xpcall= and =coroutine.resume= can't swallow either.
+  - If a C function outlives the deadline, a watchdog kills the =:script= process.
+- JS sandbox :: QuickJS with only the bindings above, a 64 MB memory limit and an evaluation timeout.
+- Scheduling ::
+  - Interval jobs are periodic work, with Android's 15-minute minimum.
+  - Each daily time is a 24 h job anchored to its next occurrence. It is re-anchored on launcher
+    start only when it drifted, and never while running or overdue.
+- UI work :: One serial IO dispatcher with an exception handler, so a failed action is logged
+  instead of crashing home. Log rows are pre-built off the main thread and rendered as immutable
+  rows with cached text.
+
+* Build
+
+#+begin_src sh
+./gradlew :app:assembleDebug              # debug APK ("Kolahal debug", package suffix .debug)
+./gradlew :app:assembleRelease            # R8-optimised; signed with keystore.properties or the debug key
+./gradlew :app:testDebugUnitTest          # JVM tests
+./gradlew :app:connectedDebugAndroidTest  # engines, sandbox, timeouts, :script process, commands
+#+end_src
+
+- Toolchain :: AGP 9.1, Gradle 9.3.1, Kotlin 2.3.20, compileSdk 37, targetSdk 36, minSdk 28,
+  Jetpack Compose.
+- Signing :: Optional =keystore.properties= keys: =storeFile=, =storePassword=, =keyAlias=,
+  =keyPassword=.
+- Use the release build day to day :: Debug Compose builds are noticeably slower to scroll.
+- After installing :: Run =setup=. It checks the default launcher, Usage Access, notifications and
+  battery optimisation, and each unchecked line fixes itself when tapped.

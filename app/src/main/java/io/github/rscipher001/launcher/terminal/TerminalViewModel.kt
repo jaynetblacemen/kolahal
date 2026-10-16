@@ -22,6 +22,10 @@ import io.github.rscipher001.launcher.data.ConfigKey
 import io.github.rscipher001.launcher.script.ScriptMeta
 import io.github.rscipher001.launcher.script.Json
 import io.github.rscipher001.launcher.script.ScriptFolder
+import io.github.rscipher001.launcher.script.ScriptFiles
+import io.github.rscipher001.launcher.script.ScriptTemplates
+import io.github.rscipher001.launcher.data.Backup
+import io.github.rscipher001.launcher.data.ScriptLang
 import io.github.rscipher001.launcher.script.HostApi
 import io.github.rscipher001.launcher.data.KvStore
 import io.github.rscipher001.launcher.apps.AppRepository
@@ -520,6 +524,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
             HeaderTarget.UNLOCKS -> runCommand("unlocks 7")
             HeaderTarget.BATTERY -> startActivity(Intent(Intent.ACTION_POWER_USAGE_SUMMARY))
             HeaderTarget.NETWORK -> startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
+            HeaderTarget.SETTINGS -> openScreen(Screen.SETTINGS)
         }
     }
 
@@ -571,6 +576,145 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         _editLine.value = null
         _editing.value = null
     }
+
+    // ---- GUI screens (settings, script manager) ------------------------------------------
+
+    private val _screen = MutableStateFlow(Screen.TERMINAL)
+    val screen: StateFlow<Screen> = _screen.asStateFlow()
+
+    /** Scripts for the manager screen. */
+    val scriptList: StateFlow<List<Script>> get() = scriptCache
+
+    private val _notice = MutableStateFlow<String?>(null)
+    /** Short result message shown on the GUI screens (also logged to the terminal). */
+    val notice: StateFlow<String?> = _notice.asStateFlow()
+
+    override fun openScreen(screen: Screen) {
+        _notice.value = null
+        _screen.value = screen
+        if (screen == Screen.SCRIPTS) refreshScripts()
+    }
+
+    fun closeScreen() {
+        _screen.value = Screen.TERMINAL
+    }
+
+    private fun refreshScripts() = io { scriptCache.value = scripts.all() }
+
+    private fun notice(text: String, error: Boolean = false) {
+        _notice.value = text
+        logs.add(if (error) LogKind.ERROR else LogKind.INFO, text)
+    }
+
+    /** Applies a script change, reschedules it, and refreshes the manager list. */
+    private fun updateScript(s: Script, change: () -> Unit) = io {
+        change()
+        scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
+        scriptCache.value = scripts.all()
+    }
+
+    fun setScriptEnabled(s: Script, on: Boolean) = updateScript(s) { scripts.setEnabled(s.id, on) }
+    fun setScriptNotify(s: Script, on: Boolean) {
+        updateScript(s) { scripts.setNotify(s.id, on) }
+        if (on) _events.tryEmit(UiEvent.RequestNotificationPermission)
+    }
+
+    fun setScriptInterval(s: Script, minutes: Int) = updateScript(s) {
+        scripts.setInterval(s.id, if (minutes > 0) minutes.coerceAtLeast(ScriptScheduler.MIN_INTERVAL_MIN) else 0)
+        if (minutes > 0 && !s.enabled) scripts.setEnabled(s.id, true)
+    }
+
+    /** "08:00, 18:30" -> daily times; returns false if any time is invalid. */
+    fun setScriptTimes(s: Script, raw: String): Boolean {
+        val parts = raw.split(',', ' ').filter { it.isNotBlank() }
+        val times = parts.mapNotNull(ScriptScheduler::normalizeTime)
+        if (times.size != parts.size) return false
+        updateScript(s) { scripts.setAtTimes(s.id, times.distinct().sorted()) }
+        return true
+    }
+
+    fun runScriptNow(s: Script) = io {
+        ScriptScheduler.runNow(context, s)
+        notice("running ${s.name}…")
+    }
+
+    fun deleteScript(s: Script) = io {
+        ScriptScheduler.cancel(context, s.id)
+        scripts.delete(s.id)
+        KvStore(context, HostApi.STATUS_SCOPE).set(s.name, null)
+        scriptCache.value = scripts.all()
+        notice("deleted ${s.name}")
+    }
+
+    fun newScript(name: String, lang: ScriptLang, asCommand: Boolean) {
+        val clean = name.trim().lowercase()
+        if (!Regex("^[a-z0-9_-]{1,40}$").matches(clean)) {
+            _notice.value = "names: lowercase letters, digits, - and _"
+            return
+        }
+        io {
+            if (scripts.byName(clean) != null) return@io notice("script '$clean' already exists", error = true)
+            val code = if (asCommand) ScriptTemplates.command(lang, clean) else ScriptTemplates.forLang(lang, clean)
+            val s = scripts.create(clean, lang, code)
+            scriptCache.value = scripts.all()
+            openEditor(s)
+        }
+    }
+
+    fun importScriptFiles(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        io {
+            val r = ScriptFiles(context).import(uris)
+            scriptCache.value = scripts.all()
+            notice(
+                buildList {
+                    if (r.created.isNotEmpty()) add("added ${r.created.joinToString()}")
+                    if (r.updated.isNotEmpty()) add("updated ${r.updated.joinToString()}")
+                    if (r.skipped.isNotEmpty()) add("skipped ${r.skipped.joinToString()}")
+                }.joinToString(" · ").ifEmpty { "nothing imported" },
+                error = r.created.isEmpty() && r.updated.isEmpty(),
+            )
+        }
+    }
+
+    /** Script waiting for the "save as" picker to return a destination. */
+    private var pendingExport: Script? = null
+
+    fun beginExportScript(s: Script) {
+        pendingExport = s
+    }
+
+    fun finishExportScript(uri: Uri?) {
+        val s = pendingExport ?: return
+        pendingExport = null
+        if (uri == null) return
+        io {
+            ScriptFiles(context).export(scripts.byId(s.id) ?: s, uri)
+            notice("exported ${s.name}.${s.lang.ext}")
+        }
+    }
+
+    fun exportBackup(uri: Uri?) {
+        if (uri == null) return
+        io { notice("backup saved: settings, aliases, apps and ${Backup(context).export(uri)} scripts") }
+    }
+
+    fun importBackup(uri: Uri?) {
+        if (uri == null) return
+        io {
+            val r = Backup(context).import(uri)
+            appsRepo.refresh()
+            scriptCache.value = scripts.all()
+            notice(
+                "imported ${r.settings} settings, ${r.aliases} aliases, ${r.scripts} scripts" +
+                    if (r.skipped.isNotEmpty()) " · skipped ${r.skipped.joinToString()}" else ""
+            )
+        }
+    }
+
+    fun setConfig(key: ConfigKey<*>, raw: String): Boolean = config.set(key, raw)
+
+    fun resetConfig(key: ConfigKey<*>) = config.reset(key)
 
     // ---- TerminalUi -----------------------------------------------------------------------
 

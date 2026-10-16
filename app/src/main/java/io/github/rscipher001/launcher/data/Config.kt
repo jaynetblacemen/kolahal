@@ -48,8 +48,13 @@ object Keys {
         "keybar", DEFAULT_KEYBAR,
         "touch keys, comma separated: ESC TAB UP DOWN LEFT RIGHT HOME END BKSP ENTER SPACE KBD or literal text",
     )
+    val KEYBAR2 = ConfigKey.Text("keybar2", DEFAULT_KEYBAR2, "second key bar row (same syntax; empty for one row)")
     val KEYBAR_SHOW = ConfigKey.Bool("keybar.show", true, "show the touch key bar")
-    val THEME = ConfigKey.Choice("theme", "green", listOf("green", "amber", "mono", "dracula", "solarized"), "colour theme")
+    val THEME = ConfigKey.Choice(
+        "theme", "green",
+        listOf("green", "amber", "mono", "dracula", "solarized", "gruvbox", "gruvbox-material"),
+        "colour theme",
+    )
     val FONT_SIZE = ConfigKey.Num("font.size", 14, 10..24, "terminal font size (sp)")
     val SUGGESTIONS = ConfigKey.Num("suggestions", 12, 0..30, "max suggestions shown while typing")
     val AUTO_LAUNCH = ConfigKey.Bool("launch.single", true, "launch automatically when only one app matches")
@@ -66,14 +71,15 @@ object Keys {
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
-        HEADER_PROFILES, HEADER_STATUS, CLOCK_24H, KEYBAR_SHOW, KEYBAR, THEME, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, AUTO_LAUNCH, LAUNCH_TOP,
+        HEADER_PROFILES, HEADER_STATUS, CLOCK_24H, KEYBAR_SHOW, KEYBAR, KEYBAR2, THEME, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, AUTO_LAUNCH, LAUNCH_TOP,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, FOCUS_ON_HOME, IME_SUGGESTIONS,
     )
 
     fun byName(name: String) = ALL.firstOrNull { it.key == name.lowercase() }
 }
 
-private const val DEFAULT_KEYBAR = "ESC,TAB,UP,DOWN,LEFT,RIGHT,BKSP,-,/,|"
+private const val DEFAULT_KEYBAR = "ESC,/,-,HOME,UP,END,BKSP"
+private const val DEFAULT_KEYBAR2 = "TAB,|,.,LEFT,DOWN,RIGHT,ENTER"
 
 /** Snapshot of all settings; recomposes the UI when anything changes. */
 class Config private constructor(private val prefs: SharedPreferences) {
