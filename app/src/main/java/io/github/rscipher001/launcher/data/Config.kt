@@ -78,10 +78,15 @@ object Keys {
         "prompt keyboard suggestions (off uses a password-type field: no autocorrect, but Latin-only on some keyboards)",
     )
 
+    val GESTURE_DOUBLE_TAP = ConfigKey.Text("gesture.doubletap", "lock", "double-tap empty log space: a command, lock, shade or none")
+    val GESTURE_SWIPE_DOWN = ConfigKey.Text("gesture.swipedown", "shade", "swipe down on the header: a command, lock, shade or none")
+    val GESTURE_SWIPE_UP = ConfigKey.Text("gesture.swipeup", "apps", "swipe up on the prompt: a command, lock, shade or none")
+
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
         HEADER_PROFILES, HEADER_STATUS, CLOCK_24H, KEYBAR_SHOW, KEYBAR, KEYBAR2, THEME, GUI_COLORS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, AUTO_LAUNCH, LAUNCH_TOP,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_KEEP_DAYS, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
+        GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP,
     )
 
     fun byName(name: String) = ALL.firstOrNull { it.key == name.lowercase() }

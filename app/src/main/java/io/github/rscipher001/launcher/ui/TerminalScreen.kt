@@ -214,7 +214,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             config = config,
             version = configVersion,
             onStatusTap = vm::runScriptNamed,
-            onSwipeDown = vm::expandNotifications,
+            onSwipeDown = { vm.onGesture(Keys.GESTURE_SWIPE_DOWN) },
             onTarget = vm::onHeaderTap,
             onProfileTap = vm::onProfileTap,
         )
@@ -228,7 +228,9 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 .pinchToZoomFont(onChange = { Term.fontSize = it }, onEnd = vm::saveFontSize)
                 // Taps that no log line consumed (empty space) bring up the keyboard.
                 .pointerInput(Unit) {
-                    detectTapGestures {
+                    detectTapGestures(
+                        onDoubleTap = { vm.onGesture(Keys.GESTURE_DOUBLE_TAP) },
+                    ) {
                         runCatching { focus.requestFocus() }
                         keyboard?.show()
                     }
@@ -612,6 +614,14 @@ private fun Prompt(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 52.dp)
+            // Swipe up on the prompt line: gesture.swipeup (the app grid by default).
+            .pointerInput(Unit) {
+                var total = 0f
+                detectVerticalDragGestures(
+                    onDragStart = { total = 0f },
+                    onDragEnd = { if (total < -48.dp.toPx()) vm.onGesture(Keys.GESTURE_SWIPE_UP) },
+                ) { _, dy -> total += dy }
+            }
             .clickable(onClick = onTapPrompt)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {

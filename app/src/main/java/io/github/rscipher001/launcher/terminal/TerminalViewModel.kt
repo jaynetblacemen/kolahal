@@ -659,12 +659,17 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         }
     }
 
-    /** Pulls down the notification shade (hidden API used by most launchers; no-op if blocked). */
-    @SuppressLint("WrongConstant")
-    fun expandNotifications() {
-        runCatching {
-            val sbm = context.getSystemService("statusbar")
-            Class.forName("android.app.StatusBarManager").getMethod("expandNotificationsPanel").invoke(sbm)
+    fun expandNotifications() = io.github.rscipher001.launcher.gesture.Gestures.expandShade(context)
+
+    /** Runs the action configured for a gesture: lock, shade, none or a terminal command. */
+    fun onGesture(key: io.github.rscipher001.launcher.data.ConfigKey.Text) {
+        val g = io.github.rscipher001.launcher.gesture.Gestures
+        when (val action = config[key].trim()) {
+            "", g.NONE -> Unit
+            g.SHADE -> expandNotifications()
+            // Locking needs no log line; only report when the accessibility service is off.
+            g.LOCK -> if (!io.github.rscipher001.launcher.gesture.LockService.lock()) runCommand("lock")
+            else -> runCommand(action)
         }
     }
 

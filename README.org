@@ -28,6 +28,10 @@ profile support and scripts in *Lua 5.4* or *JavaScript (QuickJS)*.
   - Tap any line for its main action; long-press opens an action sheet.
   - Pinch the log to resize text, swipe down on the header for notifications, tap empty space for
     the keyboard.
+  - Gestures (Settings → Gestures, or =config set gesture.*=): double-tap empty log space locks the
+    screen (optional accessibility service that only locks; =setup= → Double-tap to lock), swipe
+    down on the header pulls the shade, swipe up on the prompt shows the app grid. Each can be
+    =lock=, =shade=, =none= or any command. =lock= and =shade= are also commands.
 - Header :: Large clock and date, then unlocks, battery, network, next alarm, profile state and
   ⚙ (settings). Every item is tappable.
 - Unlock counter :: Uses UsageStats =KEYGUARD_HIDDEN= events when Usage Access is granted, with an

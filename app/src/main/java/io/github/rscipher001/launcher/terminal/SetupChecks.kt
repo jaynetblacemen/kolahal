@@ -45,9 +45,15 @@ object SetupChecks {
             ),
             SetupCheck(
                 "Notification access",
-                "Your notifications in the terminal (`notifs`) and for scripts",
+                "Your notifications in the terminal (notifs) and for scripts",
                 io.github.rscipher001.launcher.notifications.NotificationActions.isEnabled(context),
                 "notifs enable",
+            ),
+            SetupCheck(
+                "Double-tap to lock",
+                "Optional accessibility service that only locks the screen",
+                io.github.rscipher001.launcher.gesture.LockService.isEnabled(context),
+                "accessibility",
             ),
             SetupCheck(
                 "Battery unrestricted",

@@ -129,6 +129,11 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "settings", "prefs" -> ui.openScreen(Screen.SETTINGS)
                 "system" -> startSettings(Settings.ACTION_SETTINGS)
                 "home" -> startSettings(Settings.ACTION_HOME_SETTINGS)
+                "lock" -> if (!io.github.rscipher001.launcher.gesture.LockService.lock()) {
+                    logs.add(LogKind.ERROR, "locking needs the Kolahal screen lock accessibility service — tap to enable it", ctx = LogContext.of(LogContext.RUN to "accessibility"))
+                }
+                "accessibility" -> startActivity(io.github.rscipher001.launcher.gesture.LockService.settingsIntent())
+                "shade" -> io.github.rscipher001.launcher.gesture.Gestures.expandShade(context)
                 "date", "time" -> out(DateFormat.getDateTimeInstance().format(Date()))
                 "echo" -> out(rest)
                 "config", "set" -> if (name == "config" && args.isEmpty()) ui.openScreen(Screen.SETTINGS) else config(args, rest)
@@ -1099,6 +1104,9 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("usage-access", "usage-access", "grant usage access (unlock count)"),
             CommandSpec("battery", "battery", "battery optimization settings"),
             CommandSpec("home", "home", "choose the default launcher"),
+            CommandSpec("lock", "lock", "lock the screen (needs the accessibility service)"),
+            CommandSpec("shade", "shade", "pull down the notification shade"),
+            CommandSpec("accessibility", "accessibility", "enable the screen-lock service for double-tap"),
             CommandSpec("settings", "settings", "Kolahal settings screen (+ backup import/export)"),
             CommandSpec("scripts", "scripts", "script manager screen (import files, timers)"),
             CommandSpec("system", "system", "Android system settings"),
@@ -1122,7 +1130,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "profiles" to listOf("work", "private"),
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
             "terminal" to listOf("help", "history", "clear", "restart", "alias", "unalias", "config", "theme", "echo", "date"),
-            "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "battery", "home", "system"),
+            "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "battery", "home", "lock", "shade", "accessibility", "system"),
         )
 
         val SCRIPT_SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "rm", "cat", "dir", "export", "import")
