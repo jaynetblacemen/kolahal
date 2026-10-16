@@ -124,6 +124,13 @@ class HostApi(
         return RssParser.parse(resp["body"] as String)
     }
 
+    /** Pins a short line for this script into the launcher header; null or empty clears it. */
+    fun status(text: String?) {
+        val value = text?.lines()?.firstOrNull()?.take(STATUS_MAX)?.takeIf { it.isNotBlank() }
+        KvStore(context, STATUS_SCOPE).set(scriptName, value)
+        logs.onStatusChanged()
+    }
+
     fun storeGet(key: String): String? = store.get(key)
 
     fun storeSet(key: String, value: String?) = store.set(key, value)
@@ -132,6 +139,8 @@ class HostApi(
         private const val USER_AGENT = "Kolahal-Launcher/0.1 (+https://github.com/rscipher001)"
         private const val MAX_BODY = 4L * 1024 * 1024
         private const val MAX_SEEN = 500
+        private const val STATUS_MAX = 80
+        const val STATUS_SCOPE = "status"
         private val METHODS_REQUIRING_BODY = setOf("POST", "PUT", "PATCH", "PROPPATCH", "REPORT")
 
         private val client: OkHttpClient by lazy {

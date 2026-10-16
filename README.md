@@ -28,6 +28,8 @@ work-profile support and scripts in **Lua 5.4** or **JavaScript (QuickJS)**.
   - Optional notifications per script.
   - Export and import scripts to a folder you pick.
 - **Customisation.** Five themes, font size, key bar, header items, aliases, hidden and renamed apps.
+- **Gestures.** Pinch the log to resize text, swipe down on the header for notifications, tap
+  empty space for the keyboard.
 - **Hardware keyboard.**
   - Prompt: `↑/↓` history, `Tab` complete, `Esc` clear, `Enter` run, `Ctrl+L` clear screen,
     `Ctrl+U` kill line, `Ctrl+A/E` move to start/end.
@@ -47,6 +49,7 @@ script ls | new <name>[.lua|.js] [--cmd] | edit | run | cat | rm | on | off
        dir | export | import
 lua <code>      js <code>         rss <url>     search <query>    url <address>
 notifications   usage-access      battery       home              settings     date     echo
+status [clear <name|all>]         = <lua expression>   (calculator)
 ```
 
 Anything that isn't a command (or alias, or script command) is matched against app names.
@@ -65,6 +68,7 @@ Anything that isn't a command (or alias, or script command) is matched against a
 | `rss.fetch(url)` / `rss.parse(xml)` | `{ title, link, items = [{ title, link, id, date, summary }] }` (RSS 2.0, RDF, Atom) |
 | `rss.fresh(url)` | Like `fetch`, but only items not returned before. Items are marked seen only if the run succeeds. |
 | `store.get(k)` / `store.set(k, v)` | Persistent per-script strings. |
+| `status(text)` | Pins one line for this script into the header (tap it to rerun the script); `status(nil)` clears. |
 | `json.encode` / `json.decode` | Lua only (JS has `JSON`). |
 | `args`, `argline` | Arguments when run as a command. |
 

@@ -12,6 +12,8 @@ import io.github.rscipher001.launcher.apps.AppEntry
 import io.github.rscipher001.launcher.apps.AppPrefs
 import io.github.rscipher001.launcher.script.ScriptMeta
 import io.github.rscipher001.launcher.script.ScriptFolder
+import io.github.rscipher001.launcher.script.HostApi
+import io.github.rscipher001.launcher.data.KvStore
 import io.github.rscipher001.launcher.apps.AppRepository
 import io.github.rscipher001.launcher.apps.ProfileKind
 import io.github.rscipher001.launcher.data.Config
@@ -58,6 +60,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         if (typed.isEmpty()) return
         logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
         val trimmed = expandAliases(typed)
+        // "= 6*7" is a quick calculator (any Lua expression).
+        if (trimmed.startsWith("=")) return eval(ScriptLang.LUA, trimmed.drop(1).trim())
         val name = trimmed.substringBefore(' ').lowercase()
         val rest = trimmed.substringAfter(' ', "").trim()
         val args = tokenize(rest)
@@ -86,6 +90,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "search", "g" -> search(rest)
                 "notifications" -> notifications()
                 "setup" -> setup()
+                "status" -> statusCommand(args)
                 "usage-access" -> startActivity(unlocks.usageAccessIntent())
                 "battery" -> startSettings(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                 "settings" -> startSettings(Settings.ACTION_SETTINGS)
@@ -348,6 +353,25 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         else ui.requestNotificationPermission()
     }
 
+    /** `status` lists script status lines; `status clear <name|all>` removes them. */
+    private fun statusCommand(args: List<String>) {
+        val store = KvStore(context, HostApi.STATUS_SCOPE)
+        val all = store.all()
+        when (args.firstOrNull()) {
+            null, "ls" -> {
+                if (all.isEmpty()) info("no status lines — scripts set them with status(text)")
+                all.forEach { (name, text) -> out("$name ▸ $text", LogContext.of(LogContext.SCRIPT to name)) }
+            }
+            "clear" -> {
+                val target = args.getOrNull(1) ?: "all"
+                (if (target == "all") all.keys else listOf(target)).forEach { store.set(it, null) }
+                logs.onStatusChanged()
+                info("cleared status: $target")
+            }
+            else -> error("usage: status [clear <name|all>]")
+        }
+    }
+
     /** First-run checklist; each unchecked line runs its fix when tapped. */
     fun setup() {
         val power = context.getSystemService(PowerManager::class.java)
@@ -515,6 +539,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "rm", "delete" -> withScript(target) { s ->
                 ScriptScheduler.cancel(context, s.id)
                 scripts.delete(s.id)
+                KvStore(context, HostApi.STATUS_SCOPE).set(s.name, null)
+                logs.onStatusChanged()
                 info("deleted ${s.name}")
             }
             "cat", "show" -> withScript(target) { s ->
@@ -573,6 +599,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("private", "private [on|off|status]", "lock / unlock private space"),
             CommandSpec("unlocks", "unlocks [days]", "unlock counts"),
             CommandSpec("script", "script <sub> <name>", "ls new edit run every at notify on off rm cat dir export import"),
+            CommandSpec("=", "= <expression>", "calculator, e.g. = 2^10 / 3"),
             CommandSpec("lua", "lua <code>", "evaluate Lua 5.4"),
             CommandSpec("js", "js <code>", "evaluate JavaScript (QuickJS)"),
             CommandSpec("rss", "rss <url>", "fetch a feed into the log"),
@@ -580,6 +607,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("url", "url <address>", "open a link"),
             CommandSpec("history", "history", "recent commands (tap to reuse)"),
             CommandSpec("clear", "clear", "clear the screen"),
+            CommandSpec("status", "status [clear <name|all>]", "header lines pinned by scripts"),
             CommandSpec("setup", "setup", "checklist: default home, permissions, battery"),
             CommandSpec("notifications", "notifications", "allow script notifications"),
             CommandSpec("usage-access", "usage-access", "grant usage access (unlock count)"),

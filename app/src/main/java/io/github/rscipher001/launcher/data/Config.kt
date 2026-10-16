@@ -42,6 +42,7 @@ object Keys {
     val HEADER_NETWORK = ConfigKey.Bool("header.network", true, "show network type")
     val HEADER_ALARM = ConfigKey.Bool("header.alarm", true, "show the next alarm")
     val HEADER_PROFILES = ConfigKey.Bool("header.profiles", true, "show work/private profile state")
+    val HEADER_STATUS = ConfigKey.Bool("header.status", true, "show status lines pinned by scripts")
     val CLOCK_24H = ConfigKey.Bool("clock.24h", true, "24-hour clock")
     val KEYBAR = ConfigKey.Text(
         "keybar", DEFAULT_KEYBAR,
@@ -58,7 +59,7 @@ object Keys {
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
-        HEADER_PROFILES, CLOCK_24H, KEYBAR_SHOW, KEYBAR, THEME, FONT_SIZE, SUGGESTIONS, AUTO_LAUNCH,
+        HEADER_PROFILES, HEADER_STATUS, CLOCK_24H, KEYBAR_SHOW, KEYBAR, THEME, FONT_SIZE, SUGGESTIONS, AUTO_LAUNCH,
         SHOW_TIMESTAMPS, FOCUS_ON_HOME, IME_SUGGESTIONS,
     )
 

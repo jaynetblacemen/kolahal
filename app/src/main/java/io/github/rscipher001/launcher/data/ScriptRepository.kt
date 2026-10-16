@@ -117,6 +117,14 @@ class ScriptRepository private constructor(private val context: Context) {
 class KvStore(context: Context, private val scope: String) {
     private val db = Db.get(context)
 
+    fun all(): Map<String, String> {
+        val out = LinkedHashMap<String, String>()
+        db.readableDatabase.rawQuery("SELECT k, v FROM kv WHERE scope = ? ORDER BY k", arrayOf(scope)).use { c ->
+            while (c.moveToNext()) c.getString(1)?.let { out[c.getString(0)] = it }
+        }
+        return out
+    }
+
     fun get(key: String): String? = db.readableDatabase.rawQuery(
         "SELECT v FROM kv WHERE scope = ? AND k = ?", arrayOf(scope, key),
     ).use { c -> if (c.moveToFirst()) c.getString(0) else null }

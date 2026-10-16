@@ -49,6 +49,7 @@ class JsEngine : ScriptEngine {
         js.function("log") { args ->
             host.log(args.str(0) ?: "undefined", args.getOrNull(1) as? Map<*, *>)
         }
+        js.function("status") { args -> host.status(args.str(0)) }
         js.function("notify") { args ->
             host.notify(args.str(0) ?: "", args.str(1) ?: "", args.getOrNull(2) as? Map<*, *>)
         }

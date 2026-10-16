@@ -55,6 +55,13 @@ import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.PointerEventPass
+import kotlin.math.roundToInt
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -92,6 +99,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     val profiles by vm.profiles.collectAsStateWithLifecycle()
     val unlocks by vm.unlocksToday.collectAsStateWithLifecycle()
     val status by vm.status.collectAsStateWithLifecycle()
+    val statuses by vm.statuses.collectAsStateWithLifecycle()
     val configVersion by vm.config.version.collectAsStateWithLifecycle()
     val config = vm.config
     val listState = rememberLazyListState()
@@ -151,14 +159,31 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             .navigationBarsPadding()
             .imePadding()
     ) {
-        Header(unlocks = unlocks, profiles = profiles, status = status, config = config, version = configVersion)
+        Header(
+            unlocks = unlocks,
+            profiles = profiles,
+            status = status,
+            statuses = statuses,
+            config = config,
+            version = configVersion,
+            onStatusTap = vm::runScriptNamed,
+            onSwipeDown = vm::expandNotifications,
+        )
         LazyColumn(
             state = listState,
             reverseLayout = true,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .testTag("log"),
+                .testTag("log")
+                .pinchToZoomFont(onChange = { Term.fontSize = it }, onEnd = vm::saveFontSize)
+                // Taps that no log line consumed (empty space) bring up the keyboard.
+                .pointerInput(Unit) {
+                    detectTapGestures {
+                        runCatching { focus.requestFocus() }
+                        keyboard?.show()
+                    }
+                },
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
         ) {
             items(reversed, key = { it.id }) { entry ->
@@ -193,7 +218,16 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
 }
 
 @Composable
-private fun Header(unlocks: Int, profiles: List<Profile>, status: Status, config: Config, version: Int) {
+private fun Header(
+    unlocks: Int,
+    profiles: List<Profile>,
+    status: Status,
+    statuses: Map<String, String>,
+    config: Config,
+    version: Int,
+    onStatusTap: (String) -> Unit,
+    onSwipeDown: () -> Unit,
+) {
     val now by produceState(Date()) {
         while (true) {
             value = Date()
@@ -260,10 +294,31 @@ private fun Header(unlocks: Int, profiles: List<Profile>, status: Status, config
         Modifier
             .fillMaxWidth()
             .testTag("header")
+            // Swipe down on the header pulls down the notification shade.
+            .pointerInput(Unit) {
+                var total = 0f
+                detectVerticalDragGestures(
+                    onDragStart = { total = 0f },
+                    onDragEnd = { if (total > 48.dp.toPx()) onSwipeDown() },
+                ) { _, dy -> total += dy }
+            }
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         Text(line1, style = Term.mono)
         if (line2.isNotEmpty()) Text(line2, style = Term.mono.copy(fontSize = (Term.fontSize - 1).sp))
+        if (config[Keys.HEADER_STATUS]) {
+            statuses.forEach { (name, text) ->
+                Text(
+                    buildAnnotatedString {
+                        withStyle(SpanStyle(color = Term.dim)) { append("$name ▸ ") }
+                        withStyle(SpanStyle(color = Term.script)) { append(text) }
+                    },
+                    style = Term.mono.copy(fontSize = (Term.fontSize - 1).sp),
+                    maxLines = 1,
+                    modifier = Modifier.fillMaxWidth().clickable { onStatusTap(name) },
+                )
+            }
+        }
     }
 }
 
@@ -458,5 +513,37 @@ private fun Prompt(
                     }
                 },
         )
+    }
+}
+
+/**
+ * Two-finger pinch changes the terminal font size. Runs in the Initial pass and consumes only
+ * multi-touch events, so one-finger scrolling and taps still reach the list.
+ */
+private fun Modifier.pinchToZoomFont(onChange: (Int) -> Unit, onEnd: (Int) -> Unit) = pointerInput(Unit) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        var startDistance = 0f
+        var startSize = Term.fontSize
+        var changed = false
+        do {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            val pressed = event.changes.filter { it.pressed }
+            if (pressed.size >= 2) {
+                val distance = (pressed[0].position - pressed[1].position).getDistance()
+                if (startDistance == 0f) {
+                    startDistance = distance
+                    startSize = Term.fontSize
+                } else if (startDistance > 0f) {
+                    val size = (startSize * distance / startDistance).roundToInt().coerceIn(10, 24)
+                    if (size != Term.fontSize) {
+                        onChange(size)
+                        changed = true
+                    }
+                }
+                event.changes.forEach { it.consume() }
+            }
+        } while (event.changes.any { it.pressed })
+        if (changed) onEnd(Term.fontSize)
     }
 }

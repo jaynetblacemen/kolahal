@@ -91,6 +91,9 @@ class LogRepository private constructor(private val context: Context) {
         )
     }
 
+    /** Script status lines live in the kv table; reuse the log change signal to refresh the header. */
+    fun onStatusChanged() = changed()
+
     /** Called when another process tells us the log changed. */
     fun onExternalChange() {
         _version.value++

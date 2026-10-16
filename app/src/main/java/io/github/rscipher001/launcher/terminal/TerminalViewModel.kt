@@ -1,5 +1,6 @@
 package io.github.rscipher001.launcher.terminal
 
+import android.annotation.SuppressLint
 import android.app.Application
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -17,6 +18,8 @@ import io.github.rscipher001.launcher.apps.AppPrefs
 import io.github.rscipher001.launcher.data.ConfigKey
 import io.github.rscipher001.launcher.script.ScriptMeta
 import io.github.rscipher001.launcher.script.ScriptFolder
+import io.github.rscipher001.launcher.script.HostApi
+import io.github.rscipher001.launcher.data.KvStore
 import io.github.rscipher001.launcher.apps.AppRepository
 import io.github.rscipher001.launcher.apps.Profile
 import io.github.rscipher001.launcher.apps.ProfileKind
@@ -77,6 +80,10 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     /** Scripts, refreshed off the main thread whenever the log changes (every script action logs). */
     private val scriptCache = MutableStateFlow<List<Script>>(emptyList())
 
+    private val _statuses = MutableStateFlow<Map<String, String>>(emptyMap())
+    /** Header lines pinned by scripts with `status(text)`, keyed by script name. */
+    val statuses: StateFlow<Map<String, String>> = _statuses.asStateFlow()
+
     private val _entries = MutableStateFlow<List<LogEntry>>(emptyList())
     val entries: StateFlow<List<LogEntry>> = _entries.asStateFlow()
 
@@ -117,6 +124,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
             Triple(logs.recent(), logs.commandHistory(), scripts.all())
         }
         scriptCache.value = scriptList
+        _statuses.value = withContext(Dispatchers.IO) { KvStore(context, HostApi.STATUS_SCOPE).all() }
         _entries.value = list
         history = hist
     }
@@ -399,6 +407,28 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
             scripts.saveCode(script.id, code)
             scripts.byId(script.id)?.let { ScriptScheduler.runNow(context, it) }
             logs.add(LogKind.INFO, "running ${script.name}…", ctx = LogContext.of(LogContext.SCRIPT to script.name))
+        }
+    }
+
+    fun saveFontSize(size: Int) {
+        config.set(Keys.FONT_SIZE, size.toString())
+    }
+
+    fun runScriptNamed(name: String) {
+        io {
+            scripts.byName(name)?.let {
+                ScriptScheduler.runNow(context, it)
+                logs.add(LogKind.INFO, "running $name…", ctx = LogContext.of(LogContext.SCRIPT to name))
+            }
+        }
+    }
+
+    /** Pulls down the notification shade (hidden API used by most launchers; no-op if blocked). */
+    @SuppressLint("WrongConstant")
+    fun expandNotifications() {
+        runCatching {
+            val sbm = context.getSystemService("statusbar")
+            Class.forName("android.app.StatusBarManager").getMethod("expandNotificationsPanel").invoke(sbm)
         }
     }
 

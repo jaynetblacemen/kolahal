@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- Swipe down on the header opens the notification shade. -->
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <!-- Lets the default launcher see the Android 15+ private space profile. -->
     <uses-permission android:name="android.permission.ACCESS_HIDDEN_PROFILES" />
     <!-- Lets the home screen show an accurate unlock count (user grants it in Settings). -->

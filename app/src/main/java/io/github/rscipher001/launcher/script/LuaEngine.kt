@@ -75,6 +75,10 @@ class LuaEngine : ScriptEngine {
             host.log(l.toString(1) ?: "nil", l.mapArg(2))
             0
         }
+        lua.global("status") { l ->
+            host.status(if (l.isNil(1)) null else l.toString(1))
+            0
+        }
         lua.global("notify") { l ->
             l.push(host.notify(l.toString(1) ?: "", l.toString(2) ?: "", l.mapArg(3)))
             1
