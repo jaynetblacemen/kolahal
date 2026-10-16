@@ -122,6 +122,18 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     private val _entries = MutableStateFlow<List<LogEntry>>(emptyList())
     val entries: StateFlow<List<LogEntry>> = _entries.asStateFlow()
 
+    private val _headerCollapsed = MutableStateFlow(false)
+    /** header.autohide: the header shrinks to one line while the log is in use. */
+    val headerCollapsed: StateFlow<Boolean> = _headerCollapsed.asStateFlow()
+
+    fun collapseHeader() {
+        if (config[Keys.HEADER_AUTOHIDE]) _headerCollapsed.value = true
+    }
+
+    fun expandHeader() {
+        _headerCollapsed.value = false
+    }
+
     private val _screen = MutableStateFlow(Screen.TERMINAL)
     val screen: StateFlow<Screen> = _screen.asStateFlow()
 
@@ -222,6 +234,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     }
 
     fun onResume() {
+        // Coming back from an app is a fresh look at home: show the full header again.
+        expandHeader()
         seenUpTo = logs.seenUpTo
         viewModelScope.launch {
             unreadUntil = withContext(Dispatchers.IO) { logs.maxId() }
@@ -255,6 +269,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             commands = commandUsages, aliases = appPrefs.aliases(), scriptCommands = _commandNames.value,
         ) ?: return
         setText("")
+        collapseHeader()
         _events.tryEmit(UiEvent.ScrollToBottom)
         when (target) {
             is InstantRun.Target.App -> io { processor.launch(target.app) }
@@ -271,6 +286,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         input = TextFieldValue("")
         historyIndex = -1
         if (line.isBlank()) return
+        collapseHeader()
         io { processor.run(line) }
         _events.tryEmit(UiEvent.ScrollToBottom)
     }
@@ -460,6 +476,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             entry.kind == LogKind.COMMAND || ctx.command != null -> {
                 val line = ctx.command ?: entry.text
                 if (runsOnTap(line)) {
+                    collapseHeader()
                     _events.tryEmit(UiEvent.ScrollToBottom)
                     io { processor.run(line) }
                 } else {
@@ -674,6 +691,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     /** Runs a command as if typed (without alias expansion). */
     fun runCommand(cmd: String) {
+        collapseHeader()
         _events.tryEmit(UiEvent.ScrollToBottom)
         io { processor.run(cmd, expand = false) }
     }
@@ -926,12 +944,14 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     }
 
     override fun clearScreen() {
+        expandHeader()
         io { logs.clearScreen() }
     }
 
     /** Pressing Home while already home: reset the prompt. */
     fun onHomePressed() {
         _editing.value?.let { return }
+        expandHeader()
         _screen.value = Screen.TERMINAL
         escape()
         _events.tryEmit(UiEvent.ScrollToBottom)

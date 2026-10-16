@@ -206,7 +206,18 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             .navigationBarsPadding()
             .imePadding()
     ) {
-        Header(
+        val headerCollapsed by vm.headerCollapsed.collectAsStateWithLifecycle()
+        // Scrolling the log by hand shrinks the header (header.autohide) to give the log the room.
+        LaunchedEffect(listState) {
+            snapshotFlow { listState.isScrollInProgress }.collect { if (it) vm.collapseHeader() }
+        }
+        if (headerCollapsed) CompactHeader(
+            status = status,
+            statusCount = if (config[Keys.HEADER_STATUS]) statuses.size else 0,
+            config = config,
+            version = configVersion,
+            onExpand = vm::expandHeader,
+        ) else Header(
             unlocks = unlocks,
             profiles = profiles,
             status = status,
@@ -297,6 +308,49 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
 
 /** What a tap on a header item does. */
 enum class HeaderTarget { CLOCK, UNLOCKS, BATTERY, NETWORK, ALARM, SETTINGS }
+
+/** One-line header while the log is in use: time, battery and how many status lines are hidden. */
+@Composable
+private fun CompactHeader(status: Status, statusCount: Int, config: Config, version: Int, onExpand: () -> Unit) {
+    val now by produceState(Date()) {
+        while (true) {
+            value = Date()
+            delay(1_000L * (60 - (System.currentTimeMillis() / 1000 % 60)))
+        }
+    }
+    val is24h = remember(version) { config[Keys.CLOCK_24H] }
+    val timeFmt = remember(is24h) { SimpleDateFormat(if (is24h) "HH:mm" else "h:mm a", Locale.getDefault()) }
+    val small = Term.mono.copy(fontSize = (Term.fontSize - 1).sp)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("header-compact")
+            .clickable(onClick = onExpand)
+            .pointerInput(Unit) {
+                var total = 0f
+                detectVerticalDragGestures(
+                    onDragStart = { total = 0f },
+                    onDragEnd = { if (total > 24.dp.toPx()) onExpand() },
+                ) { _, dy -> total += dy }
+            }
+            .heightIn(min = 48.dp)
+            .padding(horizontal = 12.dp),
+    ) {
+        Text(timeFmt.format(now), style = small.copy(color = Term.fg, fontWeight = FontWeight.Bold))
+        status.batteryPct?.let { pct ->
+            val color = when {
+                status.charging -> Term.prompt
+                pct <= 15 -> Term.error
+                else -> Term.dim
+            }
+            Text("  bat $pct%" + if (status.charging) "+" else "", style = small.copy(color = color))
+        }
+        if (statusCount > 0) Text("  · $statusCount status", style = small.copy(color = Term.dim))
+        Spacer(Modifier.weight(1f))
+        Text("▾", style = small.copy(color = Term.dim))
+    }
+}
 
 /**
  * Clock line plus a row of status items that wrap as whole items. Items are tappable
