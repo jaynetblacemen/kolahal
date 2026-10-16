@@ -84,11 +84,14 @@ private val TITLES = mapOf(
     "log.time" to "Times",
     "log.dim" to "Dim older output",
     "log.spacing" to "Space between commands",
+    "log.keepdays" to "Keep log for (days)",
     "launch.top" to "Enter opens the best match",
     "launch.single" to "Open the only match",
     "suggestions.idle" to "Most-used apps on empty prompt",
     "suggestions" to "Suggestions shown",
     "keybar.show" to "Show the key bar",
+    "search.engine" to "Search engine",
+    "search.url" to "Custom search URL",
     "keybar" to "Key bar, row 1",
     "keybar2" to "Key bar, row 2",
     "keyboard.suggestions" to "Keyboard suggestions",
@@ -101,8 +104,8 @@ private val SECTIONS: List<Pair<String, List<ConfigKey<*>>>> = listOf(
         Keys.HEADER_DATE, Keys.CLOCK_24H, Keys.HEADER_UNLOCKS, Keys.HEADER_BATTERY, Keys.HEADER_NETWORK,
         Keys.HEADER_ALARM, Keys.HEADER_PROFILES, Keys.HEADER_STATUS, Keys.HEADER_DEVICE,
     ),
-    "Log" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_SPACING),
-    "Launching" to listOf(Keys.LAUNCH_TOP, Keys.AUTO_LAUNCH, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS),
+    "Log" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_SPACING, Keys.LOG_KEEP_DAYS),
+    "Launching" to listOf(Keys.LAUNCH_TOP, Keys.AUTO_LAUNCH, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS, Keys.SEARCH_ENGINE, Keys.SEARCH_URL),
     "Keyboard & key bar" to listOf(Keys.KEYBAR_SHOW, Keys.KEYBAR, Keys.KEYBAR2, Keys.IME_SUGGESTIONS, Keys.FOCUS_ON_HOME),
 )
 
@@ -228,6 +231,8 @@ private fun SettingItem(vm: TerminalViewModel, config: Config, key: ConfigKey<*>
                         Spacer(Modifier.height(10.dp))
                         if (key == Keys.THEME) {
                             ThemeSwatches(value) { vm.setConfig(key, it) }
+                        } else if (key.choices.size > 4) {
+                            ChipChoices(key.choices, value) { vm.setConfig(key, it) }
                         } else {
                             ConnectedChoices(key.choices, value) { vm.setConfig(key, it) }
                         }
@@ -287,6 +292,17 @@ private fun SettingItem(vm: TerminalViewModel, config: Config, key: ConfigKey<*>
                     },
                 ) { Text(title) }
             }
+        }
+    }
+}
+
+/** Many options: wrapping single-select filter chips. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun ChipChoices(choices: List<String>, selected: String, onPick: (String) -> Unit) {
+    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        choices.forEach { c ->
+            androidx.compose.material3.FilterChip(selected = c == selected, onClick = { onPick(c) }, label = { Text(c) })
         }
     }
 }

@@ -64,6 +64,13 @@ object Keys {
     val SHOW_TIMESTAMPS = ConfigKey.Choice("log.time", "commands", listOf("off", "commands", "all"), "right-aligned times on log lines")
     val LOG_DIM = ConfigKey.Bool("log.dim", true, "dim output older than the latest command")
     val LOG_SPACING = ConfigKey.Num("log.spacing", 12, 0..40, "gap (dp) above each command and its output")
+    val LOG_KEEP_DAYS = ConfigKey.Num("log.keepdays", 60, 1..365, "delete log lines older than this many days")
+    val SEARCH_ENGINE = ConfigKey.Choice(
+        "search.engine", "duckduckgo",
+        listOf("duckduckgo", "google", "bing", "brave", "startpage", "kagi", "custom"),
+        "web search engine for search / g",
+    )
+    val SEARCH_URL = ConfigKey.Text("search.url", "https://duckduckgo.com/?q=%s", "custom search URL (%s = query), used when search.engine = custom")
     val FOCUS_ON_HOME = ConfigKey.Bool("keyboard.onhome", false, "open the soft keyboard whenever home is shown")
     val IME_SUGGESTIONS = ConfigKey.Bool(
         "keyboard.suggestions", false,
@@ -73,7 +80,7 @@ object Keys {
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
         HEADER_PROFILES, HEADER_STATUS, CLOCK_24H, KEYBAR_SHOW, KEYBAR, KEYBAR2, THEME, GUI_COLORS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, AUTO_LAUNCH, LAUNCH_TOP,
-        SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, FOCUS_ON_HOME, IME_SUGGESTIONS,
+        SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_KEEP_DAYS, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
     )
 
     fun byName(name: String) = ALL.firstOrNull { it.key == name.lowercase() }

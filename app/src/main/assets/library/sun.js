@@ -1,0 +1,64 @@
+// sun.js — today's sunrise, sunset and day length (Open-Meteo, no key).
+// @command
+// @desc sunrise/sunset: sun | sun <city> | sun <lat> <lng> (city/coords are saved)
+//
+// Usage:
+//   sun                  use the saved location
+//   sun Lisbon           look up a city and save it
+//   sun 12.97 77.59      save coordinates directly
+//
+// Times are local to the location (timezone=auto), so no device timezone
+// handling is needed. On a timer (e.g. daily at 05:00) it pins a status line.
+
+const line = (argline || "").trim();
+
+async function getJson(url) {
+  const r = await http.get(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return JSON.parse(r.body);
+}
+
+try {
+  // Update the saved location if arguments were given.
+  const coords = line.match(/^(-?\d+(?:\.\d+)?)[\s,]+(-?\d+(?:\.\d+)?)$/);
+  if (coords) {
+    const lat = parseFloat(coords[1]);
+    const lng = parseFloat(coords[2]);
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return "sun: coordinates out of range";
+    store.set("lat", String(lat));
+    store.set("lng", String(lng));
+    store.set("place", `${lat}, ${lng}`);
+  } else if (line) {
+    const geo = await getJson(
+      `https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=${encodeURIComponent(line)}`
+    );
+    if (!geo.results || geo.results.length === 0) return `sun: no place named '${line}'`;
+    const p = geo.results[0];
+    store.set("lat", String(p.latitude));
+    store.set("lng", String(p.longitude));
+    store.set("place", [p.name, p.country_code].filter(Boolean).join(", "));
+  }
+
+  const lat = store.get("lat");
+  const lng = store.get("lng");
+  if (!lat || !lng) return "sun: no location yet; try: sun <city> or sun <lat> <lng>";
+
+  const data = await getJson(
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
+      "&daily=sunrise,sunset,daylight_duration&timezone=auto&forecast_days=1"
+  );
+  const d = data.daily;
+  if (!d || !d.sunrise || d.sunrise.length === 0) return "sun: no data";
+
+  // "2026-10-16T06:12" -> "06:12"
+  const hhmm = (iso) => (iso ? iso.slice(11, 16) : "--:--");
+  const rise = hhmm(d.sunrise[0]);
+  const set = hhmm(d.sunset[0]);
+  const secs = d.daylight_duration ? d.daylight_duration[0] : null;
+  const length = secs != null ? ` (${Math.floor(secs / 3600)}h ${Math.round((secs % 3600) / 60)}m)` : "";
+
+  log(`${store.get("place") || `${lat}, ${lng}`}: sunrise ${rise}, sunset ${set}${length}`);
+  status(`Sun ${rise}–${set}`);
+} catch (e) {
+  return `sun: ${e.message || e}`;
+}

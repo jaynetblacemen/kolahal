@@ -78,6 +78,9 @@ sealed interface Suggestion {
 /** One entry of a log line's long-press menu. */
 data class LogAction(val label: String, val destructive: Boolean = false, val run: () -> Unit)
 
+private const val PAGE = 400
+private const val MAX_PAGE = 5000
+
 @OptIn(kotlinx.coroutines.FlowPreview::class)
 class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     private val context = app.applicationContext
@@ -154,9 +157,18 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         }
     }
 
+    /** How many log lines are loaded; grows as the user scrolls up (older lines load on demand). */
+    @Volatile private var pageLimit = PAGE
+
+    fun loadOlder() {
+        if (_entries.value.size < pageLimit || pageLimit >= MAX_PAGE) return
+        pageLimit += PAGE
+        viewModelScope.launch { reload() }
+    }
+
     private suspend fun reload() {
         val (list, hist, scriptList) = withContext(Dispatchers.IO) {
-            Triple(logs.recent(), logs.commandHistory(), scripts.all())
+            Triple(logs.recent(pageLimit), logs.commandHistory(), scripts.all())
         }
         scriptCache.value = scriptList
         _statuses.value = withContext(Dispatchers.IO) { KvStore(context, HostApi.STATUS_SCOPE).all() }

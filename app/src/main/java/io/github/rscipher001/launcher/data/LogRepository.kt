@@ -86,8 +86,8 @@ class LogRepository private constructor(private val context: Context) {
     fun commandHistory(limit: Int = 200): List<String> {
         val out = ArrayList<String>()
         db.readableDatabase.rawQuery(
-            "SELECT text FROM logs WHERE kind = ? GROUP BY text ORDER BY MAX(id) DESC LIMIT ?",
-            arrayOf(LogKind.COMMAND.key, limit.toString()),
+            "SELECT text FROM logs WHERE kind = ? AND id > ? GROUP BY text ORDER BY MAX(id) DESC LIMIT ?",
+            arrayOf(LogKind.COMMAND.key, prefs.getLong(KEY_HISTORY_FROM, 0L).toString(), limit.toString()),
         ).use { c -> while (c.moveToNext()) out += c.getString(0) }
         return out
     }
@@ -97,16 +97,18 @@ class LogRepository private constructor(private val context: Context) {
         changed()
     }
 
-    /** Deletes command history (the ↑ list); visible output stays. */
+    /** Empties ↑ recall; the log itself (commands and their output) stays as it is. */
     fun clearHistory() {
-        db.writableDatabase.delete("logs", "kind = ?", arrayOf(LogKind.COMMAND.key))
+        val maxId = db.readableDatabase.rawQuery("SELECT COALESCE(MAX(id), 0) FROM logs", null)
+            .use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
+        prefs.edit().putLong(KEY_HISTORY_FROM, maxId).apply()
         changed()
     }
 
     /** Deletes the whole log, history included. */
     fun clearAll() {
         db.writableDatabase.delete("logs", null, null)
-        prefs.edit().putLong(KEY_CLEARED_UP_TO, 0L).apply()
+        prefs.edit().putLong(KEY_CLEARED_UP_TO, 0L).putLong(KEY_HISTORY_FROM, 0L).apply()
         changed()
     }
 
@@ -121,11 +123,14 @@ class LogRepository private constructor(private val context: Context) {
         changed()
     }
 
-    fun trim(keep: Int = 3000) {
+    /** Keeps the newest [keep] lines and drops anything older than [maxAgeDays]. */
+    fun trim(keep: Int = 5000, maxAgeDays: Int = Config.get(context)[Keys.LOG_KEEP_DAYS]) {
         db.writableDatabase.execSQL(
             "DELETE FROM logs WHERE id <= (SELECT id FROM logs ORDER BY id DESC LIMIT 1 OFFSET ?)",
             arrayOf(keep),
         )
+        val cutoff = System.currentTimeMillis() - maxAgeDays * 86_400_000L
+        db.writableDatabase.delete("logs", "ts < ?", arrayOf(cutoff.toString()))
     }
 
     /** Newest log id the user has seen (set when home is left), for unread markers. */
@@ -149,6 +154,7 @@ class LogRepository private constructor(private val context: Context) {
     companion object {
         private const val KEY_CLEARED_UP_TO = "cleared_up_to"
         private const val KEY_SEEN_UP_TO = "seen_up_to"
+        private const val KEY_HISTORY_FROM = "history_from"
         const val ACTION_LOGS_CHANGED = "io.github.rscipher001.launcher.LOGS_CHANGED"
 
         @Volatile

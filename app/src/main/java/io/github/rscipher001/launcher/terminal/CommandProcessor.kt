@@ -12,6 +12,7 @@ import io.github.rscipher001.launcher.apps.AppEntry
 import io.github.rscipher001.launcher.apps.AppPrefs
 import io.github.rscipher001.launcher.script.ScriptMeta
 import io.github.rscipher001.launcher.script.Json
+import io.github.rscipher001.launcher.script.Net
 import io.github.rscipher001.launcher.script.ScriptFolder
 import io.github.rscipher001.launcher.script.HostApi
 import io.github.rscipher001.launcher.data.KvStore
@@ -78,7 +79,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
         val trimmed = if (expand) expandAliases(typed) else typed
         // "= 6*7" is a quick calculator (any Lua expression).
-        if (trimmed.startsWith("=")) return eval(ScriptLang.LUA, trimmed.drop(1).trim())
+        if (trimmed.startsWith("=")) return calc(trimmed.drop(1).trim())
         val name = trimmed.substringBefore(' ').lowercase()
         val rest = trimmed.substringAfter(' ', "").trim()
         val args = tokenize(rest)
@@ -107,6 +108,11 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "rss" -> rss(rest)
                 "url", "web" -> openUrl(rest)
                 "search", "g" -> search(rest)
+                "yt", "youtube" -> search(rest, "youtube")
+                "wiki" -> search(rest, "wikipedia")
+                "maps", "map" -> if (rest.isBlank()) fallbackLaunch(trimmed) else openUri("geo:0,0?q=" + Uri.encode(rest), "maps: $rest")
+                "play", "store" -> if (rest.isBlank()) fallbackLaunch(trimmed) else openUri("market://search?q=" + Uri.encode(rest), "play store: $rest")
+                "usage", "screentime" -> usage(args)
                 "notifications" -> notifications(args)
                 "setup" -> if (args.firstOrNull() == "text") setupText() else ui.openScreen(Screen.SETUP)
                 "status" -> statusCommand(args)
@@ -427,12 +433,100 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         info("opened $url", LogContext.of(LogContext.URL to url))
     }
 
-    private fun search(query: String) {
+    private fun search(query: String, engine: String? = null) {
         if (query.isBlank()) return error("usage: search <query>")
-        val url = "https://duckduckgo.com/?q=" + Uri.encode(query)
+        val template = when (engine ?: conf[Keys.SEARCH_ENGINE]) {
+            "google" -> "https://www.google.com/search?q=%s"
+            "bing" -> "https://www.bing.com/search?q=%s"
+            "brave" -> "https://search.brave.com/search?q=%s"
+            "startpage" -> "https://www.startpage.com/do/search?q=%s"
+            "kagi" -> "https://kagi.com/search?q=%s"
+            "youtube" -> "https://www.youtube.com/results?search_query=%s"
+            "wikipedia" -> "https://en.wikipedia.org/w/index.php?search=%s"
+            "custom" -> conf[Keys.SEARCH_URL].takeIf { it.contains("%s") } ?: "https://duckduckgo.com/?q=%s"
+            else -> "https://duckduckgo.com/?q=%s"
+        }
+        val url = template.replace("%s", Uri.encode(query))
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
         info("search: $query", LogContext.of(LogContext.URL to url))
     }
+
+    /** Opens [uri] in whatever app handles it (maps, store, ...). */
+    private fun openUri(uri: String, what: String) {
+        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri)))
+        info(what, LogContext.of(LogContext.URL to uri))
+    }
+
+    // ---- calculator & conversions --------------------------------------------------------
+
+    /** `= 2^10`, `= 5 km in mi`, `= 72 f to c`, `= 100 usd in inr` (live rates, cached 6h). */
+    private fun calc(expr: String) {
+        val conversion = Units.parse(expr)
+        if (conversion != null) {
+            val (amount, from, to) = conversion
+            Units.convert(amount, from, to)?.let { return out(it, LogContext.of(LogContext.COPY to it.substringAfter("= "))) }
+            if (Units.looksLikeCurrency(from) && Units.looksLikeCurrency(to)) {
+                return background("convert") { currency(amount, from.uppercase(), to.uppercase()) }
+            }
+        }
+        eval(ScriptLang.LUA, expr)
+    }
+
+    private fun currency(amount: Double, from: String, to: String) {
+        val cache = KvStore(context, "fx")
+        val cached = cache.get(from)?.let { runCatching { Json.parse(it) as? Map<*, *> }.getOrNull() }
+        val fresh = (cached?.get("at") as? Number)?.toLong()?.let { System.currentTimeMillis() - it < 6 * 3_600_000L } == true
+        val rates = if (fresh) {
+            cached?.get("rates") as? Map<*, *>
+        } else {
+            val body = Json.parse(Net.get("https://open.er-api.com/v6/latest/$from")) as? Map<*, *>
+                ?: throw IllegalStateException("bad response")
+            if (body["result"] != "success") throw IllegalStateException("unknown currency $from")
+            (body["rates"] as? Map<*, *>)?.also {
+                cache.set(from, Json.stringify(mapOf("at" to System.currentTimeMillis(), "rates" to it)))
+            }
+        }
+        val rate = (rates?.get(to) as? Number)?.toDouble() ?: throw IllegalStateException("unknown currency $to")
+        val text = "${Units.format(amount)} $from = ${Units.format(amount * rate)} $to"
+        out(text, LogContext.of(LogContext.COPY to Units.format(amount * rate)))
+    }
+
+    // ---- screen time ------------------------------------------------------------------------
+
+    /** `usage [days]`: foreground time per app from UsageStats (needs Usage Access). */
+    private fun usage(args: List<String>) {
+        if (!unlocks.hasUsageAccess()) {
+            logs.add(LogKind.ERROR, "usage needs Usage Access — tap to grant it", ctx = LogContext.of(LogContext.RUN to "usage-access"))
+            return
+        }
+        val days = args.firstOrNull()?.toIntOrNull()?.coerceIn(1, 30) ?: 1
+        val zone = java.time.ZoneId.systemDefault()
+        val start = java.time.LocalDate.now(zone).minusDays((days - 1).toLong()).atStartOfDay(zone).toInstant().toEpochMilli()
+        val usm = context.getSystemService(android.app.usage.UsageStatsManager::class.java)
+        val totals = usm.queryAndAggregateUsageStats(start, System.currentTimeMillis())
+            .mapValues { it.value.totalTimeInForeground }
+            .filter { it.value >= 60_000 && it.key != context.packageName }
+            .entries.sortedByDescending { it.value }
+        if (totals.isEmpty()) return info("no app usage recorded ${if (days == 1) "today" else "in $days days"}")
+        val sum = totals.sumOf { it.value }
+        info("screen time ${if (days == 1) "today" else "last $days days"}: ${duration(sum)}")
+        val max = totals.first().value
+        totals.take(12).forEach { (pkg, ms) ->
+            val app = apps.apps.value.firstOrNull { it.pkg == pkg && it.profile.kind == ProfileKind.PERSONAL }
+                ?: apps.apps.value.firstOrNull { it.pkg == pkg }
+            val bar = "█".repeat((ms * 12 / max).toInt().coerceAtLeast(1))
+            out(
+                app?.label ?: pkg,
+                (if (app != null) appCtx(app) else LogContext.EMPTY) + mapOf(LogContext.DESC to "${duration(ms)}  $bar"),
+            )
+        }
+    }
+
+    private fun duration(ms: Long): String {
+        val minutes = ms / 60_000
+        return if (minutes >= 60) "${minutes / 60}h ${minutes % 60}m" else "${minutes}m"
+    }
+
 
     /** Asks for the runtime permission when it can; otherwise (pre-13, or turned off) opens settings. */
     private fun notifications(args: List<String>) {
@@ -736,11 +830,16 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("private", "private [on|off|status]", "lock / unlock private space"),
             CommandSpec("unlocks", "unlocks [days]", "unlock counts"),
             CommandSpec("script", "script <sub> <name>", "ls new edit run every at notify on off rm cat dir export import"),
-            CommandSpec("=", "= <expression>", "calculator, e.g. = 2^10 / 3"),
+            CommandSpec("=", "= <expr>", "calculator · = 5 km in mi · = 72 f to c · = 100 usd in eur"),
             CommandSpec("lua", "lua <code>", "evaluate Lua 5.4"),
             CommandSpec("js", "js <code>", "evaluate JavaScript (QuickJS)"),
             CommandSpec("rss", "rss <url>", "fetch a feed into the log"),
-            CommandSpec("search", "search <query>", "web search"),
+            CommandSpec("search", "search <query>", "web search (engine: config search.engine)"),
+            CommandSpec("yt", "yt <query>", "search YouTube"),
+            CommandSpec("wiki", "wiki <query>", "search Wikipedia"),
+            CommandSpec("maps", "maps <place>", "find a place in your maps app"),
+            CommandSpec("play", "play <query>", "search the Play Store"),
+            CommandSpec("usage", "usage [days]", "screen time per app"),
             CommandSpec("url", "url <address>", "open a link"),
             CommandSpec("history", "history", "recent commands (tap to reuse)"),
             CommandSpec("clear", "clear [history|all]", "clear the screen, the ↑ history, or both"),
@@ -767,9 +866,10 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
 
         /** `help` groups; commands not listed here are shown after the groups. */
         val HELP_SECTIONS = linkedMapOf(
-            "apps" to listOf("open", "apps", "info", "uninstall", "hide", "unhide", "rename", "search", "url"),
+            "apps" to listOf("open", "apps", "info", "uninstall", "hide", "unhide", "rename", "usage"),
+            "web" to listOf("search", "yt", "wiki", "maps", "play", "url", "rss"),
             "profiles" to listOf("work", "private"),
-            "scripts" to listOf("scripts", "script", "lua", "js", "=", "rss", "status"),
+            "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
             "terminal" to listOf("help", "history", "clear", "restart", "alias", "unalias", "config", "theme", "echo", "date"),
             "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "battery", "home", "system"),
         )

@@ -1,0 +1,167 @@
+[
+  {
+    "file": "hn.lua",
+    "name": "hn",
+    "lang": "lua",
+    "title": "Hacker News",
+    "description": "New Hacker News front-page stories (50+ points) since the last run; notifies about the top one and shows \"HN: N new\" in the header.",
+    "command": false,
+    "suggestedEvery": 60,
+    "suggestedAt": [],
+    "notify": true
+  },
+  {
+    "file": "feeds.lua",
+    "name": "feeds",
+    "lang": "lua",
+    "title": "RSS Feeds",
+    "description": "Reads several RSS/Atom feeds (Lobsters, LWN, Ars Technica by default; edit the list at the top) and logs new items prefixed by feed name.",
+    "command": false,
+    "suggestedEvery": 60,
+    "suggestedAt": [],
+    "notify": true
+  },
+  {
+    "file": "releases.lua",
+    "name": "releases",
+    "lang": "lua",
+    "title": "GitHub Releases",
+    "description": "Watches GitHub repositories for new releases and notifies you. Manage the list with `releases add owner/repo`, `releases rm owner/repo`, `releases list`.",
+    "command": true,
+    "suggestedEvery": 180,
+    "suggestedAt": [],
+    "notify": true
+  },
+  {
+    "file": "reddit.js",
+    "name": "reddit",
+    "lang": "js",
+    "title": "Reddit Top Posts",
+    "description": "Today's top 5 posts of a subreddit: `reddit [subreddit]` (default r/android).",
+    "command": true,
+    "suggestedEvery": 0,
+    "suggestedAt": [],
+    "notify": false
+  },
+  {
+    "file": "weather.lua",
+    "name": "weather",
+    "lang": "lua",
+    "title": "Weather",
+    "description": "Current weather in one line from wttr.in: `weather [city]`, `weather --default <city>`. On a timer it pins the weather in the header.",
+    "command": true,
+    "suggestedEvery": 60,
+    "suggestedAt": [],
+    "notify": false
+  },
+  {
+    "file": "forecast.js",
+    "name": "forecast",
+    "lang": "js",
+    "title": "3-Day Forecast",
+    "description": "Three-day forecast (conditions, min/max temperature, rain chance) from Open-Meteo: `forecast [city]`, `forecast --default <city>`.",
+    "command": true,
+    "suggestedEvery": 0,
+    "suggestedAt": ["07:00"],
+    "notify": false
+  },
+  {
+    "file": "sun.js",
+    "name": "sun",
+    "lang": "js",
+    "title": "Sunrise & Sunset",
+    "description": "Today's sunrise, sunset and day length for a saved location: `sun <city>` or `sun <lat> <lng>` to set it, then `sun`.",
+    "command": true,
+    "suggestedEvery": 0,
+    "suggestedAt": ["05:00"],
+    "notify": false
+  },
+  {
+    "file": "crypto.js",
+    "name": "crypto",
+    "lang": "js",
+    "title": "Crypto Prices",
+    "description": "Coin prices with 24h change from CoinGecko: `crypto [ids…] [--vs eur]` (default bitcoin and ethereum in USD). On a timer it pins prices in the header.",
+    "command": true,
+    "suggestedEvery": 30,
+    "suggestedAt": [],
+    "notify": false
+  },
+  {
+    "file": "exchange.js",
+    "name": "exchange",
+    "lang": "js",
+    "title": "Currency Converter",
+    "description": "Converts currencies with daily rates: `exchange 100 usd inr eur`. On a timer it pins USD rates in the header.",
+    "command": true,
+    "suggestedEvery": 0,
+    "suggestedAt": [],
+    "notify": false
+  },
+  {
+    "file": "ip.lua",
+    "name": "ip",
+    "lang": "lua",
+    "title": "Public IP",
+    "description": "Shows your public IP address (long-press to copy). On a timer it notifies when the IP changes, e.g. when a VPN drops.",
+    "command": true,
+    "suggestedEvery": 30,
+    "suggestedAt": [],
+    "notify": true
+  },
+  {
+    "file": "wikipedia.js",
+    "name": "wikipedia",
+    "lang": "js",
+    "title": "Wikipedia",
+    "description": "Summary of a Wikipedia article with a link to the full page: `wikipedia <topic>`, or a random article with no topic.",
+    "command": true,
+    "suggestedEvery": 0,
+    "suggestedAt": [],
+    "notify": false
+  },
+  {
+    "file": "xkcd.js",
+    "name": "xkcd",
+    "lang": "js",
+    "title": "xkcd",
+    "description": "The latest xkcd comic with its alt text: `xkcd`, `xkcd <number>`, `xkcd random`. On a timer it notifies when a new comic is out.",
+    "command": true,
+    "suggestedEvery": 360,
+    "suggestedAt": [],
+    "notify": true
+  },
+  {
+    "file": "quote.js",
+    "name": "quote",
+    "lang": "js",
+    "title": "Quote of the Day",
+    "description": "A random quote from ZenQuotes. On a timer it arrives as a notification.",
+    "command": true,
+    "suggestedEvery": 0,
+    "suggestedAt": ["08:00"],
+    "notify": true
+  },
+  {
+    "file": "countdown.lua",
+    "name": "countdown",
+    "lang": "lua",
+    "title": "Countdowns",
+    "description": "Days until (or since) dates: `countdown 2026-12-25`, save with `countdown add 2026-12-25 Christmas`, list with `countdown`. Pins the nearest one in the header. No network.",
+    "command": true,
+    "suggestedEvery": 0,
+    "suggestedAt": ["00:05"],
+    "notify": false
+  },
+  {
+    "file": "todo.lua",
+    "name": "todo",
+    "lang": "lua",
+    "title": "Todo List",
+    "description": "A minimal todo list: `todo add <text>`, `todo done N`, `todo clear`, `todo` to list. Shows the open count in the header. No network.",
+    "command": true,
+    "suggestedEvery": 0,
+    "suggestedAt": [],
+    "notify": false
+  }
+]

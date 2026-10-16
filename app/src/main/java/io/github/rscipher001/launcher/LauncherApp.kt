@@ -32,8 +32,11 @@ class LauncherApp : Application(), Configuration.Provider {
         UnlockCounter.get(this).start()
         DeviceStatus.get(this).start()
 
-        // Re-anchor daily script times (periodic work drifts) and restore schedules after updates.
-        Thread { runCatching { ScriptScheduler.syncAll(this) } }.start()
+        // Re-anchor daily script times (periodic work drifts), restore schedules after updates, trim old log.
+        Thread {
+            runCatching { ScriptScheduler.syncAll(this) }
+            runCatching { LogRepository.get(this).trim() }
+        }.start()
 
         val logs = LogRepository.get(this)
         ContextCompat.registerReceiver(this, object : BroadcastReceiver() {

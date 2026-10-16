@@ -156,6 +156,13 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     LaunchedEffect(entries.lastOrNull()?.id) {
         if (pinned) listState.scrollToItem(0)
     }
+    // Near the oldest loaded line (top of the reversed list): load the next page.
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val info = listState.layoutInfo
+            info.totalItemsCount > 0 && (info.visibleItemsInfo.lastOrNull()?.index ?: 0) >= info.totalItemsCount - 5
+        }.collect { nearTop -> if (nearTop) vm.loadOlder() }
+    }
     // Keyboard-first: grab focus straight away when a physical keyboard is attached.
     LaunchedEffect(hasHardwareKeyboard) {
         if (hasHardwareKeyboard) runCatching { focus.requestFocus() }
