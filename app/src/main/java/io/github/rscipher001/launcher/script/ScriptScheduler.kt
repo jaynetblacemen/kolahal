@@ -142,7 +142,7 @@ object ScriptScheduler {
     }
 
     /** Evaluates a one-liner typed at the prompt (`lua ...` / `js ...`). */
-    fun eval(context: Context, lang: ScriptLang, code: String): Boolean {
+    fun eval(context: Context, lang: ScriptLang, code: String, name: String? = null): Boolean {
         // WorkManager Data is capped at 10 KB of serialized bytes, not characters.
         if (code.toByteArray().size > MAX_INLINE_CODE) return false
         WorkManager.getInstance(context).enqueue(
@@ -150,6 +150,7 @@ object ScriptScheduler {
                 .setInputData(remoteData(context) {
                     putString(ScriptWorker.KEY_LANG, lang.ext)
                     putString(ScriptWorker.KEY_CODE, code)
+                    name?.let { putString(ScriptWorker.KEY_NAME, it) }
                 })
                 .build()
         )

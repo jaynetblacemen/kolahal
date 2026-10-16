@@ -46,13 +46,15 @@ object Keys {
     val CLOCK_24H = ConfigKey.Bool("clock.24h", true, "24-hour clock")
     val KEYBAR = ConfigKey.Text(
         "keybar", DEFAULT_KEYBAR,
-        "touch keys, comma separated: ESC TAB UP DOWN LEFT RIGHT HOME END ENTER KBD or literal text",
+        "touch keys, comma separated: ESC TAB UP DOWN LEFT RIGHT HOME END BKSP ENTER SPACE KBD or literal text",
     )
     val KEYBAR_SHOW = ConfigKey.Bool("keybar.show", true, "show the touch key bar")
     val THEME = ConfigKey.Choice("theme", "green", listOf("green", "amber", "mono", "dracula", "solarized"), "colour theme")
     val FONT_SIZE = ConfigKey.Num("font.size", 14, 10..24, "terminal font size (sp)")
     val SUGGESTIONS = ConfigKey.Num("suggestions", 12, 0..30, "max suggestions shown while typing")
     val AUTO_LAUNCH = ConfigKey.Bool("launch.single", true, "launch automatically when only one app matches")
+    val LAUNCH_TOP = ConfigKey.Bool("launch.top", true, "Enter launches the best match when it starts with what you typed")
+    val SUGGEST_IDLE = ConfigKey.Bool("suggestions.idle", true, "show most-used apps when the prompt is empty")
     val SHOW_TIMESTAMPS = ConfigKey.Bool("log.time", false, "prefix log lines with their time")
     val LOG_SPACING = ConfigKey.Num("log.spacing", 12, 0..40, "gap (dp) above each command and its output")
     val FOCUS_ON_HOME = ConfigKey.Bool("keyboard.onhome", false, "open the soft keyboard whenever home is shown")
@@ -63,14 +65,14 @@ object Keys {
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
-        HEADER_PROFILES, HEADER_STATUS, CLOCK_24H, KEYBAR_SHOW, KEYBAR, THEME, FONT_SIZE, SUGGESTIONS, AUTO_LAUNCH,
+        HEADER_PROFILES, HEADER_STATUS, CLOCK_24H, KEYBAR_SHOW, KEYBAR, THEME, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, AUTO_LAUNCH, LAUNCH_TOP,
         SHOW_TIMESTAMPS, LOG_SPACING, FOCUS_ON_HOME, IME_SUGGESTIONS,
     )
 
     fun byName(name: String) = ALL.firstOrNull { it.key == name.lowercase() }
 }
 
-private const val DEFAULT_KEYBAR = "ESC,TAB,UP,DOWN,LEFT,RIGHT,-,\",.,/,|"
+private const val DEFAULT_KEYBAR = "ESC,TAB,UP,DOWN,LEFT,RIGHT,BKSP,-,/,|"
 
 /** Snapshot of all settings; recomposes the UI when anything changes. */
 class Config private constructor(private val prefs: SharedPreferences) {

@@ -269,15 +269,40 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
 
     /** Anything that isn't a command is treated as an app name. */
     private fun fallbackLaunch(text: String) {
-        val matches = apps.search(text)
+        val ranked = apps.searchRanked(text)
+        val matches = ranked.map { it.first }
         when {
-            matches.isEmpty() -> error("command not found: $text  (try 'help')")
+            matches.isEmpty() -> notFound(text)
             matches[0].label.equals(text, ignoreCase = true) -> launch(matches[0])
             matches.size == 1 && conf[Keys.AUTO_LAUNCH] -> launch(matches[0])
+            // The top suggestion chip is what Enter launches, as long as it starts with the input.
+            conf[Keys.LAUNCH_TOP] && ranked[0].second <= 2 -> launch(matches[0])
             else -> {
                 matches.take(8).forEach { out(appLine(it), appCtx(it)) }
                 info("${matches.size} matches — tap one to launch")
             }
+        }
+    }
+
+    /** Unknown input: suggest the closest command (typo in the first word). */
+    private fun notFound(text: String) {
+        val head = text.substringBefore(' ').lowercase()
+        val rest = text.substringAfter(' ', "")
+        val candidates = COMMANDS.map { it.name } + prefs.aliases().keys +
+            scripts.all().filter { ScriptMeta.isCommand(it.code) }.map { it.name }
+        val best = candidates.filter { it.length > 1 }
+            .map { it to editDistance(head, it) }
+            .filter { (c, d) -> d <= (if (c.length <= 4) 1 else 2) }
+            .minByOrNull { it.second }?.first
+        if (best == null) {
+            error("command not found: $text  (try 'help')")
+        } else {
+            val corrected = (best + " " + rest).trim()
+            logs.add(
+                LogKind.ERROR,
+                "command not found: $head — did you mean '$corrected'? (tap to run)",
+                ctx = LogContext.of(LogContext.RUN to corrected),
+            )
         }
     }
 
@@ -344,6 +369,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             end
             return (feed.title or "feed") .. ": " .. #feed.items .. " items"
             """.trimIndent(),
+            name = "rss",
         )
     }
 
@@ -686,6 +712,21 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         fun parseClock(s: String): String? {
             val m = Regex("^([01]?\\d|2[0-3]):([0-5]\\d)$").find(s.trim()) ?: return null
             return String.format(java.util.Locale.ROOT, "%02d:%s", m.groupValues[1].toInt(), m.groupValues[2])
+        }
+
+        /** Levenshtein distance, for "did you mean". */
+        fun editDistance(a: String, b: String): Int {
+            var prev = IntArray(b.length + 1) { it }
+            for (i in 1..a.length) {
+                val cur = IntArray(b.length + 1)
+                cur[0] = i
+                for (j in 1..b.length) {
+                    val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+                    cur[j] = minOf(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
+                }
+                prev = cur
+            }
+            return prev[b.length]
         }
 
         fun formatInterval(min: Int): String = when {

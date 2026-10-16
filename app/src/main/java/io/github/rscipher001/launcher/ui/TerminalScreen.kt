@@ -74,6 +74,18 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.text.ParagraphStyle
+import androidx.compose.ui.text.style.TextIndent
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -151,6 +163,12 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     }
     val showTime = remember(configVersion) { config[Keys.SHOW_TIMESTAMPS] }
     val commandGap = remember(configVersion) { config[Keys.LOG_SPACING].dp }
+    // Monospace advance, used to indent wrapped lines past their prefix.
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val charWidth = remember(Term.fontSize, density) {
+        with(density) { (measurer.measure("0000000000", Term.mono).size.width / 10f).toSp() }
+    }
     val lineTimeFormat = remember(configVersion) {
         SimpleDateFormat(if (config[Keys.CLOCK_24H]) "HH:mm" else "h:mm", Locale.getDefault())
     }
@@ -195,6 +213,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                     entry = entry,
                     timeFormat = if (showTime) lineTimeFormat else null,
                     topGap = if (entry.kind == LogKind.COMMAND) commandGap else 0.dp,
+                    charWidth = charWidth,
                     onTap = vm::onTap,
                     actions = vm::actionsFor,
                 )
@@ -338,13 +357,14 @@ private fun LogLine(
     entry: LogEntry,
     timeFormat: SimpleDateFormat?,
     topGap: Dp,
+    charWidth: TextUnit,
     onTap: (LogEntry) -> Unit,
     actions: (LogEntry) -> List<LogAction>,
 ) {
     var menu by remember { mutableStateOf<List<LogAction>?>(null) }
     val haptics = LocalHapticFeedback.current
     // Building the styled line is the expensive part of a frame; do it once per entry/theme.
-    val text = remember(entry, timeFormat, Term.palette) { renderLine(entry, timeFormat) }
+    val text = remember(entry, timeFormat, Term.palette, charWidth) { renderLine(entry, timeFormat, charWidth) }
     Box(Modifier.padding(top = topGap)) {
         Text(
             text = text,
@@ -358,7 +378,7 @@ private fun LogLine(
                         menu = actions(entry)
                     },
                 )
-                .padding(vertical = 2.dp),
+                .padding(vertical = 3.dp),
         )
         DropdownMenu(
             expanded = menu != null,
@@ -379,27 +399,40 @@ private fun LogLine(
 
 private val profileTag = Regex("^\\[([PWSC])] ")
 
-private fun renderLine(entry: LogEntry, timeFormat: SimpleDateFormat?) = buildAnnotatedString {
-    if (timeFormat != null) withStyle(SpanStyle(color = Term.dim)) { append(timeFormat.format(Date(entry.ts)) + " ") }
-    when (entry.kind) {
-        LogKind.COMMAND -> {
-            withStyle(SpanStyle(color = Term.prompt)) { append("$ ") }
-            withStyle(SpanStyle(color = Term.fg, fontWeight = FontWeight.Bold)) { append(entry.text) }
-        }
-        LogKind.ERROR -> withStyle(SpanStyle(color = Term.error)) { append(entry.text) }
-        LogKind.INFO -> withStyle(SpanStyle(color = Term.info)) { append(entry.text) }
-        LogKind.SCRIPT -> {
-            entry.source?.let { withStyle(SpanStyle(color = Term.dim)) { append("[$it] ") } }
-            withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.script)) { append(entry.text) }
-        }
-        LogKind.OUTPUT -> {
-            val m = profileTag.find(entry.text)
-            if (m != null) {
-                val kind = ProfileKind.entries.first { it.tag == m.groupValues[1] }
-                withStyle(SpanStyle(color = Term.profileColor(kind), fontWeight = FontWeight.Bold)) { append(m.value) }
-                append(entry.text.substring(m.value.length))
-            } else {
-                withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.fg)) { append(entry.text) }
+/**
+ * Styles one log line. Wrapped continuation lines are indented past the prefix (`$ `, `[hn] `,
+ * `[W] `, time) so each item reads as one block; [charWidth] is the monospace advance.
+ */
+private fun renderLine(entry: LogEntry, timeFormat: SimpleDateFormat?, charWidth: TextUnit) = buildAnnotatedString {
+    val time = timeFormat?.format(Date(entry.ts))?.plus(" ").orEmpty()
+    val profile = if (entry.kind == LogKind.OUTPUT) profileTag.find(entry.text) else null
+    val prefixLen = time.length + when (entry.kind) {
+        LogKind.COMMAND -> 2
+        LogKind.SCRIPT -> entry.source?.let { it.length + 3 } ?: 0
+        LogKind.OUTPUT -> profile?.value?.length ?: 2
+        else -> 2
+    }
+    withStyle(ParagraphStyle(textIndent = TextIndent(restLine = charWidth * prefixLen))) {
+        if (time.isNotEmpty()) withStyle(SpanStyle(color = Term.dim)) { append(time) }
+        when (entry.kind) {
+            LogKind.COMMAND -> {
+                withStyle(SpanStyle(color = Term.prompt)) { append("$ ") }
+                withStyle(SpanStyle(color = Term.fg, fontWeight = FontWeight.Bold)) { append(entry.text) }
+            }
+            LogKind.ERROR -> withStyle(SpanStyle(color = Term.error)) { append(entry.text) }
+            LogKind.INFO -> withStyle(SpanStyle(color = Term.info)) { append(entry.text) }
+            LogKind.SCRIPT -> {
+                entry.source?.let { withStyle(SpanStyle(color = Term.dim)) { append("[$it] ") } }
+                withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.script)) { append(entry.text) }
+            }
+            LogKind.OUTPUT -> {
+                if (profile != null) {
+                    val kind = ProfileKind.entries.first { it.tag == profile.groupValues[1] }
+                    withStyle(SpanStyle(color = Term.profileColor(kind), fontWeight = FontWeight.Bold)) { append(profile.value) }
+                    append(entry.text.substring(profile.value.length))
+                } else {
+                    withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.fg)) { append(entry.text) }
+                }
             }
         }
     }
@@ -416,12 +449,12 @@ private fun SuggestionStrip(items: List<Suggestion>, onPick: (Suggestion) -> Uni
         contentPadding = PaddingValues(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        items(items, key = { s ->
+        itemsIndexed(items, key = { _, s ->
             when (s) {
                 is Suggestion.App -> "a:" + s.app.key
                 is Suggestion.Completion -> "c:" + s.replacement
             }
-        }) { s ->
+        }) { index, s ->
             val (color, tag) = when (s) {
                 is Suggestion.App -> Term.profileColor(s.app.profile.kind) to s.app.profile.kind.tag
                 is Suggestion.Completion -> Term.dim to null
@@ -429,9 +462,12 @@ private fun SuggestionStrip(items: List<Suggestion>, onPick: (Suggestion) -> Uni
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .border(1.dp, color.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                    .heightIn(min = 44.dp)
+                    // The first chip is what Enter / TAB act on: fill it so that is visible.
+                    .background(if (index == 0) color.copy(alpha = 0.18f) else Color.Transparent, RoundedCornerShape(4.dp))
+                    .border(1.dp, color.copy(alpha = if (index == 0) 0.9f else 0.6f), RoundedCornerShape(4.dp))
                     .clickable { onPick(s) }
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
                 if (tag != null && tag != ProfileKind.PERSONAL.tag) {
                     Text(tag, style = Term.mono.copy(color = color, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp))
@@ -446,40 +482,102 @@ private fun SuggestionStrip(items: List<Suggestion>, onPick: (Suggestion) -> Uni
 /** Named keys the touch key bar understands; anything else in the spec is inserted literally. */
 enum class KeyBarKey(val label: String) {
     ESC("ESC"), TAB("TAB"), UP("↑"), DOWN("↓"), LEFT("←"), RIGHT("→"),
-    HOME("⇤"), END("⇥"), ENTER("⏎"), KBD("⌨"), SPACE("␣");
+    HOME("⇤"), END("⇥"), ENTER("⏎"), KBD("⌨"), SPACE("␣"), BKSP("⌫");
 
     companion object {
         fun of(token: String) = entries.firstOrNull { it.name.equals(token, ignoreCase = true) }
     }
 }
 
-/** On-screen keys that touch keyboards lack: history, cursor, completion, and a few symbols. */
+/** Keys that repeat while held. */
+private val REPEATING = setOf(KeyBarKey.UP, KeyBarKey.DOWN, KeyBarKey.LEFT, KeyBarKey.RIGHT, KeyBarKey.BKSP)
+
+/**
+ * On-screen keys that touch keyboards lack: history, cursor, completion, and a few symbols.
+ * Up to [FILL_MAX] keys share the width; more scroll, with a fade marking the overflow.
+ * Arrows and backspace repeat while held; dragging sideways across the bar moves the cursor.
+ */
 @Composable
 private fun KeyBar(spec: String, onKey: (KeyBarKey) -> Unit, onText: (String) -> Unit) {
     val keys = remember(spec) {
         spec.split(',').map { it.trim() }.filter { it.isNotEmpty() }.map { token -> KeyBarKey.of(token) to token }
     }
-    LazyRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("keybar")
-            .background(Term.surface),
-    ) {
-        itemsIndexed(keys) { _, (named, token) ->
-            val label = named?.label ?: token
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .height(42.dp)
-                    .widthIn(min = 44.dp)
-                    .clickable { if (named != null) onKey(named) else onText(token) }
-                    .padding(horizontal = 8.dp),
-            ) {
-                Text(label, style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold))
+    val haptics = LocalHapticFeedback.current
+    val currentOnKey by rememberUpdatedState(onKey)
+    val press: (KeyBarKey?, String) -> Unit = { named, token ->
+        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        if (named != null) currentOnKey(named) else onText(token)
+    }
+    val bar = Modifier
+        .fillMaxWidth()
+        .height(48.dp)
+        .testTag("keybar")
+        .background(Term.surface)
+
+    @Composable
+    fun Key(named: KeyBarKey?, token: String, modifier: Modifier) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = modifier
+                .fillMaxHeight()
+                .pointerInput(named, token) {
+                    awaitEachGesture {
+                        awaitFirstDown()
+                        press(named, token)
+                        if (named !in REPEATING) {
+                            waitForUpOrCancellation()
+                            return@awaitEachGesture
+                        }
+                        // Hold to repeat: 400ms delay, then every 50ms until released.
+                        var delayMs = 400L
+                        while (true) {
+                            val released = withTimeoutOrNull(delayMs) { waitForUpOrCancellation() }
+                            if (released != null || currentEvent.changes.none { it.pressed }) break
+                            press(named, token)
+                            delayMs = 50L
+                        }
+                    }
+                },
+        ) {
+            Text(named?.label ?: token, style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold))
+        }
+    }
+
+    if (keys.size <= FILL_MAX) {
+        Row(
+            bar.pointerInput(Unit) {
+                var acc = 0f
+                val step = 14.dp.toPx()
+                detectHorizontalDragGestures(onDragStart = { acc = 0f }) { change, dx ->
+                    change.consume()
+                    acc += dx
+                    while (acc >= step) { currentOnKey(KeyBarKey.RIGHT); acc -= step }
+                    while (acc <= -step) { currentOnKey(KeyBarKey.LEFT); acc += step }
+                }
             }
+        ) {
+            keys.forEach { (named, token) -> Key(named, token, Modifier.weight(1f)) }
+        }
+    } else {
+        Box(bar) {
+            LazyRow(Modifier.fillMaxSize()) {
+                itemsIndexed(keys) { _, (named, token) ->
+                    Key(named, token, Modifier.widthIn(min = 44.dp).padding(horizontal = 8.dp))
+                }
+            }
+            // Fade on the right edge: more keys are available by scrolling.
+            Box(
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .width(24.dp)
+                    .background(Brush.horizontalGradient(listOf(Color.Transparent, Term.surface)))
+            )
         }
     }
 }
+
+private const val FILL_MAX = 10
 
 @Composable
 private fun Prompt(

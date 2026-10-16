@@ -3,6 +3,7 @@ package io.github.rscipher001.launcher.script
 import android.content.Context
 import androidx.work.WorkerParameters
 import androidx.work.multiprocess.RemoteCoroutineWorker
+import io.github.rscipher001.launcher.data.KvStore
 import io.github.rscipher001.launcher.data.LogContext
 import io.github.rscipher001.launcher.data.LogKind
 import io.github.rscipher001.launcher.data.LogRepository
@@ -31,7 +32,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         val lang = script?.lang ?: ScriptLang.of(inputData.getString(KEY_LANG).orEmpty())
             ?: return Result.failure()
         val code = script?.code ?: inputData.getString(KEY_CODE) ?: return Result.failure()
-        val name = script?.name ?: lang.ext
+        val name = script?.name ?: inputData.getString(KEY_NAME) ?: lang.ext
         val repl = script == null
         val args = inputData.getStringArray(KEY_ARGS)?.toList().orEmpty()
 
@@ -63,8 +64,23 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             "error: $msg"
         }
         script?.let { scripts.recordRun(it.id, status) }
+        if (host.notifyBlocked) reportBlockedNotifications(ctx, logs, name)
         logs.trim()
         return Result.success()
+    }
+
+    /** One "tap to allow" line per day instead of one per dropped notification. */
+    private fun reportBlockedNotifications(context: Context, logs: LogRepository, name: String) {
+        val store = KvStore(context, "worker")
+        val today = java.time.LocalDate.now().toString()
+        if (store.get("notify-blocked") == today) return
+        store.set("notify-blocked", today)
+        logs.add(
+            LogKind.ERROR,
+            "$name: notifications are blocked — tap to allow",
+            name,
+            LogContext.of(LogContext.RUN to "notifications"),
+        )
     }
 
     companion object {
@@ -73,6 +89,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         const val KEY_CODE = "code"
         const val KEY_SCHEDULED = "scheduled"
         const val KEY_ARGS = "args"
+        const val KEY_NAME = "name"
         const val TIMEOUT_MS = 60_000L
     }
 }

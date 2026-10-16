@@ -40,6 +40,10 @@ class HostApi(
     var effects = 0
         private set
 
+    /** A notify() call was dropped because notifications are blocked (reported once by the worker). */
+    var notifyBlocked = false
+        private set
+
     private val baseCtx: Map<String, String> =
         if (scriptId != null) mapOf(LogContext.SCRIPT to scriptName) else emptyMap()
 
@@ -58,7 +62,7 @@ class HostApi(
         // With notifications off for this script, the script's own log lines already show the content.
         if (!notifyEnabled) return false
         val posted = Notifier.post(context, scriptName, title, body, values[LogContext.URL])
-        if (!posted) log("[notify blocked: allow notifications] $title: $body", ctx)
+        if (!posted) notifyBlocked = true
         return posted
     }
 

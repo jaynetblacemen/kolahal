@@ -181,6 +181,16 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         setText(if (historyIndex == -1) draft else history.getOrNull(historyIndex) ?: draft)
     }
 
+    /** Backspace for the touch key bar (deletes the selection or the char before the cursor). */
+    fun deleteBackward() {
+        val v = input
+        val sel = v.selection
+        val (start, end) = if (sel.collapsed) (sel.start - 1).coerceAtLeast(0) to sel.start else sel.min to sel.max
+        if (start == end) return
+        historyIndex = -1
+        input = TextFieldValue(v.text.removeRange(start, end), TextRange(start))
+    }
+
     fun moveCursor(delta: Int) {
         val pos = (input.selection.end + delta).coerceIn(0, input.text.length)
         input = input.copy(selection = TextRange(pos))
@@ -199,6 +209,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
             KeyBarKey.ENTER -> submit()
             KeyBarKey.KBD -> _events.tryEmit(UiEvent.FocusPrompt)
             KeyBarKey.SPACE -> insert(" ")
+            KeyBarKey.BKSP -> deleteBackward()
         }
     }
 
@@ -231,7 +242,9 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     }
 
     fun suggestions(text: String): List<Suggestion> {
-        if (text.isBlank()) return emptyList()
+        if (text.isBlank()) {
+            return if (config[Keys.SUGGEST_IDLE]) appsRepo.top(config[Keys.SUGGESTIONS]).map { Suggestion.App(it) } else emptyList()
+        }
         val parts = text.trimStart().split(' ')
         val head = parts.first().lowercase()
         val scriptList = scriptCache.value
@@ -318,7 +331,10 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
                 _events.tryEmit(UiEvent.ScrollToBottom)
                 io { processor.run(cmd, expand = false) }
             }
-            entry.kind == LogKind.COMMAND || ctx.command != null -> setText(ctx.command ?: entry.text)
+            entry.kind == LogKind.COMMAND || ctx.command != null -> {
+                setText(ctx.command ?: entry.text)
+                _events.tryEmit(UiEvent.FocusPrompt)
+            }
             ctx.pkg != null -> appFor(ctx)?.let { app -> io { processor.launch(app) } }
             ctx.url != null -> openUrl(ctx.url!!)
         }

@@ -164,7 +164,11 @@ class AppRepository private constructor(private val context: Context) {
     }
 
     /** Ranked fuzzy match: exact > prefix > word prefix > substring > subsequence. */
-    fun search(query: String, kind: ProfileKind? = null, includeHidden: Boolean = false): List<AppEntry> {
+    fun search(query: String, kind: ProfileKind? = null, includeHidden: Boolean = false): List<AppEntry> =
+        searchRanked(query, kind, includeHidden).map { it.first }
+
+    /** Matches with their tier: 0 exact, 1 prefix, 2 word prefix, 3 substring, 4 subsequence. */
+    fun searchRanked(query: String, kind: ProfileKind? = null, includeHidden: Boolean = false): List<Pair<AppEntry, Int>> {
         val q = query.trim().lowercase()
         if (q.isEmpty()) return emptyList()
         val now = System.currentTimeMillis()
@@ -181,7 +185,19 @@ class AppRepository private constructor(private val context: Context) {
                     .thenBy { it.app.label.length }
                     .thenBy { it.app.profile.kind.ordinal }
             )
-            .map { it.app }
+            .map { it.app to it.tier }
+    }
+
+    /** Most frecent visible apps, for the idle suggestion strip. */
+    fun top(n: Int): List<AppEntry> {
+        val now = System.currentTimeMillis()
+        return _apps.value.asSequence()
+            .filter { !it.hidden && !it.profile.quiet }
+            .map { it to prefs.frecency(it.key, now) }
+            .filter { it.second > 0.0 }
+            .sortedByDescending { it.second }
+            .take(n)
+            .map { it.first }
             .toList()
     }
 
