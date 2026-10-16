@@ -74,6 +74,10 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.draw.alpha
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.style.TextIndent
@@ -201,6 +205,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             version = configVersion,
             onStatusTap = vm::runScriptNamed,
             onSwipeDown = vm::expandNotifications,
+            onTarget = vm::onHeaderTap,
+            onProfileTap = vm::onProfileTap,
         )
         LazyColumn(
             state = listState,
@@ -266,6 +272,14 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     }
 }
 
+/** What a tap on a header item does. */
+enum class HeaderTarget { CLOCK, UNLOCKS, BATTERY, NETWORK, ALARM }
+
+/**
+ * Clock line plus a row of status items that wrap as whole items. Items are tappable
+ * (alarms, unlock history, battery, network, profile toggle); swipe down opens notifications.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Header(
     unlocks: Int,
@@ -276,6 +290,8 @@ private fun Header(
     version: Int,
     onStatusTap: (String) -> Unit,
     onSwipeDown: () -> Unit,
+    onTarget: (HeaderTarget) -> Unit,
+    onProfileTap: (Profile) -> Unit,
 ) {
     val now by produceState(Date()) {
         while (true) {
@@ -287,58 +303,22 @@ private fun Header(
     val timeFmt = remember(is24h) { SimpleDateFormat(if (is24h) "HH:mm" else "h:mm a", Locale.getDefault()) }
     val dateFmt = remember { SimpleDateFormat("EEE d MMM", Locale.getDefault()) }
     val alarmFmt = remember(is24h) { SimpleDateFormat(if (is24h) "EEE HH:mm" else "EEE h:mm a", Locale.getDefault()) }
-    val dim = SpanStyle(color = Term.dim)
-    val bright = SpanStyle(color = Term.fg, fontWeight = FontWeight.Bold)
+    val small = Term.mono.copy(fontSize = (Term.fontSize - 1).sp)
 
-    val line1 = buildAnnotatedString {
-        if (config[Keys.HEADER_DEVICE]) {
-            withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("kolahal") }
-            withStyle(dim) { append("@${Build.MODEL.lowercase().replace(' ', '-')}  ") }
-        }
-        withStyle(bright) { append(timeFmt.format(now)) }
-        if (config[Keys.HEADER_DATE]) withStyle(dim) { append("  ${dateFmt.format(now)}") }
+    @Composable
+    fun Item(label: String, value: String, valueColor: Color = Term.fg, onClick: () -> Unit) {
+        Text(
+            buildAnnotatedString {
+                withStyle(SpanStyle(color = Term.dim)) { append("$label ") }
+                withStyle(SpanStyle(color = valueColor, fontWeight = FontWeight.Bold)) { append(value) }
+            },
+            style = small,
+            modifier = Modifier
+                .clickable(onClick = onClick)
+                .padding(vertical = 6.dp, horizontal = 2.dp),
+        )
     }
-    val line2 = buildAnnotatedString {
-        fun sep() { if (length > 0) withStyle(dim) { append("  ·  ") } }
-        if (config[Keys.HEADER_UNLOCKS]) {
-            withStyle(dim) { append("unlocks ") }
-            withStyle(bright) { append(unlocks.toString()) }
-        }
-        if (config[Keys.HEADER_BATTERY] && status.batteryPct != null) {
-            sep()
-            withStyle(dim) { append("bat ") }
-            val pct = status.batteryPct
-            val color = when {
-                status.charging -> Term.prompt
-                pct <= 15 -> Term.error
-                else -> Term.fg
-            }
-            withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold)) {
-                append("$pct%" + if (status.charging) "+" else "")
-            }
-        }
-        if (config[Keys.HEADER_NETWORK]) {
-            sep()
-            withStyle(dim) { append("net ") }
-            withStyle(SpanStyle(color = if (status.network == "offline") Term.error else Term.fg)) {
-                append(status.network)
-            }
-        }
-        if (config[Keys.HEADER_ALARM] && status.nextAlarm != null) {
-            sep()
-            withStyle(dim) { append("alarm ") }
-            withStyle(SpanStyle(color = Term.fg)) { append(alarmFmt.format(Date(status.nextAlarm))) }
-        }
-        if (config[Keys.HEADER_PROFILES]) {
-            profiles.filter { it.kind != ProfileKind.PERSONAL }.forEach { p ->
-                sep()
-                withStyle(dim) { append("${p.kind.label} ") }
-                withStyle(SpanStyle(color = if (p.quiet) Term.dim else Term.profileColor(p.kind), fontWeight = FontWeight.Bold)) {
-                    append(if (p.quiet) "off" else "on")
-                }
-            }
-        }
-    }
+
     Column(
         Modifier
             .fillMaxWidth()
@@ -351,10 +331,60 @@ private fun Header(
                     onDragEnd = { if (total > 48.dp.toPx()) onSwipeDown() },
                 ) { _, dy -> total += dy }
             }
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
-        Text(line1, style = Term.mono)
-        if (line2.isNotEmpty()) Text(line2, style = Term.mono.copy(fontSize = (Term.fontSize - 1).sp))
+        Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.clickable { onTarget(HeaderTarget.CLOCK) }) {
+            Text(
+                timeFmt.format(now),
+                style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize + 8).sp),
+            )
+            if (config[Keys.HEADER_DATE]) {
+                Text(
+                    "  " + dateFmt.format(now),
+                    style = Term.mono.copy(color = Term.dim),
+                    modifier = Modifier.padding(bottom = 3.dp),
+                )
+            }
+            if (config[Keys.HEADER_DEVICE]) {
+                Spacer(Modifier.weight(1f))
+                Text(
+                    buildAnnotatedString {
+                        withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("kolahal") }
+                        withStyle(SpanStyle(color = Term.dim)) { append("@" + Build.MODEL.lowercase().replace(' ', '-')) }
+                    },
+                    style = small,
+                    maxLines = 1,
+                    modifier = Modifier.padding(bottom = 3.dp),
+                )
+            }
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            if (config[Keys.HEADER_UNLOCKS]) Item("unlocks", unlocks.toString()) { onTarget(HeaderTarget.UNLOCKS) }
+            val pct = status.batteryPct
+            if (config[Keys.HEADER_BATTERY] && pct != null) {
+                val color = when {
+                    status.charging -> Term.prompt
+                    pct <= 15 -> Term.error
+                    else -> Term.fg
+                }
+                Item("bat", "$pct%" + if (status.charging) "+" else "", color) { onTarget(HeaderTarget.BATTERY) }
+            }
+            if (config[Keys.HEADER_NETWORK]) {
+                Item("net", status.network, if (status.network == "offline") Term.error else Term.fg) {
+                    onTarget(HeaderTarget.NETWORK)
+                }
+            }
+            if (config[Keys.HEADER_ALARM] && status.nextAlarm != null) {
+                Item("alarm", alarmFmt.format(Date(status.nextAlarm))) { onTarget(HeaderTarget.ALARM) }
+            }
+            if (config[Keys.HEADER_PROFILES]) {
+                profiles.filter { it.kind != ProfileKind.PERSONAL && it.kind != ProfileKind.CLONE }.forEach { p ->
+                    Item(p.kind.label, if (p.quiet) "off" else "on", if (p.quiet) Term.dim else Term.profileColor(p.kind)) {
+                        onProfileTap(p)
+                    }
+                }
+            }
+        }
         if (config[Keys.HEADER_STATUS]) {
             statuses.forEach { (name, text) ->
                 Text(
@@ -362,9 +392,13 @@ private fun Header(
                         withStyle(SpanStyle(color = Term.dim)) { append("$name ▸ ") }
                         withStyle(SpanStyle(color = Term.script)) { append(text) }
                     },
-                    style = Term.mono.copy(fontSize = (Term.fontSize - 1).sp),
+                    style = small,
                     maxLines = 1,
-                    modifier = Modifier.fillMaxWidth().clickable { onStatusTap(name) },
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onStatusTap(name) }
+                        .padding(vertical = 4.dp),
                 )
             }
         }
@@ -396,6 +430,7 @@ private fun SuggestionStrip(items: List<Suggestion>, onPick: (Suggestion) -> Uni
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .heightIn(min = 44.dp)
+                    .alpha(if (s is Suggestion.App && s.app.profile.quiet) 0.45f else 1f)
                     // The first chip is what Enter / TAB act on: fill it so that is visible.
                     .background(if (index == 0) color.copy(alpha = 0.18f) else Color.Transparent, RoundedCornerShape(4.dp))
                     .border(1.dp, color.copy(alpha = if (index == 0) 0.9f else 0.6f), RoundedCornerShape(4.dp))

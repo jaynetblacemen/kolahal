@@ -35,7 +35,7 @@ sealed class ConfigKey<T>(val key: String, val default: T, val help: String) {
 }
 
 object Keys {
-    val HEADER_DEVICE = ConfigKey.Bool("header.device", true, "show user@device in the header")
+    val HEADER_DEVICE = ConfigKey.Bool("header.device", false, "show kolahal@device in the header")
     val HEADER_DATE = ConfigKey.Bool("header.date", true, "show the date next to the clock")
     val HEADER_UNLOCKS = ConfigKey.Bool("header.unlocks", true, "show today's unlock count")
     val HEADER_BATTERY = ConfigKey.Bool("header.battery", true, "show battery level")

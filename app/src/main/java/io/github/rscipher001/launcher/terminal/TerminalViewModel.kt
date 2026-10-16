@@ -6,6 +6,9 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
+import android.provider.AlarmClock
+import android.provider.Settings
+import io.github.rscipher001.launcher.ui.HeaderTarget
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -483,6 +486,37 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
             scripts.byId(script.id)?.let { ScriptScheduler.runNow(context, it) }
             logs.add(LogKind.INFO, "running ${script.name}…", ctx = LogContext.of(LogContext.SCRIPT to script.name))
         }
+    }
+
+    fun onHeaderTap(target: HeaderTarget) {
+        when (target) {
+            HeaderTarget.CLOCK, HeaderTarget.ALARM -> startActivity(Intent(AlarmClock.ACTION_SHOW_ALARMS))
+            HeaderTarget.UNLOCKS -> runCommand("unlocks 7")
+            HeaderTarget.BATTERY -> startActivity(Intent(Intent.ACTION_POWER_USAGE_SUMMARY))
+            HeaderTarget.NETWORK -> startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
+        }
+    }
+
+    /** Resuming is harmless, pausing asks for a second tap (the logged line). */
+    fun onProfileTap(profile: Profile) {
+        val cmd = if (profile.kind == ProfileKind.PRIVATE) "private" else "work"
+        if (profile.quiet) {
+            runCommand("$cmd on")
+        } else {
+            io {
+                logs.add(
+                    LogKind.INFO,
+                    "tap to pause the ${profile.kind.label} profile",
+                    ctx = LogContext.of(LogContext.RUN to "$cmd off"),
+                )
+            }
+        }
+    }
+
+    /** Runs a command as if typed (without alias expansion). */
+    fun runCommand(cmd: String) {
+        _events.tryEmit(UiEvent.ScrollToBottom)
+        io { processor.run(cmd, expand = false) }
     }
 
     fun saveFontSize(size: Int) {

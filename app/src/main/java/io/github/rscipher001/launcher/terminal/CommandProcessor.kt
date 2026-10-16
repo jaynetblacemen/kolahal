@@ -200,7 +200,12 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         LogContext.USER to app.profile.serial.toString(),
     )
 
-    private fun appLine(app: AppEntry) = "[${app.profile.kind.tag}] ${app.label}"
+    /** `[W] Maps`; personal apps are only tagged when the same app also exists in another profile. */
+    private fun appLine(app: AppEntry): String {
+        val twin = app.profile.kind == ProfileKind.PERSONAL &&
+            apps.apps.value.any { it.pkg == app.pkg && it.profile.serial != app.profile.serial }
+        return if (app.profile.kind != ProfileKind.PERSONAL || twin) "[${app.profile.kind.tag}] ${app.label}" else app.label
+    }
 
     // ---- apps -----------------------------------------------------------------------------
 
@@ -251,22 +256,46 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             error("no app matches '${stripFlags(args)}'")
             return
         }
-        launch(matches.first())
+        val app = matches.first()
+        if ("--resume" in args && app.profile.quiet) resumeAndLaunch(app) else launch(app)
     }
 
     fun launch(app: AppEntry) {
         if (app.profile.quiet) {
-            val cmd = if (app.profile.kind == ProfileKind.PRIVATE) "private on" else "work on"
+            val flag = if (app.profile.kind == ProfileKind.PRIVATE) "-s" else "-w"
             logs.add(
-                LogKind.ERROR,
-                "${app.profile.kind.label} profile is paused — tap to run '$cmd'",
-                ctx = LogContext.of(LogContext.COMMAND to cmd),
+                LogKind.INFO,
+                "${app.profile.kind.label} profile is paused — tap to resume it and open ${app.label}",
+                ctx = LogContext.of(LogContext.RUN to "open ${app.label} $flag --resume"),
             )
             return
         }
         runCatching { apps.launch(app) }
             .onSuccess { info("launched ${appLine(app)}", appCtx(app)) }
             .onFailure { error("can't launch ${app.label}: ${it.message ?: it.javaClass.simpleName}") }
+    }
+
+    /** Turns the paused profile back on, waits until it is available, then opens [app]. */
+    private fun resumeAndLaunch(app: AppEntry) {
+        if (!apps.setQuietMode(app.profile, false)) {
+            error("couldn't resume the ${app.profile.kind.label} profile (is Kolahal the default launcher? run 'home')")
+            return
+        }
+        info("resuming ${app.profile.kind.label} profile…")
+        background("resume") {
+            val deadline = System.currentTimeMillis() + 20_000
+            while (System.currentTimeMillis() < deadline) {
+                apps.refresh()
+                Thread.sleep(500)
+                val profile = apps.profileBySerial(app.profile.serial)
+                if (profile != null && !profile.quiet) {
+                    val fresh = apps.find(app.pkg, app.component.className, app.profile.serial) ?: app
+                    launch(fresh)
+                    return@background
+                }
+            }
+            error("${app.profile.kind.label} profile didn't come back in time — try again")
+        }
     }
 
     /** Anything that isn't a command is treated as an app name. */
