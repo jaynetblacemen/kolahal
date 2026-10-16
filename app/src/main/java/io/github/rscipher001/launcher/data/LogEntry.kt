@@ -1,0 +1,73 @@
+package io.github.rscipher001.launcher.data
+
+import org.json.JSONObject
+
+enum class LogKind {
+    /** A command the user typed. Tapping it recalls it into the prompt. */
+    COMMAND,
+    OUTPUT,
+    INFO,
+    ERROR,
+    /** Output produced by a timer script. */
+    SCRIPT;
+
+    val key: String get() = name.lowercase()
+
+    companion object {
+        fun of(key: String): LogKind = entries.firstOrNull { it.key == key } ?: OUTPUT
+    }
+}
+
+/**
+ * Structured context saved alongside a log line. The terminal uses it to decide what a
+ * tap does and which actions to offer on long-press (open link, launch app, rerun script, ...).
+ *
+ * Well-known keys are exposed as properties; scripts may attach any extra string keys.
+ */
+data class LogContext(val values: Map<String, String> = emptyMap()) {
+    val url: String? get() = values[URL]
+    val pkg: String? get() = values[PKG]
+    val cls: String? get() = values[CLS]
+    val userSerial: Long? get() = values[USER]?.toLongOrNull()
+    val script: String? get() = values[SCRIPT]
+    val copy: String? get() = values[COPY]
+    val command: String? get() = values[COMMAND]
+
+    val isEmpty: Boolean get() = values.isEmpty()
+
+    operator fun plus(other: Map<String, String>) = LogContext(values + other)
+
+    fun toJson(): String? = if (values.isEmpty()) null else JSONObject(values).toString()
+
+    companion object {
+        const val URL = "url"
+        const val PKG = "pkg"
+        const val CLS = "cls"
+        const val USER = "user"
+        const val SCRIPT = "script"
+        const val COPY = "copy"
+        const val COMMAND = "command"
+
+        val EMPTY = LogContext()
+
+        fun of(vararg pairs: Pair<String, String?>) =
+            LogContext(pairs.mapNotNull { (k, v) -> v?.let { k to it } }.toMap())
+
+        fun fromJson(json: String?): LogContext {
+            if (json.isNullOrBlank()) return EMPTY
+            return runCatching {
+                val obj = JSONObject(json)
+                LogContext(obj.keys().asSequence().associateWith { obj.optString(it) })
+            }.getOrDefault(EMPTY)
+        }
+    }
+}
+
+data class LogEntry(
+    val id: Long,
+    val ts: Long,
+    val kind: LogKind,
+    val source: String?,
+    val text: String,
+    val ctx: LogContext,
+)

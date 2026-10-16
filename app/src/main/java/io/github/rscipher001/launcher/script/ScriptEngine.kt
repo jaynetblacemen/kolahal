@@ -1,0 +1,55 @@
+package io.github.rscipher001.launcher.script
+
+import io.github.rscipher001.launcher.data.ScriptLang
+
+/**
+ * A scripting runtime. Both implementations expose the same [HostApi] surface, so a script's
+ * behaviour only depends on its language syntax, not on which engine runs it.
+ */
+interface ScriptEngine {
+    /**
+     * Runs [code] to completion.
+     *
+     * @param repl when true, the code is a one-liner typed at the prompt and its value is returned.
+     * @return a printable rendering of the result value, or null when there is nothing to show.
+     */
+    suspend fun run(code: String, chunkName: String, host: HostApi, timeoutMs: Long, repl: Boolean): String?
+
+    companion object {
+        fun forLang(lang: ScriptLang): ScriptEngine = when (lang) {
+            ScriptLang.LUA -> LuaEngine()
+            ScriptLang.JS -> JsEngine()
+        }
+    }
+}
+
+/** Starter code for `script new`. */
+object ScriptTemplates {
+    fun forLang(lang: ScriptLang, name: String): String = when (lang) {
+        ScriptLang.LUA -> """
+            -- $name.lua — runs on its timer in the :script process.
+            -- API: log(text, ctx)  notify(title, body, ctx)  http.get(url)  rss.fresh(url)
+            --      rss.fetch(url)  store.get(k)  store.set(k, v)  json.encode(v)  json.decode(s)
+            local feed = rss.fresh("https://hnrss.org/frontpage")
+            for i, item in ipairs(feed.items) do
+              if i > 5 then break end
+              log(item.title, { url = item.link })
+            end
+            if #feed.items > 0 then
+              notify("$name", feed.items[1].title, { url = feed.items[1].link })
+            end
+        """.trimIndent()
+        ScriptLang.JS -> """
+            // $name.js — runs on its timer in the :script process. Top-level await works.
+            // API: log(text, ctx)  notify(title, body, ctx)  await http.get(url)  await rss.fresh(url)
+            //      await rss.fetch(url)  store.get(k)  store.set(k, v)  JSON.*
+            const feed = await rss.fresh("https://hnrss.org/frontpage");
+            for (const item of feed.items.slice(0, 5)) {
+              log(item.title, { url: item.link });
+            }
+            if (feed.items.length > 0) {
+              notify("$name", feed.items[0].title, { url: feed.items[0].link });
+            }
+        """.trimIndent()
+    }
+}

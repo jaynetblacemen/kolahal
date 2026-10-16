@@ -1,0 +1,367 @@
+package io.github.rscipher001.launcher.ui
+
+import android.os.Build
+import android.content.res.Configuration
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.rscipher001.launcher.apps.Profile
+import io.github.rscipher001.launcher.apps.ProfileKind
+import io.github.rscipher001.launcher.data.LogEntry
+import io.github.rscipher001.launcher.data.LogKind
+import io.github.rscipher001.launcher.terminal.LogAction
+import io.github.rscipher001.launcher.terminal.Suggestion
+import io.github.rscipher001.launcher.terminal.TerminalViewModel
+import io.github.rscipher001.launcher.terminal.UiEvent
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+@Composable
+fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
+    val entries by vm.entries.collectAsStateWithLifecycle()
+    val apps by vm.apps.collectAsStateWithLifecycle()
+    val profiles by vm.profiles.collectAsStateWithLifecycle()
+    val unlocks by vm.unlocksToday.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
+    val focus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val hasHardwareKeyboard = LocalConfiguration.current.keyboard != Configuration.KEYBOARD_NOKEYS
+
+    LaunchedEffect(Unit) {
+        vm.events.collect { e ->
+            when (e) {
+                UiEvent.ScrollToBottom -> listState.scrollToItem(0)
+                UiEvent.RequestNotificationPermission -> onRequestNotifications()
+            }
+        }
+    }
+    // New log lines: stay pinned to the bottom (index 0 with reverseLayout).
+    LaunchedEffect(entries.lastOrNull()?.id) {
+        if (listState.firstVisibleItemIndex <= 2) listState.animateScrollToItem(0)
+    }
+    // Keyboard-first: grab focus straight away when a physical keyboard is attached.
+    LaunchedEffect(hasHardwareKeyboard) {
+        if (hasHardwareKeyboard) runCatching { focus.requestFocus() }
+    }
+
+    val reversed = remember(entries) { entries.asReversed() }
+    val suggestions = remember(vm.input.text, apps) { vm.suggestions(vm.input.text, apps) }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(Term.bg)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
+    ) {
+        Header(unlocks = unlocks, profiles = profiles)
+        LazyColumn(
+            state = listState,
+            reverseLayout = true,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+        ) {
+            items(reversed, key = { it.id }) { entry ->
+                LogLine(entry, onTap = { vm.onTap(entry) }, actions = { vm.actionsFor(entry) })
+            }
+        }
+        SuggestionStrip(suggestions, onPick = vm::onSuggestion)
+        KeyBar(
+            onUp = vm::historyUp,
+            onDown = vm::historyDown,
+            onLeft = { vm.moveCursor(-1) },
+            onRight = { vm.moveCursor(1) },
+            onTab = vm::complete,
+            onEsc = vm::escape,
+            onInsert = vm::insert,
+        )
+        Prompt(
+            vm = vm,
+            focus = focus,
+            onTapPrompt = {
+                runCatching { focus.requestFocus() }
+                keyboard?.show()
+            },
+        )
+    }
+}
+
+@Composable
+private fun Header(unlocks: Int, profiles: List<Profile>) {
+    val now by produceState(Date()) {
+        while (true) {
+            value = Date()
+            delay(1_000L * (60 - (System.currentTimeMillis() / 1000 % 60)))
+        }
+    }
+    val time = remember(now) { SimpleDateFormat("HH:mm  EEE d MMM", Locale.getDefault()).format(now) }
+    val text = buildAnnotatedString {
+        withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("kolahal") }
+        withStyle(SpanStyle(color = Term.dim)) { append("@${Build.MODEL.lowercase().replace(' ', '-')}  ") }
+        append(time)
+        withStyle(SpanStyle(color = Term.dim)) { append("   unlocks ") }
+        withStyle(SpanStyle(color = Term.fg, fontWeight = FontWeight.Bold)) { append(unlocks.toString()) }
+        profiles.filter { it.kind != ProfileKind.PERSONAL }.forEach { p ->
+            withStyle(SpanStyle(color = Term.dim)) { append("   ${p.kind.label} ") }
+            withStyle(SpanStyle(color = if (p.quiet) Term.dim else Term.profileColor(p.kind))) {
+                append(if (p.quiet) "off" else "on")
+            }
+        }
+    }
+    Text(
+        text,
+        style = Term.mono.copy(fontSize = 13.sp),
+        maxLines = 2,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun LogLine(entry: LogEntry, onTap: () -> Unit, actions: () -> List<LogAction>) {
+    var menu by remember { mutableStateOf<List<LogAction>?>(null) }
+    val haptics = LocalHapticFeedback.current
+    Box {
+        Text(
+            text = renderLine(entry),
+            style = Term.mono,
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = onTap,
+                    onLongClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        menu = actions()
+                    },
+                )
+                .padding(vertical = 2.dp),
+        )
+        DropdownMenu(
+            expanded = menu != null,
+            onDismissRequest = { menu = null },
+        ) {
+            menu?.forEach { action ->
+                DropdownMenuItem(
+                    text = { Text(action.label, style = Term.mono) },
+                    onClick = {
+                        menu = null
+                        action.run()
+                    },
+                )
+            }
+        }
+    }
+}
+
+private val profileTag = Regex("^\\[([PWS])] ")
+
+private fun renderLine(entry: LogEntry) = buildAnnotatedString {
+    when (entry.kind) {
+        LogKind.COMMAND -> {
+            withStyle(SpanStyle(color = Term.prompt)) { append("$ ") }
+            withStyle(SpanStyle(color = Term.fg, fontWeight = FontWeight.Bold)) { append(entry.text) }
+        }
+        LogKind.ERROR -> withStyle(SpanStyle(color = Term.error)) { append(entry.text) }
+        LogKind.INFO -> withStyle(SpanStyle(color = Term.info)) { append(entry.text) }
+        LogKind.SCRIPT -> {
+            entry.source?.let { withStyle(SpanStyle(color = Term.dim)) { append("[$it] ") } }
+            withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.script)) { append(entry.text) }
+        }
+        LogKind.OUTPUT -> {
+            val m = profileTag.find(entry.text)
+            if (m != null) {
+                val kind = ProfileKind.entries.first { it.tag == m.groupValues[1] }
+                withStyle(SpanStyle(color = Term.profileColor(kind), fontWeight = FontWeight.Bold)) { append(m.value) }
+                append(entry.text.substring(m.value.length))
+            } else {
+                withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.fg)) { append(entry.text) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SuggestionStrip(items: List<Suggestion>, onPick: (Suggestion) -> Unit) {
+    if (items.isEmpty()) return
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        items(items, key = { s ->
+            when (s) {
+                is Suggestion.App -> "a:" + s.app.key
+                is Suggestion.Completion -> "c:" + s.replacement
+            }
+        }) { s ->
+            val (color, tag) = when (s) {
+                is Suggestion.App -> Term.profileColor(s.app.profile.kind) to s.app.profile.kind.tag
+                is Suggestion.Completion -> Term.dim to null
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .border(1.dp, color.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                    .clickable { onPick(s) }
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+            ) {
+                if (tag != null && tag != ProfileKind.PERSONAL.tag) {
+                    Text(tag, style = Term.mono.copy(color = color, fontWeight = FontWeight.Bold, fontSize = 12.sp))
+                    Spacer(Modifier.width(6.dp))
+                }
+                Text(s.label, style = Term.mono.copy(color = if (s is Suggestion.App) Term.fg else Term.dim))
+            }
+        }
+    }
+}
+
+/** On-screen keys that touch keyboards lack: history, cursor, completion, and a few symbols. */
+@Composable
+private fun KeyBar(
+    onUp: () -> Unit,
+    onDown: () -> Unit,
+    onLeft: () -> Unit,
+    onRight: () -> Unit,
+    onTab: () -> Unit,
+    onEsc: () -> Unit,
+    onInsert: (String) -> Unit,
+) {
+    val keys: List<Pair<String, () -> Unit>> = listOf(
+        "ESC" to onEsc,
+        "TAB" to onTab,
+        "↑" to onUp,
+        "↓" to onDown,
+        "←" to onLeft,
+        "→" to onRight,
+        "-" to { onInsert("-") },
+        "\"" to { onInsert("\"") },
+        "." to { onInsert(".") },
+        "/" to { onInsert("/") },
+    )
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Term.surface),
+    ) {
+        items(keys, key = { it.first }) { (label, action) ->
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .height(40.dp)
+                    .width(if (label.length > 1) 52.dp else 44.dp)
+                    .clickable(onClick = action),
+            ) {
+                Text(label, style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold))
+            }
+        }
+    }
+}
+
+@Composable
+private fun Prompt(vm: TerminalViewModel, focus: FocusRequester, onTapPrompt: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onTapPrompt)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Text("$ ", style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold, fontSize = 16.sp))
+        BasicTextField(
+            value = vm.input,
+            onValueChange = vm::onInputChange,
+            singleLine = true,
+            textStyle = Term.mono.copy(fontSize = 16.sp),
+            cursorBrush = SolidColor(Term.prompt),
+            keyboardOptions = KeyboardOptions(
+                autoCorrectEnabled = false,
+                capitalization = KeyboardCapitalization.None,
+                imeAction = ImeAction.Go,
+            ),
+            keyboardActions = KeyboardActions(onGo = { vm.submit() }),
+            modifier = Modifier
+                .weight(1f)
+                .focusRequester(focus)
+                .onPreviewKeyEvent { e ->
+                    if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when {
+                        e.key == Key.DirectionUp -> { vm.historyUp(); true }
+                        e.key == Key.DirectionDown -> { vm.historyDown(); true }
+                        e.key == Key.Tab -> { vm.complete(); true }
+                        e.key == Key.Escape -> { vm.escape(); true }
+                        e.key == Key.Enter || e.key == Key.NumPadEnter -> { vm.submit(); true }
+                        e.isCtrlPressed && e.key == Key.L -> { vm.clearScreen(); true }
+                        e.isCtrlPressed && e.key == Key.U -> { vm.escape(); true }
+                        else -> false
+                    }
+                },
+        )
+    }
+}
