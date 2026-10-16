@@ -48,8 +48,10 @@ class MainActivity : ComponentActivity() {
                 // A launcher never "goes back" off the home screen; the editor installs its own handler.
                 BackHandler(enabled = script == null) { }
                 if (script != null) {
+                    val jumpLine by vm.editLine.collectAsStateWithLifecycle()
                     ScriptEditor(
                         script = script,
+                        jumpToLine = jumpLine,
                         onSave = { vm.saveScript(script, it) },
                         onRun = { vm.runScript(script, it) },
                         onClose = vm::closeEditor,

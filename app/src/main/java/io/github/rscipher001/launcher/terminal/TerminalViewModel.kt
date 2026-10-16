@@ -114,6 +114,15 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     private val _editing = MutableStateFlow<Script?>(null)
     val editing: StateFlow<Script?> = _editing.asStateFlow()
 
+    private val _editLine = MutableStateFlow<Int?>(null)
+    /** Line to jump to (and flash) when the editor opens from an error. */
+    val editLine: StateFlow<Int?> = _editLine.asStateFlow()
+
+    fun openEditorAt(script: Script, line: Int?) {
+        _editLine.value = line
+        _editing.value = script
+    }
+
     private val _events = MutableSharedFlow<UiEvent>(extraBufferCapacity = 8)
     val events: SharedFlow<UiEvent> = _events
 
@@ -343,7 +352,12 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     /** Single tap: the most likely action for this line. */
     fun onTap(entry: LogEntry) {
         val ctx = entry.ctx
+        val errorLine = ctx.values[LogContext.LINE]?.toIntOrNull()
         when {
+            errorLine != null && ctx.script != null -> {
+                val name = ctx.script!!
+                io { scripts.byName(name)?.let { openEditorAt(it, errorLine) } }
+            }
             ctx.values[LogContext.RUN] != null -> {
                 val cmd = ctx.values.getValue(LogContext.RUN)
                 _events.tryEmit(UiEvent.ScrollToBottom)
@@ -381,6 +395,9 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         ctx.script?.let { name ->
             scriptCache.value.firstOrNull { it.name == name }?.let { s ->
                 actions += LogAction("Run $name now") { io { ScriptScheduler.runNow(context, s) } }
+                ctx.values[LogContext.LINE]?.toIntOrNull()?.let { line ->
+                    actions += LogAction("Edit $name at line $line") { io { scripts.byId(s.id)?.let { openEditorAt(it, line) } } }
+                }
                 actions += LogAction("Edit $name.${s.lang.ext}") { io { scripts.byId(s.id)?.let(::openEditor) } }
                 actions += LogAction(if (s.enabled) "Disable $name" else "Enable $name") {
                     io {
@@ -551,14 +568,13 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     }
 
     fun closeEditor() {
+        _editLine.value = null
         _editing.value = null
     }
 
     // ---- TerminalUi -----------------------------------------------------------------------
 
-    override fun openEditor(script: Script) {
-        _editing.value = script
-    }
+    override fun openEditor(script: Script) = openEditorAt(script, null)
 
     override fun pickScriptFolder() {
         _events.tryEmit(UiEvent.PickScriptFolder)

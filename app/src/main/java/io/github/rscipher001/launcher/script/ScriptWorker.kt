@@ -60,13 +60,25 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             "timeout"
         } catch (e: Throwable) {
             val msg = e.message?.lines()?.firstOrNull { it.isNotBlank() } ?: e.javaClass.simpleName
-            logs.add(LogKind.ERROR, "$name: $msg", name, errorCtx + mapOf(LogContext.COPY to (e.message ?: msg)))
+            val line = if (repl) null else errorLine(e, lang, name)
+            val extra = buildMap {
+                put(LogContext.COPY, e.message ?: msg)
+                line?.let { put(LogContext.LINE, it.toString()) }
+            }
+            logs.add(LogKind.ERROR, "$name: $msg" + (line?.let { " (tap to edit line $it)" } ?: ""), name, errorCtx + extra)
             "error: $msg"
         }
         script?.let { scripts.recordRun(it.id, status) }
         if (host.notifyBlocked) reportBlockedNotifications(ctx, logs, name)
         logs.trim()
         return Result.success()
+    }
+
+    /** Source line of a script error: Lua messages carry `name:LINE:`, QuickJS exceptions a line number. */
+    private fun errorLine(e: Throwable, lang: ScriptLang, name: String): Int? = when (lang) {
+        ScriptLang.LUA -> Regex("(?:^|\\s)${Regex.escape(name)}:(\\d+):").find(e.message.orEmpty())?.groupValues?.get(1)?.toIntOrNull()
+        // Saved JS scripts are wrapped in one extra line (the async function header).
+        ScriptLang.JS -> (e as? com.dokar.quickjs.QuickJsException)?.lineNumber?.minus(1)?.takeIf { it > 0 }
     }
 
     /** One "tap to allow" line per day instead of one per dropped notification. */
