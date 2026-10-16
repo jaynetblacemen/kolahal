@@ -86,6 +86,7 @@ object Term {
         ProfileKind.PERSONAL -> palette.personal
         ProfileKind.WORK -> palette.work
         ProfileKind.PRIVATE -> palette.private
+        ProfileKind.CLONE -> palette.info
     }
 
     val mono: TextStyle

@@ -65,7 +65,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        if (intent.hasCategory(Intent.CATEGORY_HOME)) vm.onHomePressed()
+        // Same check as Launcher3: only a Home press while home is showing resets the prompt;
+        // returning from another app keeps whatever was typed.
+        val alreadyHome = hasWindowFocus() &&
+            (intent.flags and Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT) != Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT
+        if (intent.hasCategory(Intent.CATEGORY_HOME) && alreadyHome) vm.onHomePressed()
     }
 
     private fun applyTheme() {

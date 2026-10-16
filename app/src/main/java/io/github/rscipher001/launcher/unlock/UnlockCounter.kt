@@ -11,7 +11,11 @@ import android.os.Build
 import android.os.Process
 import android.provider.Settings
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.time.LocalDate
@@ -30,6 +34,7 @@ class UnlockCounter private constructor(private val context: Context) {
     val today: StateFlow<Int> = _today.asStateFlow()
 
     private var registered = false
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
 
     fun start() {
         if (registered) return
@@ -44,8 +49,9 @@ class UnlockCounter private constructor(private val context: Context) {
         refresh()
     }
 
+    /** Recounts off the main thread; a day of UsageStats events can be thousands of entries. */
     fun refresh() {
-        _today.value = countFor(LocalDate.now())
+        scope.launch { _today.value = countFor(LocalDate.now()) }
     }
 
     fun hasUsageAccess(): Boolean {

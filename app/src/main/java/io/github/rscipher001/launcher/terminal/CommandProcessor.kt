@@ -83,7 +83,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "home" -> startSettings(Settings.ACTION_HOME_SETTINGS)
                 "date", "time" -> out(DateFormat.getDateTimeInstance().format(Date()))
                 "echo" -> out(rest)
-                "config", "set" -> config(args)
+                "config", "set" -> config(args, rest)
                 "theme" -> config(listOf("set", "theme") + args)
                 else -> scriptCommand(name, args) ?: fallbackLaunch(trimmed)
             }
@@ -180,6 +180,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         "-w" in args || "--work" in args -> ProfileKind.WORK
         "-p" in args || "--personal" in args -> ProfileKind.PERSONAL
         "-s" in args || "--private" in args -> ProfileKind.PRIVATE
+        "-c" in args || "--clone" in args -> ProfileKind.CLONE
         else -> null
     }
 
@@ -201,7 +202,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             return
         }
         list.forEach { out(appLine(it), appCtx(it)) }
-        info("${list.size} apps  ·  [P] personal  [W] work  [S] private")
+        info("${list.size} apps  ·  [P] personal  [W] work  [S] private  [C] clone")
     }
 
     private fun resolveApp(args: List<String>, includeHidden: Boolean = false): List<AppEntry> =
@@ -355,7 +356,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
 
     // ---- config ---------------------------------------------------------------------------
 
-    private fun config(args: List<String>) {
+    /** [raw] is the untokenized argument text, so free-text values (e.g. a key bar with quotes) survive. */
+    private fun config(args: List<String>, raw: String = "") {
         val sub = args.firstOrNull()
         when {
             sub == null || sub == "ls" || sub == "list" -> {
@@ -378,8 +380,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                     info("${it.key} = ${conf.display(it)} (default)")
                 }
             }
-            sub == "set" -> setKey(args.getOrNull(1), args.drop(2).joinToString(" "))
-            Keys.byName(sub) != null -> setKey(sub, args.drop(1).joinToString(" "))
+            sub == "set" -> setKey(args.getOrNull(1), args.drop(2).joinToString(" "), raw)
+            Keys.byName(sub) != null -> setKey(sub, args.drop(1).joinToString(" "), raw)
             else -> error("usage: config [ls|get|set|reset] <key> [value]")
         }
     }
@@ -389,7 +391,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         if (key == null) error("unknown setting '${name.orEmpty()}' — run 'config'") else action(key)
     }
 
-    private fun setKey(name: String?, value: String) = withKey(name) { key ->
+    private fun setKey(name: String?, parsed: String, raw: String) = withKey(name) { key ->
+        val value = if (key is ConfigKey.Text && raw.contains(key.key)) raw.substringAfter(key.key).trim() else parsed
         if (value.isBlank()) return error("${key.key} = ${conf.display(key)}  (${hint(key)})")
         if (conf.set(key, value)) info("${key.key} = ${conf.display(key)}")
         else error("invalid value for ${key.key}: ${hint(key)}")

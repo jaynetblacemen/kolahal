@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,7 +26,11 @@ enum class ProfileKind(val tag: String, val label: String) {
     PERSONAL("P", "personal"),
     WORK("W", "work"),
     PRIVATE("S", "private"),
+    /** App-clone profile ("dual apps"). Never treated as the work profile. */
+    CLONE("C", "clone"),
 }
+
+private const val USER_TYPE_PROFILE_CLONE = "android.os.usertype.profile.CLONE"
 
 data class Profile(
     val user: UserHandle,
@@ -64,6 +69,11 @@ class AppRepository private constructor(private val context: Context) {
     val profiles: StateFlow<List<Profile>> = _profiles.asStateFlow()
 
     private var started = false
+    private val refreshRequests = Channel<Unit>(Channel.CONFLATED)
+
+    init {
+        scope.launch { for (request in refreshRequests) runCatching { reload() } }
+    }
 
     fun start() {
         if (started) return
@@ -94,8 +104,13 @@ class AppRepository private constructor(private val context: Context) {
         refresh()
     }
 
+    /** Requests a reload; requests are conflated and processed one at a time, so results never race. */
     fun refresh() {
-        scope.launch {
+        refreshRequests.trySend(Unit)
+    }
+
+    private fun reload() {
+        run {
             val profiles = loadProfiles()
             val apps = profiles.flatMap { profile ->
                 runCatching { launcherApps.getActivityList(null, profile.user) }
@@ -133,7 +148,10 @@ class AppRepository private constructor(private val context: Context) {
         if (user == me) return ProfileKind.PERSONAL
         if (Build.VERSION.SDK_INT >= 35) {
             val type = runCatching { launcherApps.getLauncherUserInfo(user)?.userType }.getOrNull()
-            if (type == UserManager.USER_TYPE_PROFILE_PRIVATE) return ProfileKind.PRIVATE
+            when (type) {
+                UserManager.USER_TYPE_PROFILE_PRIVATE -> return ProfileKind.PRIVATE
+                USER_TYPE_PROFILE_CLONE -> return ProfileKind.CLONE
+            }
         }
         return ProfileKind.WORK
     }

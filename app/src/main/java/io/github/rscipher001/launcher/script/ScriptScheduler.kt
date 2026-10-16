@@ -62,7 +62,8 @@ object ScriptScheduler {
 
     /** Evaluates a one-liner typed at the prompt (`lua ...` / `js ...`). */
     fun eval(context: Context, lang: ScriptLang, code: String): Boolean {
-        if (code.length > MAX_INLINE_CODE) return false
+        // WorkManager Data is capped at 10 KB of serialized bytes, not characters.
+        if (code.toByteArray().size > MAX_INLINE_CODE) return false
         WorkManager.getInstance(context).enqueue(
             OneTimeWorkRequestBuilder<ScriptWorker>()
                 .setInputData(remoteData(context) {

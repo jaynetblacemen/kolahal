@@ -8,6 +8,7 @@ import io.github.rscipher001.launcher.data.LogKind
 import io.github.rscipher001.launcher.data.LogRepository
 import io.github.rscipher001.launcher.data.ScriptLang
 import io.github.rscipher001.launcher.data.ScriptRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 
@@ -49,8 +50,11 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             } else if (repl && host.linesLogged == 0) {
                 logs.add(LogKind.OUTPUT, "nil", name)
             }
+            host.commit()
             "ok in ${System.currentTimeMillis() - started}ms"
-        } catch (e: TimeoutCancellationException) {
+        } catch (e: CancellationException) {
+            // Only our own timeout is a script failure; WorkManager stopping the worker must propagate.
+            if (e !is TimeoutCancellationException) throw e
             logs.add(LogKind.ERROR, "$name: timed out after ${TIMEOUT_MS / 1000}s", name, errorCtx)
             "timeout"
         } catch (e: Throwable) {

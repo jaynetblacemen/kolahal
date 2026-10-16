@@ -71,11 +71,13 @@ class HostApi(
     ): Map<String, Any?> {
         val h = Json.toStringMap(headers).toMutableMap()
         if (h.keys.none { it.equals("User-Agent", ignoreCase = true) }) h["User-Agent"] = USER_AGENT
+        val m = method.uppercase()
         val reqBody = body?.toRequestBody((contentType ?: "text/plain; charset=utf-8").toMediaTypeOrNull())
+            ?: if (m in METHODS_REQUIRING_BODY) ByteArray(0).toRequestBody() else null
         val request = Request.Builder()
             .url(url)
             .headers(h.toHeaders())
-            .method(method.uppercase(), reqBody)
+            .method(m, if (m != "GET" && m != "HEAD") reqBody else null)
             .build()
         client.newCall(request).execute().use { resp ->
             return mapOf(
@@ -93,15 +95,29 @@ class HostApi(
 
     fun rssFetch(url: String): Map<String, Any?> = fetchFeed(url).toMap()
 
+    /** Seen-id updates from `rss.fresh`, applied by [commit] only if the script finishes successfully. */
+    private val pendingSeen = LinkedHashMap<String, List<String>>()
+
     fun rssFresh(url: String): Map<String, Any?> {
         val feed = fetchFeed(url)
         val key = "rss.seen:$url"
-        val seen = store.get(key)?.split('\n')?.toMutableList() ?: mutableListOf()
+        val seen = pendingSeen[key] ?: readSeen(key)
         val seenSet = seen.toHashSet()
         val fresh = feed.items.filter { it.id !in seenSet }
-        seen.addAll(0, fresh.map { it.id.replace('\n', ' ') })
-        store.set(key, seen.take(MAX_SEEN).joinToString("\n"))
+        pendingSeen[key] = (fresh.map { it.id } + seen).take(MAX_SEEN)
         return feed.copy(items = fresh).toMap()
+    }
+
+    private fun readSeen(key: String): List<String> {
+        val raw = store.get(key) ?: return emptyList()
+        return runCatching { (Json.parse(raw) as? List<*>)?.map { it.toString() } }.getOrNull()
+            ?: raw.split('\n') // format used before ids were stored as JSON
+    }
+
+    /** Persists deferred state after a successful run (so a failing script re-sees its items). */
+    fun commit() {
+        pendingSeen.forEach { (key, ids) -> store.set(key, Json.stringify(ids)) }
+        pendingSeen.clear()
     }
 
     private fun fetchFeed(url: String): RssParser.Feed {
@@ -118,6 +134,7 @@ class HostApi(
         private const val USER_AGENT = "Kolahal-Launcher/0.1 (+https://github.com/rscipher001)"
         private const val MAX_BODY = 4L * 1024 * 1024
         private const val MAX_SEEN = 500
+        private val METHODS_REQUIRING_BODY = setOf("POST", "PUT", "PATCH", "PROPPATCH", "REPORT")
 
         private val client: OkHttpClient by lazy {
             OkHttpClient.Builder()

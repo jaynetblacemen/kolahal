@@ -47,6 +47,59 @@ class ScriptEngineTest {
         assertTrue(System.currentTimeMillis() - started < 5_000)
     }
 
+    @Test fun luaPcallCannotSwallowTimeout() {
+        val started = System.currentTimeMillis()
+        try {
+            lua("while true do pcall(function() while true do end end) end", repl = false, timeout = 1_000)
+            fail("expected timeout")
+        } catch (e: Exception) {
+            assertTrue(e.message.orEmpty(), e.message.orEmpty().contains("timed out"))
+        }
+        assertTrue(System.currentTimeMillis() - started < 5_000)
+    }
+
+    @Test fun luaXpcallAndResumeCannotSwallowTimeout() {
+        for (code in listOf(
+            "while true do xpcall(function() while true do end end, function(e) return e end) end",
+            "while true do local co = coroutine.create(function() while true do end end); coroutine.resume(co) end",
+        )) {
+            try {
+                lua(code, repl = false, timeout = 1_000)
+                fail("expected timeout for: $code")
+            } catch (e: Exception) {
+                assertTrue(e.message.orEmpty(), e.message.orEmpty().contains("timed out"))
+            }
+        }
+    }
+
+    @Test fun luaPcallStillCatchesOrdinaryErrors() {
+        assertEquals("false\tboom", lua("pcall(error, 'boom', 0)"))
+    }
+
+    @Test fun luaLoadKeepsGlobals() {
+        assertEquals("2", lua("load('x = 1; return x + 1')()"))
+        assertEquals("nil", lua("tostring(load('\\27Lua'))"))  // binary chunks are rejected
+    }
+
+    @Test fun luaMemoryCap() {
+        try {
+            lua("local t = {} for i = 1, 1e8 do t[i] = ('x'):rep(64) .. i end", repl = false, timeout = 20_000)
+            fail("expected memory limit")
+        } catch (e: Exception) {
+            assertTrue(e.message.orEmpty(), e.message.orEmpty().contains("memory limit"))
+        }
+    }
+
+    @Test fun luaArgsAreExposed() {
+        val out = runBlocking { LuaEngine().run("return argline .. '|' .. #args .. '|' .. args[2]", "t", host(), 5_000, false, listOf("a", "b c")) }
+        assertEquals("a b c|2|b c", out)
+    }
+
+    @Test fun jsArgsAreExposed() {
+        val out = runBlocking { JsEngine().run("return argline + '|' + args.length + '|' + args[1]", "t", host(), 5_000, false, listOf("a", "b c")) }
+        assertEquals("a b c|2|b c", out)
+    }
+
     @Test fun luaRssParseAndStore() {
         val out = lua(
             """

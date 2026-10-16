@@ -29,10 +29,14 @@ object Notifier {
         )
     }
 
-    fun canPost(context: Context): Boolean =
-        Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(
+    fun canPost(context: Context): Boolean {
+        val granted = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(
             context, Manifest.permission.POST_NOTIFICATIONS,
         ) == PackageManager.PERMISSION_GRANTED
+        if (!granted || !NotificationManagerCompat.from(context).areNotificationsEnabled()) return false
+        val channel = context.getSystemService(NotificationManager::class.java).getNotificationChannel(CHANNEL_SCRIPTS)
+        return channel == null || channel.importance != NotificationManager.IMPORTANCE_NONE
+    }
 
     /** Posts a script notification. Tapping opens [url] if given, otherwise the launcher. */
     fun post(context: Context, tag: String, title: String, body: String, url: String?): Boolean {

@@ -18,7 +18,7 @@ class Db private constructor(context: Context) :
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """
-            CREATE TABLE logs (
+            CREATE TABLE IF NOT EXISTS logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ts INTEGER NOT NULL,
                 kind TEXT NOT NULL,
@@ -28,10 +28,10 @@ class Db private constructor(context: Context) :
             )
             """.trimIndent()
         )
-        db.execSQL("CREATE INDEX logs_kind_ts ON logs(kind, ts)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS logs_kind_ts ON logs(kind, ts)")
         db.execSQL(
             """
-            CREATE TABLE scripts (
+            CREATE TABLE IF NOT EXISTS scripts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
                 lang TEXT NOT NULL,
@@ -46,7 +46,7 @@ class Db private constructor(context: Context) :
         )
         db.execSQL(
             """
-            CREATE TABLE kv (
+            CREATE TABLE IF NOT EXISTS kv (
                 scope TEXT NOT NULL,
                 k TEXT NOT NULL,
                 v TEXT,

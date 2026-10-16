@@ -1,11 +1,14 @@
 package io.github.rscipher001.launcher.script
 
+import android.app.Application
+import android.os.Process
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 import party.iroiro.luajava.lua54.Lua54
+import kotlin.concurrent.thread
 import kotlin.coroutines.coroutineContext
 
 /**
@@ -26,6 +29,17 @@ class LuaEngine : ScriptEngine {
         val ctx = coroutineContext
         val deadline = System.currentTimeMillis() + timeoutMs
         val lua = Lua54()
+        // The hook cannot interrupt long-running C functions (e.g. pathological string.find patterns), and
+        // withContext cannot cancel blocking JNI. As a last resort, kill the isolated :script process.
+        val watchdog = thread(isDaemon = true, name = "lua-watchdog") {
+            try {
+                Thread.sleep(timeoutMs + HARD_KILL_GRACE_MS)
+            } catch (_: InterruptedException) {
+                return@thread
+            }
+            runCatching { host.logError("${host.scriptName}: still running after timeout, killed script process") }
+            if (Application.getProcessName().endsWith(":script")) Process.killProcess(Process.myPid())
+        }
         try {
             lua.openLibraries()
             lua.push(JFunction { l ->
@@ -51,6 +65,7 @@ class LuaEngine : ScriptEngine {
             lua.pCall(1, 1)
             lua.toString(-1)
         } finally {
+            watchdog.interrupt()
             lua.close()
         }
     }
@@ -73,7 +88,7 @@ class LuaEngine : ScriptEngine {
                     host.httpRequest(
                         url = opts["url"]?.toString() ?: throw IllegalArgumentException("url is required"),
                         method = opts["method"]?.toString() ?: "GET",
-                        body = opts["body"]?.toString(),
+                        body = opts["body"]?.let { if (it is String) it else Json.stringify(it) },
                         contentType = opts["contentType"]?.toString(),
                         headers = opts["headers"] as? Map<*, *>,
                     )
@@ -134,12 +149,37 @@ class LuaEngine : ScriptEngine {
     }
 
     private companion object {
+        const val HARD_KILL_GRACE_MS = 5_000L
+
         val PRELUDE = """
             local check = __kolahal_check
             local sethook = debug.sethook
+            local gc = collectgarbage
             local HOOK_EVERY = 10000
-            local function hook() check() end
+            local MEMORY_LIMIT_KB = 64 * 1024
+            local function hook()
+              check()
+              if gc("count") > MEMORY_LIMIT_KB then error("memory limit exceeded (64 MB)", 0) end
+            end
             sethook(hook, "", HOOK_EVERY)
+
+            -- Timeouts and the memory cap must not be swallowed by pcall / xpcall / resume.
+            local function fatal(e)
+              return type(e) == "string" and
+                (e:find("script timed out", 1, true) or e:find("memory limit exceeded", 1, true)) ~= nil
+            end
+            local function rethrow(res)
+              if not res[1] and fatal(res[2]) then error(res[2], 0) end
+              return table.unpack(res, 1, res.n)
+            end
+            local rawpcall, rawxpcall = pcall, xpcall
+            pcall = function(f, ...) return rethrow(table.pack(rawpcall(f, ...))) end
+            xpcall = function(f, handler, ...)
+              return rethrow(table.pack(rawxpcall(f, function(e)
+                if fatal(e) then return e end
+                return handler(e)
+              end, ...)))
+            end
 
             -- Coroutines get their own hook so they cannot dodge the timeout.
             local cocreate, coresume = coroutine.create, coroutine.resume
@@ -148,11 +188,12 @@ class LuaEngine : ScriptEngine {
               sethook(co, hook, "", HOOK_EVERY)
               return co
             end
+            coroutine.resume = function(co, ...) return rethrow(table.pack(coresume(co, ...))) end
             coroutine.wrap = function(f)
               local co = coroutine.create(f)
               return function(...)
                 local res = table.pack(coresume(co, ...))
-                if not res[1] then error(res[2], 2) end
+                if not res[1] then error(res[2], fatal(res[2]) and 0 or 2) end
                 return table.unpack(res, 2, res.n)
               end
             end
@@ -161,7 +202,12 @@ class LuaEngine : ScriptEngine {
             local realload = load
             java, debug, io, package, require, dofile, loadfile = nil, nil, nil, nil, nil, nil, nil
             os = { time = os.time, date = os.date, clock = os.clock, difftime = os.difftime }
-            load = function(chunk, name, mode, env) return realload(chunk, name, "t", env) end
+            -- Text chunks only. Passing env explicitly (even nil) would replace _ENV, so forward it only if given.
+            load = function(chunk, name, _, ...)
+              if select("#", ...) > 0 then return realload(chunk, name, "t", ...) end
+              return realload(chunk, name, "t")
+            end
+
             print = function(...)
               local t = table.pack(...)
               for i = 1, t.n do t[i] = tostring(t[i]) end

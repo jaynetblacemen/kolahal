@@ -43,7 +43,9 @@ object Json {
                 k is Number && k.toDouble() % 1.0 == 0.0 && k.toInt() in 1..n
             }
             if (isSequence) {
-                (1..n).map { i -> normalizeLua(v.entries.first { (it.key as Number).toInt() == i }.value) }
+                val byIndex = HashMap<Int, Any?>(n * 2)
+                v.forEach { (k, value) -> byIndex[(k as Number).toInt()] = value }
+                (1..n).map { i -> normalizeLua(byIndex[i]) }
             } else {
                 v.entries.associate { (k, value) ->
                     val key = if (k is Double && k % 1.0 == 0.0) k.toLong().toString() else k.toString()

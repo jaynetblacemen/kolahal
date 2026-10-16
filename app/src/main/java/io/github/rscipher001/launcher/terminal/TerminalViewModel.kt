@@ -32,6 +32,7 @@ import io.github.rscipher001.launcher.status.Status
 import io.github.rscipher001.launcher.data.Config
 import io.github.rscipher001.launcher.data.Keys
 import io.github.rscipher001.launcher.ui.KeyBarKey
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -125,8 +126,9 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     // ---- prompt ---------------------------------------------------------------------------
 
     fun onInputChange(value: TextFieldValue) {
+        // Cursor moves and IME composition updates must not abandon history navigation.
+        if (value.text != input.text) historyIndex = -1
         input = value
-        historyIndex = -1
     }
 
     fun submit() {
@@ -134,7 +136,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         input = TextFieldValue("")
         historyIndex = -1
         if (line.isBlank()) return
-        viewModelScope.launch(Dispatchers.IO) { processor.run(line) }
+        io { processor.run(line) }
         _events.tryEmit(UiEvent.ScrollToBottom)
     }
 
@@ -149,13 +151,13 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         if (history.isEmpty()) return
         if (historyIndex == -1) draft = input.text
         historyIndex = (historyIndex + 1).coerceAtMost(history.lastIndex)
-        setText(history[historyIndex])
+        setText(history.getOrNull(historyIndex) ?: return)
     }
 
     fun historyDown() {
         if (historyIndex == -1) return
         historyIndex--
-        setText(if (historyIndex == -1) draft else history[historyIndex])
+        setText(if (historyIndex == -1) draft else history.getOrNull(historyIndex) ?: draft)
     }
 
     fun moveCursor(delta: Int) {
@@ -175,6 +177,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
             KeyBarKey.END -> input = input.copy(selection = TextRange(input.text.length))
             KeyBarKey.ENTER -> submit()
             KeyBarKey.KBD -> _events.tryEmit(UiEvent.FocusPrompt)
+            KeyBarKey.SPACE -> insert(" ")
         }
     }
 
@@ -196,7 +199,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         when (s) {
             is Suggestion.App -> {
                 setText("")
-                viewModelScope.launch(Dispatchers.IO) { processor.launch(s.app) }
+                io { processor.launch(s.app) }
             }
             is Suggestion.Completion -> setText(s.replacement)
         }
@@ -279,6 +282,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     private fun flagFor(app: AppEntry) = when (app.profile.kind) {
         ProfileKind.WORK -> " -w"
         ProfileKind.PRIVATE -> " -s"
+        ProfileKind.CLONE -> " -c"
         ProfileKind.PERSONAL -> if (apps.value.any { it.pkg == app.pkg && it.profile.kind != ProfileKind.PERSONAL }) " -p" else ""
     }
 
@@ -308,8 +312,8 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         appFor(ctx)?.let { app ->
             val tag = "[${app.profile.kind.tag}]"
             actions += LogAction("Launch ${app.label} $tag") { io { processor.launch(app) } }
-            actions += LogAction("App info") { appsRepo.openAppInfo(app) }
-            actions += LogAction("Uninstall") { appsRepo.uninstall(app) }
+            actions += LogAction("App info") { io { appsRepo.openAppInfo(app) } }
+            actions += LogAction("Uninstall") { io { appsRepo.uninstall(app) } }
             actions += LogAction("Copy package name") { copy(app.pkg) }
             val twin = apps.value.firstOrNull { it.pkg == app.pkg && it.profile.serial != app.profile.serial }
             if (twin != null) {
@@ -322,15 +326,21 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
             actions += LogAction("Copy link") { copy(url) }
         }
         ctx.script?.let { name ->
-            scripts.byName(name)?.let { s ->
-                actions += LogAction("Run $name now") { ScriptScheduler.runNow(context, s) }
-                actions += LogAction("Edit $name.${s.lang.ext}") { openEditor(s) }
+            scriptCache.value.firstOrNull { it.name == name }?.let { s ->
+                actions += LogAction("Run $name now") { io { ScriptScheduler.runNow(context, s) } }
+                actions += LogAction("Edit $name.${s.lang.ext}") { io { scripts.byId(s.id)?.let(::openEditor) } }
                 actions += LogAction(if (s.enabled) "Disable $name" else "Enable $name") {
-                    scripts.setEnabled(s.id, !s.enabled)
-                    scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
+                    io {
+                        scripts.setEnabled(s.id, !s.enabled)
+                        scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
+                        logs.add(LogKind.INFO, "$name: ${if (s.enabled) "disabled" else "enabled"}", ctx = LogContext.of(LogContext.SCRIPT to name))
+                    }
                 }
                 actions += LogAction(if (s.notify) "Mute notifications" else "Notify on new items") {
-                    scripts.setNotify(s.id, !s.notify)
+                    io {
+                        scripts.setNotify(s.id, !s.notify)
+                        logs.add(LogKind.INFO, "$name: notifications ${if (s.notify) "off" else "on"}", ctx = LogContext.of(LogContext.SCRIPT to name))
+                    }
                     if (!s.notify) _events.tryEmit(UiEvent.RequestNotificationPermission)
                 }
             }
@@ -343,8 +353,14 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     private fun appFor(ctx: LogContext): AppEntry? =
         ctx.pkg?.let { appsRepo.find(it, ctx.cls, ctx.userSerial) ?: appsRepo.find(it, null, ctx.userSerial) }
 
-    private fun io(block: () -> Unit) {
-        viewModelScope.launch(Dispatchers.IO) { block() }
+    /** One serial worker: commands and actions run in order, and failures are logged, never crash home. */
+    private val serialIo = Dispatchers.IO.limitedParallelism(1)
+    private val errors = CoroutineExceptionHandler { _, e ->
+        runCatching { logs.add(LogKind.ERROR, "error: ${e.message ?: e.javaClass.simpleName}") }
+    }
+
+    private fun io(block: suspend () -> Unit) {
+        viewModelScope.launch(serialIo + errors) { block() }
     }
 
     private fun openUrl(url: String) = startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -396,7 +412,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     }
 
     override fun clearScreen() {
-        logs.clearScreen()
+        io { logs.clearScreen() }
     }
 
     /** Pressing Home while already home: reset the prompt. */

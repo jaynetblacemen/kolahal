@@ -40,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -99,6 +100,9 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
     val keyboard = LocalSoftwareKeyboardController.current
     val hasHardwareKeyboard = LocalConfiguration.current.keyboard != Configuration.KEYBOARD_NOKEYS
 
+    // Read through updated state so a keyboard attached later (configChanges=keyboard) is seen.
+    val currentKeyboard by rememberUpdatedState(keyboard)
+    val currentHasHardwareKeyboard by rememberUpdatedState(hasHardwareKeyboard)
     LaunchedEffect(Unit) {
         vm.events.collect { e ->
             when (e) {
@@ -106,9 +110,9 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
                 UiEvent.RequestNotificationPermission -> onRequestNotifications()
                 UiEvent.FocusPrompt -> {
                     runCatching { focus.requestFocus() }
-                    if (!hasHardwareKeyboard) keyboard?.show()
+                    if (!currentHasHardwareKeyboard) currentKeyboard?.show()
                 }
-                UiEvent.HideKeyboard -> keyboard?.hide()
+                UiEvent.HideKeyboard -> currentKeyboard?.hide()
             }
         }
     }
@@ -134,6 +138,9 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
         vm.suggestions(vm.input.text).take(maxSuggestions)
     }
     val showTime = remember(configVersion) { config[Keys.SHOW_TIMESTAMPS] }
+    val lineTimeFormat = remember(configVersion) {
+        SimpleDateFormat(if (config[Keys.CLOCK_24H]) "HH:mm" else "h:mm", Locale.getDefault())
+    }
 
     Column(
         Modifier
@@ -154,7 +161,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
         ) {
             items(reversed, key = { it.id }) { entry ->
-                LogLine(entry, showTime, onTap = { vm.onTap(entry) }, actions = { vm.actionsFor(entry) })
+                LogLine(entry, if (showTime) lineTimeFormat else null, onTap = { vm.onTap(entry) }, actions = { vm.actionsFor(entry) })
             }
         }
         SuggestionStrip(suggestions, onPick = vm::onSuggestion)
@@ -259,16 +266,14 @@ private fun Header(unlocks: Int, profiles: List<Profile>, status: Status, config
     }
 }
 
-private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun LogLine(entry: LogEntry, showTime: Boolean, onTap: () -> Unit, actions: () -> List<LogAction>) {
+private fun LogLine(entry: LogEntry, timeFormat: SimpleDateFormat?, onTap: () -> Unit, actions: () -> List<LogAction>) {
     var menu by remember { mutableStateOf<List<LogAction>?>(null) }
     val haptics = LocalHapticFeedback.current
     Box {
         Text(
-            text = renderLine(entry, showTime),
+            text = renderLine(entry, timeFormat),
             style = Term.mono,
             modifier = Modifier
                 .fillMaxWidth()
@@ -298,10 +303,10 @@ private fun LogLine(entry: LogEntry, showTime: Boolean, onTap: () -> Unit, actio
     }
 }
 
-private val profileTag = Regex("^\\[([PWS])] ")
+private val profileTag = Regex("^\\[([PWSC])] ")
 
-private fun renderLine(entry: LogEntry, showTime: Boolean) = buildAnnotatedString {
-    if (showTime) withStyle(SpanStyle(color = Term.dim)) { append(timeFormat.format(Date(entry.ts)) + " ") }
+private fun renderLine(entry: LogEntry, timeFormat: SimpleDateFormat?) = buildAnnotatedString {
+    if (timeFormat != null) withStyle(SpanStyle(color = Term.dim)) { append(timeFormat.format(Date(entry.ts)) + " ") }
     when (entry.kind) {
         LogKind.COMMAND -> {
             withStyle(SpanStyle(color = Term.prompt)) { append("$ ") }
@@ -367,7 +372,7 @@ private fun SuggestionStrip(items: List<Suggestion>, onPick: (Suggestion) -> Uni
 /** Named keys the touch key bar understands; anything else in the spec is inserted literally. */
 enum class KeyBarKey(val label: String) {
     ESC("ESC"), TAB("TAB"), UP("↑"), DOWN("↓"), LEFT("←"), RIGHT("→"),
-    HOME("⇤"), END("⇥"), ENTER("⏎"), KBD("⌨");
+    HOME("⇤"), END("⇥"), ENTER("⏎"), KBD("⌨"), SPACE("␣");
 
     companion object {
         fun of(token: String) = entries.firstOrNull { it.name.equals(token, ignoreCase = true) }
@@ -378,7 +383,7 @@ enum class KeyBarKey(val label: String) {
 @Composable
 private fun KeyBar(spec: String, onKey: (KeyBarKey) -> Unit, onText: (String) -> Unit) {
     val keys = remember(spec) {
-        spec.split(',').filter { it.isNotEmpty() }.map { token -> KeyBarKey.of(token.trim()) to token }
+        spec.split(',').map { it.trim() }.filter { it.isNotEmpty() }.map { token -> KeyBarKey.of(token) to token }
     }
     LazyRow(
         modifier = Modifier
