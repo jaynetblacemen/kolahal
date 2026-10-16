@@ -1,0 +1,376 @@
+---
+title: API reference
+description: Every function scripts can call, in Lua and JavaScript, with return values and examples.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Both engines expose the same API. In JavaScript, the network calls (`http.*`, `rss.fetch`,
+`rss.fresh`) and `sleep` return promises, so `await` them. Everything else is synchronous in both
+languages. Lua calls simply block, since scripts never run on the UI thread.
+
+Tables in Lua and objects in JS are interchangeable in the descriptions below: `{ status, ok }`
+means a table with those keys in Lua and an object with those properties in JS.
+
+## Quick list
+
+| Call | Returns |
+| --- | --- |
+| [`log(text, ctx?)`](#logtext-ctx) | nothing; appends a line |
+| [`notify(title, body, ctx?)`](#notifytitle-body-ctx) | `true` if a notification was posted |
+| [`status(text)`](#statustext) | nothing; pins or clears a header line |
+| [`http.get(url, headers?)`](#httpgeturl-headers) | `{ status, ok, body, headers }` |
+| [`http.request(opts)`](#httprequestopts) | same as `http.get` |
+| [`http.cached(url, seconds?)`](#httpcachedurl-seconds) | same, plus `cached` |
+| [`rss.fetch(url)`](#rssfetchurl) / [`rss.parse(xml)`](#rssparsexml) | `{ title, link, items }` |
+| [`rss.fresh(url)`](#rssfreshurl) | same, only unseen items |
+| [`store.get(key)` / `store.set(key, value)`](#storegetkey--storesetkey-value) | string or nil |
+| [`json.encode(v)` / `json.decode(s)`](#jsonencodev--jsondecodes) | Lua only |
+| [`clipboard.get()` / `clipboard.set(text)`](#clipboardget--clipboardsettext) | string or nil |
+| [`device.battery()`](#devicebattery) | `{ level, charging }` |
+| [`device.network()`](#devicenetwork) | `"wifi"`, `"cell"`, `"eth"`, `"net"` or `"offline"` |
+| [`device.unlocks()`](#deviceunlocks) | today's unlock count |
+| [`apps.list()`](#appslist) | `[{ label, pkg, profile }]` |
+| [`notifications.recent(n?)`](#notificationsrecentn) | `[{ pkg, app, title, text, time }]` |
+| [`launcher.run(command)`](#launcherruncommand) | `true` if sent |
+| [`sleep(ms)`](#sleepms) | nothing |
+| [`args`, `argline`](#args-and-argline) | arguments of a command run |
+| [`event`](#event) <span class="k-new">new</span> | what triggered an event run |
+
+## Output
+
+### log(text, ctx?)
+
+Appends a line to the log, in the script's colour, under the run's `── name · time ──` header.
+`ctx` is an optional table / object of strings that decides what tapping and long-pressing do:
+
+| Key | Effect |
+| --- | --- |
+| `url` | tap opens the link; long-press offers open, share and copy |
+| `copy` | text that "Copy text" copies instead of the visible line |
+| `phone` | tap dials the number; long-press offers call, message and copy |
+
+Other keys are kept with the line. Keys the launcher uses internally (commands, script identity,
+app references and the like) are dropped, so a script can't plant a line that runs a command when
+tapped.
+
+<Tabs syncKey="lang">
+<TabItem label="Lua">
+```lua
+log("Kolahal on GitHub", { url = "https://github.com/rscipher001/kolahal" })
+log("Your code is 4821", { copy = "4821" })
+print("print() also logs", 42)   -- arguments joined with tabs
+```
+</TabItem>
+<TabItem label="JavaScript">
+```js
+log("Kolahal on GitHub", { url: "https://github.com/rscipher001/kolahal" });
+log("Your code is 4821", { copy: "4821" });
+console.log("console.log also logs", 42);  // arguments joined with spaces
+console.error("logged as an error line");
+```
+</TabItem>
+</Tabs>
+
+### notify(title, body, ctx?)
+
+Posts an Android notification, if notifications are enabled **for this script** (`script notify
+<name> on` or the switch in the script manager) and allowed for Kolahal. `ctx.url` is opened when
+the notification is tapped. Returns `true` if a notification was posted.
+
+<Tabs syncKey="lang">
+<TabItem label="Lua">
+```lua
+notify("Build finished", "main is green", { url = "https://ci.example.org" })
+```
+</TabItem>
+<TabItem label="JavaScript">
+```js
+notify("Build finished", "main is green", { url: "https://ci.example.org" });
+```
+</TabItem>
+</Tabs>
+
+### status(text)
+
+Pins one line for this script into the header (first line of `text`, at most 80 characters).
+`status(nil)` / `status(null)` or an empty string clears it. It only works in saved scripts, since
+it is keyed by the script's name. Tapping the status line runs the script.
+
+<Tabs syncKey="lang">
+<TabItem label="Lua">
+```lua
+status("HN: " .. count .. " new")
+status(nil)
+```
+</TabItem>
+<TabItem label="JavaScript">
+```js
+status(`HN: ${count} new`);
+status(null);
+```
+</TabItem>
+</Tabs>
+
+### Return value
+
+Whatever the script returns is printed as an output line (tables and objects as JSON; long-press
+copies it). A one-liner run with `lua` / `js` that produces nothing prints `nil`.
+
+## HTTP
+
+Responses are `{ status, ok, body, headers }`: the numeric status, `ok` for 2xx, the body as a string
+(read up to 4 MB) and response headers with lowercase names. A `User-Agent` of
+`Kolahal-Launcher/0.1` is sent unless you set your own. Network errors raise an error (Lua) or
+reject the promise (JS). An HTTP error status does **not**, so check `ok`. Plain `http://` URLs are
+allowed.
+
+### http.get(url, headers?)
+
+<Tabs syncKey="lang">
+<TabItem label="Lua">
+```lua
+local r = http.get("https://api.github.com/repos/neovim/neovim", { Accept = "application/json" })
+if not r.ok then error("HTTP " .. r.status) end
+local repo = json.decode(r.body)
+return repo.stargazers_count
+```
+</TabItem>
+<TabItem label="JavaScript">
+```js
+const r = await http.get("https://api.github.com/repos/neovim/neovim", { Accept: "application/json" });
+if (!r.ok) throw new Error("HTTP " + r.status);
+return JSON.parse(r.body).stargazers_count;
+```
+</TabItem>
+</Tabs>
+
+### http.request(opts)
+
+Any method. `opts` = `{ url, method, body, contentType, headers }`; only `url` is required and
+`method` defaults to `GET`. A string `body` is sent as is; a table / object body is encoded as
+JSON. `contentType` defaults to `text/plain; charset=utf-8`, so set it for JSON APIs.
+
+<Tabs syncKey="lang">
+<TabItem label="Lua">
+```lua
+local r = http.request{
+  url = "https://ntfy.sh/my-topic",
+  method = "POST",
+  body = "backup done",
+}
+
+local r2 = http.request{
+  url = "https://httpbin.org/post",
+  method = "POST",
+  body = { hello = "world" },
+  contentType = "application/json",
+  headers = { Authorization = "Bearer " .. store.get("token") },
+}
+```
+</TabItem>
+<TabItem label="JavaScript">
+```js
+await http.request({ url: "https://ntfy.sh/my-topic", method: "POST", body: "backup done" });
+
+const r2 = await http.request({
+  url: "https://httpbin.org/post",
+  method: "POST",
+  body: { hello: "world" },
+  contentType: "application/json",
+  headers: { Authorization: "Bearer " + store.get("token") },
+});
+```
+</TabItem>
+</Tabs>
+
+### http.cached(url, seconds?)
+
+A GET that reuses this script's stored response while it is younger than `seconds` (default 600).
+The result has an extra `cached` field (`true` when it came from the cache). Only successful
+responses are cached.
+
+<Tabs syncKey="lang">
+<TabItem label="Lua">
+```lua
+local r = http.cached("https://open.er-api.com/v6/latest/USD", 6 * 3600)
+```
+</TabItem>
+<TabItem label="JavaScript">
+```js
+const r = await http.cached("https://open.er-api.com/v6/latest/USD", 6 * 3600);
+```
+</TabItem>
+</Tabs>
+
+## RSS and Atom
+
+Feeds come back as `{ title, link, items }`, where each item is
+`{ title, link, id, date, summary }`. `rss.fetch` and `rss.fresh` raise an error on an HTTP failure,
+so wrap them in `pcall` / `try` if you want a friendly message.
+
+### rss.fetch(url)
+
+Downloads and parses a feed.
+
+### rss.parse(xml)
+
+Parses feed XML you already have. Synchronous in both languages.
+
+### rss.fresh(url)
+
+Like `rss.fetch`, but returns only items this script hasn't seen before (by item id; the last 500
+ids per URL are remembered). Items are only marked as seen **if the run succeeds**, so a script that
+fails halfway sees the same items next time.
+
+<Tabs syncKey="lang">
+<TabItem label="Lua">
+```lua
+local feed = rss.fresh("https://lobste.rs/rss")
+for i, item in ipairs(feed.items) do
+  if i > 5 then break end
+  log(item.title, { url = item.link })
+end
+```
+</TabItem>
+<TabItem label="JavaScript">
+```js
+const feed = await rss.fresh("https://lobste.rs/rss");
+for (const item of feed.items.slice(0, 5)) log(item.title, { url: item.link });
+```
+</TabItem>
+</Tabs>
+
+## Storage
+
+### store.get(key) / store.set(key, value)
+
+Persistent strings, private to each script. `store.get` returns `nil` / `null` for a missing key;
+`store.set(key, nil)` deletes it. Store anything structured as JSON. Deleting a script deletes its
+store; one-liners typed at the prompt share one scratch store.
+
+<Tabs syncKey="lang">
+<TabItem label="Lua">
+```lua
+local n = tonumber(store.get("runs") or "0") + 1
+store.set("runs", tostring(n))
+store.set("list", json.encode({ "a", "b" }))
+```
+</TabItem>
+<TabItem label="JavaScript">
+```js
+const n = Number(store.get("runs") ?? 0) + 1;
+store.set("runs", String(n));
+store.set("list", JSON.stringify(["a", "b"]));
+```
+</TabItem>
+</Tabs>
+
+### json.encode(v) / json.decode(s)
+
+Lua only; JavaScript has the built-in `JSON`. `json.decode` turns objects into tables and arrays
+into 1-based sequences.
+
+```lua
+local data = json.decode('{"ip":"203.0.113.7"}')
+return json.encode({ ip = data.ip, ok = true })
+```
+
+## Device
+
+### clipboard.get() / clipboard.set(text)
+
+Android only lets the focused app read the clipboard, so `clipboard.get()` usually returns `nil` in
+timer runs. `clipboard.set` works any time.
+
+```lua
+clipboard.set("copied by a script")
+```
+
+### device.battery()
+
+`{ level, charging }`: `level` is 0–100 (or nil if unknown), `charging` is true when plugged in.
+
+### device.network()
+
+The active network: `"wifi"`, `"cell"`, `"eth"`, `"net"` (something else) or `"offline"`.
+
+### device.unlocks()
+
+Today's unlock count, as in the header.
+
+<Tabs syncKey="lang">
+<TabItem label="Lua">
+```lua
+local b = device.battery()
+return string.format("%d%% %s · %s · %d unlocks", b.level or -1,
+  b.charging and "charging" or "", device.network(), device.unlocks())
+```
+</TabItem>
+<TabItem label="JavaScript">
+```js
+const b = device.battery();
+return `${b.level}% ${b.charging ? "charging" : ""} · ${device.network()} · ${device.unlocks()} unlocks`;
+```
+</TabItem>
+</Tabs>
+
+### apps.list()
+
+Launchable apps in every profile, sorted by label: `[{ label, pkg, profile }]`, where `profile` is
+`"personal"` or `"other"` (work, private, clone).
+
+```js
+const work = apps.list().filter(a => a.profile !== "personal");
+return `${work.length} apps outside the personal profile`;
+```
+
+### notifications.recent(n?)
+
+The most recent notifications, newest first: `[{ pkg, app, title, text, time }]` (`time` in
+milliseconds since the epoch). `n` defaults to 20, at most 50. Needs
+[notification access](../../guides/notifications/); returns an empty list without it.
+
+```lua
+for _, n in ipairs(notifications.recent(5)) do
+  log(n.app .. ": " .. (n.title or "") .. " " .. (n.text or ""))
+end
+```
+
+## Launcher
+
+### launcher.run(command)
+
+Runs a terminal command, as if typed. **Only when the script was started from the prompt** (a
+command script, `script run`, or a one-liner); in timer and event runs it logs an error and
+returns `false`.
+
+```lua
+-- @command
+-- @desc work mode: pause notifications, open the work mail
+launcher.run("work on")
+launcher.run("open gmail -w")
+```
+
+### sleep(ms)
+
+Pauses for up to 5000 ms per call. In JS: `await sleep(1000)`.
+
+### args and argline
+
+When a script runs as a command, `args` holds the words after its name (a table in Lua, an array in
+JS; quotes group words) and `argline` the same words joined by spaces. Both are empty in timer runs.
+
+```js
+// @command
+// @desc greet: greet <name>
+return `hello, ${argline || "world"} (${args.length} args)`;
+```
+
+### event
+
+<span class="k-new">new</span> In a run started by an [`@on` trigger](../overview/#event-triggers), `event` describes what
+happened. It always carries the event's type (one of `unlock`, `charger`, `unplug`, `wifi`,
+`offline`, `notification`, `boot`, `headset`); events such as `notification` add details about the
+notification. Outside event runs, don't rely on it being set. The editor's inline docs list the
+fields for each event.

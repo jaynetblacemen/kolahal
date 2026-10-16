@@ -1,0 +1,143 @@
+---
+title: Basics
+description: The prompt, suggestions, launching apps, the log, tap and long-press, the key bar and keyboard shortcuts.
+---
+
+import { Image } from 'astro:assets';
+import terminal from '../../../assets/terminal-feeds.png';
+
+<Image src={terminal} alt="The Kolahal home screen: header with clock and status, feed lines in the log, the key bar and the prompt" class="shot shot-single" width={320} />
+
+The home screen has four parts, from top to bottom: the **header**, the **log**, the
+**suggestion strip and key bar**, and the **prompt** (`$`).
+
+## The prompt
+
+Type a command, or any part of an app name, and press Enter.
+
+- **Commands** come first: `help` lists them all, grouped. See the [command reference](../../reference/commands/).
+- **Aliases** you defined with `alias m = open maps` expand before anything else.
+- **Script commands** are scripts marked [`@command`](../../scripting/overview/#command-scripts). They run by name with arguments.
+- **Anything else is an app name.** Enter launches the best match, which is the highlighted first
+  suggestion chip. More precisely:
+  - an exact label match launches;
+  - if only one app matches, it launches (`launch.single`);
+  - if the top match starts with what you typed, it launches (`launch.top`);
+  - otherwise you get a grid of up to 12 matching apps to tap.
+- <span class="k-new">new</span> **Instant launch** (`launch.instant`, default `apps`): as soon as what you typed
+  can only mean one app, it opens without Enter. With apps *Groww* and *Grove*, `grov` opens Grove and
+  `grow` opens Groww. The same app in several profiles counts as one match (the copy you use most opens).
+  `launch.instant all` also runs commands and aliases this way (`setti` opens settings) and makes a
+  tapped history line run immediately. Sensitive commands never run without Enter: `call`, `sms`,
+  `uninstall`, `work`, `private`, `clear`, `restart`, `lock`, `script`, `config`, `alias` and similar.
+  Calls always open the dialer, so you confirm there. `launch.instant.min` (default 2) is how many
+  letters to type first; `launch.instant off` turns it off.
+- A mistyped command gets a tappable **"did you mean"** that puts the corrected command in the prompt.
+- `= <expression>` is a [calculator and unit converter](../../guides/web-and-calculator/).
+
+### Suggestions
+
+The strip above the key bar changes as you type:
+
+- **Empty prompt**: your most-used apps, ranked by frecency (how often and how recently you opened them).
+  Turn this off with `config set suggestions.idle off`.
+- **First word**: up to three matching commands, aliases or script commands, plus matching apps.
+  When Enter would launch an app, that app is the first, highlighted chip, so Enter, Tab and the
+  highlight always agree.
+- **Arguments**: app names after `open`, `info`, `hide`, `rename` and similar; script names after
+  `script run|edit|…`; keys and values after `config`; theme names after `theme`; contacts after
+  `call` and `sms`; `on|off|status` after `work` and `private`.
+
+Tap a chip to use it. Tab (on the key bar or a hardware keyboard) takes the first one. The number
+of chips is `suggestions` (default 12).
+
+## The log
+
+Each command and its output form a **block** with a coloured gutter. Script output and errors
+have their own colours, and output older than the latest command is dimmed (`log.dim`).
+
+- Day separators, and right-aligned times on commands (`log.time`: `off`, `commands`, `all`).
+- `help`, `config` and `script ls` render in two columns; `apps` is a grid of tappable chips.
+- Each script run gets a `── hn · 22:40 ──` header and a stable per-script colour. Lines that
+  arrived while you were away are marked `•` under a "N new since you left" divider.
+- Scroll to the top to load older entries. Entries older than `log.keepdays` (60) are trimmed.
+- `clear` clears the screen, `clear history` forgets the ↑ history but keeps the log, and
+  `clear all` removes both.
+
+### Tap and long-press
+
+**Tap** a line for its main action:
+
+| Line | Tap does |
+| --- | --- |
+| A command you typed | puts it back in the prompt |
+| An app line or chip | launches the app |
+| A link (feed item, search, script line with a URL) | opens it |
+| A phone number or contact | opens the dialer |
+| A notification | opens it (or the app, if it's gone) |
+| An app shortcut | starts it |
+| A setup or hint line | runs its fix command |
+| A script error | opens the editor at the failing line |
+
+**Long-press** opens an action sheet with everything that applies: run again, edit in prompt, copy
+output, open, share or copy a link, call, message or copy a number, launch in another profile, app
+shortcuts, app info, hide, uninstall, run or edit a script, dismiss a notification or mute its app,
+copy text, and delete the line or the whole block.
+
+## The header
+
+A large clock and date, then unlocks, battery, network, next alarm, profile state and ⚙. Every
+item is tappable:
+
+| Item | Tap | Config key |
+| --- | --- | --- |
+| Clock, next alarm | opens your alarms | `clock.24h`, `header.date`, `header.alarm` |
+| `unlocks` | runs `unlocks 7` | `header.unlocks` |
+| `bat` | battery usage | `header.battery` |
+| `net` | network settings | `header.network` |
+| `work` / `private` | resumes a paused profile; pausing asks for a second tap | `header.profiles` |
+| ⚙ | the [settings screen](../../guides/themes-and-settings/) | |
+| Script status lines | runs that script | `header.status` |
+
+`header.device` adds a `kolahal@device` line. Swipe down on the header to pull down the
+notification shade (a [gesture](../../guides/gestures/) you can change).
+
+## The key bar
+
+Touch keyboards lack the keys a terminal needs, so Kolahal adds a two-row bar:
+
+```
+ESC  /  -  ⇤  ↑  ⇥  ⌫
+TAB  |  .  ←  ↓  →  ⏎
+```
+
+- `↑` / `↓` walk the command history; `TAB` completes; `ESC` clears the prompt; `⇤` / `⇥` jump to
+  the start or end.
+- Arrows and backspace repeat while held, and dragging sideways across the bar moves the cursor.
+- Both rows are configurable: `keybar` and `keybar2` take comma-separated keys from `ESC TAB UP DOWN
+  LEFT RIGHT HOME END BKSP ENTER SPACE KBD`, or any literal text. `KBD` shows the soft keyboard.
+  Clear **Key bar, row 2** in Settings for a single row, or hide the bar with `keybar.show off`.
+
+```sh
+config set keybar ESC,TAB,UP,DOWN,|,~,KBD
+config reset keybar      # back to the default row
+```
+
+## Touch
+
+- Tap empty log space to bring up the keyboard (`keyboard.onhome on` opens it every time Home is shown).
+- Pinch the log to resize the text (`font.size`, 10–24).
+- Double-tap empty log space to lock the screen, and swipe up on the prompt for the app grid. See [Gestures](../../guides/gestures/).
+
+## Hardware keyboard
+
+| Key | At the prompt |
+| --- | --- |
+| `↑` / `↓` | history |
+| `Tab` | complete with the first suggestion |
+| `Esc`, `Ctrl+U` | clear the line |
+| `Enter` | run |
+| `Ctrl+L` | clear the screen |
+| `Ctrl+A` / `Ctrl+E` | start / end of line |
+
+The script editor has its own shortcuts; see [Editor](../../scripting/editor/).

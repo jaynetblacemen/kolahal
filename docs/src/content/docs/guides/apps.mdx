@@ -1,0 +1,89 @@
+---
+title: Apps
+description: Launching, listing, hiding and renaming apps, app shortcuts, aliases and screen time.
+---
+
+import { Image } from 'astro:assets';
+import grid from '../../../assets/app-grid.png';
+
+## Launching
+
+Type part of an app name and press Enter. The [basics](../../getting-started/basics/#the-prompt)
+page explains exactly which app Enter picks. `open <app>` (alias `launch`) does the same
+explicitly and takes profile flags:
+
+```sh
+open maps
+open gmail -w
+```
+
+## Listing
+
+```sh
+apps                 # grid of chips (alias: ls)
+apps -l              # one per line
+apps work            # one profile: work, personal, private
+apps hidden          # only hidden apps
+apps -a              # include hidden apps
+```
+
+Tap a chip to launch it; long-press for launch, shortcuts, the other-profile copy, app info, copy
+package name, hide and uninstall.
+
+<Image src={grid} alt="The apps grid: personal and work chips side by side" class="shot shot-single" width={320} />
+
+## Hide and rename
+
+```sh
+hide calculator              # gone from lists, search and suggestions
+apps hidden                  # see what's hidden
+unhide calculator
+rename youtube = yt          # custom label
+rename yt =                  # empty restores the original label
+rename chrome -w = work web  # flags pick the profile
+```
+
+Hidden apps and custom labels are part of the [backup file](../backup/).
+
+## App shortcuts
+
+Launcher shortcuts (the menu you get by long-pressing an icon in other launchers) work too. They
+need Kolahal as the default launcher.
+
+```sh
+shortcuts maps               # list them; tap one to start it
+open maps:home               # start the shortcut whose label best matches "home"
+```
+
+They also appear in every app's long-press sheet.
+
+## Aliases
+
+```sh
+alias m = open maps          # define
+alias                        # list
+alias m                      # show one
+unalias m                    # remove
+```
+
+Aliases expand the first word (up to five levels, without cycles). A built-in command name can't
+be an alias.
+
+## App info and uninstall
+
+```sh
+info whatsapp
+uninstall some-game -w
+```
+
+## Screen time and unlocks
+
+```sh
+usage            # time per app today (alias: screentime)
+usage 7          # last 7 days (1–30)
+unlocks          # today's unlock count
+unlocks 7        # bar chart for the last week (1–30)
+```
+
+`usage` needs **Usage Access** (`usage-access`). Unlock counts use Usage Access when granted and
+fall back to counting `ACTION_USER_PRESENT` broadcasts while the launcher is running.

@@ -1,0 +1,70 @@
+---
+title: Feeds
+description: Built-in RSS and Atom subscriptions with unread counts, per-feed intervals and optional notifications.
+---
+
+import { Image } from 'astro:assets';
+import terminal from '../../../assets/terminal-feeds.png';
+
+Kolahal has a small feed reader built in. No scripting needed.
+
+## Subscribe
+
+```sh
+feed add https://hnrss.org/frontpage
+feed add lwn.net/headlines/rss       # https:// is assumed; feed:// links work too
+```
+
+Adding a feed fetches it right away. The address is normalised, so adding the same feed twice
+returns the existing subscription.
+
+## Read
+
+<Image src={terminal} alt="Feed items in the log under a Hacker News label, and the feed list with unread counts" class="shot shot-single" width={320} />
+
+```sh
+feed                 # list: #id, title, unread/total, interval, notify, last status (also: feed ls)
+feed read            # all unread items, then mark them read
+feed read 2          # unread items of feed #2
+feed all 2           # every stored item of feed #2, read or not
+feed open 2          # open up to 10 unread items of #2 in the browser, mark them read
+feed fetch           # refresh every feed now (feed fetch 2 for one)
+```
+
+Item lines are tappable links; long-press to share or copy. When a fetch finds new items they
+appear in the log under a `── feeds · 10:30 ──` header, at most 10 per feed with a "+N more"
+line (tapping it puts `feeds read <id>` in the prompt).
+
+### Feeds screen
+
+<span class="k-new">new</span> `feeds` opens a GUI screen for managing subscriptions: adding, removing and toggling feeds, intervals
+and notifications, without typing ids. Tap a feed for its items (tap one to open it and mark it read).
+The top bar refreshes everything and imports or exports **OPML**, so you can move subscriptions from
+or to another feed reader. The `feed …` subcommands keep working as before.
+
+## Per-feed settings
+
+```sh
+feed every 2 2h          # check feed #2 every 2 hours (minimum 15m; default 1h)
+feed notify 2 on         # one notification per fetch with new items (off to stop)
+feed off 2               # pause a feed; feed on 2 resumes it
+feed rm 2                # unsubscribe and delete its items
+```
+
+## How fetching works
+
+- One background job runs every 30 minutes (when there is a network) and fetches the feeds that are
+  due by their own interval.
+- Requests are conditional (ETag / Last-Modified), so an unchanged feed costs a `304` and no parsing.
+- Up to 300 items are kept per feed (unread first, then newest).
+- A failed scheduled fetch is only recorded in the feed's status (shown by `feed`). A fetch you
+  asked for (`feed fetch`) also logs the error.
+- Feeds run in the launcher process, not the script sandbox. For a feed you only want to see once,
+  `rss <url>` prints up to 15 items into the log without subscribing.
+
+## Feeds or a script?
+
+Built-in feeds are the easy path. For filtering, merging several feeds into one line, scoring
+or a header status line, write a script with
+[`rss.fresh(url)`](../../scripting/api/#rssfreshurl), like the bundled
+[`hn` and `feeds` scripts](../../scripting/library/).

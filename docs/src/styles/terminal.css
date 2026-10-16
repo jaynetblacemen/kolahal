@@ -1,0 +1,179 @@
+/*
+ * Kolahal terminal look for Starlight.
+ * Dark mode = the app's default "green" palette (ui/Theme.kt, Palettes.green).
+ * Light mode = gruvbox light, the paper-ish cousin of the app's gruvbox themes.
+ */
+
+:root {
+	/* App palette tokens (green), reused by the hero terminal and badges. */
+	--k-bg: #0b0d0b;
+	--k-surface: #151915;
+	--k-fg: #d7ded3;
+	--k-dim: #7f8a7b;
+	--k-prompt: #8fd18a;
+	--k-error: #f0907d;
+	--k-info: #9db8a0;
+	--k-link: #7fb8f0;
+	--k-script: #b5cea8;
+	--k-work: #f2b35b;
+	--k-private: #c792ea;
+
+	--sl-font: 'JetBrains Mono', var(--sl-font-system-mono);
+	--sl-font-mono: 'JetBrains Mono', var(--sl-font-system-mono);
+	--sl-text-body: 0.9375rem;
+
+	--sl-color-accent-low: #1e3a1d;
+	--sl-color-accent: #8fd18a;
+	--sl-color-accent-high: #c4ecc0;
+
+	--sl-color-white: #f1f5ee;
+	--sl-color-gray-1: #d7ded3;
+	--sl-color-gray-2: #bcc6b8;
+	--sl-color-gray-3: #7f8a7b;
+	--sl-color-gray-4: #505b4d;
+	--sl-color-gray-5: #2a312a;
+	--sl-color-gray-6: #151915;
+	--sl-color-black: #0b0d0b;
+
+	--sl-color-orange: #f2b35b;
+	--sl-color-purple: #c792ea;
+	--sl-color-blue: #7fb8f0;
+	--sl-color-red: #f0907d;
+	--sl-color-green: #8fd18a;
+}
+
+:root[data-theme='light'] {
+	--k-bg: #fbf1c7;
+	--k-surface: #ebdbb2;
+	--k-fg: #3c3836;
+	--k-dim: #7c6f64;
+	--k-prompt: #79740e;
+	--k-error: #9d0006;
+	--k-info: #427b58;
+	--k-link: #076678;
+	--k-script: #b57614;
+	--k-work: #af3a03;
+	--k-private: #8f3f71;
+
+	--sl-color-accent-low: #e5e0a8;
+	--sl-color-accent: #79740e;
+	--sl-color-accent-high: #4f4c08;
+
+	--sl-color-white: #282828;
+	--sl-color-gray-1: #3c3836;
+	--sl-color-gray-2: #504945;
+	--sl-color-gray-3: #7c6f64;
+	--sl-color-gray-4: #a89984;
+	--sl-color-gray-5: #d5c4a1;
+	--sl-color-gray-6: #ebdbb2;
+	--sl-color-gray-7: #f2e5bc;
+	--sl-color-black: #fbf1c7;
+
+	--sl-color-orange: #af3a03;
+	--sl-color-purple: #8f3f71;
+	--sl-color-blue: #076678;
+	--sl-color-red: #9d0006;
+	--sl-color-green: #79740e;
+}
+
+body {
+	background: var(--sl-color-bg);
+}
+
+/* Headings read like prompt lines. */
+.sl-markdown-content :is(h2, h3) {
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+.sl-markdown-content h2::before {
+	content: '$ ';
+	color: var(--sl-color-accent);
+	font-weight: 400;
+}
+.sl-markdown-content h3::before {
+	content: '› ';
+	color: var(--sl-color-gray-3);
+	font-weight: 400;
+}
+
+/* Square-ish, terminal-like blocks. */
+.sl-markdown-content :not(pre) > code {
+	border-radius: 0.2rem;
+	padding: 0.05em 0.35em;
+	color: var(--sl-color-accent-high);
+}
+:root[data-theme='light'] .sl-markdown-content :not(pre) > code {
+	color: var(--sl-color-gray-1);
+}
+
+.sl-markdown-content table {
+	font-size: var(--sl-text-sm);
+}
+.sl-markdown-content table code {
+	white-space: nowrap;
+}
+.sl-markdown-content th {
+	color: var(--sl-color-accent);
+}
+
+/* Cards get the log's coloured gutter. */
+.card {
+	border-radius: 0.25rem;
+	border-inline-start: 3px solid var(--sl-color-accent) !important;
+	background: var(--sl-color-gray-6);
+}
+:root[data-theme='light'] .card {
+	background: var(--sl-color-gray-7);
+}
+
+.sl-link-button {
+	border-radius: 0.25rem !important;
+}
+
+.site-title {
+	font-weight: 700;
+	letter-spacing: -0.02em;
+}
+
+/* Screenshots: phone frames */
+.shot {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	border-radius: 0.75rem;
+	border: 1px solid var(--sl-color-gray-5);
+	box-shadow: var(--sl-shadow-md);
+}
+.shots {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+	gap: 1rem;
+	margin-block: 1.5rem;
+}
+.shots figure {
+	margin: 0;
+}
+.shots figcaption {
+	font-size: var(--sl-text-xs);
+	color: var(--sl-color-gray-3);
+	text-align: center;
+	margin-top: 0.5rem;
+}
+.shot-single {
+	max-width: 18rem;
+	margin-inline: auto;
+}
+
+/* "new" marker for recently added features */
+.k-new {
+	display: inline-block;
+	font-size: 0.7em;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	padding: 0.05em 0.45em;
+	border-radius: 0.2rem;
+	vertical-align: 0.15em;
+	color: var(--k-bg);
+	background: var(--k-work);
+}

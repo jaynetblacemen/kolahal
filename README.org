@@ -4,6 +4,17 @@
 Kolahal (=io.github.rscipher001.launcher=) is a terminal-style home screen with first-class work
 profile support and scripts in *Lua 5.4* or *JavaScript (QuickJS)*.
 
+* Documentation
+
+The full documentation (guides, command and config reference, scripting API) is at
+https://rscipher001.github.io/kolahal/. Its source is in =docs/= (Astro + Starlight), deployed to
+GitHub Pages by =.github/workflows/docs.yml= on pushes to =main= that touch =docs/=. To work on it
+locally:
+
+#+begin_src sh
+cd docs && npm install && npm run dev    # http://localhost:4321/kolahal/
+#+end_src
+
 * Features
 
 - Terminal home screen ::

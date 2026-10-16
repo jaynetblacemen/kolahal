@@ -1,0 +1,91 @@
+---
+title: Kolahal
+description: A keyboard-first terminal launcher for Android, with work profile support and scripts in Lua 5.4 or JavaScript.
+template: splash
+hero:
+  title: Your home screen is a terminal.
+  tagline: Kolahal is a keyboard-first Android launcher. Type part of an app name and press Enter. Work, private and clone profiles sit side by side, and you can script the rest in Lua 5.4 or JavaScript.
+  actions:
+    - text: Install
+      link: getting-started/install/
+      icon: right-arrow
+      variant: primary
+    - text: Command reference
+      link: reference/commands/
+      variant: secondary
+    - text: View on GitHub
+      link: https://github.com/rscipher001/kolahal
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Image } from 'astro:assets';
+import terminal from '../../assets/terminal-feeds.png';
+import grid from '../../assets/app-grid.png';
+import setup from '../../assets/setup.png';
+
+## What it does
+
+<CardGrid>
+	<Card title="Type, Enter, done" icon="seti:shell">
+		Any text that isn't a command is matched against app names. Enter launches the highlighted best
+		match. With an empty prompt you see your most-used apps, ranked by frecency.
+	</Card>
+	<Card title="Every profile, one list" icon="seti:lock">
+		Personal, work, Android 15+ private space and clone profiles appear together, tagged `[W]`
+		`[S]` `[C]`. Pause or resume the work profile from the header or with `work off`.
+	</Card>
+	<Card title="A log you can act on" icon="list-format">
+		Every command and its output is a block with a coloured gutter. Tap a line for its main action.
+		Long-press for an action sheet with copy, share, open, rerun and more.
+	</Card>
+	<Card title="Scripts in Lua or JS" icon="seti:lua">
+		Timers (`every 30m`, `at 08:00`), notifications, header status lines and `@command` scripts that
+		take arguments. They run sandboxed in a separate process.
+	</Card>
+	<Card title="Feeds and notifications" icon="rss">
+		Built-in RSS/Atom subscriptions with unread counts. With notification access, new notifications
+		show up in the log in their app's colour.
+	</Card>
+	<Card title="Little tools built in" icon="puzzle">
+		`= 2^10`, `= 5 km in mi`, `= 100 usd in eur`, web search, `call`, `sms`, app shortcuts, screen
+		time and an unlock counter.
+	</Card>
+</CardGrid>
+
+## Screens
+
+<div class="shots">
+	<figure>
+		<Image src={terminal} alt="Kolahal terminal with feed items, a feed list and a notification" class="shot" width={360} />
+		<figcaption>The log: feeds, `feed`, `notifs`</figcaption>
+	</figure>
+	<figure>
+		<Image src={grid} alt="App grid with personal and work apps as chips" class="shot" width={360} />
+		<figcaption>`apps`: personal and `W` work chips</figcaption>
+	</figure>
+	<figure>
+		<Image src={setup} alt="Setup checklist with fix buttons" class="shot" width={360} />
+		<figcaption>`setup`: first-run checklist</figcaption>
+	</figure>
+</div>
+
+## Themes from the terminal
+
+`theme green` (the default) · `amber` · `mono` · `dracula` · `solarized` · `gruvbox` · `gruvbox-material`.
+This site uses the green palette in dark mode and gruvbox light in light mode.
+
+## Next steps
+
+<CardGrid>
+	<Card title="Get it running" icon="rocket">
+		[Build and install](getting-started/install/), then go through the [setup checklist](getting-started/setup/).
+	</Card>
+	<Card title="Learn the prompt" icon="open-book">
+		[Basics](getting-started/basics/): suggestions, the key bar, tap and long-press, and keyboard shortcuts.
+	</Card>
+	<Card title="Write a script" icon="pencil">
+		[Scripting overview](scripting/overview/), the [API reference](scripting/api/) and the [script library](scripting/library/).
+	</Card>
+</CardGrid>
