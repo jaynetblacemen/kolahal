@@ -105,6 +105,9 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     private val _entries = MutableStateFlow<List<LogEntry>>(emptyList())
     val entries: StateFlow<List<LogEntry>> = _entries.asStateFlow()
 
+    private val _screen = MutableStateFlow(Screen.TERMINAL)
+    val screen: StateFlow<Screen> = _screen.asStateFlow()
+
     private val _rows = MutableStateFlow<List<LogRow>>(emptyList())
     /** What the log list shows: entries (with dimming/gutter) and day separators. */
     val rows: StateFlow<List<LogRow>> = _rows.asStateFlow()
@@ -146,7 +149,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
             if (logs.recent(1).isEmpty() && logs.commandHistory(1).isEmpty()) {
                 logs.add(LogKind.INFO, "kolahal — a terminal launcher. type 'help' or start typing an app name.")
                 logs.add(LogKind.INFO, "↑/↓ recall commands · tap a line to reuse/open it · long-press for actions")
-                processor.setup()
+                _screen.value = Screen.SETUP // first run: show the setup checklist
             }
         }
     }
@@ -174,6 +177,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
 
     fun onResume() {
         seenUpTo = logs.seenUpTo
+        if (_screen.value == Screen.SETUP) refreshSetup()
         viewModelScope.launch { reload() }
         unlockCounter.refresh()
         appsRepo.refresh()
@@ -583,8 +587,6 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
 
     // ---- GUI screens (settings, script manager) ------------------------------------------
 
-    private val _screen = MutableStateFlow(Screen.TERMINAL)
-    val screen: StateFlow<Screen> = _screen.asStateFlow()
 
     /** Scripts for the manager screen. */
     val scriptList: StateFlow<List<Script>> get() = scriptCache
@@ -597,6 +599,17 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         _notice.value = null
         _screen.value = screen
         if (screen == Screen.SCRIPTS) refreshScripts()
+        if (screen == Screen.SETUP) refreshSetup()
+    }
+
+    private val _setup = MutableStateFlow<List<SetupCheck>>(emptyList())
+    val setupChecks: StateFlow<List<SetupCheck>> = _setup.asStateFlow()
+
+    fun refreshSetup() = io { _setup.value = SetupChecks.run(context) }
+
+    /** Opens the system page for a check; the list refreshes when the user comes back. */
+    fun fixSetup(check: SetupCheck) {
+        check.fix?.let { cmd -> io { processor.run(cmd, expand = false) } }
     }
 
     fun closeScreen() {
@@ -737,6 +750,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     }
 
     fun onNotificationPermission(granted: Boolean) {
+        refreshSetup()
         io {
             logs.add(
                 if (granted) LogKind.INFO else LogKind.ERROR,

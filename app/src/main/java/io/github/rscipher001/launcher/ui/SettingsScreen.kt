@@ -49,6 +49,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
@@ -163,8 +164,7 @@ fun SettingsScreen(
                         listOf(
                             Action(R.drawable.ic_code, "Script manager", "Import .lua / .js files, timers, notifications") { vm.openScreen(Screen.SCRIPTS) },
                             Action(R.drawable.ic_check, "Setup checklist", "Default launcher, permissions, battery") {
-                                vm.closeScreen()
-                                vm.runCommand("setup")
+                                vm.openScreen(Screen.SETUP)
                             },
                         )
                     )
@@ -190,19 +190,23 @@ private fun SettingItem(vm: TerminalViewModel, config: Config, key: ConfigKey<*>
     val changed by remember(key) { derivedStateOf { version.value; !config.isDefault(key) } }
     val shapes = segShapes(index, count)
     val title = TITLES[key.key] ?: key.key
+    // Reset sits on the key-name line, so it never narrows the controls below it.
     val supporting: @Composable () -> Unit = {
         Column {
             Text(key.help)
-            Text(
-                key.key + if (changed) "  · changed" else "",
-                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-                color = MaterialTheme.colorScheme.outline,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    key.key + if (changed) "  · changed" else "",
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                    color = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.weight(1f),
+                )
+                if (changed && key !is ConfigKey.Bool) {
+                    TextButton(onClick = { vm.resetConfig(key) }) { Text("Reset") }
+                }
+            }
         }
     }
-    val reset: @Composable (() -> Unit)? = if (changed && key !is ConfigKey.Bool) {
-        { TextButton(onClick = { vm.resetConfig(key) }) { Text("Reset") } }
-    } else null
 
     Box(Modifier.padding(bottom = ListItemDefaults.SegmentedGap)) {
         when (key) {
@@ -218,7 +222,6 @@ private fun SettingItem(vm: TerminalViewModel, config: Config, key: ConfigKey<*>
             is ConfigKey.Choice -> SegmentedListItem(
                 colors = segColors(),
                 shapes = shapes,
-                trailingContent = reset,
                 supportingContent = {
                     Column {
                         supporting()
@@ -260,8 +263,7 @@ private fun SettingItem(vm: TerminalViewModel, config: Config, key: ConfigKey<*>
                 SegmentedListItem(
                     colors = segColors(),
                     shapes = shapes,
-                    trailingContent = reset,
-                    supportingContent = {
+                        supportingContent = {
                         Column {
                             supporting()
                             Spacer(Modifier.height(8.dp))

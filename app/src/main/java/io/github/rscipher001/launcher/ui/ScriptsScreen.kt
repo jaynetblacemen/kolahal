@@ -211,7 +211,8 @@ private fun ScriptCard(vm: TerminalViewModel, s: Script, onExport: (Script) -> U
                 }
                 if (s.intervalMin > 0 && INTERVALS.none { it.first == s.intervalMin }) {
                     item {
-                        FilterChip(selected = true, onClick = {}, label = { Text(CommandProcessor.formatInterval(s.intervalMin)) })
+                        // Interval set from the terminal (not one of the presets): shown, not a button.
+                        FilterChip(selected = true, enabled = false, onClick = {}, label = { Text(CommandProcessor.formatInterval(s.intervalMin)) })
                     }
                 }
             }

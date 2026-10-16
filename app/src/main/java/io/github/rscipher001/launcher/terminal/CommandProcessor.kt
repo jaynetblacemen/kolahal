@@ -39,7 +39,7 @@ import java.util.Date
 
 /** UI-only operations the processor cannot do from an application context. */
 /** Full-screen GUI pages besides the terminal (the script editor is separate). */
-enum class Screen { TERMINAL, SETTINGS, SCRIPTS }
+enum class Screen { TERMINAL, SETTINGS, SCRIPTS, SETUP }
 
 interface TerminalUi {
     fun openScreen(screen: Screen)
@@ -108,7 +108,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "url", "web" -> openUrl(rest)
                 "search", "g" -> search(rest)
                 "notifications" -> notifications(args)
-                "setup" -> setup()
+                "setup" -> if (args.firstOrNull() == "text") setupText() else ui.openScreen(Screen.SETUP)
                 "status" -> statusCommand(args)
                 "usage-access" -> startActivity(unlocks.usageAccessIntent())
                 "battery" -> startSettings(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
@@ -117,7 +117,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "home" -> startSettings(Settings.ACTION_HOME_SETTINGS)
                 "date", "time" -> out(DateFormat.getDateTimeInstance().format(Date()))
                 "echo" -> out(rest)
-                "config", "set" -> config(args, rest)
+                "config", "set" -> if (name == "config" && args.isEmpty()) ui.openScreen(Screen.SETTINGS) else config(args, rest)
                 "theme" -> config(listOf("set", "theme") + args)
                 else -> scriptCommand(name, args) ?: fallbackLaunch(trimmed)
             }
@@ -510,31 +510,17 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     }
 
     /** First-run checklist; each unchecked line runs its fix when tapped. */
-    fun setup() {
-        val power = context.getSystemService(PowerManager::class.java)
-        val checks = listOf(
-            Triple(isDefaultLauncher(), "Kolahal is the default home app", "home"),
-            Triple(unlocks.hasUsageAccess(), "usage access (accurate unlock count)", "usage-access"),
-            Triple(Notifier.canPost(context), "notifications (script alerts)", "notifications"),
-            Triple(power.isIgnoringBatteryOptimizations(context.packageName), "battery unrestricted (reliable timers)", "battery"),
-        )
-        info("setup — tap an unchecked item to fix it, run 'setup' again to re-check")
-        checks.forEach { (ok, label, cmd) ->
-            out((if (ok) "[x] " else "[ ] ") + label, if (ok) LogContext.EMPTY else LogContext.of(LogContext.RUN to cmd))
+    /** Text form of the setup checklist (`setup text`); unchecked lines run their fix when tapped. */
+    fun setupText() {
+        info("setup — tap an unchecked item to fix it, run 'setup text' again to re-check")
+        SetupChecks.run(context).forEach { c ->
+            val mark = when {
+                c.ok -> "[x]"
+                c.fix == null -> "[-]"
+                else -> "[ ]"
+            }
+            out("$mark ${c.title} — ${c.detail}", if (c.ok || c.fix == null) LogContext.EMPTY else LogContext.of(LogContext.RUN to c.fix))
         }
-        val others = apps.profiles.value.filter { it.kind != ProfileKind.PERSONAL }
-        out(
-            if (others.isEmpty()) "[-] no work or private profile found"
-            else "[x] profiles: " + others.joinToString { "${it.kind.label} (${if (it.quiet) "paused" else "on"})" }
-        )
-    }
-
-    private fun isDefaultLauncher(): Boolean = if (Build.VERSION.SDK_INT >= 29) {
-        context.getSystemService(RoleManager::class.java).isRoleHeld(RoleManager.ROLE_HOME)
-    } else {
-        context.packageManager.resolveActivity(
-            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), PackageManager.MATCH_DEFAULT_ONLY,
-        )?.activityInfo?.packageName == context.packageName
     }
 
     private fun startSettings(action: String) = startActivity(Intent(action))
@@ -760,7 +746,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("clear", "clear [history|all]", "clear the screen, the ↑ history, or both"),
             CommandSpec("restart", "restart [scripts]", "restart the launcher, or stop running scripts"),
             CommandSpec("status", "status [clear <name|all>]", "header lines pinned by scripts"),
-            CommandSpec("setup", "setup", "checklist: default home, permissions, battery"),
+            CommandSpec("setup", "setup [text]", "setup checklist page (text: print it in the log)"),
             CommandSpec("notifications", "notifications", "allow script notifications"),
             CommandSpec("usage-access", "usage-access", "grant usage access (unlock count)"),
             CommandSpec("battery", "battery", "battery optimization settings"),
@@ -768,7 +754,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("settings", "settings", "Kolahal settings screen (+ backup import/export)"),
             CommandSpec("scripts", "scripts", "script manager screen (import files, timers)"),
             CommandSpec("system", "system", "Android system settings"),
-            CommandSpec("config", "config [set|get|reset] <key> <v>", "show or change settings"),
+            CommandSpec("config", "config [ls|set|get|reset] <key> <v>", "settings (no args opens the settings page)"),
             CommandSpec("theme", "theme <name>", "green amber mono dracula solarized gruvbox gruvbox-material"),
             CommandSpec("date", "date", "current date and time"),
             CommandSpec("echo", "echo <text>", "print text"),

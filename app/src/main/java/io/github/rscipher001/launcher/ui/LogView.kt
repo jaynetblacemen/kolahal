@@ -127,11 +127,19 @@ fun LogLine(
     val desc = entry.ctx.values[LogContext.DESC]
     val isGrid = entry.ctx.values[LogContext.APPS] != null
 
+    // Lines that do something get a larger touch target than plain output.
+    val actionable = entry.kind == LogKind.COMMAND || entry.ctx.values.keys.any { it in ACTIONABLE_KEYS }
+    val minHeight = when {
+        desc != null -> 44.dp
+        actionable -> 40.dp
+        else -> 30.dp
+    }
     Row(
-        verticalAlignment = Alignment.Top,
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .padding(top = topGap)
             .fillMaxWidth()
+            .heightIn(min = minHeight)
             .then(if (dim && row.dimmed) Modifier.alpha(0.62f) else Modifier)
             .background(if (highlighted) Term.surface else Color.Transparent)
             .drawBehind {
@@ -168,6 +176,10 @@ fun LogLine(
     }
 }
 
+private val ACTIONABLE_KEYS = setOf(
+    LogContext.URL, LogContext.PKG, LogContext.COMMAND, LogContext.RUN, LogContext.SCRIPT, LogContext.APPS, LogContext.LINE,
+)
+
 /** `help`, `config` and `script ls` rows: name on the left, description wrapping on the right. */
 @Composable
 private fun TwoColumns(entry: LogEntry, desc: String) {
@@ -191,16 +203,16 @@ private fun AppGrid(apps: List<AppEntry>, onTap: (AppEntry) -> Unit, onLongPress
         return
     }
     FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(vertical = 4.dp),
     ) {
         apps.forEach { app ->
             val color = Term.profileColor(app.profile.kind)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .heightIn(min = 40.dp)
+                    .heightIn(min = 48.dp)
                     .alpha(if (app.profile.quiet) 0.45f else 1f)
                     .background(color.copy(alpha = 0.10f), RoundedCornerShape(4.dp))
                     .combinedClickable(

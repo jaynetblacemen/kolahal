@@ -216,7 +216,7 @@ fun ScriptEditor(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .heightIn(min = 48.dp)
-                        .widthIn(min = 40.dp)
+                        .widthIn(min = 48.dp)
                         .clickable {
                             when (s) {
                                 "↶" -> undo()
@@ -240,7 +240,8 @@ private fun EditorButton(label: String, onClick: () -> Unit) {
         style = Term.mono.copy(color = Term.fg),
         modifier = Modifier
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 14.dp),
+            .heightIn(min = 48.dp)
+            .padding(horizontal = 12.dp, vertical = 14.dp),
     )
 }
 

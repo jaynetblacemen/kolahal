@@ -87,11 +87,9 @@ class Config private constructor(private val prefs: SharedPreferences) {
     private val _version = MutableStateFlow(0)
     val version: StateFlow<Int> = _version.asStateFlow()
 
-    private val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> _version.value++ }
-
-    init {
-        prefs.registerOnSharedPreferenceChangeListener(listener)
-    }
+    // Every change goes through set()/reset(), which bump the version directly. (A SharedPreferences
+    // change listener is only weakly referenced by Android; R8 dropped our strong reference in release
+    // builds, so the listener was garbage-collected and settings changes stopped applying.)
 
     @Suppress("UNCHECKED_CAST")
     operator fun <T> get(key: ConfigKey<T>): T {
@@ -103,11 +101,13 @@ class Config private constructor(private val prefs: SharedPreferences) {
     fun <T> set(key: ConfigKey<T>, raw: String): Boolean {
         val value = key.parse(raw) ?: return false
         prefs.edit().putString(key.key, key.format(value)).apply()
+        _version.value++
         return true
     }
 
     fun reset(key: ConfigKey<*>) {
         prefs.edit().remove(key.key).apply()
+        _version.value++
     }
 
     fun isDefault(key: ConfigKey<*>) = !prefs.contains(key.key)

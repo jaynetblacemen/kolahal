@@ -74,6 +74,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -133,7 +134,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         vm.events.collect { e ->
             when (e) {
                 UiEvent.ScrollToBottom -> { pinned = true; listState.scrollToItem(0) }
-                UiEvent.RequestNotificationPermission -> onRequestNotifications()
+                // Handled by MainActivity so it works from every page (setup, script manager).
+                UiEvent.RequestNotificationPermission -> Unit
                 UiEvent.FocusPrompt -> {
                     runCatching { focus.requestFocus() }
                     if (!currentHasHardwareKeyboard) currentKeyboard?.show()
@@ -324,9 +326,14 @@ private fun Header(
                 withStyle(SpanStyle(color = valueColor, fontWeight = FontWeight.Bold)) { append(value) }
             },
             style = small,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier
+                // 48dp touch target even for short items like ⚙.
                 .clickable(onClick = onClick)
-                .padding(vertical = 6.dp, horizontal = 2.dp),
+                .heightIn(min = 48.dp)
+                .widthIn(min = 48.dp)
+                .wrapContentHeight()
+                .padding(horizontal = 6.dp),
         )
     }
 
@@ -344,7 +351,10 @@ private fun Header(
             }
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
-        Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.clickable { onTarget(HeaderTarget.CLOCK) }) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.clickable { onTarget(HeaderTarget.CLOCK) }.heightIn(min = 48.dp),
+        ) {
             Text(
                 timeFmt.format(now),
                 style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize + 8).sp),
@@ -369,7 +379,7 @@ private fun Header(
                 )
             }
         }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             if (config[Keys.HEADER_UNLOCKS]) Item("unlocks", unlocks.toString()) { onTarget(HeaderTarget.UNLOCKS) }
             val pct = status.batteryPct
             if (config[Keys.HEADER_BATTERY] && pct != null) {
@@ -410,7 +420,8 @@ private fun Header(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onStatusTap(name) }
-                        .padding(vertical = 4.dp),
+                        .heightIn(min = 44.dp)
+                        .wrapContentHeight(),
                 )
             }
         }
@@ -426,7 +437,7 @@ private fun SuggestionStrip(items: List<Suggestion>, onPick: (Suggestion) -> Uni
             .testTag("suggestions")
             .padding(vertical = 4.dp),
         contentPadding = PaddingValues(horizontal = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         itemsIndexed(items, key = { _, s ->
             when (s) {
@@ -441,7 +452,7 @@ private fun SuggestionStrip(items: List<Suggestion>, onPick: (Suggestion) -> Uni
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .heightIn(min = 44.dp)
+                    .heightIn(min = 48.dp)
                     .alpha(if (s is Suggestion.App && s.app.profile.quiet) 0.45f else 1f)
                     // The first chip is what Enter / TAB act on: fill it so that is visible.
                     .background(if (index == 0) color.copy(alpha = 0.18f) else Color.Transparent, RoundedCornerShape(4.dp))
@@ -479,7 +490,10 @@ private val REPEATING = setOf(KeyBarKey.UP, KeyBarKey.DOWN, KeyBarKey.LEFT, KeyB
  */
 @Composable
 private fun KeyBar(specs: List<String>, onKey: (KeyBarKey) -> Unit, onText: (String) -> Unit) {
-    Column(Modifier.fillMaxWidth().background(Term.surface)) {
+    Column(
+        Modifier.fillMaxWidth().background(Term.surface),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
         specs.filter { it.isNotBlank() }.forEach { KeyRow(it, onKey, onText) }
     }
 }
@@ -497,7 +511,7 @@ private fun KeyRow(spec: String, onKey: (KeyBarKey) -> Unit, onText: (String) ->
     }
     val bar = Modifier
         .fillMaxWidth()
-        .height(46.dp)
+        .height(48.dp)
         .testTag("keybar")
         .background(Term.surface)
 
@@ -526,7 +540,12 @@ private fun KeyRow(spec: String, onKey: (KeyBarKey) -> Unit, onText: (String) ->
                     }
                 },
         ) {
-            Text(named?.label ?: token, style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold))
+            // Padding inside the touch area (after pointerInput), so the whole key is tappable.
+            Text(
+                named?.label ?: token,
+                style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
         }
     }
 
@@ -549,7 +568,7 @@ private fun KeyRow(spec: String, onKey: (KeyBarKey) -> Unit, onText: (String) ->
         Box(bar) {
             LazyRow(Modifier.fillMaxSize()) {
                 itemsIndexed(keys) { _, (named, token) ->
-                    Key(named, token, Modifier.widthIn(min = 44.dp).padding(horizontal = 8.dp))
+                    Key(named, token, Modifier.widthIn(min = 48.dp))
                 }
             }
             // Fade on the right edge: more keys are available by scrolling.
@@ -564,7 +583,8 @@ private fun KeyRow(spec: String, onKey: (KeyBarKey) -> Unit, onText: (String) ->
     }
 }
 
-private const val FILL_MAX = 10
+// Keys share the row width up to this count; 7 keys stay ≥ 48dp wide on a 360dp screen.
+private const val FILL_MAX = 7
 
 @Composable
 private fun Prompt(
@@ -578,6 +598,7 @@ private fun Prompt(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 52.dp)
             .clickable(onClick = onTapPrompt)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {

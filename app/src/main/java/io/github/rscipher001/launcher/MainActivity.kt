@@ -15,9 +15,11 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.rscipher001.launcher.terminal.TerminalViewModel
 import io.github.rscipher001.launcher.terminal.Screen
+import io.github.rscipher001.launcher.terminal.UiEvent
 import io.github.rscipher001.launcher.data.Backup
 import io.github.rscipher001.launcher.ui.SettingsScreen
 import io.github.rscipher001.launcher.ui.ScriptsScreen
+import io.github.rscipher001.launcher.ui.SetupScreen
 import io.github.rscipher001.launcher.ui.KolahalTheme
 import io.github.rscipher001.launcher.ui.Palettes
 import io.github.rscipher001.launcher.ui.Term
@@ -60,6 +62,9 @@ class MainActivity : ComponentActivity() {
         // Theme follows settings without reading config state in composition (which would recompose
         // the whole tree on every settings change).
         lifecycleScope.launch { vm.config.version.collect { applyTheme() } }
+        lifecycleScope.launch {
+            vm.events.collect { if (it == UiEvent.RequestNotificationPermission) requestNotifications() }
+        }
         setContent {
             KolahalTheme {
                 val editing by vm.editing.collectAsStateWithLifecycle()
@@ -91,6 +96,7 @@ class MainActivity : ComponentActivity() {
                                 exportScript.launch("${s.name}.${s.lang.ext}")
                             },
                         )
+                        Screen.SETUP -> SetupScreen(vm)
                         Screen.TERMINAL -> TerminalScreen(
                             vm,
                             onRequestNotifications = ::requestNotifications,
