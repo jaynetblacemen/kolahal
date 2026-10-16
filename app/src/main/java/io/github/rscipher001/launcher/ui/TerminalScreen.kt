@@ -73,6 +73,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -149,6 +150,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         vm.suggestions(vm.input.text).take(maxSuggestions)
     }
     val showTime = remember(configVersion) { config[Keys.SHOW_TIMESTAMPS] }
+    val commandGap = remember(configVersion) { config[Keys.LOG_SPACING].dp }
     val lineTimeFormat = remember(configVersion) {
         SimpleDateFormat(if (config[Keys.CLOCK_24H]) "HH:mm" else "h:mm", Locale.getDefault())
     }
@@ -188,8 +190,14 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 },
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
         ) {
-            items(reversed, key = { it.id }) { entry ->
-                LogLine(entry, if (showTime) lineTimeFormat else null, onTap = { vm.onTap(entry) }, actions = { vm.actionsFor(entry) })
+            items(reversed, key = { it.id }, contentType = { it.kind }) { entry ->
+                LogLine(
+                    entry = entry,
+                    timeFormat = if (showTime) lineTimeFormat else null,
+                    topGap = if (entry.kind == LogKind.COMMAND) commandGap else 0.dp,
+                    onTap = vm::onTap,
+                    actions = vm::actionsFor,
+                )
             }
         }
         SuggestionStrip(suggestions, onPick = vm::onSuggestion)
@@ -326,20 +334,28 @@ private fun Header(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun LogLine(entry: LogEntry, timeFormat: SimpleDateFormat?, onTap: () -> Unit, actions: () -> List<LogAction>) {
+private fun LogLine(
+    entry: LogEntry,
+    timeFormat: SimpleDateFormat?,
+    topGap: Dp,
+    onTap: (LogEntry) -> Unit,
+    actions: (LogEntry) -> List<LogAction>,
+) {
     var menu by remember { mutableStateOf<List<LogAction>?>(null) }
     val haptics = LocalHapticFeedback.current
-    Box {
+    // Building the styled line is the expensive part of a frame; do it once per entry/theme.
+    val text = remember(entry, timeFormat, Term.palette) { renderLine(entry, timeFormat) }
+    Box(Modifier.padding(top = topGap)) {
         Text(
-            text = renderLine(entry, timeFormat),
+            text = text,
             style = Term.mono,
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
-                    onClick = onTap,
+                    onClick = { onTap(entry) },
                     onLongClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        menu = actions()
+                        menu = actions(entry)
                     },
                 )
                 .padding(vertical = 2.dp),

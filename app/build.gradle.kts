@@ -37,7 +37,8 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
-            signingConfigs.findByName("release")?.let { signingConfig = it }
+            // Without keystore.properties, sign with the debug key so the optimized build is still installable.
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         debug {

@@ -1,5 +1,6 @@
 package io.github.rscipher001.launcher.data
 
+import androidx.compose.runtime.Immutable
 import org.json.JSONObject
 
 enum class LogKind {
@@ -24,6 +25,7 @@ enum class LogKind {
  *
  * Well-known keys are exposed as properties; scripts may attach any extra string keys.
  */
+@Immutable
 data class LogContext(val values: Map<String, String> = emptyMap()) {
     val url: String? get() = values[URL]
     val pkg: String? get() = values[PKG]
@@ -65,6 +67,7 @@ data class LogContext(val values: Map<String, String> = emptyMap()) {
     }
 }
 
+@Immutable
 data class LogEntry(
     val id: Long,
     val ts: Long,

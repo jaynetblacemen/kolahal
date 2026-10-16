@@ -89,13 +89,21 @@ object Term {
         ProfileKind.CLONE -> palette.info
     }
 
+    private var monoCache: Triple<Palette, Int, TextStyle>? = null
+
+    /** Base terminal text style, rebuilt only when the palette or font size changes. */
     val mono: TextStyle
-        get() = TextStyle(
-            fontFamily = FontFamily.Monospace,
-            fontSize = fontSize.sp,
-            lineHeight = (fontSize * 1.36f).sp,
-            color = palette.fg,
-        )
+        get() {
+            val p = palette
+            val size = fontSize
+            monoCache?.let { (cp, cs, style) -> if (cp === p && cs == size) return style }
+            return TextStyle(
+                fontFamily = FontFamily.Monospace,
+                fontSize = size.sp,
+                lineHeight = (size * 1.36f).sp,
+                color = p.fg,
+            ).also { monoCache = Triple(p, size, it) }
+        }
 }
 
 @Composable
