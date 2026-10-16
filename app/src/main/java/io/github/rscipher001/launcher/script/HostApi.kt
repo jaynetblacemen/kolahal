@@ -77,8 +77,15 @@ class HostApi(
             val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date())
             buffer(LogKind.INFO, "── $scriptName · $time ──", LogContext(baseCtx + mapOf(LogContext.RUN_HEADER to "1")))
         }
-        buffer(LogKind.SCRIPT, text, LogContext(baseCtx + Json.toStringMap(ctx)))
+        buffer(LogKind.SCRIPT, text, LogContext(baseCtx + safeCtx(ctx)))
     }
+
+    /**
+     * Context a script may attach to its lines. Launcher-internal keys (tap-to-run commands, script
+     * identity, app grids, error lines) are dropped, so a script can't plant a one-tap `clear all`.
+     */
+    private fun safeCtx(ctx: Map<*, *>?): Map<String, String> =
+        Json.toStringMap(ctx).filterKeys { it !in RESERVED_CTX }
 
     fun logError(text: String) {
         flush()
@@ -87,6 +94,7 @@ class HostApi(
 
     fun notify(title: String, body: String, ctx: Map<*, *>? = null): Boolean {
         effects++
+        flush() // earlier log lines appear before the notification
         val values = Json.toStringMap(ctx)
         // With notifications off for this script, the script's own log lines already show the content.
         if (!notifyEnabled) return false
@@ -102,6 +110,7 @@ class HostApi(
         contentType: String? = null,
         headers: Map<*, *>? = null,
     ): Map<String, Any?> {
+        flush() // show what was logged before a slow request
         val h = Json.toStringMap(headers).toMutableMap()
         if (h.keys.none { it.equals("User-Agent", ignoreCase = true) }) h["User-Agent"] = USER_AGENT
         val m = method.uppercase()
@@ -162,6 +171,7 @@ class HostApi(
     /** Pins a short line for this script into the launcher header; null or empty clears it. */
     fun status(text: String?) {
         effects++
+        flush()
         if (scriptId == null) {
             log("status() only works in saved scripts (it is keyed by script name)")
             return
@@ -181,6 +191,10 @@ class HostApi(
         private const val MAX_SEEN = 500
         private const val STATUS_MAX = 80
         const val STATUS_SCOPE = "status"
+        private val RESERVED_CTX = setOf(
+            LogContext.RUN, LogContext.COMMAND, LogContext.SCRIPT, LogContext.LINE, LogContext.APPS,
+            LogContext.RUN_HEADER, LogContext.DESC, LogContext.PKG, LogContext.CLS, LogContext.USER,
+        )
         private val METHODS_REQUIRING_BODY = setOf("POST", "PUT", "PATCH", "PROPPATCH", "REPORT")
 
         private val client get() = Net.client

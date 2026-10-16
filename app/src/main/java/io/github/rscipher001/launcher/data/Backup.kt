@@ -3,6 +3,7 @@ package io.github.rscipher001.launcher.data
 import android.content.Context
 import android.net.Uri
 import io.github.rscipher001.launcher.apps.AppPrefs
+import io.github.rscipher001.launcher.script.Files
 import io.github.rscipher001.launcher.script.Json
 import io.github.rscipher001.launcher.script.ScriptScheduler
 
@@ -39,15 +40,14 @@ class Backup(private val context: Context) {
                 )
             },
         )
-        context.contentResolver.openOutputStream(uri, "wt")!!.use { it.write(Json.stringify(data).toByteArray()) }
+        Files.writeText(context, uri, Json.stringify(data))
         return all.size
     }
 
-    data class Result(val settings: Int, val aliases: Int, val scripts: Int, val skipped: List<String>)
+    data class Result(val settings: Int, val aliases: Int, val scripts: Int, val disabled: Int, val skipped: List<String>)
 
     fun import(uri: Uri): Result {
-        val text = context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
-            ?: throw IllegalStateException("can't read the file")
+        val text = Files.readText(context, uri)
         val root = Json.parse(text) as? Map<*, *> ?: throw IllegalStateException("not a Kolahal backup")
         if (root["kolahal"] == null) throw IllegalStateException("not a Kolahal backup (missing \"kolahal\")")
         val skipped = ArrayList<String>()
@@ -60,7 +60,13 @@ class Backup(private val context: Context) {
 
         var aliases = 0
         (root["aliases"] as? Map<*, *>)?.forEach { (k, v) ->
-            if (k != null && v != null) { prefs.setAlias(k.toString(), v.toString()); aliases++ }
+            val name = k?.toString()
+            when {
+                name == null || v == null -> Unit
+                // Same rule as `alias`: an alias must never shadow a built-in command.
+                name in BUILT_INS -> skipped += "alias $name (built-in command)"
+                else -> { prefs.setAlias(name, v.toString()); aliases++ }
+            }
         }
 
         (root["apps"] as? Map<*, *>)?.let { apps ->
@@ -69,35 +75,47 @@ class Backup(private val context: Context) {
         }
 
         var count = 0
+        var disabled = 0
         (root["scripts"] as? List<*>)?.filterIsInstance<Map<*, *>>()?.forEach { m ->
             val name = m["name"]?.toString()?.lowercase()
             val lang = m["lang"]?.toString()?.let(ScriptLang::of)
             val code = m["code"]?.toString()
-            if (name == null || lang == null || code == null || !NAME.matches(name)) {
+            if (name == null || lang == null || code == null || !NAME.matches(name) || name in BUILT_INS) {
                 skipped += "script ${m["name"]}"
                 return@forEach
             }
             val existing = scripts.byName(name)
+            var isNew = false
             val script = when {
-                existing == null -> scripts.create(name, lang, code)
+                existing == null -> scripts.create(name, lang, code).also { isNew = true }
                 existing.lang != lang -> { skipped += "script $name (language differs)"; return@forEach }
                 else -> existing.also { if (it.code != code) scripts.saveCode(it.id, code) }
             }
-            (m["every"] as? Number)?.let { scripts.setInterval(script.id, it.toInt()) }
+            (m["every"] as? Number)?.toLong()?.let { every ->
+                val minutes = every.coerceIn(0, 7L * 24 * 60).toInt()
+                scripts.setInterval(script.id, if (minutes in 1 until ScriptScheduler.MIN_INTERVAL_MIN) ScriptScheduler.MIN_INTERVAL_MIN else minutes)
+            }
             (m["at"] as? List<*>)?.let { at ->
                 scripts.setAtTimes(script.id, at.mapNotNull { ScriptScheduler.normalizeTime(it.toString()) }.distinct().sorted())
             }
             (m["notify"] as? Boolean)?.let { scripts.setNotify(script.id, it) }
-            (m["enabled"] as? Boolean)?.let { scripts.setEnabled(script.id, it) }
+            // New scripts from a backup arrive switched off: review them before they run on a timer.
+            if (isNew) {
+                scripts.setEnabled(script.id, false)
+                disabled++
+            } else {
+                (m["enabled"] as? Boolean)?.let { scripts.setEnabled(script.id, it) }
+            }
             runCatching { scripts.byId(script.id)?.let { ScriptScheduler.sync(context, it) } }
             count++
         }
-        return Result(settings, aliases, count, skipped)
+        return Result(settings, aliases, count, disabled, skipped)
     }
 
     companion object {
         const val VERSION = 1
         const val FILE_NAME = "kolahal-backup.json"
         val NAME = Regex("^[a-z0-9_-]{1,40}$")
+        private val BUILT_INS get() = io.github.rscipher001.launcher.terminal.CommandProcessor.COMMANDS.map { it.name }.toSet()
     }
 }

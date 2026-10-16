@@ -48,12 +48,14 @@ sealed interface LogRow {
 fun buildRows(
     entries: List<LogEntry>,
     seenUpTo: Long = Long.MAX_VALUE,
+    unreadUntil: Long = Long.MAX_VALUE,
     zone: ZoneId = ZoneId.systemDefault(),
 ): List<LogRow> {
     val latestCommand = entries.lastOrNull { it.kind == LogKind.COMMAND }?.id ?: Long.MIN_VALUE
     val today = LocalDate.now(zone)
     val isScriptLine = { e: LogEntry -> e.kind == LogKind.SCRIPT || e.ctx.values.containsKey(LogContext.RUN_HEADER) }
-    val unreadCount = entries.count { it.id > seenUpTo && it.kind == LogKind.SCRIPT }
+    val isUnread = { e: LogEntry -> e.id > seenUpTo && e.id <= unreadUntil }
+    val unreadCount = entries.count { isUnread(it) && it.kind == LogKind.SCRIPT }
     val rows = ArrayList<LogRow>(entries.size + 4)
     var previousDay: LocalDate? = null
     var unreadShown = false
@@ -61,7 +63,7 @@ fun buildRows(
         val day = Instant.ofEpochMilli(e.ts).atZone(zone).toLocalDate()
         if (day != previousDay && (previousDay != null || day != today)) rows += LogRow.Day(day)
         previousDay = day
-        val unread = e.id > seenUpTo && isScriptLine(e)
+        val unread = isUnread(e) && isScriptLine(e)
         if (unread && !unreadShown && unreadCount > 0) {
             rows += LogRow.Unread(unreadCount)
             unreadShown = true

@@ -4,6 +4,7 @@ import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlin.math.exp
 
 /**
@@ -24,14 +25,14 @@ class AppPrefs private constructor(context: Context) {
 
     fun setHidden(key: String, hidden: Boolean) {
         apps.edit().apply { if (hidden) putBoolean("hidden:$key", true) else remove("hidden:$key") }.apply()
-        _version.value++
+        _version.update { it + 1 }
     }
 
     fun label(key: String): String? = apps.getString("label:$key", null)
 
     fun setLabel(key: String, label: String?) {
         apps.edit().apply { if (label.isNullOrBlank()) remove("label:$key") else putString("label:$key", label) }.apply()
-        _version.value++
+        _version.update { it + 1 }
     }
 
     fun hiddenKeys(): List<String> =
@@ -47,6 +48,7 @@ class AppPrefs private constructor(context: Context) {
     fun recordLaunch(key: String) {
         val (count, _) = launchStats(key)
         apps.edit().putString("launch:$key", "${count + 1}:${System.currentTimeMillis()}").apply()
+        _version.update { it + 1 } // refreshes the "most used" suggestions
     }
 
     private fun launchStats(key: String): Pair<Int, Long> {
@@ -66,18 +68,23 @@ class AppPrefs private constructor(context: Context) {
 
     // ---- aliases --------------------------------------------------------------------------
 
-    @Volatile private var aliasCache: Map<String, String>? = null
+    private var aliasCache: Map<String, String>? = null
+    private val aliasLock = Any()
 
-    fun aliases(): Map<String, String> = aliasCache ?: aliasPrefs.all
-        .mapNotNull { (k, v) -> (v as? String)?.let { k to it } }.toMap().toSortedMap()
-        .also { aliasCache = it }
+    fun aliases(): Map<String, String> = synchronized(aliasLock) {
+        aliasCache ?: aliasPrefs.all
+            .mapNotNull { (k, v) -> (v as? String)?.let { k to it } }.toMap().toSortedMap()
+            .also { aliasCache = it }
+    }
 
     fun alias(name: String): String? = aliases()[name]
 
     fun setAlias(name: String, expansion: String?) {
-        aliasPrefs.edit().apply { if (expansion == null) remove(name) else putString(name, expansion) }.apply()
-        aliasCache = null
-        _version.value++
+        synchronized(aliasLock) {
+            aliasPrefs.edit().apply { if (expansion == null) remove(name) else putString(name, expansion) }.apply()
+            aliasCache = null
+        }
+        _version.update { it + 1 }
     }
 
     companion object {

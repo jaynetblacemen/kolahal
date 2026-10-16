@@ -23,6 +23,7 @@ import io.github.rscipher001.launcher.script.ScriptMeta
 import io.github.rscipher001.launcher.script.Json
 import io.github.rscipher001.launcher.script.ScriptFolder
 import io.github.rscipher001.launcher.script.ScriptFiles
+import io.github.rscipher001.launcher.script.ScriptLibrary
 import io.github.rscipher001.launcher.script.ScriptTemplates
 import io.github.rscipher001.launcher.data.Backup
 import io.github.rscipher001.launcher.data.ScriptLang
@@ -48,6 +49,9 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
+import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -79,11 +83,16 @@ sealed interface Suggestion {
 data class LogAction(val label: String, val destructive: Boolean = false, val run: () -> Unit)
 
 private const val PAGE = 400
+private const val KEY_PENDING_EXPORT = "pending_export"
 private const val MAX_PAGE = 5000
 
 @OptIn(kotlinx.coroutines.FlowPreview::class)
-class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
+class TerminalViewModel(app: Application, private val state: SavedStateHandle) : AndroidViewModel(app), TerminalUi {
     private val context = app.applicationContext
+
+    /** Reload requests from anywhere (log changes, paging, resume) funnel into one latest-wins pipeline. */
+    private val reloadRequests = MutableStateFlow(0L)
+    private fun requestReload() = reloadRequests.update { it + 1 }
     private val logs = LogRepository.get(app)
     private val appsRepo = AppRepository.get(app)
     private val scripts = ScriptRepository.get(app)
@@ -146,13 +155,17 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     init {
         viewModelScope.launch {
             // Bursts of changes (a script logging many lines, another process) collapse into one reload.
-            logs.version.debounce(40).collectLatest { reload() }
+            combine(logs.version, reloadRequests) { a, b -> a to b }.debounce(40).collectLatest { reload() }
         }
         viewModelScope.launch(Dispatchers.IO) {
-            if (logs.recent(1).isEmpty() && logs.commandHistory(1).isEmpty()) {
+            // A persistent flag, so `clear all` doesn't look like a first run.
+            val prefs = context.getSharedPreferences("launcher", android.content.Context.MODE_PRIVATE)
+            val firstRun = !prefs.getBoolean("intro_shown", false) && logs.recent(1).isEmpty()
+            prefs.edit().putBoolean("intro_shown", true).apply()
+            if (firstRun) {
                 logs.add(LogKind.INFO, "kolahal — a terminal launcher. type 'help' or start typing an app name.")
                 logs.add(LogKind.INFO, "↑/↓ recall commands · tap a line to reuse/open it · long-press for actions")
-                _screen.value = Screen.SETUP // first run: show the setup checklist
+                openScreen(Screen.SETUP) // first run: show the setup checklist
             }
         }
     }
@@ -163,7 +176,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     fun loadOlder() {
         if (_entries.value.size < pageLimit || pageLimit >= MAX_PAGE) return
         pageLimit += PAGE
-        viewModelScope.launch { reload() }
+        requestReload()
     }
 
     private suspend fun reload() {
@@ -176,12 +189,13 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
             scriptList.filter { ScriptMeta.isCommand(it.code) }.map { it.name }
         }
         _entries.value = list
-        _rows.value = withContext(Dispatchers.Default) { buildRows(list, seenUpTo) }
+        _rows.value = withContext(Dispatchers.Default) { buildRows(list, seenUpTo, unreadUntil) }
         history = hist
     }
 
-    /** Snapshot of what was already seen when home was shown; newer script lines are unread. */
-    private var seenUpTo = Long.MAX_VALUE
+    /** Script lines in (seenUpTo, unreadUntil] arrived while the user was away; later ones were seen live. */
+    @Volatile private var seenUpTo = Long.MAX_VALUE
+    @Volatile private var unreadUntil = Long.MAX_VALUE
 
     fun onPause() {
         _entries.value.lastOrNull()?.let { logs.seenUpTo = it.id }
@@ -189,8 +203,11 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
 
     fun onResume() {
         seenUpTo = logs.seenUpTo
+        viewModelScope.launch {
+            unreadUntil = withContext(Dispatchers.IO) { logs.maxId() }
+            requestReload()
+        }
         if (_screen.value == Screen.SETUP) refreshSetup()
-        viewModelScope.launch { reload() }
         unlockCounter.refresh()
         appsRepo.refresh()
     }
@@ -306,8 +323,13 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
             val cmds = names.distinct()
                 .filter { it.startsWith(head) && it != head }
                 .map { Suggestion.Completion(it, "$it ") }
-            val appMatches = appsRepo.search(head).take(12).map { Suggestion.App(it) }
-            return (cmds.take(3) + appMatches)
+            val ranked = appsRepo.searchRanked(head).take(12)
+            // When Enter would launch an app (launch.top + a prefix match), that app is the first,
+            // highlighted chip, so Enter, TAB and the highlight agree.
+            val enterLaunches = config[Keys.LAUNCH_TOP] && ranked.firstOrNull()?.second?.let { it <= 2 } == true &&
+                names.none { it == head }
+            val apps = ranked.map { Suggestion.App(it.first) }
+            return if (enterLaunches) listOf(apps.first()) + cmds.take(3) + apps.drop(1) else cmds.take(3) + apps
         }
         val arg = parts.drop(1).joinToString(" ")
         val last = parts.last()
@@ -527,7 +549,10 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
 
     fun saveScript(script: Script, code: String) {
         _editing.value = script.copy(code = code)
-        io { scripts.saveCode(script.id, code) }
+        io {
+            scripts.saveCode(script.id, code)
+            refreshScriptCaches()
+        }
     }
 
     fun runScript(script: Script, code: String) {
@@ -690,11 +715,21 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         }
     }
 
+    /**
+     * File operations (SAF providers can be slow, e.g. cloud storage) run off the serial command
+     * queue, and failures show as a notice on the GUI page instead of only in the terminal log.
+     */
+    private fun fileOp(label: String, block: suspend () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { block() }.onFailure { notice("$label failed: ${it.message ?: it.javaClass.simpleName}", error = true) }
+        }
+    }
+
     fun importScriptFiles(uris: List<Uri>) {
         if (uris.isEmpty()) return
-        io {
+        fileOp("import") {
             val r = ScriptFiles(context).import(uris)
-            scriptCache.value = scripts.all()
+            refreshScriptCaches()
             notice(
                 buildList {
                     if (r.created.isNotEmpty()) add("added ${r.created.joinToString()}")
@@ -706,39 +741,56 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         }
     }
 
-    /** Script waiting for the "save as" picker to return a destination. */
-    private var pendingExport: Script? = null
-
+    /** Script waiting for the "save as" picker; kept in SavedStateHandle so process death can't lose it. */
     fun beginExportScript(s: Script) {
-        pendingExport = s
+        state[KEY_PENDING_EXPORT] = s.id
     }
 
     fun finishExportScript(uri: Uri?) {
-        val s = pendingExport ?: return
-        pendingExport = null
+        val id = state.get<Long>(KEY_PENDING_EXPORT) ?: return
+        state.remove<Long>(KEY_PENDING_EXPORT)
         if (uri == null) return
-        io {
-            ScriptFiles(context).export(scripts.byId(s.id) ?: s, uri)
+        fileOp("export") {
+            val s = scripts.byId(id) ?: throw IllegalStateException("script was deleted")
+            ScriptFiles(context).export(s, uri)
             notice("exported ${s.name}.${s.lang.ext}")
         }
     }
 
     fun exportBackup(uri: Uri?) {
         if (uri == null) return
-        io { notice("backup saved: settings, aliases, apps and ${Backup(context).export(uri)} scripts") }
+        fileOp("backup") { notice("backup saved: settings, aliases, apps and ${Backup(context).export(uri)} scripts") }
     }
 
     fun importBackup(uri: Uri?) {
         if (uri == null) return
-        io {
+        fileOp("import") {
             val r = Backup(context).import(uri)
             appsRepo.refresh()
-            scriptCache.value = scripts.all()
+            refreshScriptCaches()
             notice(
                 "imported ${r.settings} settings, ${r.aliases} aliases, ${r.scripts} scripts" +
+                    (if (r.disabled > 0) " (${r.disabled} new scripts are off — enable them in Scripts)" else "") +
                     if (r.skipped.isNotEmpty()) " · skipped ${r.skipped.joinToString()}" else ""
             )
         }
+    }
+
+    val library by lazy { ScriptLibrary(context) }
+
+    fun installFromLibrary(entry: ScriptLibrary.Entry) {
+        fileOp("install") {
+            val s = library.install(entry)
+            refreshScriptCaches()
+            notice("installed ${s.name}.${s.lang.ext}" + if (entry.command) " — run it as '${s.name}'" else "")
+        }
+    }
+
+    /** Scripts list + command names, refreshed after edits/imports (not only when the log changes). */
+    private suspend fun refreshScriptCaches() {
+        val list = withContext(Dispatchers.IO) { scripts.all() }
+        scriptCache.value = list
+        _commandNames.value = list.filter { ScriptMeta.isCommand(it.code) }.map { it.name }
     }
 
     fun setConfig(key: ConfigKey<*>, raw: String): Boolean = config.set(key, raw)
@@ -783,6 +835,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     /** Pressing Home while already home: reset the prompt. */
     fun onHomePressed() {
         _editing.value?.let { return }
+        _screen.value = Screen.TERMINAL
         escape()
         _events.tryEmit(UiEvent.ScrollToBottom)
         if (config[Keys.FOCUS_ON_HOME]) _events.tryEmit(UiEvent.FocusPrompt)

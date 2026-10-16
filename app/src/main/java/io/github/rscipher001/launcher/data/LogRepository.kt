@@ -124,14 +124,20 @@ class LogRepository private constructor(private val context: Context) {
     }
 
     /** Keeps the newest [keep] lines and drops anything older than [maxAgeDays]. */
-    fun trim(keep: Int = 5000, maxAgeDays: Int = Config.get(context)[Keys.LOG_KEEP_DAYS]) {
+    /** [maxAgeDays] only from the UI process (the :script process has a stale settings copy). */
+    fun trim(keep: Int = 5000, maxAgeDays: Int? = null) {
         db.writableDatabase.execSQL(
             "DELETE FROM logs WHERE id <= (SELECT id FROM logs ORDER BY id DESC LIMIT 1 OFFSET ?)",
             arrayOf(keep),
         )
+        if (maxAgeDays == null) return
         val cutoff = System.currentTimeMillis() - maxAgeDays * 86_400_000L
-        db.writableDatabase.delete("logs", "ts < ?", arrayOf(cutoff.toString()))
+        // Commands are kept (↑ history); only their output ages out.
+        db.writableDatabase.delete("logs", "ts < ? AND kind != ?", arrayOf(cutoff.toString(), LogKind.COMMAND.key))
     }
+
+    fun maxId(): Long = db.readableDatabase.rawQuery("SELECT COALESCE(MAX(id), 0) FROM logs", null)
+        .use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
 
     /** Newest log id the user has seen (set when home is left), for unread markers. */
     var seenUpTo: Long

@@ -120,6 +120,8 @@ fun ScriptEditor(
     }
 
     BackHandler { close() }
+    // Leaving the app (or the process being killed in the background) must not lose edits.
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { save() }
     LaunchedEffect(script.id) { runCatching { focus.requestFocus() } }
     LaunchedEffect(flashLine) {
         if (flashLine != null) {

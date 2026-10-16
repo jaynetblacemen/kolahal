@@ -136,6 +136,9 @@ fun ScriptsScreen(
                         )
                     )
                 }
+                item(key = "h:lib") { GroupHeader("Library") }
+                item(key = "lib") { LibraryList(vm, scripts) }
+                item(key = "h:mine") { GroupHeader(if (scripts.isEmpty()) "Your scripts" else "Your scripts (${scripts.size})") }
                 if (scripts.isEmpty()) {
                     item(key = "empty") {
                         Text(
@@ -348,4 +351,39 @@ private fun NewScriptDialog(onDismiss: () -> Unit, onCreate: (String, ScriptLang
         confirmButton = { TextButton(enabled = valid, onClick = { onCreate(name, lang, command) }) { Text("Create") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+}
+
+/** Bundled scripts: one tap installs with suggested timers; shows installed / edited / update states. */
+@Composable
+private fun LibraryList(vm: TerminalViewModel, installed: List<Script>) {
+    val lib = vm.library
+    val rows = remember(installed) { lib.entries.map { it to lib.state(it, installed) } }
+    Column(verticalArrangement = Arrangement.spacedBy(androidx.compose.material3.ListItemDefaults.SegmentedGap)) {
+        rows.forEachIndexed { i, (entry, state) ->
+            androidx.compose.material3.SegmentedListItem(
+                shapes = segShapes(i, rows.size),
+                colors = segColors(),
+                overlineContent = {
+                    Text(
+                        "${entry.name}.${entry.lang.ext}" + if (entry.command) " · command" else
+                            if (entry.suggestedEvery > 0) " · every ${CommandProcessor.formatInterval(entry.suggestedEvery)}" else "",
+                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                    )
+                },
+                supportingContent = { Text(entry.description) },
+                trailingContent = {
+                    when (state) {
+                        io.github.rscipher001.launcher.script.ScriptLibrary.State.NOT_INSTALLED ->
+                            FilledTonalButton(onClick = { vm.installFromLibrary(entry) }) { Text("Install") }
+                        io.github.rscipher001.launcher.script.ScriptLibrary.State.UPDATE_AVAILABLE ->
+                            Button(onClick = { vm.installFromLibrary(entry) }) { Text("Update") }
+                        io.github.rscipher001.launcher.script.ScriptLibrary.State.MODIFIED ->
+                            TextButton(onClick = { vm.installFromLibrary(entry) }) { Text("Reset") }
+                        io.github.rscipher001.launcher.script.ScriptLibrary.State.INSTALLED ->
+                            Icon(painterResource(R.drawable.ic_check), "Installed", tint = MaterialTheme.colorScheme.primary)
+                    }
+                },
+            ) { Text(entry.title) }
+        }
+    }
 }

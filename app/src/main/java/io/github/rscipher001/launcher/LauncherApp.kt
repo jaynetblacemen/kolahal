@@ -9,6 +9,8 @@ import androidx.core.content.ContextCompat
 import androidx.work.Configuration
 import io.github.rscipher001.launcher.apps.AppRepository
 import io.github.rscipher001.launcher.data.LogRepository
+import io.github.rscipher001.launcher.data.Config
+import io.github.rscipher001.launcher.data.Keys
 import io.github.rscipher001.launcher.notify.Notifier
 import io.github.rscipher001.launcher.script.ScriptScheduler
 import io.github.rscipher001.launcher.unlock.UnlockCounter
@@ -35,7 +37,7 @@ class LauncherApp : Application(), Configuration.Provider {
         // Re-anchor daily script times (periodic work drifts), restore schedules after updates, trim old log.
         Thread {
             runCatching { ScriptScheduler.syncAll(this) }
-            runCatching { LogRepository.get(this).trim() }
+            runCatching { LogRepository.get(this).trim(maxAgeDays = Config.get(this)[Keys.LOG_KEEP_DAYS]) }
         }.start()
 
         val logs = LogRepository.get(this)

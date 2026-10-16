@@ -122,6 +122,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     val configVersion by vm.config.version.collectAsStateWithLifecycle()
     val config = vm.config
     val listState = rememberLazyListState()
+    val rows by vm.rows.collectAsStateWithLifecycle()
+    val reversedRows = remember(rows) { rows.asReversed() }
     var pinned by remember { mutableStateOf(true) }
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -153,7 +155,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 48)
         }.collect { (scrolling, atBottom) -> if (scrolling) pinned = atBottom }
     }
-    LaunchedEffect(entries.lastOrNull()?.id) {
+    // Keyed on the newest *row* (rows are built after entries), so the scroll targets the new line.
+    LaunchedEffect(reversedRows.firstOrNull()?.key) {
         if (pinned) listState.scrollToItem(0)
     }
     // Near the oldest loaded line (top of the reversed list): load the next page.
@@ -168,8 +171,6 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         if (hasHardwareKeyboard) runCatching { focus.requestFocus() }
     }
 
-    val rows by vm.rows.collectAsStateWithLifecycle()
-    val reversedRows = remember(rows) { rows.asReversed() }
     val maxSuggestions = remember(configVersion) { config[Keys.SUGGESTIONS] }
     val commandNames by vm.commandNames.collectAsStateWithLifecycle()
     val prefsVersion by vm.appPrefsVersion.collectAsStateWithLifecycle()
@@ -487,6 +488,9 @@ enum class KeyBarKey(val label: String) {
     }
 }
 
+/** Marker for a cancelled key press (distinct from the timeout's null). */
+private object CANCELLED
+
 /** Keys that repeat while held. */
 private val REPEATING = setOf(KeyBarKey.UP, KeyBarKey.DOWN, KeyBarKey.LEFT, KeyBarKey.RIGHT, KeyBarKey.BKSP)
 
@@ -531,16 +535,18 @@ private fun KeyRow(spec: String, onKey: (KeyBarKey) -> Unit, onText: (String) ->
                 .pointerInput(named, token) {
                     awaitEachGesture {
                         awaitFirstDown()
-                        press(named, token)
                         if (named !in REPEATING) {
-                            waitForUpOrCancellation()
+                            // Plain keys fire on release, so a drag or scroll that starts on ⏎ does nothing.
+                            if (waitForUpOrCancellation() != null) press(named, token)
                             return@awaitEachGesture
                         }
-                        // Hold to repeat: 400ms delay, then every 50ms until released.
+                        // Hold to repeat: fire now, then after 400ms every 50ms. A drag or scroll consumes the
+                        // pointer (waitForUpOrCancellation returns null) and must stop the repeat.
+                        press(named, token)
                         var delayMs = 400L
                         while (true) {
-                            val released = withTimeoutOrNull(delayMs) { waitForUpOrCancellation() }
-                            if (released != null || currentEvent.changes.none { it.pressed }) break
+                            val outcome = withTimeoutOrNull(delayMs) { waitForUpOrCancellation() ?: CANCELLED }
+                            if (outcome != null) break // released or cancelled; null means still held
                             press(named, token)
                             delayMs = 50L
                         }

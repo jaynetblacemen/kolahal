@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /** A user-tunable setting, edited with `config set <key> <value>`. */
 sealed class ConfigKey<T>(val key: String, val default: T, val help: String) {
@@ -108,13 +109,13 @@ class Config private constructor(private val prefs: SharedPreferences) {
     fun <T> set(key: ConfigKey<T>, raw: String): Boolean {
         val value = key.parse(raw) ?: return false
         prefs.edit().putString(key.key, key.format(value)).apply()
-        _version.value++
+        _version.update { it + 1 }
         return true
     }
 
     fun reset(key: ConfigKey<*>) {
         prefs.edit().remove(key.key).apply()
-        _version.value++
+        _version.update { it + 1 }
     }
 
     fun isDefault(key: ConfigKey<*>) = !prefs.contains(key.key)

@@ -11,6 +11,7 @@ import android.provider.Settings
 import io.github.rscipher001.launcher.apps.AppEntry
 import io.github.rscipher001.launcher.apps.AppPrefs
 import io.github.rscipher001.launcher.script.ScriptMeta
+import io.github.rscipher001.launcher.script.ScriptLibrary
 import io.github.rscipher001.launcher.script.Json
 import io.github.rscipher001.launcher.script.Net
 import io.github.rscipher001.launcher.script.ScriptFolder
@@ -344,8 +345,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             val corrected = (best + " " + rest).trim()
             logs.add(
                 LogKind.ERROR,
-                "command not found: $head — did you mean '$corrected'? (tap to run)",
-                ctx = LogContext.of(LogContext.RUN to corrected),
+                "command not found: $head — did you mean '$corrected'? (tap to put it in the prompt)",
+                ctx = LogContext.of(LogContext.COMMAND to corrected),
             )
         }
     }
@@ -708,6 +709,28 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 ui.pickScriptFolder()
             }
             // Folder sync can be slow on SAF providers; run it off the serial command queue.
+            "lib", "library" -> {
+                val lib = ScriptLibrary(context)
+                val installed = scripts.all()
+                info("script library — 'script install <name>', or browse it in 'scripts'")
+                lib.entries.forEach { e ->
+                    val state = when (lib.state(e, installed)) {
+                        ScriptLibrary.State.NOT_INSTALLED -> ""
+                        ScriptLibrary.State.INSTALLED -> " ✓"
+                        ScriptLibrary.State.MODIFIED -> " (edited)"
+                        ScriptLibrary.State.UPDATE_AVAILABLE -> " (update available)"
+                    }
+                    out("${e.name}.${e.lang.ext}$state", LogContext.of(LogContext.COMMAND to "script install ${e.name}", LogContext.DESC to e.description))
+                }
+            }
+            "install" -> {
+                val lib = ScriptLibrary(context)
+                val entry = lib.entries.firstOrNull { it.name == target?.lowercase()?.substringBefore('.') }
+                    ?: return error("no library script '${target.orEmpty()}' — 'script lib' lists them")
+                val s = lib.install(entry)
+                info("installed ${s.name}.${s.lang.ext}" + (if (entry.command) " — run it as '${s.name}'" else "") +
+                    (if (s.intervalMin > 0) " · every ${formatInterval(s.intervalMin)}" else ""), scriptCtx(s))
+            }
             "export" -> background("export") { info("exported ${folder.export()} scripts + kolahal.json") }
             "import" -> background("import") {
                 val r = folder.import()
@@ -829,7 +852,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("work", "work [on|off|status]", "pause / resume the work profile"),
             CommandSpec("private", "private [on|off|status]", "lock / unlock private space"),
             CommandSpec("unlocks", "unlocks [days]", "unlock counts"),
-            CommandSpec("script", "script <sub> <name>", "ls new edit run every at notify on off rm cat dir export import"),
+            CommandSpec("script", "script <sub> <name>", "ls lib install new edit run every at notify on off rm cat dir export import"),
             CommandSpec("=", "= <expr>", "calculator · = 5 km in mi · = 72 f to c · = 100 usd in eur"),
             CommandSpec("lua", "lua <code>", "evaluate Lua 5.4"),
             CommandSpec("js", "js <code>", "evaluate JavaScript (QuickJS)"),
@@ -874,7 +897,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "battery", "home", "system"),
         )
 
-        val SCRIPT_SUBCOMMANDS = listOf("ls", "new", "edit", "run", "every", "at", "notify", "on", "off", "rm", "cat", "dir", "export", "import")
+        val SCRIPT_SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "rm", "cat", "dir", "export", "import")
 
         fun tokenize(s: String): List<String> {
             val out = ArrayList<String>()

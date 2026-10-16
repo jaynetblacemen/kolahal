@@ -26,9 +26,12 @@ class ScriptFiles(private val context: Context) {
                 skipped += "$fileName (not .lua / .js)"
                 continue
             }
-            val code = context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
-            if (code == null) {
-                skipped += "$fileName (unreadable)"
+            if (name in io.github.rscipher001.launcher.terminal.CommandProcessor.COMMANDS.map { it.name }) {
+                skipped += "$fileName ('$name' is a built-in command)"
+                continue
+            }
+            val code = runCatching { Files.readText(context, uri) }.getOrElse {
+                skipped += "$fileName (${it.message})"
                 continue
             }
             val existing = scripts.byName(name)
@@ -42,7 +45,7 @@ class ScriptFiles(private val context: Context) {
     }
 
     fun export(script: Script, uri: Uri) {
-        context.contentResolver.openOutputStream(uri, "wt")!!.use { it.write(script.code.toByteArray()) }
+        Files.writeText(context, uri, script.code)
     }
 
     private fun displayName(uri: Uri): String? = runCatching {
