@@ -47,6 +47,7 @@ class ScriptRepository private constructor(private val context: Context) {
             put("lang", lang.ext)
             put("code", code)
         })
+        version.incrementAndGet()
         return byName(name)!!
     }
 
@@ -70,10 +71,12 @@ class ScriptRepository private constructor(private val context: Context) {
     fun delete(id: Long) {
         db.writableDatabase.delete("scripts", "id = ?", arrayOf(id.toString()))
         db.writableDatabase.delete("kv", "scope = ?", arrayOf(scopeOf(id)))
+        version.incrementAndGet()
     }
 
     private fun update(id: Long, block: ContentValues.() -> Unit) {
         db.writableDatabase.update("scripts", ContentValues().apply(block), "id = ?", arrayOf(id.toString()))
+        version.incrementAndGet()
     }
 
     private fun query(where: String?, args: Array<String>?): List<Script> {
@@ -103,6 +106,9 @@ class ScriptRepository private constructor(private val context: Context) {
 
     companion object {
         fun scopeOf(scriptId: Long) = "script:$scriptId"
+
+        /** Bumped on every write made in this process; caches compare it to know when to reload. */
+        val version = java.util.concurrent.atomic.AtomicLong()
 
         @Volatile
         private var instance: ScriptRepository? = null

@@ -66,6 +66,10 @@ class KolahalNotificationListener : NotificationListenerService() {
         NotificationStore.put(n, sbn.notification.contentIntent)
         mirror()
         maybeLog(n)
+        io.github.rscipher001.launcher.script.TriggerDispatcher.get(this).fire(
+            "notification",
+            mapOf("app" to n.app, "pkg" to n.pkg, "title" to n.title, "text" to n.text, "time" to n.postTime),
+        )
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification, rankingMap: RankingMap?) {

@@ -142,6 +142,25 @@ object ScriptScheduler {
         )
     }
 
+    /**
+     * One non-interactive run triggered by a device event (`@on`). [payload] becomes the script's
+     * `event` global; it is skipped in the worker if the script was disabled meanwhile.
+     */
+    fun runForEvent(context: Context, scriptId: Long, payload: Map<String, Any?>) {
+        val json = Json.stringify(payload)
+        if (json.toByteArray().size > MAX_INLINE_CODE) return
+        WorkManager.getInstance(context).enqueue(
+            OneTimeWorkRequestBuilder<ScriptWorker>()
+                .setInputData(remoteData(context) {
+                    putLong(ScriptWorker.KEY_SCRIPT_ID, scriptId)
+                    putBoolean(ScriptWorker.KEY_SCHEDULED, true)
+                    putString(ScriptWorker.KEY_EVENT, json)
+                })
+                .addTag("script")
+                .build()
+        )
+    }
+
     /** Evaluates a one-liner typed at the prompt (`lua ...` / `js ...`). */
     fun eval(context: Context, lang: ScriptLang, code: String, name: String? = null): Boolean {
         // WorkManager Data is capped at 10 KB of serialized bytes, not characters.

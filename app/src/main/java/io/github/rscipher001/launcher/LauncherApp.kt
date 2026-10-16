@@ -32,6 +32,8 @@ class LauncherApp : Application(), Configuration.Provider {
 
         AppRepository.get(this).start()
         UnlockCounter.get(this).start()
+        // Runtime receivers + network callback for `@on` scripts (charger/headset need these on Android 8+).
+        io.github.rscipher001.launcher.script.TriggerDispatcher.get(this).start()
         DeviceStatus.get(this).start()
         io.github.rscipher001.launcher.contacts.ContactsRepository.get(this).refresh()
 

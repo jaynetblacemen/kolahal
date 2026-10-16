@@ -35,6 +35,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         val name = script?.name ?: inputData.getString(KEY_NAME) ?: lang.ext
         val repl = script == null
         val args = inputData.getStringArray(KEY_ARGS)?.toList().orEmpty()
+        val event = inputData.getString(KEY_EVENT)?.let { runCatching { Json.parse(it) as? Map<*, *> }.getOrNull() }
 
         val host = HostApi(
             ctx, name, script?.id,
@@ -48,7 +49,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         )
         val status = try {
             val result = withTimeout(TIMEOUT_MS + 2_000) {
-                engine.run(code, name, host, TIMEOUT_MS, repl, args)
+                engine.run(code, name, host, TIMEOUT_MS, repl, args, event)
             }
             host.flush()
             if (result != null) {
@@ -110,6 +111,8 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         const val KEY_ARGS = "args"
         const val KEY_NAME = "name"
         const val KEY_INTERACTIVE = "interactive"
+        /** JSON object for the script's `event` global (event-triggered runs only). */
+        const val KEY_EVENT = "event"
         const val TIMEOUT_MS = 60_000L
     }
 }

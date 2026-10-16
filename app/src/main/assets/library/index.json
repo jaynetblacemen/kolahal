@@ -163,5 +163,16 @@
     "suggestedEvery": 0,
     "suggestedAt": [],
     "notify": false
+  },
+  {
+    "file": "charge-reminder.lua",
+    "name": "charge-reminder",
+    "lang": "lua",
+    "title": "Charge Reminder",
+    "description": "Runs when the charger is plugged in or out (@on charger, unplug): pins \"charging since 14:02 (34%)\" in the header, logs how much the battery gained, and notifies if you unplug below 30%. No network, no timer.",
+    "command": false,
+    "suggestedEvery": 0,
+    "suggestedAt": [],
+    "notify": true
   }
 ]

@@ -40,6 +40,7 @@ profile support and scripts in *Lua 5.4* or *JavaScript (QuickJS)*.
   - Timers by interval (=every 30m=) and/or daily times (=at 08:00,18:30=), with optional
     notifications.
   - Scripts marked =@command= become terminal commands that take arguments.
+  - Event triggers: =@on unlock=, =@on charger= … run a script when something happens on the device.
   - Each run gets a =── hn · 22:40 ──= header and a stable per-script colour; lines that arrived
     while you were away are marked =•= under a "N new since you left" divider.
   - =status(text)= pins a line into the header.
@@ -86,7 +87,7 @@ web       search  yt  wiki  maps  play  url
 feeds     feeds (manager screen)   feed [ls|add <url>|rm|fetch|read|all|open|notify|every|on|off] [id]   rss <url>
           notifs [all|enable|mute <app>|unmute <app>|muted|log on|off|clear]
 profiles  work [on|off|status]   private [on|off|status]
-scripts   scripts (manager)   script ls|lib|install|new|edit|run|cat|rm|on|off|every|at|notify|dir|export|import
+scripts   scripts (manager)   script ls|lib|install|new|edit|run|cat|rm|on|off|every|at|notify|triggers|dir|export|import
           lua <code>   js <code>   = <expression>   status [clear <name|all>]
 terminal  help  history  clear [history|all]  restart [scripts]  alias [name = command]  unalias  config  theme <name>  echo  date
 device    settings  setup  unlocks [days]  notifications  usage-access  battery  home  system
@@ -132,6 +133,37 @@ fails, tapping the error opens the editor at the failing line.
 -- @desc current weather: weather [city]
 local city = argline ~= "" and argline or "London"
 return (http.get("https://wttr.in/" .. city .. "?format=3").body:gsub("%s+$", ""))
+#+end_src
+
+** Event triggers
+
+Besides timers, a script can run when something happens. Add one or more =@on= lines
+(=-- @on unlock= in Lua, =// @on charger, unplug= in JS; commas or spaces separate events):
+
+| Event          | When                                                     | =event= fields                     |
+|----------------+----------------------------------------------------------+------------------------------------|
+| =unlock=       | The device is unlocked (user present)                    | =name=                             |
+| =charger=      | Power connected                                          | =name=, =level=, =plug= (ac/usb/wireless) |
+| =unplug=       | Power disconnected                                       | =name=, =level=                    |
+| =wifi=         | The default network becomes Wi-Fi                        | =name=, =network=                  |
+| =offline=      | No network left                                          | =name=                             |
+| =notification= | A notification reaches the feed (needs notification access) | =name=, =app=, =pkg=, =title=, =text=, =time= |
+| =boot=         | First launcher start after the phone boots               | =name=, =uptime= (seconds)         |
+| =headset=      | A wired headset is plugged in                            | =name=, =type=, =device=, =mic=    |
+
+The payload is the global =event= (=event.name=, =event.level=, …); it is =nil= in Lua and =null=
+in JS when the script runs from a timer, the prompt or the Run button. Only enabled scripts are
+triggered, event runs are non-interactive (no =launcher.run=), and the same script + event runs
+at most once every 30 seconds (=notification=: once per app every 30 seconds). Triggers are
+received while the launcher process is alive, which as the home app is nearly always.
+=script triggers= lists subscribed scripts, =script ls= and the script manager show them, and
+the library's =charge-reminder= is a worked example.
+
+#+begin_src lua
+-- @on notification
+if event.pkg == "com.whatsapp" and (event.text or ""):find("urgent") then
+  notify(event.app, (event.title or "") .. ": " .. event.text)
+end
 #+end_src
 
 * Moving scripts and settings between devices

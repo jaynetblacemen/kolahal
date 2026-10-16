@@ -138,3 +138,7 @@ class Config private constructor(private val prefs: SharedPreferences) {
         }
     }
 }
+
+/** "22:40" or "10:40 PM" per [Keys.CLOCK_24H], for log lines written outside the UI (workers). */
+fun Config.shortTime(millis: Long = System.currentTimeMillis()): String =
+    java.text.SimpleDateFormat(if (this[Keys.CLOCK_24H]) "HH:mm" else "h:mm a", java.util.Locale.getDefault()).format(java.util.Date(millis))

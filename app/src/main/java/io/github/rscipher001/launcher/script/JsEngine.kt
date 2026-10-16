@@ -23,6 +23,7 @@ class JsEngine : ScriptEngine {
         timeoutMs: Long,
         repl: Boolean,
         args: List<String>,
+        event: Map<*, *>?,
     ): String? {
         val js = QuickJs.create(Dispatchers.IO)
         try {
@@ -30,7 +31,8 @@ class JsEngine : ScriptEngine {
             js.evaluationTimeoutMillis = timeoutMs
             bindHost(js, host)
             js.evaluate<Any?>(
-                "globalThis.args = ${Json.stringify(args)}; globalThis.argline = ${Json.stringify(args.joinToString(" "))};",
+                "globalThis.args = ${Json.stringify(args)}; globalThis.argline = ${Json.stringify(args.joinToString(" "))};" +
+                    " globalThis.event = ${Json.stringify(event)};",
                 filename = "args.js",
             )
             if (repl) return js.evaluate<Any?>(code, filename = "$chunkName.js")?.let(::render)

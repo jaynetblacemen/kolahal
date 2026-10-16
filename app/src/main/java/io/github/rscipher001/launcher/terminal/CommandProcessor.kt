@@ -930,6 +930,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val target = args.getOrNull(1)
         when (sub) {
             "ls", "list" -> listScripts()
+            "triggers", "events" -> listTriggers()
             "dir", "folder" -> {
                 folder.uri?.let { info("script folder: ${it.lastPathSegment}") }
                 ui.pickScriptFolder()
@@ -1026,7 +1027,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "cat", "show" -> withScript(target) { s ->
                 s.code.lines().forEachIndexed { i, l -> out("${(i + 1).toString().padStart(3)}  $l", LogContext.of(LogContext.COPY to s.code)) }
             }
-            else -> error("usage: script [ls|new|edit|run|every|at|notify|on|off|rm|cat] <name>")
+            else -> error("usage: script [ls|new|edit|run|every|at|notify|on|off|triggers|rm|cat] <name>")
         }
     }
 
@@ -1046,12 +1047,34 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             val parts = buildList {
                 add(timer)
                 if (ScriptMeta.isCommand(s.code)) add("command")
+                ScriptMeta.events(s.code).takeIf { it.isNotEmpty() }?.let { add("on " + it.joinToString(",")) }
                 if (s.notify) add("notify")
                 if (!s.enabled) add("disabled")
                 add(last)
             }
             out("${s.name}.${s.lang.ext}", scriptCtx(s) + mapOf(LogContext.DESC to parts.joinToString(" · ")))
         }
+    }
+
+    /** Scripts with `@on` lines and the events they run on. */
+    private fun listTriggers() {
+        val subscribed = scripts.all().mapNotNull { s ->
+            val events = ScriptMeta.events(s.code)
+            val unknown = ScriptMeta.unknownEvents(s.code)
+            if (events.isEmpty() && unknown.isEmpty()) null else Triple(s, events, unknown)
+        }
+        if (subscribed.isEmpty()) {
+            info("no script has an @on line — add '-- @on unlock' (Lua) or '// @on charger' (JS)")
+        }
+        subscribed.forEach { (s, events, unknown) ->
+            val parts = buildList {
+                add(if (events.isEmpty()) "no known events" else "on " + events.joinToString(", "))
+                if (unknown.isNotEmpty()) add("unknown: " + unknown.joinToString(", "))
+                if (!s.enabled) add("disabled")
+            }
+            out("${s.name}.${s.lang.ext}", scriptCtx(s) + mapOf(LogContext.DESC to parts.joinToString(" · ")))
+        }
+        info("events: ${ScriptMeta.EVENTS.joinToString(" ")}")
     }
 
     private inline fun withScript(name: String?, action: (Script) -> Unit) {
@@ -1079,7 +1102,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("work", "work [on|off|status]", "pause / resume the work profile"),
             CommandSpec("private", "private [on|off|status]", "lock / unlock private space"),
             CommandSpec("unlocks", "unlocks [days]", "unlock counts"),
-            CommandSpec("script", "script <sub> <name>", "ls lib install new edit run every at notify on off rm cat dir export import"),
+            CommandSpec("script", "script <sub> <name>", "ls lib install new edit run every at notify on off triggers rm cat dir export import"),
             CommandSpec("=", "= <expr>", "calculator · = 5 km in mi · = 72 f to c · = 100 usd in eur"),
             CommandSpec("lua", "lua <code>", "evaluate Lua 5.4"),
             CommandSpec("js", "js <code>", "evaluate JavaScript (QuickJS)"),
@@ -1135,7 +1158,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "battery", "home", "lock", "shade", "accessibility", "system"),
         )
 
-        val SCRIPT_SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "rm", "cat", "dir", "export", "import")
+        val SCRIPT_SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "triggers", "rm", "cat", "dir", "export", "import")
 
         fun tokenize(s: String): List<String> {
             val out = ArrayList<String>()

@@ -1,5 +1,6 @@
 package io.github.rscipher001.launcher.script
 
+import io.github.rscipher001.launcher.data.shortTime
 import android.content.Context
 import io.github.rscipher001.launcher.data.KvStore
 import io.github.rscipher001.launcher.data.LogContext
@@ -76,7 +77,7 @@ class HostApi(
         effects++
         if (scriptId != null && !headerWritten) {
             headerWritten = true
-            val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date())
+            val time = io.github.rscipher001.launcher.data.Config.get(context).shortTime()
             buffer(LogKind.INFO, "── $scriptName · $time ──", LogContext(baseCtx + mapOf(LogContext.RUN_HEADER to "1")))
         }
         buffer(LogKind.SCRIPT, text, LogContext(baseCtx + safeCtx(ctx)))

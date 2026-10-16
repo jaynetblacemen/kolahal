@@ -25,6 +25,7 @@ class LuaEngine : ScriptEngine {
         timeoutMs: Long,
         repl: Boolean,
         args: List<String>,
+        event: Map<*, *>?,
     ): String? = withContext(Dispatchers.IO) {
         val ctx = coroutineContext
         val deadline = System.currentTimeMillis() + timeoutMs
@@ -58,6 +59,8 @@ class LuaEngine : ScriptEngine {
             lua.setGlobal("args")
             lua.push(args.joinToString(" "))
             lua.setGlobal("argline")
+            lua.pushValue(event)
+            lua.setGlobal("event")
             lua.run(PRELUDE)
 
             lua.getGlobal("__kolahal_main")

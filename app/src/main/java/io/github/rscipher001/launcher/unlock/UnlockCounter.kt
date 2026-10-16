@@ -43,6 +43,7 @@ class UnlockCounter private constructor(private val context: Context) {
             override fun onReceive(c: Context, intent: Intent) {
                 val key = dayKey(LocalDate.now())
                 prefs.edit().putInt(key, prefs.getInt(key, 0) + 1).apply()
+                io.github.rscipher001.launcher.script.TriggerDispatcher.get(context).fire("unlock")
                 refresh()
             }
         }, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_NOT_EXPORTED)

@@ -12,6 +12,7 @@ interface ScriptEngine {
      *
      * @param repl when true, the code is a one-liner typed at the prompt and its value is returned.
      * @param args arguments when the script is invoked as a command (`args` / `argline` globals).
+     * @param event payload of the device event that triggered the run (`event` global; nil/null otherwise).
      * @return a printable rendering of the result value, or null when there is nothing to show.
      */
     suspend fun run(
@@ -21,6 +22,7 @@ interface ScriptEngine {
         timeoutMs: Long,
         repl: Boolean,
         args: List<String> = emptyList(),
+        event: Map<*, *>? = null,
     ): String?
 
     companion object {

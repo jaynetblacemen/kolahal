@@ -7,7 +7,7 @@ import io.github.rscipher001.launcher.data.LogContext
 import io.github.rscipher001.launcher.data.LogKind
 import io.github.rscipher001.launcher.data.LogRepository
 import io.github.rscipher001.launcher.notify.Notifier
-import java.text.DateFormat
+import io.github.rscipher001.launcher.data.shortTime
 import java.util.Date
 
 /**
@@ -73,7 +73,7 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             if (feed.notify) notify(ctx, feed, r.newItems)
         }
         if (lines.isEmpty()) return
-        val time = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(ts))
+        val time = io.github.rscipher001.launcher.data.Config.get(applicationContext).shortTime(ts)
         val header = LogRepository.Pending(
             LogKind.INFO, "── feeds · $time ──", "feeds", LogContext.of(LogContext.RUN_HEADER to "1"), ts,
         )

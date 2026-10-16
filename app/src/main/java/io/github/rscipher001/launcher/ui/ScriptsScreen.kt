@@ -36,6 +36,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -169,6 +170,7 @@ private fun ScriptCard(vm: TerminalViewModel, s: Script, onExport: (Script) -> U
     var timesError by remember(s.id) { mutableStateOf(false) }
     val isCommand = remember(s.code) { ScriptMeta.isCommand(s.code) }
     val desc = remember(s.code) { ScriptMeta.description(s.code) }
+    val events = remember(s.code) { ScriptMeta.events(s.code) }
     val df = remember { DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT) }
     val failed = s.lastStatus?.startsWith("error") == true || s.lastStatus == "timeout"
 
@@ -200,6 +202,15 @@ private fun ScriptCard(vm: TerminalViewModel, s: Script, onExport: (Script) -> U
                 color = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
                 maxLines = 3,
             )
+
+            if (events.isNotEmpty()) {
+                Spacer(Modifier.height(16.dp))
+                Text("Runs on", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Set by `@on` lines in the code; edit the script to change them.
+                    events.forEach { e -> SuggestionChip(onClick = {}, enabled = s.enabled, label = { Text("on $e") }) }
+                }
+            }
 
             Spacer(Modifier.height(16.dp))
             Text("Runs every", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
@@ -358,6 +369,7 @@ private fun NewScriptDialog(onDismiss: () -> Unit, onCreate: (String, ScriptLang
 private fun LibraryList(vm: TerminalViewModel, installed: List<Script>) {
     val lib = vm.library
     val rows = remember(installed) { lib.entries.map { it to lib.state(it, installed) } }
+    val events = remember { lib.entries.associate { it.name to ScriptMeta.events(lib.code(it)) } }
     Column(verticalArrangement = Arrangement.spacedBy(androidx.compose.material3.ListItemDefaults.SegmentedGap)) {
         rows.forEachIndexed { i, (entry, state) ->
             androidx.compose.material3.SegmentedListItem(
@@ -365,8 +377,9 @@ private fun LibraryList(vm: TerminalViewModel, installed: List<Script>) {
                 colors = segColors(),
                 overlineContent = {
                     Text(
-                        "${entry.name}.${entry.lang.ext}" + if (entry.command) " · command" else
-                            if (entry.suggestedEvery > 0) " · every ${CommandProcessor.formatInterval(entry.suggestedEvery)}" else "",
+                        "${entry.name}.${entry.lang.ext}" + (if (entry.command) " · command" else
+                            if (entry.suggestedEvery > 0) " · every ${CommandProcessor.formatInterval(entry.suggestedEvery)}" else "") +
+                            events[entry.name].orEmpty().let { if (it.isEmpty()) "" else " · on " + it.joinToString(", ") },
                         style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
                     )
                 },
