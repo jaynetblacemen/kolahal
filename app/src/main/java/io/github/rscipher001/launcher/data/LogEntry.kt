@@ -51,6 +51,11 @@ data class LogContext(val values: Map<String, String> = emptyMap()) {
         const val COMMAND = "command"
         /** A command that runs immediately when the line is tapped (setup checklist, hints). */
         const val RUN = "run"
+        /** Phone number (tap dials) and contact lookup URI (long-press opens the contact). */
+        const val PHONE = "phone"
+        /** An app shortcut id (with PKG/USER): tap starts the shortcut. */
+        const val SHORTCUT = "shortcut"
+        const val CONTACT = "contact"
         /** Source line of a script error (tap opens the editor there). */
         const val LINE = "line"
         /** Marks the header line of a script run. */

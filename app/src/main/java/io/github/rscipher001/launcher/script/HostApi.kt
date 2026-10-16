@@ -32,6 +32,8 @@ class HostApi(
     val scriptName: String,
     private val scriptId: Long?,
     private val notifyEnabled: Boolean,
+    /** Started by the user from the prompt (not a timer): may drive the launcher with launcher.run. */
+    private val interactive: Boolean = false,
 ) {
     private val logs = LogRepository.get(context)
     private val store = KvStore(context, scriptId?.let(ScriptRepository::scopeOf) ?: "repl")
@@ -181,6 +183,88 @@ class HostApi(
         logs.onStatusChanged()
     }
 
+    // ---- device, apps, launcher ----------------------------------------------------------
+
+    fun clipboardSet(text: String) {
+        val cm = context.getSystemService(android.content.ClipboardManager::class.java)
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            cm.setPrimaryClip(android.content.ClipData.newPlainText(scriptName, text))
+        }
+    }
+
+    /** Android only lets the focused app read the clipboard, so this is usually null in timers. */
+    fun clipboardGet(): String? = runCatching {
+        context.getSystemService(android.content.ClipboardManager::class.java)
+            .primaryClip?.getItemAt(0)?.coerceToText(context)?.toString()
+    }.getOrNull()
+
+    fun battery(): Map<String, Any?> {
+        val intent = context.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
+        val level = intent?.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = intent?.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1) ?: -1
+        return mapOf(
+            "level" to if (level >= 0 && scale > 0) level * 100 / scale else null,
+            "charging" to ((intent?.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, 0) ?: 0) != 0),
+        )
+    }
+
+    fun network(): String {
+        val cm = context.getSystemService(android.net.ConnectivityManager::class.java)
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return "offline"
+        return when {
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) -> "cell"
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) -> "eth"
+            else -> "net"
+        }
+    }
+
+    fun unlocksToday(): Int = io.github.rscipher001.launcher.unlock.UnlockCounter.get(context).countFor(java.time.LocalDate.now())
+
+    /** Launchable apps across profiles: [{label, pkg, profile}]. */
+    fun appsList(): List<Map<String, Any?>> {
+        val la = context.getSystemService(android.content.pm.LauncherApps::class.java)
+        val me = android.os.Process.myUserHandle()
+        return la.profiles.flatMap { user ->
+            runCatching { la.getActivityList(null, user) }.getOrDefault(emptyList()).map {
+                mapOf("label" to it.label.toString(), "pkg" to it.componentName.packageName, "profile" to if (user == me) "personal" else "other")
+            }
+        }.sortedBy { (it["label"] as String).lowercase() }
+    }
+
+    /** Recent notifications (needs notification access): [{pkg, app, title, text, time}], newest first. */
+    fun notificationsRecent(limit: Int): List<Any?> {
+        val L = io.github.rscipher001.launcher.notifications.KolahalNotificationListener
+        val raw = KvStore(context, L.MIRROR_SCOPE).get(L.MIRROR_KEY) ?: return emptyList()
+        return (runCatching { Json.parse(raw) as? List<*> }.getOrNull() ?: emptyList<Any?>()).take(limit.coerceIn(0, 50))
+    }
+
+    /** Runs a terminal command in the launcher. Only for scripts started from the prompt. */
+    fun runCommand(command: String): Boolean {
+        if (!interactive) {
+            logError("launcher.run is only available when the script is run from the prompt")
+            return false
+        }
+        flush()
+        context.sendBroadcast(
+            android.content.Intent(ACTION_RUN_COMMAND).setPackage(context.packageName).putExtra(EXTRA_COMMAND, command)
+        )
+        return true
+    }
+
+    /** GET with a per-script cache: returns the stored response if it is younger than [maxAgeSeconds]. */
+    fun httpCached(url: String, maxAgeSeconds: Int): Map<String, Any?> {
+        val key = "http.cache:$url"
+        val cached = store.get(key)?.let { runCatching { Json.parse(it) as? Map<*, *> }.getOrNull() }
+        val at = (cached?.get("at") as? Number)?.toLong() ?: 0L
+        if (cached != null && System.currentTimeMillis() - at < maxAgeSeconds * 1000L) {
+            return mapOf("status" to 200, "ok" to true, "body" to cached["body"], "headers" to emptyMap<String, String>(), "cached" to true)
+        }
+        val resp = httpGet(url)
+        if (resp["ok"] == true) store.set(key, Json.stringify(mapOf("at" to System.currentTimeMillis(), "body" to resp["body"])))
+        return resp + ("cached" to false)
+    }
+
     fun storeGet(key: String): String? = store.get(key)
 
     fun storeSet(key: String, value: String?) = store.set(key, value)
@@ -191,6 +275,8 @@ class HostApi(
         private const val MAX_SEEN = 500
         private const val STATUS_MAX = 80
         const val STATUS_SCOPE = "status"
+        const val ACTION_RUN_COMMAND = "io.github.rscipher001.launcher.RUN_COMMAND"
+        const val EXTRA_COMMAND = "command"
         private val RESERVED_CTX = setOf(
             LogContext.RUN, LogContext.COMMAND, LogContext.SCRIPT, LogContext.LINE, LogContext.APPS,
             LogContext.RUN_HEADER, LogContext.DESC, LogContext.PKG, LogContext.CLS, LogContext.USER,

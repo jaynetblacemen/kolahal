@@ -130,11 +130,12 @@ object ScriptScheduler {
         context.getSharedPreferences("daily_schedule", Context.MODE_PRIVATE).edit().remove("script:$scriptId").apply()
     }
 
-    fun runNow(context: Context, script: Script, args: List<String> = emptyList()) {
+    fun runNow(context: Context, script: Script, args: List<String> = emptyList(), interactive: Boolean = true) {
         WorkManager.getInstance(context).enqueue(
             OneTimeWorkRequestBuilder<ScriptWorker>()
                 .setInputData(remoteData(context) {
                     putLong(ScriptWorker.KEY_SCRIPT_ID, script.id)
+                    putBoolean(ScriptWorker.KEY_INTERACTIVE, interactive)
                     if (args.isNotEmpty()) putStringArray(ScriptWorker.KEY_ARGS, args.toTypedArray())
                 })
                 .build()

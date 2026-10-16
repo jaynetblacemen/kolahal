@@ -137,7 +137,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             when (e) {
                 UiEvent.ScrollToBottom -> { pinned = true; listState.scrollToItem(0) }
                 // Handled by MainActivity so it works from every page (setup, script manager).
-                UiEvent.RequestNotificationPermission -> Unit
+                UiEvent.RequestNotificationPermission, UiEvent.RequestContactsPermission -> Unit
                 UiEvent.FocusPrompt -> {
                     runCatching { focus.requestFocus() }
                     if (!currentHasHardwareKeyboard) currentKeyboard?.show()

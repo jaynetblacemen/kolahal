@@ -225,6 +225,29 @@ class AppRepository private constructor(private val context: Context) {
         prefs.recordLaunch(app.key)
     }
 
+    /**
+     * The app's launcher shortcuts (static, dynamic and pinned). Only available to the default
+     * launcher; returns an empty list otherwise.
+     */
+    fun shortcuts(app: AppEntry): List<android.content.pm.ShortcutInfo> = runCatching {
+        if (!launcherApps.hasShortcutHostPermission()) return emptyList()
+        val query = LauncherApps.ShortcutQuery()
+            .setPackage(app.pkg)
+            .setQueryFlags(
+                LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or
+                    LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST or
+                    LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED
+            )
+        launcherApps.getShortcuts(query, app.profile.user).orEmpty()
+            .filter { it.isEnabled }
+            .sortedBy { it.rank }
+    }.getOrDefault(emptyList())
+
+    fun startShortcut(app: AppEntry, id: String) {
+        launcherApps.startShortcut(app.pkg, id, null, null, app.profile.user)
+        prefs.recordLaunch(app.key)
+    }
+
     fun openAppInfo(app: AppEntry) {
         launcherApps.startAppDetailsActivity(app.component, app.profile.user, null, null)
     }

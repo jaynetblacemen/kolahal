@@ -44,6 +44,7 @@ import java.util.Date
 enum class Screen { TERMINAL, SETTINGS, SCRIPTS, SETUP }
 
 interface TerminalUi {
+    fun requestContactsPermission()
     fun openScreen(screen: Screen)
     fun pickScriptFolder()
     fun openEditor(script: Script)
@@ -107,6 +108,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "lua" -> eval(ScriptLang.LUA, rest)
                 "js" -> eval(ScriptLang.JS, rest)
                 "rss" -> rss(rest)
+                "feed", "feeds" -> feeds(args)
+                "notifs", "notifications-feed" -> notifs(args)
                 "url", "web" -> openUrl(rest)
                 "search", "g" -> search(rest)
                 "yt", "youtube" -> search(rest, "youtube")
@@ -114,6 +117,10 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "maps", "map" -> if (rest.isBlank()) fallbackLaunch(trimmed) else openUri("geo:0,0?q=" + Uri.encode(rest), "maps: $rest")
                 "play", "store" -> if (rest.isBlank()) fallbackLaunch(trimmed) else openUri("market://search?q=" + Uri.encode(rest), "play store: $rest")
                 "usage", "screentime" -> usage(args)
+                "shortcuts" -> withApp(args) { app -> listShortcuts(app) }
+                "call", "dial" -> call(rest)
+                "sms", "text" -> sms(args)
+                "contacts", "contact" -> listContacts(rest)
                 "notifications" -> notifications(args)
                 "setup" -> if (args.firstOrNull() == "text") setupText() else ui.openScreen(Screen.SETUP)
                 "status" -> statusCommand(args)
@@ -265,6 +272,25 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     }
 
     private fun open(args: List<String>) {
+        // `open maps:navigate` starts the shortcut whose label best matches "navigate".
+        val joined = stripFlags(args)
+        if (joined.contains(':')) {
+            val app = apps.search(joined.substringBefore(':'), profileFlag(args)).firstOrNull()
+                ?: return error("no app matches '${joined.substringBefore(':')}'")
+            val wanted = joined.substringAfter(':').trim().lowercase()
+            val shortcut = apps.shortcuts(app).minByOrNull { s ->
+                val label = (s.shortLabel ?: s.longLabel ?: "").toString().lowercase()
+                when {
+                    label == wanted -> 0
+                    label.startsWith(wanted) -> 1
+                    label.contains(wanted) -> 2
+                    else -> 9
+                }
+            }?.takeIf { s -> (s.shortLabel ?: "").toString().lowercase().contains(wanted) || (s.longLabel ?: "").toString().lowercase().contains(wanted) }
+                ?: return error("${app.label} has no shortcut matching '$wanted' — 'shortcuts ${app.label}'")
+            apps.startShortcut(app, shortcut.id)
+            return info("${app.label} › ${shortcut.shortLabel}", appCtx(app))
+        }
         val matches = resolveApp(args)
         if (matches.isEmpty()) {
             error("no app matches '${stripFlags(args)}'")
@@ -490,6 +516,200 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val rate = (rates?.get(to) as? Number)?.toDouble() ?: throw IllegalStateException("unknown currency $to")
         val text = "${Units.format(amount)} $from = ${Units.format(amount * rate)} $to"
         out(text, LogContext.of(LogContext.COPY to Units.format(amount * rate)))
+    }
+
+    private fun listShortcuts(app: AppEntry) {
+        val list = apps.shortcuts(app)
+        if (list.isEmpty()) {
+            return info(
+                if (io.github.rscipher001.launcher.terminal.SetupChecks.isDefaultLauncher(context)) "${app.label} has no shortcuts"
+                else "shortcuts need Kolahal as the default launcher — run 'home'"
+            )
+        }
+        list.forEach { s ->
+            out(
+                "${app.label} › ${s.shortLabel}",
+                appCtx(app) + mapOf(LogContext.SHORTCUT to s.id, LogContext.DESC to (s.longLabel ?: s.shortLabel ?: "").toString()),
+            )
+        }
+    }
+
+    // ---- feeds ------------------------------------------------------------------------------
+
+    /** Built-in RSS/Atom subscriptions (no scripting needed). */
+    private fun feeds(args: List<String>) {
+        val repo = io.github.rscipher001.launcher.feeds.FeedRepository.get(context)
+        val scheduler = io.github.rscipher001.launcher.feeds.FeedScheduler
+        val id = args.getOrNull(1)?.toLongOrNull()
+        when (args.firstOrNull()) {
+            null, "ls", "list" -> {
+                val all = repo.all()
+                if (all.isEmpty()) return info("no feeds yet — feed add <url> (or import OPML in Settings)")
+                all.forEach { f ->
+                    val flags = listOfNotNull(
+                        "${f.unread}/${f.total} unread", "every ${formatInterval(f.intervalMin)}",
+                        if (f.notify) "notify" else null, if (!f.enabled) "off" else null, f.lastStatus,
+                    ).joinToString(" · ")
+                    out(
+                        "#${f.id} ${f.title ?: f.url}",
+                        LogContext.of(LogContext.COMMAND to "feed read ${f.id}", LogContext.COPY to f.url, LogContext.DESC to flags),
+                    )
+                }
+                info("tap a feed to read it · feed read = all unread · feed fetch = refresh now")
+            }
+            "add" -> {
+                val url = args.getOrNull(1) ?: return error("usage: feed add <url>")
+                val feed = runCatching { repo.add(url) }.getOrElse { return error(it.message ?: "bad url") }
+                scheduler.sync(context)
+                scheduler.fetchNow(context, feed.id)
+                info("subscribed #${feed.id} ${feed.url} — fetching…", LogContext.of(LogContext.URL to feed.url))
+            }
+            "rm", "remove" -> {
+                id ?: return error("usage: feed rm <id>")
+                repo.remove(id)
+                scheduler.sync(context)
+                info("removed feed #$id")
+            }
+            "fetch", "refresh" -> {
+                scheduler.fetchNow(context, id)
+                info("fetching ${id?.let { "feed #$it" } ?: "all feeds"}…")
+            }
+            "read", "all" -> {
+                val unreadOnly = args[0] == "read"
+                val items = repo.items(feedId = id, unreadOnly = unreadOnly, limit = 40)
+                if (items.isEmpty()) return info(if (unreadOnly) "nothing unread" else "no items")
+                val names = repo.feeds().associate { it.id to it.shortName }
+                items.forEach {
+                    logs.add(LogKind.SCRIPT, it.title, names[it.feedId] ?: "feed", LogContext.of(LogContext.URL to it.link, LogContext.COPY to it.title))
+                }
+                if (unreadOnly) repo.markAllRead(id)
+            }
+            "open" -> {
+                // Opens every unread item of a feed (or all feeds) in the browser, then marks them read.
+                val items = repo.items(feedId = id, unreadOnly = true, limit = 10).filter { it.link != null }
+                if (items.isEmpty()) return info("nothing unread")
+                items.forEach { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it.link))) }
+                repo.markAllRead(id)
+                info("opened ${items.size} items")
+            }
+            "notify" -> {
+                id ?: return error("usage: feed notify <id> on|off")
+                repo.setNotify(id, args.getOrNull(2) != "off")
+                info("feed #$id notifications ${args.getOrNull(2) ?: "on"}")
+            }
+            "every" -> {
+                val minutes = parseInterval(args.getOrNull(2))
+                if (id == null || minutes == null || minutes <= 0) return error("usage: feed every <id> <30m|2h|…>")
+                repo.setInterval(id, minutes)
+                info("feed #$id every ${formatInterval(minutes.coerceAtLeast(15))}")
+            }
+            "on", "off" -> {
+                id ?: return error("usage: feed ${args[0]} <id>")
+                repo.setEnabled(id, args[0] == "on")
+                scheduler.sync(context)
+                info("feed #$id ${args[0]}")
+            }
+            else -> error("usage: feed [ls|add <url>|rm|fetch|read|all|open|notify|every|on|off] [id]")
+        }
+    }
+
+    // ---- notifications ----------------------------------------------------------------------
+
+    private fun notifs(args: List<String>) {
+        val actions = io.github.rscipher001.launcher.notifications.NotificationActions
+        val store = io.github.rscipher001.launcher.notifications.NotificationStore
+        val prefs = io.github.rscipher001.launcher.notifications.NotifPrefs.get(context)
+        if (!actions.isEnabled(context) && args.firstOrNull() != "enable") {
+            logs.add(LogKind.ERROR, "notification access is off — tap to enable it", ctx = LogContext.of(LogContext.RUN to "notifs enable"))
+            return
+        }
+        when (args.firstOrNull()) {
+            null, "all" -> {
+                val list = if (args.firstOrNull() == "all") store.items.value.take(40) else store.active().take(40)
+                if (list.isEmpty()) return info("no notifications")
+                list.forEach { n ->
+                    logs.add(
+                        LogKind.SCRIPT, n.line, n.app,
+                        LogContext.of(
+                            LogContext.PKG to n.pkg, LogContext.USER to n.userSerial.toString(), LogContext.COPY to n.line,
+                            io.github.rscipher001.launcher.notifications.KolahalNotificationListener.CTX_KEY to n.key,
+                        ),
+                    )
+                }
+            }
+            "enable" -> startActivity(actions.settingsIntent(context))
+            "mute", "unmute" -> withApp(args.drop(1)) { app ->
+                if (args[0] == "mute") prefs.mute(app.pkg) else prefs.unmute(app.pkg)
+                info("${app.label}: notifications ${if (args[0] == "mute") "won't" else "will"} appear in the log")
+            }
+            "muted" -> {
+                val muted = prefs.muted.value
+                if (muted.isEmpty()) info("no muted apps")
+                muted.forEach { pkg -> out(apps.apps.value.firstOrNull { it.pkg == pkg }?.label ?: pkg, LogContext.of(LogContext.COMMAND to "notifs unmute $pkg")) }
+            }
+            "log" -> {
+                prefs.logToTerminal = args.getOrNull(1) != "off"
+                info("notifications ${if (prefs.logToTerminal) "appear" else "no longer appear"} in the log")
+            }
+            "clear" -> {
+                actions.dismissAll()
+                store.clear()
+                info("notifications cleared")
+            }
+            else -> error("usage: notifs [all|enable|mute <app>|unmute <app>|muted|log on|off|clear]")
+        }
+    }
+
+    // ---- contacts ---------------------------------------------------------------------------
+
+    private val contacts = io.github.rscipher001.launcher.contacts.ContactsRepository.get(context)
+
+    /** Resolves a name to one contact; null (with a message) when permission is missing or ambiguous. */
+    private fun resolveContact(query: String): io.github.rscipher001.launcher.contacts.Contact? {
+        if (!contacts.hasPermission()) {
+            logs.add(LogKind.ERROR, "contacts permission needed — tap to allow", ctx = LogContext.of(LogContext.RUN to "contacts --allow"))
+            ui.requestContactsPermission()
+            return null
+        }
+        val matches = contacts.search(query)
+        if (matches.isEmpty()) { error("no contact matches '$query'"); return null }
+        if (matches.size > 1 && !matches[0].name.equals(query, ignoreCase = true)) {
+            matches.take(8).forEach(::contactLine)
+            info("${matches.size} contacts match — tap one to call, long-press for more")
+            return null
+        }
+        return matches[0]
+    }
+
+    private fun contactLine(c: io.github.rscipher001.launcher.contacts.Contact) = out(
+        (if (c.starred) "★ " else "") + c.name,
+        LogContext.of(LogContext.PHONE to c.number, LogContext.CONTACT to c.lookupUri.toString(), LogContext.DESC to "${c.number} · ${c.label}"),
+    )
+
+    private fun call(rest: String) {
+        if (rest.isBlank()) return error("usage: call <name|number>")
+        val number = if (io.github.rscipher001.launcher.contacts.ContactsRepository.looksLikeNumber(rest)) rest else resolveContact(rest)?.number ?: return
+        startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", number, null)))
+        info("dialing $number", LogContext.of(LogContext.PHONE to number))
+    }
+
+    private fun sms(args: List<String>) {
+        val who = args.firstOrNull() ?: return error("usage: sms <name|number> [message]")
+        val number = if (io.github.rscipher001.launcher.contacts.ContactsRepository.looksLikeNumber(who)) who else resolveContact(who)?.number ?: return
+        val body = args.drop(1).joinToString(" ")
+        startActivity(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", number, null)).putExtra("sms_body", body))
+        info("message to $number", LogContext.of(LogContext.PHONE to number))
+    }
+
+    private fun listContacts(query: String) {
+        if (query == "--allow" || !contacts.hasPermission()) {
+            if (contacts.hasPermission()) return info("contacts are allowed")
+            ui.requestContactsPermission()
+            return
+        }
+        val list = if (query.isBlank()) contacts.contacts.value.filter { it.starred }.ifEmpty { contacts.contacts.value.take(20) } else contacts.search(query, 20)
+        if (list.isEmpty()) return info(if (query.isBlank()) "no contacts" else "no contact matches '$query'")
+        list.forEach(::contactLine)
     }
 
     // ---- screen time ------------------------------------------------------------------------
@@ -846,7 +1066,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val COMMANDS = listOf(
             CommandSpec("help", "help", "show this list"),
             CommandSpec("apps", "apps [work|personal|private|hidden] [-l]", "app grid (-l: one per line)"),
-            CommandSpec("open", "open <app> [-w|-p|-s]", "launch an app (or just type its name)"),
+            CommandSpec("open", "open <app>[:shortcut] [-w|-p|-s]", "launch an app or one of its shortcuts"),
+            CommandSpec("shortcuts", "shortcuts <app>", "an app's launcher shortcuts"),
             CommandSpec("info", "info <app> [-w]", "open app info"),
             CommandSpec("uninstall", "uninstall <app> [-w]", "uninstall an app"),
             CommandSpec("work", "work [on|off|status]", "pause / resume the work profile"),
@@ -856,13 +1077,18 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("=", "= <expr>", "calculator · = 5 km in mi · = 72 f to c · = 100 usd in eur"),
             CommandSpec("lua", "lua <code>", "evaluate Lua 5.4"),
             CommandSpec("js", "js <code>", "evaluate JavaScript (QuickJS)"),
-            CommandSpec("rss", "rss <url>", "fetch a feed into the log"),
+            CommandSpec("rss", "rss <url>", "fetch a feed into the log once"),
+            CommandSpec("feed", "feed [add <url>|rm|fetch|read|open|notify|every] [id]", "RSS/Atom subscriptions with unread counts"),
+            CommandSpec("notifs", "notifs [all|enable|mute <app>|muted|clear]", "your notifications in the terminal"),
             CommandSpec("search", "search <query>", "web search (engine: config search.engine)"),
             CommandSpec("yt", "yt <query>", "search YouTube"),
             CommandSpec("wiki", "wiki <query>", "search Wikipedia"),
             CommandSpec("maps", "maps <place>", "find a place in your maps app"),
             CommandSpec("play", "play <query>", "search the Play Store"),
             CommandSpec("usage", "usage [days]", "screen time per app"),
+            CommandSpec("call", "call <name|number>", "dial a contact or number"),
+            CommandSpec("sms", "sms <name|number> [text]", "start a text message"),
+            CommandSpec("contacts", "contacts [query]", "find contacts (favourites when empty)"),
             CommandSpec("url", "url <address>", "open a link"),
             CommandSpec("history", "history", "recent commands (tap to reuse)"),
             CommandSpec("clear", "clear [history|all]", "clear the screen, the ↑ history, or both"),
@@ -889,8 +1115,10 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
 
         /** `help` groups; commands not listed here are shown after the groups. */
         val HELP_SECTIONS = linkedMapOf(
-            "apps" to listOf("open", "apps", "info", "uninstall", "hide", "unhide", "rename", "usage"),
-            "web" to listOf("search", "yt", "wiki", "maps", "play", "url", "rss"),
+            "apps" to listOf("open", "shortcuts", "apps", "info", "uninstall", "hide", "unhide", "rename", "usage"),
+            "people" to listOf("call", "sms", "contacts"),
+            "web" to listOf("search", "yt", "wiki", "maps", "play", "url"),
+            "feeds" to listOf("feed", "rss", "notifs"),
             "profiles" to listOf("work", "private"),
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
             "terminal" to listOf("help", "history", "clear", "restart", "alias", "unalias", "config", "theme", "echo", "date"),

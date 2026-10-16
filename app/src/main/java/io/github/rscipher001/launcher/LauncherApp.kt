@@ -33,10 +33,12 @@ class LauncherApp : Application(), Configuration.Provider {
         AppRepository.get(this).start()
         UnlockCounter.get(this).start()
         DeviceStatus.get(this).start()
+        io.github.rscipher001.launcher.contacts.ContactsRepository.get(this).refresh()
 
         // Re-anchor daily script times (periodic work drifts), restore schedules after updates, trim old log.
         Thread {
             runCatching { ScriptScheduler.syncAll(this) }
+            runCatching { io.github.rscipher001.launcher.feeds.FeedScheduler.sync(this) }
             runCatching { LogRepository.get(this).trim(maxAgeDays = Config.get(this)[Keys.LOG_KEEP_DAYS]) }
         }.start()
 

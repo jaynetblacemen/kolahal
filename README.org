@@ -45,6 +45,24 @@ profile support and scripts in *Lua 5.4* or *JavaScript (QuickJS)*.
     or the system (Material You) colours with =gui.colors system=.
   - *Script manager* (=scripts=): import =.lua= / =.js= files from the file manager, create, run,
     edit, export and delete scripts, and set timers and notifications.
+- Notifications :: With notification access (=setup= → Notification access), new notifications
+  appear in the log in their app's colour. Tap opens the notification, long-press dismisses it or
+  mutes the app. =notifs= lists active ones; =notifs mute <app>=, =notifs log off=.
+- Feeds :: Built-in RSS/Atom subscriptions with unread counts, per-feed intervals and optional
+  notifications: =feed add <url>=, =feed= (list), =feed read [id]=, =feed open=, =feed every 1 2h=.
+- People :: =call <name>= / =sms <name> [text]= with contact suggestions (favourites first);
+  =contacts [query]=. Numbers in the log are tappable.
+- App shortcuts :: =shortcuts <app>= lists an app's launcher shortcuts; =open maps:home= starts one.
+  They are also in every app's long-press sheet.
+- Calculator & units :: === 2^10=, === 5 km in mi=, === 72 f to c=, === 100 usd in eur= (rates cached
+  for six hours).
+- Web :: =search=, =yt=, =wiki=, =maps=, =play=; the engine is =config search.engine= (ddg, google,
+  bing, brave, startpage) or a custom =search.url= containing =%s=.
+- Screen time :: =usage [days]= shows time per app (needs Usage Access).
+- Script library :: 15 ready-made Lua/JS scripts (weather, Hacker News, battery log, …) in the
+  script manager's Library section, or =script lib= / =script install <name>=.
+- Log history :: Scrolling to the top loads older entries; entries older than =log.keepdays= (60)
+  are trimmed. =clear history= forgets the ↑ history but keeps the log.
 - Themes :: green, amber, mono, dracula, solarized, gruvbox, gruvbox-material.
 - Hardware keyboard ::
   - Prompt: =↑/↓= history, =Tab= complete, =Esc= clear, =Enter= run, =Ctrl+L= clear screen,
@@ -55,11 +73,15 @@ profile support and scripts in *Lua 5.4* or *JavaScript (QuickJS)*.
 * Commands
 
 #+begin_example
-apps      open <app> [-w|-p|-s|-c]   apps [work|personal|private|hidden] [-l]
-          info <app>  uninstall <app>  hide / unhide <app>  rename <app> = <name>  search  url
+apps      open <app>[:shortcut] [-w|-p|-s|-c]   apps [work|personal|private|hidden] [-l]   shortcuts <app>
+          info <app>  uninstall <app>  hide / unhide <app>  rename <app> = <name>  usage [days]
+people    call <name|number>   sms <name|number> [text]   contacts [query]
+web       search  yt  wiki  maps  play  url
+feeds     feed [ls|add <url>|rm|fetch|read|all|open|notify|every|on|off] [id]   rss <url>
+          notifs [all|enable|mute <app>|unmute <app>|muted|log on|off|clear]
 profiles  work [on|off|status]   private [on|off|status]
-scripts   scripts (manager)   script ls|new|edit|run|cat|rm|on|off|every|at|notify|dir|export|import
-          lua <code>   js <code>   = <expression>   rss <url>   status [clear <name|all>]
+scripts   scripts (manager)   script ls|lib|install|new|edit|run|cat|rm|on|off|every|at|notify|dir|export|import
+          lua <code>   js <code>   = <expression>   status [clear <name|all>]
 terminal  help  history  clear [history|all]  restart [scripts]  alias [name = command]  unalias  config  theme <name>  echo  date
 device    settings  setup  unlocks [days]  notifications  usage-access  battery  home  system
 #+end_example
@@ -83,6 +105,14 @@ same API:
 | =rss.fetch(url)= / =rss.parse(xml)=                   | ={ title, link, items = [{ title, link, id, date, summary }] }=        |
 | =rss.fresh(url)=                                      | Only items not returned before; marked seen only if the run succeeds.  |
 | =store.get(k)= / =store.set(k, v)=                    | Persistent per-script strings.                                         |
+| =http.cached(url, seconds)=                           | GET, reusing this script's stored response while it is fresh.          |
+| =clipboard.get()= / =clipboard.set(text)=             | =get= is usually nil in timers (only the focused app may read it).     |
+| =device.battery()=                                    | ={ level, charging }=                                                  |
+| =device.network()= / =device.unlocks()=               | ="wifi"=, ="cell"=, ="eth"=, ="offline"= / today's unlock count.       |
+| =apps.list()=                                         | =[{ label, pkg, profile }]=                                            |
+| =notifications.recent(n?)=                            | =[{ pkg, app, title, text, time }]=, newest first (notification access). |
+| =launcher.run(command)=                               | Runs a terminal command; only when the script is run from the prompt.  |
+| =sleep(ms)=                                           | Up to 5000 ms (=await sleep(ms)= in JS).                               |
 | =json.encode= / =json.decode=                         | Lua only (JS has =JSON=).                                              |
 | =args=, =argline=                                     | Arguments when run as a command.                                       |
 

@@ -44,6 +44,12 @@ object SetupChecks {
                 "notifications",
             ),
             SetupCheck(
+                "Notification access",
+                "Your notifications in the terminal (`notifs`) and for scripts",
+                io.github.rscipher001.launcher.notifications.NotificationActions.isEnabled(context),
+                "notifs enable",
+            ),
+            SetupCheck(
                 "Battery unrestricted",
                 "Timer scripts run on schedule instead of being deferred",
                 power.isIgnoringBatteryOptimizations(context.packageName),

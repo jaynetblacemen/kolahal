@@ -36,6 +36,9 @@ class MainActivity : ComponentActivity() {
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { vm.onNotificationPermission(it) }
 
+    private val contactsPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { vm.onContactsPermission(it) }
+
     private val pickFolder =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { vm.onScriptFolderPicked(it) }
 
@@ -63,7 +66,13 @@ class MainActivity : ComponentActivity() {
         // the whole tree on every settings change).
         lifecycleScope.launch { vm.config.version.collect { applyTheme() } }
         lifecycleScope.launch {
-            vm.events.collect { if (it == UiEvent.RequestNotificationPermission) requestNotifications() }
+            vm.events.collect {
+                when (it) {
+                    UiEvent.RequestNotificationPermission -> requestNotifications()
+                    UiEvent.RequestContactsPermission -> contactsPermission.launch(Manifest.permission.READ_CONTACTS)
+                    else -> Unit
+                }
+            }
         }
         setContent {
             KolahalTheme {

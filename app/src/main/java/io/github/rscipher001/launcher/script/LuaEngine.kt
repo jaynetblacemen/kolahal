@@ -86,6 +86,7 @@ class LuaEngine : ScriptEngine {
         lua.table(
             "http",
             "get" to { l: Lua -> l.pushValue(host.httpGet(l.checkString(1), l.mapArg(2))); 1 },
+            "cached" to { l: Lua -> l.pushValue(host.httpCached(l.checkString(1), if (l.getTop() >= 2) l.toInteger(2).toInt() else 600)); 1 },
             "request" to { l: Lua ->
                 val opts = l.mapArg(1) ?: throw IllegalArgumentException("http.request expects a table")
                 l.pushValue(
@@ -100,6 +101,24 @@ class LuaEngine : ScriptEngine {
                 1
             },
         )
+        lua.table(
+            "clipboard",
+            "get" to { l: Lua -> l.pushValue(host.clipboardGet()); 1 },
+            "set" to { l: Lua -> host.clipboardSet(l.checkString(1)); 0 },
+        )
+        lua.table(
+            "device",
+            "battery" to { l: Lua -> l.pushValue(host.battery()); 1 },
+            "network" to { l: Lua -> l.push(host.network()); 1 },
+            "unlocks" to { l: Lua -> l.push(host.unlocksToday().toLong()); 1 },
+        )
+        lua.table("apps", "list" to { l: Lua -> l.pushValue(host.appsList()); 1 })
+        lua.table("notifications", "recent" to { l: Lua -> l.pushValue(host.notificationsRecent(if (l.isNumber(1)) l.toInteger(1).toInt() else 20)); 1 })
+        lua.table("launcher", "run" to { l: Lua -> l.push(host.runCommand(l.checkString(1))); 1 })
+        lua.global("sleep") { l ->
+            Thread.sleep(l.toInteger(1).coerceIn(0, 5_000))
+            0
+        }
         lua.table(
             "rss",
             "fetch" to { l: Lua -> l.pushValue(host.rssFetch(l.checkString(1))); 1 },

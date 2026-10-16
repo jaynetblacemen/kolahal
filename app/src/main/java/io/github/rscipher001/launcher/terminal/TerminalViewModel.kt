@@ -5,6 +5,8 @@ import android.app.Application
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import io.github.rscipher001.launcher.notifications.NotifPrefs
+import io.github.rscipher001.launcher.notifications.NotificationActions
 import android.net.Uri
 import android.provider.AlarmClock
 import android.provider.Settings
@@ -66,6 +68,7 @@ sealed interface UiEvent {
     data object FocusPrompt : UiEvent
     data object HideKeyboard : UiEvent
     data object PickScriptFolder : UiEvent
+    data object RequestContactsPermission : UiEvent
 }
 
 /** Something the user can tap in the suggestion strip. */
@@ -80,6 +83,8 @@ sealed interface Suggestion {
 }
 
 /** One entry of a log line's long-press menu. */
+private const val NOTIF = io.github.rscipher001.launcher.notifications.KolahalNotificationListener.CTX_KEY
+
 data class LogAction(val label: String, val destructive: Boolean = false, val run: () -> Unit)
 
 private const val PAGE = 400
@@ -152,7 +157,22 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     private var historyIndex = -1
     private var draft = ""
 
+    /** launcher.run(cmd) from scripts the user started (see HostApi.runCommand). */
+    private val runCommandReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: android.content.Context, intent: Intent) {
+            intent.getStringExtra(HostApi.EXTRA_COMMAND)?.let(::runCommand)
+        }
+    }
+
+    override fun onCleared() {
+        runCatching { context.unregisterReceiver(runCommandReceiver) }
+    }
+
     init {
+        androidx.core.content.ContextCompat.registerReceiver(
+            context, runCommandReceiver, android.content.IntentFilter(HostApi.ACTION_RUN_COMMAND),
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         viewModelScope.launch {
             // Bursts of changes (a script logging many lines, another process) collapse into one reload.
             combine(logs.version, reloadRequests) { a, b -> a to b }.debounce(40).collectLatest { reload() }
@@ -379,6 +399,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             }
             "theme" -> Keys.THEME.choices.filter { it.startsWith(arg) && it != arg }
                 .map { Suggestion.Completion(it, "theme $it") }
+            "call", "dial", "sms", "text" -> io.github.rscipher001.launcher.contacts.ContactsRepository.get(context)
+                .search(arg, 10).map { Suggestion.Completion((if (it.starred) "★ " else "") + it.name, "$head ${it.name}") }
             "work", "private" -> listOf("on", "off", "status")
                 .filter { it.startsWith(arg) && it != arg }
                 .map { Suggestion.Completion(it, "$head $it") }
@@ -413,6 +435,16 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                 setText(ctx.command ?: entry.text)
                 _events.tryEmit(UiEvent.FocusPrompt)
             }
+            ctx.values[NOTIF] != null -> {
+                // The notification's own tap action if it's still live, otherwise just the app.
+                if (!NotificationActions.open(getApplication(), ctx.values.getValue(NOTIF))) appFor(ctx)?.let { app -> io { processor.launch(app) } }
+            }
+            ctx.values[LogContext.SHORTCUT] != null && appFor(ctx) != null -> {
+                val app = appFor(ctx)!!
+                val id = ctx.values.getValue(LogContext.SHORTCUT)
+                io { runCatching { appsRepo.startShortcut(app, id) }.onFailure { logs.add(LogKind.ERROR, "shortcut unavailable: ${it.message}") } }
+            }
+            ctx.values[LogContext.PHONE] != null -> startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", ctx.values.getValue(LogContext.PHONE), null)))
             ctx.pkg != null -> appFor(ctx)?.let { app -> io { processor.launch(app) } }
             ctx.url != null -> openUrl(ctx.url!!)
         }
@@ -432,6 +464,21 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             val (safe, destructive) = appActions(app).partition { !it.destructive }
             actions += safe
             danger += destructive
+        }
+        ctx.values[NOTIF]?.let { key ->
+            actions += LogAction("Open notification") { if (!NotificationActions.open(getApplication(), key)) appFor(ctx)?.let { app -> io { processor.launch(app) } } }
+            ctx.pkg?.let { pkg ->
+                actions += LogAction("Mute this app's notifications") { NotifPrefs.get(getApplication()).mute(pkg); logs.add(LogKind.INFO, "muted notifications from ${appFor(ctx)?.label ?: pkg}") }
+            }
+            danger += LogAction("Dismiss notification", destructive = true) { NotificationActions.dismiss(key) }
+        }
+        ctx.values[LogContext.PHONE]?.let { number ->
+            actions += LogAction("Call $number") { startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", number, null))) }
+            actions += LogAction("Send a message") { startActivity(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", number, null))) }
+            ctx.values[LogContext.CONTACT]?.let { uri ->
+                actions += LogAction("Open contact") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri))) }
+            }
+            actions += LogAction("Copy number") { copy(number) }
         }
         ctx.url?.let { url ->
             actions += LogAction("Open link") { openUrl(url) }
@@ -478,6 +525,10 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** Actions for one app (log lines and grid chips). */
     fun appActions(app: AppEntry): List<LogAction> = buildList {
         add(LogAction("Launch ${app.label} [${app.profile.kind.tag}]") { io { processor.launch(app) } })
+        // The app's own shortcuts (e.g. "New message"), when Kolahal is the default launcher.
+        appsRepo.shortcuts(app).take(5).forEach { s ->
+            add(LogAction("› ${s.shortLabel}") { io { runCatching { appsRepo.startShortcut(app, s.id) } } })
+        }
         apps.value.firstOrNull { it.pkg == app.pkg && it.profile.serial != app.profile.serial }?.let { twin ->
             add(LogAction("Launch in ${twin.profile.kind.label} profile") { io { processor.launch(twin) } })
         }
@@ -800,6 +851,15 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     // ---- TerminalUi -----------------------------------------------------------------------
 
     override fun openEditor(script: Script) = openEditorAt(script, null)
+
+    override fun requestContactsPermission() {
+        _events.tryEmit(UiEvent.RequestContactsPermission)
+    }
+
+    fun onContactsPermission(granted: Boolean) {
+        if (granted) io.github.rscipher001.launcher.contacts.ContactsRepository.get(context).refresh()
+        io { logs.add(if (granted) LogKind.INFO else LogKind.ERROR, if (granted) "contacts allowed" else "contacts permission denied") }
+    }
 
     override fun pickScriptFolder() {
         _events.tryEmit(UiEvent.PickScriptFolder)

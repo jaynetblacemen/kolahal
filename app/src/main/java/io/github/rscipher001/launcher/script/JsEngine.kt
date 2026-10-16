@@ -61,6 +61,9 @@ class JsEngine : ScriptEngine {
             asyncFunction("get") { args ->
                 io { toJs(host.httpGet(args.req(0), args.getOrNull(1) as? Map<*, *>)) }
             }
+            asyncFunction("cached") { args ->
+                io { toJs(host.httpCached(args.req(0), (args.getOrNull(1) as? Number)?.toInt() ?: 600)) }
+            }
             asyncFunction("request") { args ->
                 val opts = args.getOrNull(0) as? Map<*, *>
                     ?: throw IllegalArgumentException("http.request expects an options object")
@@ -76,6 +79,21 @@ class JsEngine : ScriptEngine {
                     )
                 }
             }
+        }
+        js.define("clipboard") {
+            function("get") { host.clipboardGet() }
+            function("set") { args -> host.clipboardSet(args.req(0)) }
+        }
+        js.define("device") {
+            function("battery") { toJs(host.battery()) }
+            function("network") { host.network() }
+            function("unlocks") { host.unlocksToday() }
+        }
+        js.define("apps") { function("list") { toJs(host.appsList()) } }
+        js.define("notifications") { function("recent") { args -> toJs(host.notificationsRecent((args.getOrNull(0) as? Number)?.toInt() ?: 20)) } }
+        js.define("launcher") { function("run") { args -> host.runCommand(args.req(0)) } }
+        js.asyncFunction("sleep") { args ->
+            kotlinx.coroutines.delay(((args.getOrNull(0) as? Number)?.toLong() ?: 0L).coerceIn(0, 5_000))
         }
         js.define("rss") {
             asyncFunction("fetch") { args -> io { toJs(host.rssFetch(args.req(0))) } }

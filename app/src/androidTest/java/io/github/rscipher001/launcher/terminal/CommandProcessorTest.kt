@@ -31,6 +31,7 @@ class CommandProcessorTest {
     private val ui = object : TerminalUi {
         override fun pickScriptFolder() = Unit
         override fun openScreen(screen: Screen) = Unit
+        override fun requestContactsPermission() = Unit
         override fun openEditor(script: Script) { opened += script }
         override fun requestNotificationPermission() = Unit
         override fun clearScreen() = logs.clearScreen()

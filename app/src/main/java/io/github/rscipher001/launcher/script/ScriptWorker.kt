@@ -36,7 +36,11 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         val repl = script == null
         val args = inputData.getStringArray(KEY_ARGS)?.toList().orEmpty()
 
-        val host = HostApi(ctx, name, script?.id, notifyEnabled = script?.notify ?: true)
+        val host = HostApi(
+            ctx, name, script?.id,
+            notifyEnabled = script?.notify ?: true,
+            interactive = repl || inputData.getBoolean(KEY_INTERACTIVE, false),
+        )
         val engine = ScriptEngine.forLang(lang)
         val started = System.currentTimeMillis()
         val errorCtx = LogContext(
@@ -105,6 +109,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         const val KEY_SCHEDULED = "scheduled"
         const val KEY_ARGS = "args"
         const val KEY_NAME = "name"
+        const val KEY_INTERACTIVE = "interactive"
         const val TIMEOUT_MS = 60_000L
     }
 }
