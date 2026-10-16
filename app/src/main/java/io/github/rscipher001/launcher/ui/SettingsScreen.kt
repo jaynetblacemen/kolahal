@@ -167,6 +167,9 @@ fun SettingsScreen(
                     ActionGroup(
                         listOf(
                             Action(R.drawable.ic_code, "Script manager", "Import .lua / .js files, timers, notifications") { vm.openScreen(Screen.SCRIPTS) },
+                            Action(R.drawable.ic_rss, "Feed manager", "RSS/Atom subscriptions, intervals, OPML import / export") {
+                                vm.openScreen(Screen.FEEDS)
+                            },
                             Action(R.drawable.ic_check, "Setup checklist", "Default launcher, permissions, battery") {
                                 vm.openScreen(Screen.SETUP)
                             },

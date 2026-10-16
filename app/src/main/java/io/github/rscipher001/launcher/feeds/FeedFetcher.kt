@@ -88,7 +88,8 @@ class FeedFetcher(context: Context) {
             )
         })
         val newTitle = parsed.title?.takeIf { feed.title.isNullOrBlank() && it.isNotBlank() }
-        repo.recordFetch(feed.id, "ok ${fresh.size} new", etag, lastModified, newTitle)
+        val status = if (feed.lastFetch == null) "ok · ${parsed.items.size} items" else "ok · ${fresh.size} new"
+        repo.recordFetch(feed.id, status, etag, lastModified, newTitle)
         return fresh
     }
 

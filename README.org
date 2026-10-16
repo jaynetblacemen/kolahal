@@ -54,6 +54,8 @@ profile support and scripts in *Lua 5.4* or *JavaScript (QuickJS)*.
   mutes the app. =notifs= lists active ones; =notifs mute <app>=, =notifs log off=.
 - Feeds :: Built-in RSS/Atom subscriptions with unread counts, per-feed intervals and optional
   notifications: =feed add <url>=, =feed= (list), =feed read [id]=, =feed open=, =feed every 1 2h=.
+  =feeds= opens the feed manager screen: add feeds, read items (tap opens the link and marks it
+  read), per-feed refresh / notifications / interval, and OPML import / export.
 - People :: =call <name>= / =sms <name> [text]= with contact suggestions (favourites first);
   =contacts [query]=. Numbers in the log are tappable.
 - App shortcuts :: =shortcuts <app>= lists an app's launcher shortcuts; =open maps:home= starts one.
@@ -81,7 +83,7 @@ apps      open <app>[:shortcut] [-w|-p|-s|-c]   apps [work|personal|private|hidd
           info <app>  uninstall <app>  hide / unhide <app>  rename <app> = <name>  usage [days]
 people    call <name|number>   sms <name|number> [text]   contacts [query]
 web       search  yt  wiki  maps  play  url
-feeds     feed [ls|add <url>|rm|fetch|read|all|open|notify|every|on|off] [id]   rss <url>
+feeds     feeds (manager screen)   feed [ls|add <url>|rm|fetch|read|all|open|notify|every|on|off] [id]   rss <url>
           notifs [all|enable|mute <app>|unmute <app>|muted|log on|off|clear]
 profiles  work [on|off|status]   private [on|off|status]
 scripts   scripts (manager)   script ls|lib|install|new|edit|run|cat|rm|on|off|every|at|notify|dir|export|import

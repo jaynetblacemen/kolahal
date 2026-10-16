@@ -17,6 +17,7 @@ import io.github.rscipher001.launcher.terminal.TerminalViewModel
 import io.github.rscipher001.launcher.terminal.Screen
 import io.github.rscipher001.launcher.terminal.UiEvent
 import io.github.rscipher001.launcher.data.Backup
+import io.github.rscipher001.launcher.ui.FeedsScreen
 import io.github.rscipher001.launcher.ui.SettingsScreen
 import io.github.rscipher001.launcher.ui.ScriptsScreen
 import io.github.rscipher001.launcher.ui.SetupScreen
@@ -105,6 +106,7 @@ class MainActivity : ComponentActivity() {
                                 exportScript.launch("${s.name}.${s.lang.ext}")
                             },
                         )
+                        Screen.FEEDS -> FeedsScreen(vm, onRequestNotifications = ::requestNotifications)
                         Screen.SETUP -> SetupScreen(vm)
                         Screen.TERMINAL -> TerminalScreen(
                             vm,

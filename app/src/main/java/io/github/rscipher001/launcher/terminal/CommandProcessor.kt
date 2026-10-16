@@ -41,7 +41,7 @@ import java.util.Date
 
 /** UI-only operations the processor cannot do from an application context. */
 /** Full-screen GUI pages besides the terminal (the script editor is separate). */
-enum class Screen { TERMINAL, SETTINGS, SCRIPTS, SETUP }
+enum class Screen { TERMINAL, SETTINGS, SCRIPTS, SETUP, FEEDS }
 
 interface TerminalUi {
     fun requestContactsPermission()
@@ -108,7 +108,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "lua" -> eval(ScriptLang.LUA, rest)
                 "js" -> eval(ScriptLang.JS, rest)
                 "rss" -> rss(rest)
-                "feed", "feeds" -> feeds(args)
+                "feeds" -> if (args.isEmpty()) ui.openScreen(Screen.FEEDS) else feeds(args)
+                "feed" -> feeds(args)
                 "notifs", "notifications-feed" -> notifs(args)
                 "url", "web" -> openUrl(rest)
                 "search", "g" -> search(rest)
@@ -549,7 +550,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         when (args.firstOrNull()) {
             null, "ls", "list" -> {
                 val all = repo.all()
-                if (all.isEmpty()) return info("no feeds yet — feed add <url> (or import OPML in Settings)")
+                if (all.isEmpty()) return info("no feeds yet — feed add <url> (or 'feeds' for the manager and OPML import)")
                 all.forEach { f ->
                     val flags = listOfNotNull(
                         "${f.unread}/${f.total} unread", "every ${formatInterval(f.intervalMin)}",
@@ -1083,7 +1084,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("lua", "lua <code>", "evaluate Lua 5.4"),
             CommandSpec("js", "js <code>", "evaluate JavaScript (QuickJS)"),
             CommandSpec("rss", "rss <url>", "fetch a feed into the log once"),
-            CommandSpec("feed", "feed [add <url>|rm|fetch|read|open|notify|every] [id]", "RSS/Atom subscriptions with unread counts"),
+            CommandSpec("feed", "feed [add <url>|rm|fetch|read|open|notify|every] [id]", "RSS/Atom subscriptions with unread counts (no args: text list)"),
+            CommandSpec("feeds", "feeds", "feed manager screen (add, intervals, notifications, OPML)"),
             CommandSpec("notifs", "notifs [all|enable|mute <app>|muted|clear]", "your notifications in the terminal"),
             CommandSpec("search", "search <query>", "web search (engine: config search.engine)"),
             CommandSpec("yt", "yt <query>", "search YouTube"),
@@ -1126,7 +1128,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "apps" to listOf("open", "shortcuts", "apps", "info", "uninstall", "hide", "unhide", "rename", "usage"),
             "people" to listOf("call", "sms", "contacts"),
             "web" to listOf("search", "yt", "wiki", "maps", "play", "url"),
-            "feeds" to listOf("feed", "rss", "notifs"),
+            "feeds" to listOf("feeds", "feed", "rss", "notifs"),
             "profiles" to listOf("work", "private"),
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
             "terminal" to listOf("help", "history", "clear", "restart", "alias", "unalias", "config", "theme", "echo", "date"),
