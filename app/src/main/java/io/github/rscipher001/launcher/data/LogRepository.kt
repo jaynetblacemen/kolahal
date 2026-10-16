@@ -37,6 +37,30 @@ class LogRepository private constructor(private val context: Context) {
         return id
     }
 
+    data class Pending(val kind: LogKind, val text: String, val source: String?, val ctx: LogContext, val ts: Long)
+
+    /** Inserts several lines in one transaction with a single change notification. */
+    fun addAll(lines: List<Pending>) {
+        if (lines.isEmpty()) return
+        val w = db.writableDatabase
+        w.beginTransaction()
+        try {
+            for (p in lines) {
+                w.insert("logs", null, ContentValues().apply {
+                    put("ts", p.ts)
+                    put("kind", p.kind.key)
+                    put("source", p.source)
+                    put("text", p.text)
+                    put("ctx", p.ctx.toJson())
+                })
+            }
+            w.setTransactionSuccessful()
+        } finally {
+            w.endTransaction()
+        }
+        changed()
+    }
+
     fun recent(limit: Int = 400): List<LogEntry> {
         val out = ArrayList<LogEntry>()
         db.readableDatabase.rawQuery(

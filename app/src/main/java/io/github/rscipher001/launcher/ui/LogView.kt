@@ -138,6 +138,7 @@ fun LogLine(
                 drawRect(gutterColor, topLeft = Offset.Zero, size = Size(2.dp.toPx(), size.height))
             }
             .combinedClickable(
+                onLongClickLabel = "actions",
                 onClick = { onTap(entry) },
                 onLongClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)

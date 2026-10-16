@@ -47,6 +47,26 @@ class HostApi(
     private val baseCtx: Map<String, String> =
         if (scriptId != null) mapOf(LogContext.SCRIPT to scriptName) else emptyMap()
 
+    // Script lines are batched: one transaction and one UI refresh per ~300 ms instead of per line.
+    private val pending = ArrayList<LogRepository.Pending>()
+    private var lastFlush = System.currentTimeMillis()
+
+    private fun buffer(kind: LogKind, text: String, ctx: LogContext) {
+        synchronized(pending) {
+            pending += LogRepository.Pending(kind, text, scriptName, ctx, System.currentTimeMillis())
+            if (pending.size >= 50 || System.currentTimeMillis() - lastFlush > 300) flushLocked()
+        }
+    }
+
+    /** Writes buffered lines; the worker calls this when the run ends (success or failure). */
+    fun flush() = synchronized(pending) { flushLocked() }
+
+    private fun flushLocked() {
+        logs.addAll(pending.toList())
+        pending.clear()
+        lastFlush = System.currentTimeMillis()
+    }
+
     /** Saved scripts get a `── name · 22:40 ──` header before their first line of a run. */
     private var headerWritten = false
 
@@ -55,12 +75,13 @@ class HostApi(
         if (scriptId != null && !headerWritten) {
             headerWritten = true
             val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date())
-            logs.add(LogKind.INFO, "── $scriptName · $time ──", scriptName, LogContext(baseCtx + mapOf(LogContext.RUN_HEADER to "1")))
+            buffer(LogKind.INFO, "── $scriptName · $time ──", LogContext(baseCtx + mapOf(LogContext.RUN_HEADER to "1")))
         }
-        logs.add(LogKind.SCRIPT, text, scriptName, LogContext(baseCtx + Json.toStringMap(ctx)))
+        buffer(LogKind.SCRIPT, text, LogContext(baseCtx + Json.toStringMap(ctx)))
     }
 
     fun logError(text: String) {
+        flush()
         logs.add(LogKind.ERROR, text, scriptName, LogContext(baseCtx))
     }
 

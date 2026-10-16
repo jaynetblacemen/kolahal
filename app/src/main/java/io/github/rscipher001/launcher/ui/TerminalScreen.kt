@@ -225,6 +225,16 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 },
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
         ) {
+            if (reversedRows.isEmpty()) {
+                item(key = "empty-hint") {
+                    Text(
+                        "type an app name or a command · help lists everything · ↑ recalls history · " +
+                            "tap a line to act, long-press for more · ⚙ settings",
+                        style = Term.mono.copy(color = Term.dim),
+                        modifier = Modifier.padding(vertical = 12.dp),
+                    )
+                }
+            }
             items(reversedRows, key = { it.key }, contentType = { if (it is LogRow.Entry) it.entry.kind else it.javaClass }) { row ->
                 when (row) {
                     is LogRow.Day -> DayDivider(row)

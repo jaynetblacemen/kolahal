@@ -117,7 +117,9 @@ class ScriptEngineTest {
 
     @Test fun luaLogWritesContext() {
         val logs = LogRepository.get(context)
-        lua("log('hello from lua', { url = 'https://example.com' })", repl = false)
+        val h = host()
+        runBlocking { LuaEngine().run("log('hello from lua', { url = 'https://example.com' })", "t", h, 5_000, false) }
+        h.flush() // the worker flushes buffered lines at the end of a run
         val last = logs.recent(5).last { it.kind == LogKind.SCRIPT }
         assertEquals("hello from lua", last.text)
         assertEquals("https://example.com", last.ctx.url)

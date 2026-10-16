@@ -47,6 +47,8 @@ import io.github.rscipher001.launcher.ui.KeyBarKey
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -76,6 +78,7 @@ sealed interface Suggestion {
 /** One entry of a log line's long-press menu. */
 data class LogAction(val label: String, val destructive: Boolean = false, val run: () -> Unit)
 
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     private val context = app.applicationContext
     private val logs = LogRepository.get(app)
@@ -136,7 +139,8 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
 
     init {
         viewModelScope.launch {
-            logs.version.collect { reload() }
+            // Bursts of changes (a script logging many lines, another process) collapse into one reload.
+            logs.version.debounce(40).collectLatest { reload() }
         }
         viewModelScope.launch(Dispatchers.IO) {
             if (logs.recent(1).isEmpty() && logs.commandHistory(1).isEmpty()) {

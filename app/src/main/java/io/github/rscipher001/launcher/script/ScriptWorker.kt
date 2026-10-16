@@ -46,6 +46,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             val result = withTimeout(TIMEOUT_MS + 2_000) {
                 engine.run(code, name, host, TIMEOUT_MS, repl, args)
             }
+            host.flush()
             if (result != null) {
                 logs.add(LogKind.OUTPUT, result, name, LogContext.of(LogContext.COPY to result) + errorCtx.values)
             } else if (repl && host.effects == 0) {
@@ -54,11 +55,13 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             host.commit()
             "ok in ${System.currentTimeMillis() - started}ms"
         } catch (e: CancellationException) {
+            host.flush()
             // Only our own timeout is a script failure; WorkManager stopping the worker must propagate.
             if (e !is TimeoutCancellationException) throw e
             logs.add(LogKind.ERROR, "$name: timed out after ${TIMEOUT_MS / 1000}s", name, errorCtx)
             "timeout"
         } catch (e: Throwable) {
+            host.flush()
             val msg = e.message?.lines()?.firstOrNull { it.isNotBlank() } ?: e.javaClass.simpleName
             val line = if (repl) null else errorLine(e, lang, name)
             val extra = buildMap {
