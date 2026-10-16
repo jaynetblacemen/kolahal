@@ -1,9 +1,6 @@
 package io.github.rscipher001.launcher.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -13,35 +10,55 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.rscipher001.launcher.R
+import io.github.rscipher001.launcher.data.Keys
 import io.github.rscipher001.launcher.data.Script
 import io.github.rscipher001.launcher.data.ScriptLang
 import io.github.rscipher001.launcher.script.ScriptMeta
@@ -50,11 +67,11 @@ import io.github.rscipher001.launcher.terminal.TerminalViewModel
 import java.text.DateFormat
 import java.util.Date
 
-private val INTERVALS = listOf(0 to "off", 15 to "15m", 30 to "30m", 60 to "1h", 180 to "3h", 360 to "6h", 720 to "12h", 1440 to "1d")
+private val INTERVALS = listOf(0 to "Off", 15 to "15m", 30 to "30m", 60 to "1h", 180 to "3h", 360 to "6h", 720 to "12h", 1440 to "1d")
 
 /**
- * Script manager: import `.lua` / `.js` files from the file manager, create scripts, and set
- * each script's timers, notifications and state without typing commands.
+ * Script manager (Material 3 Expressive): import `.lua` / `.js` files from the file manager,
+ * create scripts, and set each script's timers, notifications and state without typing commands.
  */
 @Composable
 fun ScriptsScreen(
@@ -64,50 +81,79 @@ fun ScriptsScreen(
 ) {
     val scripts by vm.scriptList.collectAsStateWithLifecycle()
     val notice by vm.notice.collectAsStateWithLifecycle()
+    val version = vm.config.version.collectAsStateWithLifecycle()
+    val useSystemColors by remember { derivedStateOf { version.value; vm.config[Keys.GUI_COLORS] == "system" } }
+    var creating by remember { mutableStateOf(false) }
     BackHandler { vm.closeScreen() }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(Term.bg)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .imePadding()
-    ) {
-        TopBar("scripts", onClose = vm::closeScreen)
-        LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(bottom = 24.dp)) {
-            notice?.let { item { Notice(it) } }
-            item {
-                Section("add")
-                Hint("Import picks one or more .lua / .js files from the file manager; the file name becomes the script name (importing again updates it).")
-                Row(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button("import files…", onImportFiles)
-                }
-                NewScript(vm)
-                Section(if (scripts.isEmpty()) "no scripts yet" else "${scripts.size} scripts")
-            }
-            items(scripts, key = { it.id }) { s -> ScriptCard(vm, s, onExportScript) }
-        }
-    }
-}
+    GuiTheme(useSystemColors) {
+        val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+        val snackbar = remember { SnackbarHostState() }
+        LaunchedEffect(notice) { notice?.let { snackbar.showSnackbar(it) } }
 
-@Composable
-private fun NewScript(vm: TerminalViewModel) {
-    var name by remember { mutableStateOf("") }
-    var lang by remember { mutableStateOf(ScriptLang.LUA) }
-    var command by remember { mutableStateOf(false) }
-    Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Field(name, "new script name", Modifier.weight(1f)) { name = it }
-            Spacer(Modifier.width(8.dp))
-            Button("create") { vm.newScript(name, lang, command) }
+        Scaffold(
+            modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
+            containerColor = MaterialTheme.colorScheme.surface,
+            snackbarHost = { SnackbarHost(snackbar) },
+            topBar = {
+                LargeFlexibleTopAppBar(
+                    title = { Text("Scripts") },
+                    subtitle = { Text(if (scripts.isEmpty()) "Lua 5.4 · JavaScript" else "${scripts.size} scripts") },
+                    navigationIcon = { BackButton(vm::closeScreen) },
+                    actions = {
+                        IconButton(onClick = onImportFiles) {
+                            Icon(painterResource(R.drawable.ic_upload), contentDescription = "Import files")
+                        }
+                    },
+                    scrollBehavior = scroll,
+                )
+            },
+            floatingActionButton = {
+                ExtendedFloatingActionButton(
+                    onClick = { creating = true },
+                    icon = { Icon(painterResource(R.drawable.ic_add), null) },
+                    text = { Text("New script") },
+                )
+            },
+        ) { padding ->
+            LazyColumn(
+                contentPadding = PaddingValues(
+                    start = 16.dp, end = 16.dp,
+                    top = padding.calculateTopPadding() + 8.dp, bottom = padding.calculateBottomPadding() + 96.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                item(key = "import") {
+                    ActionGroup(
+                        listOf(
+                            Action(
+                                R.drawable.ic_upload,
+                                "Import .lua / .js files",
+                                "Pick files from the file manager. The file name becomes the script name; importing again updates it.",
+                                onImportFiles,
+                            ),
+                        )
+                    )
+                }
+                if (scripts.isEmpty()) {
+                    item(key = "empty") {
+                        Text(
+                            "No scripts yet. Import a file or tap “New script”.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        )
+                    }
+                }
+                items(scripts, key = { it.id }) { s -> ScriptCard(vm, s, onExportScript) }
+            }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-            Toggle("lua", lang == ScriptLang.LUA) { lang = ScriptLang.LUA }
-            Spacer(Modifier.width(8.dp))
-            Toggle("js", lang == ScriptLang.JS) { lang = ScriptLang.JS }
-            Spacer(Modifier.width(16.dp))
-            Toggle("@command template", command) { command = !command }
+
+        if (creating) NewScriptDialog(onDismiss = { creating = false }) { name, lang, command ->
+            creating = false
+            vm.newScript(name, lang, command)
         }
     }
 }
@@ -119,134 +165,186 @@ private fun ScriptCard(vm: TerminalViewModel, s: Script, onExport: (Script) -> U
     var times by remember(s.id, s.atTimes) { mutableStateOf(s.atTimes.joinToString(", ")) }
     var timesError by remember(s.id) { mutableStateOf(false) }
     val isCommand = remember(s.code) { ScriptMeta.isCommand(s.code) }
+    val desc = remember(s.code) { ScriptMeta.description(s.code) }
     val df = remember { DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT) }
+    val failed = s.lastStatus?.startsWith("error") == true || s.lastStatus == "timeout"
 
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-            .background(Term.surface, RoundedCornerShape(6.dp))
-            .padding(12.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "${s.name}.${s.lang.ext}" + if (isCommand) "  · command" else "",
-                    style = Term.mono.copy(color = scriptColor(s.name), fontWeight = FontWeight.Bold),
-                )
-                Text(
-                    s.lastRun?.let { "last run ${df.format(Date(it))} · ${s.lastStatus.orEmpty()}" } ?: "never run",
-                    style = Term.mono.copy(color = Term.dim, fontSize = (Term.fontSize - 2).sp),
-                )
+    ElevatedCard(shape = MaterialTheme.shapes.extraLarge, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "${s.name}.${s.lang.ext}",
+                        style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Monospace),
+                        color = scriptColor(s.name),
+                    )
+                    Text(
+                        listOfNotNull(
+                            if (s.lang == ScriptLang.LUA) "Lua" else "JavaScript",
+                            if (isCommand) "command" else null,
+                            desc,
+                        ).joinToString(" · "),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = s.enabled, onCheckedChange = { vm.setScriptEnabled(s, it) })
             }
-            Text("on", style = Term.mono.copy(color = Term.dim, fontSize = (Term.fontSize - 2).sp))
-            Switch(
-                checked = s.enabled,
-                onCheckedChange = { vm.setScriptEnabled(s, it) },
-                colors = SwitchDefaults.colors(checkedTrackColor = Term.prompt, checkedThumbColor = Term.bg),
-            )
-        }
-
-        Label("every")
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            INTERVALS.forEach { (minutes, label) ->
-                Toggle(label, s.intervalMin == minutes) { vm.setScriptInterval(s, minutes) }
-            }
-            if (s.intervalMin > 0 && INTERVALS.none { it.first == s.intervalMin }) {
-                Toggle(CommandProcessor.formatInterval(s.intervalMin), true) {}
-            }
-        }
-
-        Label("daily at (HH:mm, comma separated)")
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Field(times, "e.g. 08:00, 18:30", Modifier.weight(1f), error = timesError) {
-                times = it
-                timesError = false
-            }
-            if (times != s.atTimes.joinToString(", ")) {
-                Spacer(Modifier.width(8.dp))
-                Button("set") { timesError = !vm.setScriptTimes(s, times) }
-            }
-        }
-
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
-            Text("notify", style = Term.mono.copy(color = Term.fg), modifier = Modifier.weight(1f))
-            Switch(
-                checked = s.notify,
-                onCheckedChange = { vm.setScriptNotify(s, it) },
-                colors = SwitchDefaults.colors(checkedTrackColor = Term.prompt, checkedThumbColor = Term.bg),
-            )
-        }
-
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(top = 8.dp),
-        ) {
-            Button("run") { vm.runScriptNow(s) }
-            Button("edit") { vm.openEditor(s) }
-            Button("export…") { onExport(s) }
+            Spacer(Modifier.height(6.dp))
             Text(
-                if (confirmDelete) "tap again to delete" else "delete",
-                style = Term.mono.copy(color = Term.error),
-                modifier = Modifier
-                    .heightIn(min = 44.dp)
-                    .border(1.dp, Term.error.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                    .clickable { if (confirmDelete) vm.deleteScript(s) else confirmDelete = true }
-                    .padding(horizontal = 14.dp, vertical = 11.dp),
+                s.lastRun?.let { "Last run ${df.format(Date(it))} · ${s.lastStatus.orEmpty()}" } ?: "Never run",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                maxLines = 3,
             )
+
+            Spacer(Modifier.height(16.dp))
+            Text("Runs every", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(6.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(INTERVALS) { (minutes, label) ->
+                    FilterChip(
+                        selected = s.intervalMin == minutes,
+                        onClick = { vm.setScriptInterval(s, minutes) },
+                        label = { Text(label) },
+                    )
+                }
+                if (s.intervalMin > 0 && INTERVALS.none { it.first == s.intervalMin }) {
+                    item {
+                        FilterChip(selected = true, onClick = {}, label = { Text(CommandProcessor.formatInterval(s.intervalMin)) })
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = times,
+                onValueChange = { times = it; timesError = false },
+                label = { Text("Daily at") },
+                placeholder = { Text("08:00, 18:30") },
+                singleLine = true,
+                isError = timesError,
+                supportingText = if (timesError) {
+                    { Text("Use HH:mm, separated by commas") }
+                } else null,
+                keyboardOptions = KeyboardOptions(
+                    autoCorrectEnabled = false,
+                    capitalization = KeyboardCapitalization.None,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { timesError = !vm.setScriptTimes(s, times) }),
+                trailingIcon = if (times != s.atTimes.joinToString(", ")) {
+                    {
+                        IconButton(onClick = { timesError = !vm.setScriptTimes(s, times) }) {
+                            Icon(painterResource(R.drawable.ic_check), "Set times")
+                        }
+                    }
+                } else null,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+                Column(Modifier.weight(1f)) {
+                    Text("Notifications", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "notify() posts a notification",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = s.notify, onCheckedChange = { vm.setScriptNotify(s, it) })
+            }
+
+            Spacer(Modifier.height(16.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(onClick = { vm.runScriptNow(s) }) {
+                    Icon(painterResource(R.drawable.ic_play), null, Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text("Run")
+                }
+                FilledTonalButton(onClick = { vm.openEditor(s) }) {
+                    Icon(painterResource(R.drawable.ic_edit), null, Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text("Edit")
+                }
+                OutlinedButton(onClick = { onExport(s) }) {
+                    Icon(painterResource(R.drawable.ic_download), null, Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text("Export")
+                }
+                TextButton(
+                    onClick = { confirmDelete = true },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) {
+                    Icon(painterResource(R.drawable.ic_delete), null, Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text("Delete")
+                }
+            }
         }
+    }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            icon = { Icon(painterResource(R.drawable.ic_delete), null) },
+            title = { Text("Delete ${s.name}.${s.lang.ext}?") },
+            text = { Text("Its timers, stored data and status line are removed too. Export it first to keep a copy.") },
+            confirmButton = {
+                TextButton(
+                    onClick = { confirmDelete = false; vm.deleteScript(s) },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
+        )
     }
 }
 
 @Composable
-private fun Label(text: String) {
-    Text(
-        text,
-        style = Term.mono.copy(color = Term.dim, fontSize = (Term.fontSize - 2).sp),
-        modifier = Modifier.padding(top = 10.dp, bottom = 4.dp),
-    )
-}
-
-@Composable
-private fun Toggle(label: String, on: Boolean, onClick: () -> Unit) {
-    Text(
-        label,
-        style = Term.mono.copy(color = if (on) Term.bg else Term.fg),
-        modifier = Modifier
-            .heightIn(min = 40.dp)
-            .background(if (on) Term.prompt else Term.bg, RoundedCornerShape(4.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 9.dp),
-    )
-}
-
-@Composable
-private fun Field(
-    value: String,
-    placeholder: String,
-    modifier: Modifier,
-    error: Boolean = false,
-    onChange: (String) -> Unit,
-) {
-    BasicTextField(
-        value = value,
-        onValueChange = onChange,
-        singleLine = true,
-        textStyle = Term.mono,
-        cursorBrush = SolidColor(Term.prompt),
-        keyboardOptions = KeyboardOptions(
-            autoCorrectEnabled = false,
-            capitalization = KeyboardCapitalization.None,
-            imeAction = ImeAction.Done,
-        ),
-        keyboardActions = KeyboardActions(),
-        decorationBox = { inner ->
-            if (value.isEmpty()) Text(placeholder, style = Term.mono.copy(color = Term.dim))
-            inner()
+private fun NewScriptDialog(onDismiss: () -> Unit, onCreate: (String, ScriptLang, Boolean) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var lang by remember { mutableStateOf(ScriptLang.LUA) }
+    var command by remember { mutableStateOf(false) }
+    val valid = Regex("^[a-z0-9_-]{1,40}$").matches(name.trim().lowercase())
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(painterResource(R.drawable.ic_code), null) },
+        title = { Text("New script") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    placeholder = { Text("hn, weather, feeds…") },
+                    singleLine = true,
+                    isError = name.isNotEmpty() && !valid,
+                    supportingText = { Text("lowercase letters, digits, - and _") },
+                    keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, capitalization = KeyboardCapitalization.None),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                ConnectedChoices(listOf("Lua", "JavaScript"), if (lang == ScriptLang.LUA) "Lua" else "JavaScript") {
+                    lang = if (it == "Lua") ScriptLang.LUA else ScriptLang.JS
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+                    Checkbox(checked = command, onCheckedChange = { command = it })
+                    Column {
+                        Text("Command template", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "Runs from the prompt by name, with arguments",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
         },
-        modifier = modifier
-            .border(1.dp, if (error) Term.error else Term.dim.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-            .padding(horizontal = 10.dp, vertical = 10.dp),
+        confirmButton = { TextButton(enabled = valid, onClick = { onCreate(name, lang, command) }) { Text("Create") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

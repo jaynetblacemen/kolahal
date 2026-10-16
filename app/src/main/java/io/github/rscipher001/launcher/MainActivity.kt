@@ -22,7 +22,8 @@ import io.github.rscipher001.launcher.ui.KolahalTheme
 import io.github.rscipher001.launcher.ui.Palettes
 import io.github.rscipher001.launcher.ui.Term
 import io.github.rscipher001.launcher.data.Keys
-import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.toArgb
 import io.github.rscipher001.launcher.ui.ScriptEditor
 import io.github.rscipher001.launcher.ui.TerminalScreen
@@ -56,9 +57,10 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
         applyTheme()
+        // Theme follows settings without reading config state in composition (which would recompose
+        // the whole tree on every settings change).
+        lifecycleScope.launch { vm.config.version.collect { applyTheme() } }
         setContent {
-            val configVersion by vm.config.version.collectAsStateWithLifecycle()
-            LaunchedEffect(configVersion) { applyTheme() }
             KolahalTheme {
                 val editing by vm.editing.collectAsStateWithLifecycle()
                 val script = editing

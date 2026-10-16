@@ -43,7 +43,7 @@ object Keys {
     val HEADER_ALARM = ConfigKey.Bool("header.alarm", true, "show the next alarm")
     val HEADER_PROFILES = ConfigKey.Bool("header.profiles", true, "show work/private profile state")
     val HEADER_STATUS = ConfigKey.Bool("header.status", true, "show status lines pinned by scripts")
-    val CLOCK_24H = ConfigKey.Bool("clock.24h", true, "24-hour clock")
+    val CLOCK_24H = ConfigKey.Bool("clock.24h", true, "use 24-hour time in the header and log")
     val KEYBAR = ConfigKey.Text(
         "keybar", DEFAULT_KEYBAR,
         "touch keys, comma separated: ESC TAB UP DOWN LEFT RIGHT HOME END BKSP ENTER SPACE KBD or literal text",
@@ -55,6 +55,7 @@ object Keys {
         listOf("green", "amber", "mono", "dracula", "solarized", "gruvbox", "gruvbox-material"),
         "colour theme",
     )
+    val GUI_COLORS = ConfigKey.Choice("gui.colors", "theme", listOf("theme", "system"), "settings screens follow the terminal theme or the system (Material You) colours")
     val FONT_SIZE = ConfigKey.Num("font.size", 14, 10..24, "terminal font size (sp)")
     val SUGGESTIONS = ConfigKey.Num("suggestions", 12, 0..30, "max suggestions shown while typing")
     val AUTO_LAUNCH = ConfigKey.Bool("launch.single", true, "launch automatically when only one app matches")
@@ -71,7 +72,7 @@ object Keys {
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
-        HEADER_PROFILES, HEADER_STATUS, CLOCK_24H, KEYBAR_SHOW, KEYBAR, KEYBAR2, THEME, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, AUTO_LAUNCH, LAUNCH_TOP,
+        HEADER_PROFILES, HEADER_STATUS, CLOCK_24H, KEYBAR_SHOW, KEYBAR, KEYBAR2, THEME, GUI_COLORS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, AUTO_LAUNCH, LAUNCH_TOP,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, FOCUS_ON_HOME, IME_SUGGESTIONS,
     )
 

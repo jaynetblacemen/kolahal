@@ -97,7 +97,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "work" -> profileToggle(ProfileKind.WORK, args)
                 "private" -> profileToggle(ProfileKind.PRIVATE, args)
                 "unlocks" -> unlocks(args)
-                "clear", "cls" -> ui.clearScreen()
+                "clear", "cls" -> clear(args)
+                "restart", "reboot" -> restart(args)
                 "history" -> history()
                 "scripts" -> if (args.isEmpty()) ui.openScreen(Screen.SCRIPTS) else script(args)
                 "script" -> script(args)
@@ -468,6 +469,46 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         }
     }
 
+    /** `clear` screen · `clear history` ↑ recall · `clear all` everything (log + history). */
+    private fun clear(args: List<String>) {
+        when (args.firstOrNull()) {
+            null, "screen" -> ui.clearScreen()
+            "history" -> {
+                logs.clearHistory()
+                info("command history cleared")
+            }
+            "all", "log" -> logs.clearAll()
+            else -> error("usage: clear [screen|history|all]")
+        }
+    }
+
+    /** `restart` relaunches the launcher; `restart scripts` stops the :script process (stuck scripts). */
+    private fun restart(args: List<String>) {
+        when (args.firstOrNull()) {
+            null, "launcher" -> {
+                info("restarting…")
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    context.startActivity(
+                        Intent(context, io.github.rscipher001.launcher.MainActivity::class.java)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    )
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                }, 300)
+            }
+            "scripts", "script" -> {
+                val am = context.getSystemService(android.app.ActivityManager::class.java)
+                val scriptProcess = am.runningAppProcesses.orEmpty().firstOrNull { it.processName.endsWith(":script") }
+                if (scriptProcess == null) {
+                    info("script process isn't running")
+                } else {
+                    android.os.Process.killProcess(scriptProcess.pid)
+                    info("script process stopped; scheduled scripts will start it again")
+                }
+            }
+            else -> error("usage: restart [scripts]")
+        }
+    }
+
     /** First-run checklist; each unchecked line runs its fix when tapped. */
     fun setup() {
         val power = context.getSystemService(PowerManager::class.java)
@@ -716,7 +757,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("search", "search <query>", "web search"),
             CommandSpec("url", "url <address>", "open a link"),
             CommandSpec("history", "history", "recent commands (tap to reuse)"),
-            CommandSpec("clear", "clear", "clear the screen"),
+            CommandSpec("clear", "clear [history|all]", "clear the screen, the ↑ history, or both"),
+            CommandSpec("restart", "restart [scripts]", "restart the launcher, or stop running scripts"),
             CommandSpec("status", "status [clear <name|all>]", "header lines pinned by scripts"),
             CommandSpec("setup", "setup", "checklist: default home, permissions, battery"),
             CommandSpec("notifications", "notifications", "allow script notifications"),
@@ -742,7 +784,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "apps" to listOf("open", "apps", "info", "uninstall", "hide", "unhide", "rename", "search", "url"),
             "profiles" to listOf("work", "private"),
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "rss", "status"),
-            "terminal" to listOf("help", "history", "clear", "alias", "unalias", "config", "theme", "echo", "date"),
+            "terminal" to listOf("help", "history", "clear", "restart", "alias", "unalias", "config", "theme", "echo", "date"),
             "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "battery", "home", "system"),
         )
 

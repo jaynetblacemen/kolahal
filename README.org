@@ -40,8 +40,9 @@ profile support and scripts in *Lua 5.4* or *JavaScript (QuickJS)*.
     while you were away are marked =•= under a "N new since you left" divider.
   - =status(text)= pins a line into the header.
 - GUI screens ::
-  - *Settings* (=settings= or ⚙): every option as switches, chips, sliders and text fields, plus
-    backup export/import.
+  - *Settings* (=settings= or ⚙): Material 3 Expressive grouped lists with switches, connected button
+    groups, sliders, theme preview cards and backup export/import. Colours follow the terminal theme,
+    or the system (Material You) colours with =gui.colors system=.
   - *Script manager* (=scripts=): import =.lua= / =.js= files from the file manager, create, run,
     edit, export and delete scripts, and set timers and notifications.
 - Themes :: green, amber, mono, dracula, solarized, gruvbox, gruvbox-material.
@@ -59,7 +60,7 @@ apps      open <app> [-w|-p|-s|-c]   apps [work|personal|private|hidden] [-l]
 profiles  work [on|off|status]   private [on|off|status]
 scripts   scripts (manager)   script ls|new|edit|run|cat|rm|on|off|every|at|notify|dir|export|import
           lua <code>   js <code>   = <expression>   rss <url>   status [clear <name|all>]
-terminal  help  history  clear  alias [name = command]  unalias  config  theme <name>  echo  date
+terminal  help  history  clear [history|all]  restart [scripts]  alias [name = command]  unalias  config  theme <name>  echo  date
 device    settings  setup  unlocks [days]  notifications  usage-access  battery  home  system
 #+end_example
 
@@ -166,5 +167,8 @@ MainActivity (HOME) ── TerminalViewModel ── CommandProcessor
 - Signing :: Optional =keystore.properties= keys: =storeFile=, =storePassword=, =keyAlias=,
   =keyPassword=.
 - Use the release build day to day :: Debug Compose builds are noticeably slower to scroll.
+- Compile after sideloading :: A sideloaded APK runs without ahead-of-time compilation until Android
+  compiles it during idle maintenance, so it can feel laggy at first. To compile it immediately, run
+  =adb shell cmd package compile -m speed -f io.github.rscipher001.launcher=.
 - After installing :: Run =setup=. It checks the default launcher, Usage Access, notifications and
   battery optimisation, and each unchecked line fixes itself when tapped.

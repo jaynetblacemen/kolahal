@@ -97,6 +97,19 @@ class LogRepository private constructor(private val context: Context) {
         changed()
     }
 
+    /** Deletes command history (the ↑ list); visible output stays. */
+    fun clearHistory() {
+        db.writableDatabase.delete("logs", "kind = ?", arrayOf(LogKind.COMMAND.key))
+        changed()
+    }
+
+    /** Deletes the whole log, history included. */
+    fun clearAll() {
+        db.writableDatabase.delete("logs", null, null)
+        prefs.edit().putLong(KEY_CLEARED_UP_TO, 0L).apply()
+        changed()
+    }
+
     /** Hides everything currently on screen; command history is kept for recall. */
     fun clearScreen() {
         val maxId = db.readableDatabase.rawQuery("SELECT COALESCE(MAX(id), 0) FROM logs", null)

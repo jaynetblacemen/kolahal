@@ -1,70 +1,113 @@
 package io.github.rscipher001.launcher.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.rscipher001.launcher.R
+import io.github.rscipher001.launcher.data.Config
 import io.github.rscipher001.launcher.data.ConfigKey
 import io.github.rscipher001.launcher.data.Keys
 import io.github.rscipher001.launcher.terminal.Screen
 import io.github.rscipher001.launcher.terminal.TerminalViewModel
 import kotlin.math.roundToInt
 
-/** Settings grouped for the GUI; anything not listed lands in "other". */
+/** Human titles for settings; the description comes from the key's help text. */
+private val TITLES = mapOf(
+    "theme" to "Theme",
+    "gui.colors" to "Settings colours",
+    "font.size" to "Text size",
+    "header.date" to "Date",
+    "clock.24h" to "24-hour clock",
+    "header.unlocks" to "Unlock count",
+    "header.battery" to "Battery",
+    "header.network" to "Network",
+    "header.alarm" to "Next alarm",
+    "header.profiles" to "Work / private state",
+    "header.status" to "Script status lines",
+    "header.device" to "Device name",
+    "log.time" to "Times",
+    "log.dim" to "Dim older output",
+    "log.spacing" to "Space between commands",
+    "launch.top" to "Enter opens the best match",
+    "launch.single" to "Open the only match",
+    "suggestions.idle" to "Most-used apps on empty prompt",
+    "suggestions" to "Suggestions shown",
+    "keybar.show" to "Show the key bar",
+    "keybar" to "Key bar, row 1",
+    "keybar2" to "Key bar, row 2",
+    "keyboard.suggestions" to "Keyboard suggestions",
+    "keyboard.onhome" to "Open keyboard on home",
+)
+
 private val SECTIONS: List<Pair<String, List<ConfigKey<*>>>> = listOf(
-    "appearance" to listOf(Keys.THEME, Keys.FONT_SIZE),
-    "header" to listOf(
+    "Appearance" to listOf(Keys.THEME, Keys.GUI_COLORS, Keys.FONT_SIZE),
+    "Header" to listOf(
         Keys.HEADER_DATE, Keys.CLOCK_24H, Keys.HEADER_UNLOCKS, Keys.HEADER_BATTERY, Keys.HEADER_NETWORK,
         Keys.HEADER_ALARM, Keys.HEADER_PROFILES, Keys.HEADER_STATUS, Keys.HEADER_DEVICE,
     ),
-    "log" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_SPACING),
-    "launching" to listOf(Keys.LAUNCH_TOP, Keys.AUTO_LAUNCH, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS),
-    "keyboard & key bar" to listOf(Keys.KEYBAR_SHOW, Keys.KEYBAR, Keys.KEYBAR2, Keys.IME_SUGGESTIONS, Keys.FOCUS_ON_HOME),
+    "Log" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_SPACING),
+    "Launching" to listOf(Keys.LAUNCH_TOP, Keys.AUTO_LAUNCH, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS),
+    "Keyboard & key bar" to listOf(Keys.KEYBAR_SHOW, Keys.KEYBAR, Keys.KEYBAR2, Keys.IME_SUGGESTIONS, Keys.FOCUS_ON_HOME),
 )
 
 /**
- * GUI for every `config` key plus backup import/export and links to the script manager.
- * Changes apply immediately (the terminal observes the same Config).
+ * Material 3 Expressive settings: grouped segmented lists, switches, connected button groups,
+ * sliders and theme swatches. Each row observes only its own value, so a change redraws one row.
  */
 @Composable
 fun SettingsScreen(
@@ -72,212 +115,262 @@ fun SettingsScreen(
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
 ) {
-    // Recompose on any setting change.
-    val version by vm.config.version.collectAsStateWithLifecycle()
+    val config = vm.config
+    val version = vm.config.version.collectAsStateWithLifecycle()
+    val useSystemColors by remember { derivedStateOf { version.value; config[Keys.GUI_COLORS] == "system" } }
     val notice by vm.notice.collectAsStateWithLifecycle()
     BackHandler { vm.closeScreen() }
-    val listed = SECTIONS.flatMap { it.second }.toSet()
-    val other = Keys.ALL.filter { it !in listed }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(Term.bg)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .imePadding()
-    ) {
-        TopBar("settings", onClose = vm::closeScreen)
-        LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)) {
-            notice?.let { item { Notice(it) } }
-            item {
-                Section("backup")
-                Hint("Settings, aliases, hidden/renamed apps and all scripts in one JSON file — edit it on a computer and import it back.")
-                Row(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button("export…", onExportBackup)
-                    Button("import…", onImportBackup)
+    GuiTheme(useSystemColors) {
+        val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+        val snackbar = remember { SnackbarHostState() }
+        LaunchedEffect(notice) { notice?.let { snackbar.showSnackbar(it) } }
+        val listed = remember { SECTIONS.flatMap { it.second }.toSet() }
+        val other = remember { Keys.ALL.filter { it !in listed } }
+
+        Scaffold(
+            modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
+            containerColor = MaterialTheme.colorScheme.surface,
+            snackbarHost = { SnackbarHost(snackbar) },
+            topBar = {
+                LargeFlexibleTopAppBar(
+                    title = { Text("Settings") },
+                    subtitle = { Text("Kolahal") },
+                    navigationIcon = { BackButton(vm::closeScreen) },
+                    scrollBehavior = scroll,
+                )
+            },
+        ) { padding ->
+            LazyColumn(
+                contentPadding = PaddingValues(
+                    start = 16.dp, end = 16.dp,
+                    top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 32.dp,
+                ),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                item(key = "h:backup") { GroupHeader("Backup") }
+                item(key = "backup") {
+                    ActionGroup(
+                        listOf(
+                            Action(R.drawable.ic_download, "Export settings & scripts", "Save one JSON file you can edit and import anywhere", onExportBackup),
+                            Action(R.drawable.ic_upload, "Import from file", "Load a Kolahal backup JSON", onImportBackup),
+                        )
+                    )
                 }
-                Section("scripts")
-                Row(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button("script manager") { vm.openScreen(Screen.SCRIPTS) }
-                    Button("setup checklist") { vm.closeScreen(); vm.runCommand("setup") }
+                item(key = "h:scripts") { GroupHeader("Scripts") }
+                item(key = "scripts") {
+                    ActionGroup(
+                        listOf(
+                            Action(R.drawable.ic_code, "Script manager", "Import .lua / .js files, timers, notifications") { vm.openScreen(Screen.SCRIPTS) },
+                            Action(R.drawable.ic_check, "Setup checklist", "Default launcher, permissions, battery") {
+                                vm.closeScreen()
+                                vm.runCommand("setup")
+                            },
+                        )
+                    )
                 }
-            }
-            for ((title, keys) in SECTIONS + listOf("other" to other)) {
-                if (keys.isEmpty()) continue
-                item(key = "section:$title") { Section(title) }
-                items(keys, key = { it.key }) { key -> SettingRow(vm, key, version) }
+                for ((title, keys) in SECTIONS + listOf("Other" to other)) {
+                    if (keys.isEmpty()) continue
+                    item(key = "h:$title") { GroupHeader(title) }
+                    keys.forEachIndexed { index, key ->
+                        item(key = key.key) {
+                            SettingItem(vm, config, key, version, index, keys.size)
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun SettingRow(vm: TerminalViewModel, key: ConfigKey<*>, version: Int) {
-    val config = vm.config
-    val changed = !config.isDefault(key)
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(key.key, style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold))
-                Text(key.help, style = Term.mono.copy(color = Term.dim, fontSize = (Term.fontSize - 2).sp))
-            }
-            if (changed) {
-                Text(
-                    "reset",
-                    style = Term.mono.copy(color = Term.link, fontSize = (Term.fontSize - 2).sp),
-                    modifier = Modifier.clickable { vm.resetConfig(key) }.padding(8.dp),
-                )
-            }
-            if (key is ConfigKey.Bool) {
-                Switch(
-                    checked = config[key],
-                    onCheckedChange = { vm.setConfig(key, if (it) "on" else "off") },
-                    colors = SwitchDefaults.colors(checkedTrackColor = Term.prompt, checkedThumbColor = Term.bg),
-                )
-            }
-        }
-        when (key) {
-            is ConfigKey.Choice -> ChoiceChips(key.choices, config[key]) { vm.setConfig(key, it) }
-            is ConfigKey.Num -> NumberSlider(key, config[key], version) { vm.setConfig(key, it.toString()) }
-            is ConfigKey.Text -> TextSetting(config[key], version) { vm.setConfig(key, it) }
-            is ConfigKey.Bool -> Unit
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ChoiceChips(choices: List<String>, selected: String, onPick: (String) -> Unit) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(top = 8.dp),
-    ) {
-        choices.forEach { c ->
-            val on = c == selected
+private fun SettingItem(vm: TerminalViewModel, config: Config, key: ConfigKey<*>, version: State<Int>, index: Int, count: Int) {
+    // Only this row recomposes when its own value changes.
+    val value by remember(key) { derivedStateOf { version.value; config.display(key) } }
+    val changed by remember(key) { derivedStateOf { version.value; !config.isDefault(key) } }
+    val shapes = segShapes(index, count)
+    val title = TITLES[key.key] ?: key.key
+    val supporting: @Composable () -> Unit = {
+        Column {
+            Text(key.help)
             Text(
-                c,
-                style = Term.mono.copy(color = if (on) Term.bg else Term.fg),
-                modifier = Modifier
-                    .heightIn(min = 40.dp)
-                    .background(if (on) Term.prompt else Term.surface, RoundedCornerShape(4.dp))
-                    .clickable { onPick(c) }
-                    .padding(horizontal = 12.dp, vertical = 9.dp),
+                key.key + if (changed) "  · changed" else "",
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                color = MaterialTheme.colorScheme.outline,
             )
         }
     }
-}
+    val reset: @Composable (() -> Unit)? = if (changed && key !is ConfigKey.Bool) {
+        { TextButton(onClick = { vm.resetConfig(key) }) { Text("Reset") } }
+    } else null
 
-@Composable
-private fun NumberSlider(key: ConfigKey.Num, value: Int, version: Int, onDone: (Int) -> Unit) {
-    var current by remember(key.key, version) { mutableFloatStateOf(value.toFloat()) }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Slider(
-            value = current,
-            onValueChange = { current = it },
-            onValueChangeFinished = { onDone(current.roundToInt()) },
-            valueRange = key.range.first.toFloat()..key.range.last.toFloat(),
-            steps = (key.range.last - key.range.first - 1).coerceAtLeast(0),
-            colors = SliderDefaults.colors(
-                thumbColor = Term.prompt,
-                activeTrackColor = Term.prompt,
-                inactiveTrackColor = Term.surface,
-                activeTickColor = Term.bg,
-                inactiveTickColor = Term.dim,
-            ),
-            modifier = Modifier.weight(1f),
-        )
-        Spacer(Modifier.width(12.dp))
-        Text(current.roundToInt().toString(), style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold))
+    Box(Modifier.padding(bottom = ListItemDefaults.SegmentedGap)) {
+        when (key) {
+            is ConfigKey.Bool -> SegmentedListItem(
+                colors = segColors(),
+                checked = value == "on",
+                onCheckedChange = { vm.setConfig(key, if (it) "on" else "off") },
+                shapes = shapes,
+                supportingContent = supporting,
+                trailingContent = { Switch(checked = value == "on", onCheckedChange = null) },
+            ) { Text(title) }
+
+            is ConfigKey.Choice -> SegmentedListItem(
+                colors = segColors(),
+                shapes = shapes,
+                trailingContent = reset,
+                supportingContent = {
+                    Column {
+                        supporting()
+                        Spacer(Modifier.height(10.dp))
+                        if (key == Keys.THEME) {
+                            ThemeSwatches(value) { vm.setConfig(key, it) }
+                        } else {
+                            ConnectedChoices(key.choices, value) { vm.setConfig(key, it) }
+                        }
+                    }
+                },
+            ) { Text(title) }
+
+            is ConfigKey.Num -> {
+                var current by remember(key, value) { mutableFloatStateOf(value.toFloat()) }
+                SegmentedListItem(
+                    colors = segColors(),
+                    shapes = shapes,
+                    trailingContent = {
+                        Text(current.roundToInt().toString(), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    },
+                    supportingContent = {
+                        Column {
+                            supporting()
+                            Slider(
+                                value = current,
+                                onValueChange = { current = it },
+                                onValueChangeFinished = { vm.setConfig(key, current.roundToInt().toString()) },
+                                valueRange = key.range.first.toFloat()..key.range.last.toFloat(),
+                                steps = (key.range.last - key.range.first - 1).coerceAtLeast(0),
+                            )
+                        }
+                    },
+                ) { Text(title) }
+            }
+
+            is ConfigKey.Text -> {
+                var text by remember(key, value) { mutableStateOf(value) }
+                SegmentedListItem(
+                    colors = segColors(),
+                    shapes = shapes,
+                    trailingContent = reset,
+                    supportingContent = {
+                        Column {
+                            supporting()
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = text,
+                                onValueChange = { text = it },
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                                keyboardOptions = KeyboardOptions(
+                                    autoCorrectEnabled = false,
+                                    capitalization = KeyboardCapitalization.None,
+                                    imeAction = ImeAction.Done,
+                                ),
+                                keyboardActions = KeyboardActions(onDone = { vm.setConfig(key, text) }),
+                                trailingIcon = if (text != value) {
+                                    { IconButton(onClick = { vm.setConfig(key, text) }) { Icon(painterResource(R.drawable.ic_check), "Apply") } }
+                                } else null,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    },
+                ) { Text(title) }
+            }
+        }
     }
 }
 
+/** Single-select connected button group (Material 3 Expressive). */
 @Composable
-private fun TextSetting(value: String, version: Int, onDone: (String) -> Unit) {
-    var text by remember(version) { mutableStateOf(value) }
-    val dirty = text != value
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-        BasicTextField(
-            value = text,
-            onValueChange = { text = it },
-            singleLine = true,
-            textStyle = Term.mono,
-            cursorBrush = SolidColor(Term.prompt),
-            keyboardOptions = KeyboardOptions(
-                autoCorrectEnabled = false,
-                capitalization = KeyboardCapitalization.None,
-                imeAction = ImeAction.Done,
-            ),
-            keyboardActions = KeyboardActions(onDone = { onDone(text) }),
-            modifier = Modifier
-                .weight(1f)
-                .border(1.dp, Term.dim.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                .padding(horizontal = 10.dp, vertical = 10.dp),
-        )
-        if (dirty) {
-            Spacer(Modifier.width(8.dp))
-            Button("apply") { onDone(text) }
+fun ConnectedChoices(choices: List<String>, selected: String, onPick: (String) -> Unit) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        choices.forEachIndexed { i, choice ->
+            ToggleButton(
+                checked = choice == selected,
+                onCheckedChange = { onPick(choice) },
+                shapes = when (i) {
+                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                    choices.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                },
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(choice, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+/** Theme picker: a preview card per palette. */
+@Composable
+private fun ThemeSwatches(selected: String, onPick: (String) -> Unit) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        items(Keys.THEME.choices) { name ->
+            val p = Palettes.named(name)
+            val on = name == selected
+            Card(
+                onClick = { onPick(name) },
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(containerColor = p.bg),
+                border = if (on) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, p.surface),
+                modifier = Modifier.width(112.dp),
+            ) {
+                Column(Modifier.padding(12.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf(p.prompt, p.work, p.link, p.private).forEach {
+                            Box(Modifier.size(14.dp).background(it, CircleShape))
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text("$ ls", color = p.prompt, style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace))
+                    Text(name, color = p.fg, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+data class Action(val icon: Int, val title: String, val subtitle: String, val onClick: () -> Unit)
+
+/** A segmented group of clickable rows. */
+@Composable
+fun ActionGroup(actions: List<Action>) {
+    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+        actions.forEachIndexed { i, a ->
+            SegmentedListItem(
+                colors = segColors(),
+                onClick = a.onClick,
+                shapes = segShapes(i, actions.size),
+                leadingContent = { Icon(painterResource(a.icon), null, tint = MaterialTheme.colorScheme.primary) },
+                supportingContent = { Text(a.subtitle) },
+            ) { Text(a.title) }
         }
     }
 }
 
 @Composable
-fun TopBar(title: String, onClose: () -> Unit, actions: @Composable () -> Unit = {}) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().background(Term.surface).padding(start = 16.dp),
-    ) {
-        Text(title, style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize + 2).sp), modifier = Modifier.weight(1f))
-        actions()
-        Text(
-            "[close]",
-            style = Term.mono.copy(color = Term.fg),
-            modifier = Modifier.clickable(onClick = onClose).padding(horizontal = 12.dp, vertical = 14.dp),
-        )
-    }
-}
-
-@Composable
-fun Section(title: String) {
+fun GroupHeader(title: String) {
     Text(
-        "── $title ──",
-        style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold),
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp),
+        title,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp),
     )
 }
 
 @Composable
-fun Hint(text: String) {
-    Text(
-        text,
-        style = Term.mono.copy(color = Term.dim, fontSize = (Term.fontSize - 2).sp),
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-    )
-}
-
-@Composable
-fun Notice(text: String) {
-    Text(
-        text,
-        style = Term.mono.copy(color = Term.info),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(12.dp)
-            .background(Term.surface, RoundedCornerShape(6.dp))
-            .padding(12.dp),
-    )
-}
-
-@Composable
-fun Button(label: String, onClick: () -> Unit) {
-    Text(
-        label,
-        style = Term.mono.copy(color = Term.fg),
-        modifier = Modifier
-            .heightIn(min = 44.dp)
-            .border(1.dp, Term.prompt.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 11.dp),
-    )
+fun BackButton(onClick: () -> Unit) {
+    IconButton(onClick = onClick) { Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back") }
 }
