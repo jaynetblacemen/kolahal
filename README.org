@@ -74,8 +74,11 @@ profile support and scripts in *Lua 5.4* or *JavaScript (QuickJS)*.
 - Hardware keyboard ::
   - Prompt: =↑/↓= history, =Tab= complete, =Esc= clear, =Enter= run, =Ctrl+L= clear screen,
     =Ctrl+U= kill line, =Ctrl+A/E= start/end.
-  - Editor: =Ctrl+S= save, =Ctrl+R= run, =Ctrl+Z= / =Ctrl+Shift+Z= undo/redo, =Esc= / Back save
-    and close.
+  - Editor: =Ctrl+S= save, =Ctrl+R= run, =Ctrl+Z= / =Ctrl+Shift+Z= undo/redo, =Ctrl+F= find,
+    =Ctrl+H= replace (=Enter= / =Shift+Enter= or =F3= / =Shift+F3= next/previous), =Ctrl+G= go to
+    line, =Tab= accepts the first API/keyword suggestion, =Esc= closes the find bar, then (like Back)
+    saves and closes. The strip above the keyboard suggests API members (=http.=, =rss.=, …) and
+    keywords; a dim bar shows the signature of the call under the cursor, and =[?]= lists the full API.
 
 * Commands
 
