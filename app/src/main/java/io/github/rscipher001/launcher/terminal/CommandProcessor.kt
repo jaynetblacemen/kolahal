@@ -1,13 +1,17 @@
 package io.github.rscipher001.launcher.terminal
 
 import android.content.Context
+import android.app.role.RoleManager
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.PowerManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import io.github.rscipher001.launcher.apps.AppEntry
 import io.github.rscipher001.launcher.apps.AppPrefs
 import io.github.rscipher001.launcher.script.ScriptMeta
+import io.github.rscipher001.launcher.script.ScriptFolder
 import io.github.rscipher001.launcher.apps.AppRepository
 import io.github.rscipher001.launcher.apps.ProfileKind
 import io.github.rscipher001.launcher.data.Config
@@ -28,6 +32,7 @@ import java.util.Date
 
 /** UI-only operations the processor cannot do from an application context. */
 interface TerminalUi {
+    fun pickScriptFolder()
     fun openEditor(script: Script)
     fun requestNotificationPermission()
     fun clearScreen()
@@ -46,6 +51,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private val unlocks = UnlockCounter.get(context)
     private val conf = Config.get(context)
     private val prefs = AppPrefs.get(context)
+    private val folder = ScriptFolder(context)
 
     fun run(line: String) {
         val typed = line.trim()
@@ -79,6 +85,9 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "url", "web" -> openUrl(rest)
                 "search", "g" -> search(rest)
                 "notifications" -> notifications()
+                "setup" -> setup()
+                "usage-access" -> startActivity(unlocks.usageAccessIntent())
+                "battery" -> startSettings(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                 "settings" -> startSettings(Settings.ACTION_SETTINGS)
                 "home" -> startSettings(Settings.ACTION_HOME_SETTINGS)
                 "date", "time" -> out(DateFormat.getDateTimeInstance().format(Date()))
@@ -282,7 +291,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val days = args.firstOrNull()?.toIntOrNull()?.coerceIn(1, 30) ?: 1
         if (!unlocks.hasUsageAccess()) {
             info("counting via unlock receiver (misses unlocks while launcher isn't running)")
-            info("tap here to grant Usage Access for accurate counts", LogContext.of(ACTION_KEY to ACTION_USAGE_ACCESS))
+            info("tap here to grant Usage Access for accurate counts", LogContext.of(LogContext.RUN to "usage-access"))
         }
         unlocks.history(days).forEach { (day, count) -> out("$day  ${"█".repeat(minOf(count, 40))} $count") }
     }
@@ -337,6 +346,34 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private fun notifications() {
         if (Notifier.canPost(context)) info("notifications are allowed")
         else ui.requestNotificationPermission()
+    }
+
+    /** First-run checklist; each unchecked line runs its fix when tapped. */
+    fun setup() {
+        val power = context.getSystemService(PowerManager::class.java)
+        val checks = listOf(
+            Triple(isDefaultLauncher(), "Kolahal is the default home app", "home"),
+            Triple(unlocks.hasUsageAccess(), "usage access (accurate unlock count)", "usage-access"),
+            Triple(Notifier.canPost(context), "notifications (script alerts)", "notifications"),
+            Triple(power.isIgnoringBatteryOptimizations(context.packageName), "battery unrestricted (reliable timers)", "battery"),
+        )
+        info("setup — tap an unchecked item to fix it, run 'setup' again to re-check")
+        checks.forEach { (ok, label, cmd) ->
+            out((if (ok) "[x] " else "[ ] ") + label, if (ok) LogContext.EMPTY else LogContext.of(LogContext.RUN to cmd))
+        }
+        val others = apps.profiles.value.filter { it.kind != ProfileKind.PERSONAL }
+        out(
+            if (others.isEmpty()) "[-] no work or private profile found"
+            else "[x] profiles: " + others.joinToString { "${it.kind.label} (${if (it.quiet) "paused" else "on"})" }
+        )
+    }
+
+    private fun isDefaultLauncher(): Boolean = if (Build.VERSION.SDK_INT >= 29) {
+        context.getSystemService(RoleManager::class.java).isRoleHeld(RoleManager.ROLE_HOME)
+    } else {
+        context.packageManager.resolveActivity(
+            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), PackageManager.MATCH_DEFAULT_ONLY,
+        )?.activityInfo?.packageName == context.packageName
     }
 
     private fun startSettings(action: String) = startActivity(Intent(action))
@@ -412,8 +449,18 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val target = args.getOrNull(1)
         when (sub) {
             "ls", "list" -> listScripts()
+            "dir", "folder" -> {
+                folder.uri?.let { info("script folder: ${it.lastPathSegment}") }
+                ui.pickScriptFolder()
+            }
+            "export" -> info("exported ${folder.export()} scripts + kolahal.json")
+            "import" -> {
+                val r = folder.import()
+                info("imported: ${r.created} new, ${r.updated} updated" + if (r.skipped.isNotEmpty()) ", skipped ${r.skipped.joinToString()}" else "")
+            }
             "new" -> {
                 val (name, lang) = parseName(target ?: return error("usage: script new <name>[.lua|.js] [lua|js] [--cmd]"))
+                if (!Regex("^[A-Za-z0-9_-]{1,40}$").matches(name)) return error("script names: letters, digits, - and _ only")
                 if (name in COMMANDS.map { it.name }) return error("'$name' is a built-in command, pick another name")
                 val asCommand = "--cmd" in args || "cmd" in args
                 val chosen = args.drop(2).firstNotNullOfOrNull(ScriptLang::of) ?: lang ?: ScriptLang.LUA
@@ -441,6 +488,14 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                     scriptCtx(s),
                 )
             }
+            "at" -> withScript(target) { s ->
+                val spec = args.getOrNull(2) ?: return error("usage: script at <name> <HH:mm[,HH:mm…]|off>")
+                val times = if (spec == "off") emptyList() else spec.split(',').map { parseClock(it) ?: return error("bad time '$it' — use HH:mm") }
+                scripts.setAtTimes(s.id, times.distinct().sorted())
+                if (times.isNotEmpty() && !s.enabled) scripts.setEnabled(s.id, true)
+                scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
+                info(if (times.isEmpty()) "${s.name}: no daily times" else "${s.name}: daily at ${times.distinct().sorted().joinToString(", ")}", scriptCtx(s))
+            }
             "notify" -> withScript(target) { s ->
                 val on = when (args.getOrNull(2)) {
                     "on" -> true
@@ -465,7 +520,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "cat", "show" -> withScript(target) { s ->
                 s.code.lines().forEachIndexed { i, l -> out("${(i + 1).toString().padStart(3)}  $l", LogContext.of(LogContext.COPY to s.code)) }
             }
-            else -> error("usage: script [ls|new|edit|run|every|notify|on|off|rm|cat] <name>")
+            else -> error("usage: script [ls|new|edit|run|every|at|notify|on|off|rm|cat] <name>")
         }
     }
 
@@ -477,13 +532,19 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         }
         val df = DateFormat.getTimeInstance(DateFormat.SHORT)
         all.forEach { s ->
-            val timer = if (s.intervalMin > 0) "every ${formatInterval(s.intervalMin)}" else "manual"
-            val flags = buildList {
-                if (!s.enabled) add("disabled")
-                if (s.notify) add("notify")
-            }.joinToString(",").ifEmpty { "-" }
+            val timer = listOfNotNull(
+                s.intervalMin.takeIf { it > 0 }?.let { "every ${formatInterval(it)}" },
+                s.atTimes.takeIf { it.isNotEmpty() }?.let { "at " + it.joinToString(",") },
+            ).joinToString(" ").ifEmpty { "manual" }
             val last = s.lastRun?.let { "${df.format(Date(it))} ${s.lastStatus.orEmpty()}" } ?: "never run"
-            out("${(s.name + "." + s.lang.ext).padEnd(18)} ${timer.padEnd(12)} ${flags.padEnd(16)} $last", scriptCtx(s))
+            val parts = buildList {
+                add(timer)
+                if (ScriptMeta.isCommand(s.code)) add("command")
+                if (s.notify) add("notify")
+                if (!s.enabled) add("disabled")
+                add(last)
+            }
+            out("${s.name}.${s.lang.ext} · " + parts.joinToString(" · "), scriptCtx(s))
         }
     }
 
@@ -502,10 +563,6 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     }
 
     companion object {
-        /** Extra context key for launcher-internal actions on a log line. */
-        const val ACTION_KEY = "action"
-        const val ACTION_USAGE_ACCESS = "usage_access"
-
         val COMMANDS = listOf(
             CommandSpec("help", "help", "show this list"),
             CommandSpec("apps", "apps [work|personal|private]", "list apps with profile tags"),
@@ -515,7 +572,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("work", "work [on|off|status]", "pause / resume the work profile"),
             CommandSpec("private", "private [on|off|status]", "lock / unlock private space"),
             CommandSpec("unlocks", "unlocks [days]", "unlock counts"),
-            CommandSpec("script", "script <sub> <name>", "ls new edit run every notify on off rm cat"),
+            CommandSpec("script", "script <sub> <name>", "ls new edit run every at notify on off rm cat dir export import"),
             CommandSpec("lua", "lua <code>", "evaluate Lua 5.4"),
             CommandSpec("js", "js <code>", "evaluate JavaScript (QuickJS)"),
             CommandSpec("rss", "rss <url>", "fetch a feed into the log"),
@@ -523,7 +580,10 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("url", "url <address>", "open a link"),
             CommandSpec("history", "history", "recent commands (tap to reuse)"),
             CommandSpec("clear", "clear", "clear the screen"),
+            CommandSpec("setup", "setup", "checklist: default home, permissions, battery"),
             CommandSpec("notifications", "notifications", "allow script notifications"),
+            CommandSpec("usage-access", "usage-access", "grant usage access (unlock count)"),
+            CommandSpec("battery", "battery", "battery optimization settings"),
             CommandSpec("home", "home", "choose the default launcher"),
             CommandSpec("settings", "settings", "system settings"),
             CommandSpec("config", "config [set|get|reset] <key> <v>", "show or change settings"),
@@ -537,7 +597,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("rename", "rename <app> = <name>", "custom label (empty restores)"),
         )
 
-        val SCRIPT_SUBCOMMANDS = listOf("ls", "new", "edit", "run", "every", "notify", "on", "off", "rm", "cat")
+        val SCRIPT_SUBCOMMANDS = listOf("ls", "new", "edit", "run", "every", "at", "notify", "on", "off", "rm", "cat", "dir", "export", "import")
 
         fun tokenize(s: String): List<String> {
             val out = ArrayList<String>()
@@ -567,6 +627,12 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "d" -> n * 60 * 24
                 else -> n
             }
+        }
+
+        /** "8:00", "08:00", "18:30" -> "HH:mm"; null if invalid. */
+        fun parseClock(s: String): String? {
+            val m = Regex("^([01]?\\d|2[0-3]):([0-5]\\d)$").find(s.trim()) ?: return null
+            return String.format(java.util.Locale.ROOT, "%02d:%s", m.groupValues[1].toInt(), m.groupValues[2])
         }
 
         fun formatInterval(min: Int): String = when {

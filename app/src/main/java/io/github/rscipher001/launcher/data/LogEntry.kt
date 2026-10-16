@@ -47,6 +47,8 @@ data class LogContext(val values: Map<String, String> = emptyMap()) {
         const val SCRIPT = "script"
         const val COPY = "copy"
         const val COMMAND = "command"
+        /** A command that runs immediately when the line is tapped (setup checklist, hints). */
+        const val RUN = "run"
 
         val EMPTY = LogContext()
 

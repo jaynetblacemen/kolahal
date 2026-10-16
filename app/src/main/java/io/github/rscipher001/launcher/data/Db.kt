@@ -40,7 +40,8 @@ class Db private constructor(context: Context) :
                 enabled INTEGER NOT NULL DEFAULT 1,
                 notify INTEGER NOT NULL DEFAULT 0,
                 last_run INTEGER,
-                last_status TEXT
+                last_status TEXT,
+                at_times TEXT
             )
             """.trimIndent()
         )
@@ -56,11 +57,13 @@ class Db private constructor(context: Context) :
         )
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) db.execSQL("ALTER TABLE scripts ADD COLUMN at_times TEXT")
+    }
 
     companion object {
         private const val NAME = "kolahal.db"
-        private const val VERSION = 1
+        private const val VERSION = 2
 
         @Volatile
         private var instance: Db? = null

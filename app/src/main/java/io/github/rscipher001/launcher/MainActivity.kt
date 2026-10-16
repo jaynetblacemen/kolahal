@@ -29,6 +29,9 @@ class MainActivity : ComponentActivity() {
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
+    private val pickFolder =
+        registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { vm.onScriptFolderPicked(it) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
@@ -52,7 +55,11 @@ class MainActivity : ComponentActivity() {
                         onClose = vm::closeEditor,
                     )
                 } else {
-                    TerminalScreen(vm, onRequestNotifications = ::requestNotifications)
+                    TerminalScreen(
+                        vm,
+                        onRequestNotifications = ::requestNotifications,
+                        onPickFolder = { pickFolder.launch(null) },
+                    )
                 }
             }
         }

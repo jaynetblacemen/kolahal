@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.androidx.work.multiprocess)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
+    implementation(libs.androidx.documentfile)
 
     // Scripting engines: native Lua 5.4 (LuaJava) and QuickJS (quickjs-kt)
     implementation(libs.luajava)

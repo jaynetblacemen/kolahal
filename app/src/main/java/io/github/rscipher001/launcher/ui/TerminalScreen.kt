@@ -86,7 +86,7 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
+fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, onPickFolder: () -> Unit) {
     val entries by vm.entries.collectAsStateWithLifecycle()
     val apps by vm.apps.collectAsStateWithLifecycle()
     val profiles by vm.profiles.collectAsStateWithLifecycle()
@@ -113,6 +113,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
                     if (!currentHasHardwareKeyboard) currentKeyboard?.show()
                 }
                 UiEvent.HideKeyboard -> currentKeyboard?.hide()
+                UiEvent.PickScriptFolder -> onPickFolder()
             }
         }
     }

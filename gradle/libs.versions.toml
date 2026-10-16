@@ -8,6 +8,7 @@ lifecycle = "2.10.0"
 work = "2.11.2"
 coroutines = "1.11.0"
 okhttp = "5.5.0"
+documentfile = "1.1.0"
 luajava = "4.1.0"
 quickjs = "1.0.15"
 junit = "4.13.2"
@@ -29,6 +30,7 @@ androidx-work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref
 androidx-work-multiprocess = { module = "androidx.work:work-multiprocess", version.ref = "work" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+androidx-documentfile = { module = "androidx.documentfile:documentfile", version.ref = "documentfile" }
 luajava = { module = "party.iroiro.luajava:luajava", version.ref = "luajava" }
 luajava-lua54 = { module = "party.iroiro.luajava:lua54", version.ref = "luajava" }
 luajava-android = { module = "party.iroiro.luajava:android", version.ref = "luajava" }

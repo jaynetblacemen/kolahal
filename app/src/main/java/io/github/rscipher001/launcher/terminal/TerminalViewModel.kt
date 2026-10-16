@@ -16,6 +16,7 @@ import io.github.rscipher001.launcher.apps.AppEntry
 import io.github.rscipher001.launcher.apps.AppPrefs
 import io.github.rscipher001.launcher.data.ConfigKey
 import io.github.rscipher001.launcher.script.ScriptMeta
+import io.github.rscipher001.launcher.script.ScriptFolder
 import io.github.rscipher001.launcher.apps.AppRepository
 import io.github.rscipher001.launcher.apps.Profile
 import io.github.rscipher001.launcher.apps.ProfileKind
@@ -47,6 +48,7 @@ sealed interface UiEvent {
     data object ScrollToBottom : UiEvent
     data object FocusPrompt : UiEvent
     data object HideKeyboard : UiEvent
+    data object PickScriptFolder : UiEvent
 }
 
 /** Something the user can tap in the suggestion strip. */
@@ -105,6 +107,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
             if (logs.recent(1).isEmpty() && logs.commandHistory(1).isEmpty()) {
                 logs.add(LogKind.INFO, "kolahal — a terminal launcher. type 'help' or start typing an app name.")
                 logs.add(LogKind.INFO, "↑/↓ recall commands · tap a line to reuse/open it · long-press for actions")
+                processor.setup()
             }
         }
     }
@@ -292,9 +295,11 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     fun onTap(entry: LogEntry) {
         val ctx = entry.ctx
         when {
+            ctx.values[LogContext.RUN] != null -> {
+                setText(ctx.values.getValue(LogContext.RUN))
+                submit()
+            }
             entry.kind == LogKind.COMMAND || ctx.command != null -> setText(ctx.command ?: entry.text)
-            ctx.values[CommandProcessor.ACTION_KEY] == CommandProcessor.ACTION_USAGE_ACCESS ->
-                startActivity(unlockCounter.usageAccessIntent())
             ctx.pkg != null -> appFor(ctx)?.let { app -> io { processor.launch(app) } }
             ctx.url != null -> openUrl(ctx.url!!)
         }
@@ -405,6 +410,18 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
 
     override fun openEditor(script: Script) {
         _editing.value = script
+    }
+
+    override fun pickScriptFolder() {
+        _events.tryEmit(UiEvent.PickScriptFolder)
+    }
+
+    fun onScriptFolderPicked(uri: Uri?) {
+        if (uri == null) return
+        io {
+            ScriptFolder(context).setFolder(uri)
+            logs.add(LogKind.INFO, "script folder set — 'script export' / 'script import' to sync")
+        }
     }
 
     override fun requestNotificationPermission() {

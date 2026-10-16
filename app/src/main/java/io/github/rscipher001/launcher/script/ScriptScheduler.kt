@@ -13,6 +13,9 @@ import androidx.work.multiprocess.RemoteWorkerService
 import io.github.rscipher001.launcher.data.Script
 import io.github.rscipher001.launcher.data.ScriptLang
 import io.github.rscipher001.launcher.data.ScriptRepository
+import java.time.Duration
+import java.time.LocalDateTime
+import java.time.LocalTime
 import java.util.concurrent.TimeUnit
 
 object ScriptScheduler {
@@ -22,9 +25,10 @@ object ScriptScheduler {
 
     private fun uniqueName(id: Long) = "script-$id"
 
-    /** Schedules or cancels the periodic run for [script] according to its settings. */
+    /** Schedules or cancels the interval and daily runs for [script] according to its settings. */
     fun sync(context: Context, script: Script) {
         val wm = WorkManager.getInstance(context)
+        syncDaily(context, wm, script)
         if (!script.enabled || script.intervalMin <= 0) {
             wm.cancelUniqueWork(uniqueName(script.id))
             return
@@ -41,12 +45,47 @@ object ScriptScheduler {
         wm.enqueueUniquePeriodicWork(uniqueName(script.id), ExistingPeriodicWorkPolicy.UPDATE, request)
     }
 
+    /**
+     * One 24h periodic job per daily time, first run delayed to the next occurrence. WorkManager may
+     * drift a few minutes per day; [syncAll] on launcher start re-anchors the schedule.
+     */
+    private fun syncDaily(context: Context, wm: WorkManager, script: Script) {
+        wm.cancelAllWorkByTag(dailyTag(script.id))
+        if (!script.enabled) return
+        for (time in script.atTimes) {
+            val request = PeriodicWorkRequestBuilder<ScriptWorker>(24, TimeUnit.HOURS)
+                .setInitialDelay(millisUntil(time), TimeUnit.MILLISECONDS)
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .setInputData(remoteData(context) {
+                    putLong(ScriptWorker.KEY_SCRIPT_ID, script.id)
+                    putBoolean(ScriptWorker.KEY_SCHEDULED, true)
+                })
+                .addTag("script")
+                .addTag(dailyTag(script.id))
+                .build()
+            wm.enqueueUniquePeriodicWork(
+                "${uniqueName(script.id)}-at-$time", ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE, request,
+            )
+        }
+    }
+
+    private fun dailyTag(id: Long) = "script-$id-daily"
+
+    /** Milliseconds from now until the next local [hhmm] ("HH:mm"). */
+    fun millisUntil(hhmm: String, now: LocalDateTime = LocalDateTime.now()): Long {
+        val time = LocalTime.parse(hhmm)
+        var next = now.toLocalDate().atTime(time)
+        if (!next.isAfter(now)) next = next.plusDays(1)
+        return Duration.between(now, next).toMillis()
+    }
+
     fun syncAll(context: Context) {
         ScriptRepository.get(context).all().forEach { sync(context, it) }
     }
 
     fun cancel(context: Context, scriptId: Long) {
         WorkManager.getInstance(context).cancelUniqueWork(uniqueName(scriptId))
+        WorkManager.getInstance(context).cancelAllWorkByTag(dailyTag(scriptId))
     }
 
     fun runNow(context: Context, script: Script, args: List<String> = emptyList()) {

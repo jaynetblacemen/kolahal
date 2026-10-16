@@ -10,6 +10,7 @@ import androidx.work.Configuration
 import io.github.rscipher001.launcher.apps.AppRepository
 import io.github.rscipher001.launcher.data.LogRepository
 import io.github.rscipher001.launcher.notify.Notifier
+import io.github.rscipher001.launcher.script.ScriptScheduler
 import io.github.rscipher001.launcher.unlock.UnlockCounter
 import io.github.rscipher001.launcher.status.DeviceStatus
 
@@ -30,6 +31,9 @@ class LauncherApp : Application(), Configuration.Provider {
         AppRepository.get(this).start()
         UnlockCounter.get(this).start()
         DeviceStatus.get(this).start()
+
+        // Re-anchor daily script times (periodic work drifts) and restore schedules after updates.
+        Thread { runCatching { ScriptScheduler.syncAll(this) } }.start()
 
         val logs = LogRepository.get(this)
         ContextCompat.registerReceiver(this, object : BroadcastReceiver() {

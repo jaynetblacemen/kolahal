@@ -53,10 +53,8 @@ class HostApi(
 
     fun notify(title: String, body: String, ctx: Map<*, *>? = null): Boolean {
         val values = Json.toStringMap(ctx)
-        if (!notifyEnabled) {
-            log("[notify off] $title: $body", ctx)
-            return false
-        }
+        // With notifications off for this script, the script's own log lines already show the content.
+        if (!notifyEnabled) return false
         val posted = Notifier.post(context, scriptName, title, body, values[LogContext.URL])
         if (!posted) log("[notify blocked: allow notifications] $title: $body", ctx)
         return posted

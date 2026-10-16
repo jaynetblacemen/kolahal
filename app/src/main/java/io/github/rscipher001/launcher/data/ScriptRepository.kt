@@ -28,6 +28,8 @@ data class Script(
     val notify: Boolean,
     val lastRun: Long?,
     val lastStatus: String?,
+    /** Daily run times as "HH:mm", in addition to (or instead of) the interval. */
+    val atTimes: List<String> = emptyList(),
 )
 
 class ScriptRepository private constructor(private val context: Context) {
@@ -53,6 +55,10 @@ class ScriptRepository private constructor(private val context: Context) {
     fun setInterval(id: Long, minutes: Int) = update(id) { put("interval_min", minutes) }
 
     fun setEnabled(id: Long, enabled: Boolean) = update(id) { put("enabled", if (enabled) 1 else 0) }
+
+    fun setAtTimes(id: Long, times: List<String>) = update(id) {
+        if (times.isEmpty()) putNull("at_times") else put("at_times", times.joinToString(","))
+    }
 
     fun setNotify(id: Long, notify: Boolean) = update(id) { put("notify", if (notify) 1 else 0) }
 
@@ -91,6 +97,7 @@ class ScriptRepository private constructor(private val context: Context) {
             notify = getInt(getColumnIndexOrThrow("notify")) != 0,
             lastRun = if (isNull(lastRunIdx)) null else getLong(lastRunIdx),
             lastStatus = getString(getColumnIndexOrThrow("last_status")),
+            atTimes = getString(getColumnIndexOrThrow("at_times"))?.split(',')?.filter { it.isNotBlank() }.orEmpty(),
         )
     }
 
