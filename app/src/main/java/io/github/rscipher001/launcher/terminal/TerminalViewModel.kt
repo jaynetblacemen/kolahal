@@ -24,6 +24,11 @@ import io.github.rscipher001.launcher.data.Script
 import io.github.rscipher001.launcher.data.ScriptRepository
 import io.github.rscipher001.launcher.script.ScriptScheduler
 import io.github.rscipher001.launcher.unlock.UnlockCounter
+import io.github.rscipher001.launcher.status.DeviceStatus
+import io.github.rscipher001.launcher.status.Status
+import io.github.rscipher001.launcher.data.Config
+import io.github.rscipher001.launcher.data.Keys
+import io.github.rscipher001.launcher.ui.KeyBarKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +41,8 @@ import kotlinx.coroutines.withContext
 sealed interface UiEvent {
     data object RequestNotificationPermission : UiEvent
     data object ScrollToBottom : UiEvent
+    data object FocusPrompt : UiEvent
+    data object HideKeyboard : UiEvent
 }
 
 /** Something the user can tap in the suggestion strip. */
@@ -66,6 +73,8 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     val apps: StateFlow<List<AppEntry>> = appsRepo.apps
     val profiles: StateFlow<List<Profile>> = appsRepo.profiles
     val unlocksToday: StateFlow<Int> = unlockCounter.today
+    val status: StateFlow<Status> = DeviceStatus.get(app).status
+    val config: Config = Config.get(app)
 
     var input by mutableStateOf(TextFieldValue(""))
         private set
@@ -144,6 +153,21 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         input = input.copy(selection = TextRange(pos))
     }
 
+    fun onKeyBar(key: KeyBarKey) {
+        when (key) {
+            KeyBarKey.ESC -> escape()
+            KeyBarKey.TAB -> complete()
+            KeyBarKey.UP -> historyUp()
+            KeyBarKey.DOWN -> historyDown()
+            KeyBarKey.LEFT -> moveCursor(-1)
+            KeyBarKey.RIGHT -> moveCursor(1)
+            KeyBarKey.HOME -> input = input.copy(selection = TextRange(0))
+            KeyBarKey.END -> input = input.copy(selection = TextRange(input.text.length))
+            KeyBarKey.ENTER -> submit()
+            KeyBarKey.KBD -> _events.tryEmit(UiEvent.FocusPrompt)
+        }
+    }
+
     fun escape() {
         historyIndex = -1
         setText("")
@@ -151,7 +175,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
 
     /** TAB: accept the first suggestion. */
     fun complete() {
-        val first = suggestions(input.text, apps.value).firstOrNull() ?: return
+        val first = suggestions(input.text).firstOrNull() ?: return
         when (first) {
             is Suggestion.Completion -> setText(first.replacement)
             is Suggestion.App -> setText(first.app.label)
@@ -172,7 +196,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         input = TextFieldValue(text, TextRange(text.length))
     }
 
-    fun suggestions(text: String, apps: List<AppEntry>): List<Suggestion> {
+    fun suggestions(text: String): List<Suggestion> {
         if (text.isBlank()) return emptyList()
         val parts = text.trimStart().split(' ')
         val head = parts.first().lowercase()
@@ -337,5 +361,6 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         _editing.value?.let { return }
         escape()
         _events.tryEmit(UiEvent.ScrollToBottom)
+        if (config[Keys.FOCUS_ON_HOME]) _events.tryEmit(UiEvent.FocusPrompt)
     }
 }

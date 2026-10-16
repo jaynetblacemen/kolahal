@@ -1,7 +1,7 @@
 package io.github.rscipher001.launcher.ui
 
-import android.os.Build
 import android.content.res.Configuration
+import android.os.Build
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,10 +20,12 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -39,6 +41,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -54,6 +57,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -65,8 +69,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.rscipher001.launcher.apps.Profile
 import io.github.rscipher001.launcher.apps.ProfileKind
+import io.github.rscipher001.launcher.data.Config
+import io.github.rscipher001.launcher.data.Keys
 import io.github.rscipher001.launcher.data.LogEntry
 import io.github.rscipher001.launcher.data.LogKind
+import io.github.rscipher001.launcher.status.Status
 import io.github.rscipher001.launcher.terminal.LogAction
 import io.github.rscipher001.launcher.terminal.Suggestion
 import io.github.rscipher001.launcher.terminal.TerminalViewModel
@@ -82,7 +89,11 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
     val apps by vm.apps.collectAsStateWithLifecycle()
     val profiles by vm.profiles.collectAsStateWithLifecycle()
     val unlocks by vm.unlocksToday.collectAsStateWithLifecycle()
+    val status by vm.status.collectAsStateWithLifecycle()
+    val configVersion by vm.config.version.collectAsStateWithLifecycle()
+    val config = vm.config
     val listState = rememberLazyListState()
+    var pinned by remember { mutableStateOf(true) }
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val hasHardwareKeyboard = LocalConfiguration.current.keyboard != Configuration.KEYBOARD_NOKEYS
@@ -90,14 +101,26 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
     LaunchedEffect(Unit) {
         vm.events.collect { e ->
             when (e) {
-                UiEvent.ScrollToBottom -> listState.scrollToItem(0)
+                UiEvent.ScrollToBottom -> { pinned = true; listState.scrollToItem(0) }
                 UiEvent.RequestNotificationPermission -> onRequestNotifications()
+                UiEvent.FocusPrompt -> {
+                    runCatching { focus.requestFocus() }
+                    if (!hasHardwareKeyboard) keyboard?.show()
+                }
+                UiEvent.HideKeyboard -> keyboard?.hide()
             }
         }
     }
-    // New log lines: stay pinned to the bottom (index 0 with reverseLayout).
+    // Stay pinned to the newest line (index 0 with reverseLayout) unless the user scrolled up.
+    // Only user scrolls change `pinned`: inserting items shifts the anchor and must not unpin.
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            listState.isScrollInProgress to
+                (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 48)
+        }.collect { (scrolling, atBottom) -> if (scrolling) pinned = atBottom }
+    }
     LaunchedEffect(entries.lastOrNull()?.id) {
-        if (listState.firstVisibleItemIndex <= 2) listState.animateScrollToItem(0)
+        if (pinned) listState.scrollToItem(0)
     }
     // Keyboard-first: grab focus straight away when a physical keyboard is attached.
     LaunchedEffect(hasHardwareKeyboard) {
@@ -105,7 +128,11 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
     }
 
     val reversed = remember(entries) { entries.asReversed() }
-    val suggestions = remember(vm.input.text, apps) { vm.suggestions(vm.input.text, apps) }
+    val maxSuggestions = remember(configVersion) { config[Keys.SUGGESTIONS] }
+    val suggestions = remember(vm.input.text, apps, maxSuggestions) {
+        vm.suggestions(vm.input.text).take(maxSuggestions)
+    }
+    val showTime = remember(configVersion) { config[Keys.SHOW_TIMESTAMPS] }
 
     Column(
         Modifier
@@ -115,29 +142,35 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
             .navigationBarsPadding()
             .imePadding()
     ) {
-        Header(unlocks = unlocks, profiles = profiles)
+        Header(unlocks = unlocks, profiles = profiles, status = status, config = config, version = configVersion)
         LazyColumn(
             state = listState,
             reverseLayout = true,
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .testTag("log"),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
         ) {
             items(reversed, key = { it.id }) { entry ->
-                LogLine(entry, onTap = { vm.onTap(entry) }, actions = { vm.actionsFor(entry) })
+                LogLine(entry, showTime, onTap = { vm.onTap(entry) }, actions = { vm.actionsFor(entry) })
             }
         }
         SuggestionStrip(suggestions, onPick = vm::onSuggestion)
-        KeyBar(
-            onUp = vm::historyUp,
-            onDown = vm::historyDown,
-            onLeft = { vm.moveCursor(-1) },
-            onRight = { vm.moveCursor(1) },
-            onTab = vm::complete,
-            onEsc = vm::escape,
-            onInsert = vm::insert,
-        )
+        if (remember(configVersion) { config[Keys.KEYBAR_SHOW] }) {
+            KeyBar(
+                spec = remember(configVersion) { config[Keys.KEYBAR] },
+                onKey = { key ->
+                    if (key == KeyBarKey.KBD) {
+                        runCatching { focus.requestFocus() }
+                        keyboard?.show()
+                    } else {
+                        vm.onKeyBar(key)
+                    }
+                },
+                onText = vm::insert,
+            )
+        }
         Prompt(
             vm = vm,
             focus = focus,
@@ -150,45 +183,90 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
 }
 
 @Composable
-private fun Header(unlocks: Int, profiles: List<Profile>) {
+private fun Header(unlocks: Int, profiles: List<Profile>, status: Status, config: Config, version: Int) {
     val now by produceState(Date()) {
         while (true) {
             value = Date()
             delay(1_000L * (60 - (System.currentTimeMillis() / 1000 % 60)))
         }
     }
-    val time = remember(now) { SimpleDateFormat("HH:mm  EEE d MMM", Locale.getDefault()).format(now) }
-    val text = buildAnnotatedString {
-        withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("kolahal") }
-        withStyle(SpanStyle(color = Term.dim)) { append("@${Build.MODEL.lowercase().replace(' ', '-')}  ") }
-        append(time)
-        withStyle(SpanStyle(color = Term.dim)) { append("   unlocks ") }
-        withStyle(SpanStyle(color = Term.fg, fontWeight = FontWeight.Bold)) { append(unlocks.toString()) }
-        profiles.filter { it.kind != ProfileKind.PERSONAL }.forEach { p ->
-            withStyle(SpanStyle(color = Term.dim)) { append("   ${p.kind.label} ") }
-            withStyle(SpanStyle(color = if (p.quiet) Term.dim else Term.profileColor(p.kind))) {
-                append(if (p.quiet) "off" else "on")
+    val is24h = remember(version) { config[Keys.CLOCK_24H] }
+    val timeFmt = remember(is24h) { SimpleDateFormat(if (is24h) "HH:mm" else "h:mm a", Locale.getDefault()) }
+    val dateFmt = remember { SimpleDateFormat("EEE d MMM", Locale.getDefault()) }
+    val alarmFmt = remember(is24h) { SimpleDateFormat(if (is24h) "EEE HH:mm" else "EEE h:mm a", Locale.getDefault()) }
+    val dim = SpanStyle(color = Term.dim)
+    val bright = SpanStyle(color = Term.fg, fontWeight = FontWeight.Bold)
+
+    val line1 = buildAnnotatedString {
+        if (config[Keys.HEADER_DEVICE]) {
+            withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("kolahal") }
+            withStyle(dim) { append("@${Build.MODEL.lowercase().replace(' ', '-')}  ") }
+        }
+        withStyle(bright) { append(timeFmt.format(now)) }
+        if (config[Keys.HEADER_DATE]) withStyle(dim) { append("  ${dateFmt.format(now)}") }
+    }
+    val line2 = buildAnnotatedString {
+        fun sep() { if (length > 0) withStyle(dim) { append("  ·  ") } }
+        if (config[Keys.HEADER_UNLOCKS]) {
+            withStyle(dim) { append("unlocks ") }
+            withStyle(bright) { append(unlocks.toString()) }
+        }
+        if (config[Keys.HEADER_BATTERY] && status.batteryPct != null) {
+            sep()
+            withStyle(dim) { append("bat ") }
+            val pct = status.batteryPct
+            val color = when {
+                status.charging -> Term.prompt
+                pct <= 15 -> Term.error
+                else -> Term.fg
+            }
+            withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold)) {
+                append("$pct%" + if (status.charging) "+" else "")
+            }
+        }
+        if (config[Keys.HEADER_NETWORK]) {
+            sep()
+            withStyle(dim) { append("net ") }
+            withStyle(SpanStyle(color = if (status.network == "offline") Term.error else Term.fg)) {
+                append(status.network)
+            }
+        }
+        if (config[Keys.HEADER_ALARM] && status.nextAlarm != null) {
+            sep()
+            withStyle(dim) { append("alarm ") }
+            withStyle(SpanStyle(color = Term.fg)) { append(alarmFmt.format(Date(status.nextAlarm))) }
+        }
+        if (config[Keys.HEADER_PROFILES]) {
+            profiles.filter { it.kind != ProfileKind.PERSONAL }.forEach { p ->
+                sep()
+                withStyle(dim) { append("${p.kind.label} ") }
+                withStyle(SpanStyle(color = if (p.quiet) Term.dim else Term.profileColor(p.kind), fontWeight = FontWeight.Bold)) {
+                    append(if (p.quiet) "off" else "on")
+                }
             }
         }
     }
-    Text(
-        text,
-        style = Term.mono.copy(fontSize = 13.sp),
-        maxLines = 2,
-        modifier = Modifier
+    Column(
+        Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-    )
+            .testTag("header")
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Text(line1, style = Term.mono)
+        if (line2.isNotEmpty()) Text(line2, style = Term.mono.copy(fontSize = (Term.fontSize - 1).sp))
+    }
 }
+
+private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun LogLine(entry: LogEntry, onTap: () -> Unit, actions: () -> List<LogAction>) {
+private fun LogLine(entry: LogEntry, showTime: Boolean, onTap: () -> Unit, actions: () -> List<LogAction>) {
     var menu by remember { mutableStateOf<List<LogAction>?>(null) }
     val haptics = LocalHapticFeedback.current
     Box {
         Text(
-            text = renderLine(entry),
+            text = renderLine(entry, showTime),
             style = Term.mono,
             modifier = Modifier
                 .fillMaxWidth()
@@ -220,7 +298,8 @@ private fun LogLine(entry: LogEntry, onTap: () -> Unit, actions: () -> List<LogA
 
 private val profileTag = Regex("^\\[([PWS])] ")
 
-private fun renderLine(entry: LogEntry) = buildAnnotatedString {
+private fun renderLine(entry: LogEntry, showTime: Boolean) = buildAnnotatedString {
+    if (showTime) withStyle(SpanStyle(color = Term.dim)) { append(timeFormat.format(Date(entry.ts)) + " ") }
     when (entry.kind) {
         LogKind.COMMAND -> {
             withStyle(SpanStyle(color = Term.prompt)) { append("$ ") }
@@ -251,6 +330,7 @@ private fun SuggestionStrip(items: List<Suggestion>, onPick: (Suggestion) -> Uni
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
+            .testTag("suggestions")
             .padding(vertical = 4.dp),
         contentPadding = PaddingValues(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -273,7 +353,7 @@ private fun SuggestionStrip(items: List<Suggestion>, onPick: (Suggestion) -> Uni
                     .padding(horizontal = 10.dp, vertical = 8.dp),
             ) {
                 if (tag != null && tag != ProfileKind.PERSONAL.tag) {
-                    Text(tag, style = Term.mono.copy(color = color, fontWeight = FontWeight.Bold, fontSize = 12.sp))
+                    Text(tag, style = Term.mono.copy(color = color, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp))
                     Spacer(Modifier.width(6.dp))
                 }
                 Text(s.label, style = Term.mono.copy(color = if (s is Suggestion.App) Term.fg else Term.dim))
@@ -282,41 +362,37 @@ private fun SuggestionStrip(items: List<Suggestion>, onPick: (Suggestion) -> Uni
     }
 }
 
+/** Named keys the touch key bar understands; anything else in the spec is inserted literally. */
+enum class KeyBarKey(val label: String) {
+    ESC("ESC"), TAB("TAB"), UP("↑"), DOWN("↓"), LEFT("←"), RIGHT("→"),
+    HOME("⇤"), END("⇥"), ENTER("⏎"), KBD("⌨");
+
+    companion object {
+        fun of(token: String) = entries.firstOrNull { it.name.equals(token, ignoreCase = true) }
+    }
+}
+
 /** On-screen keys that touch keyboards lack: history, cursor, completion, and a few symbols. */
 @Composable
-private fun KeyBar(
-    onUp: () -> Unit,
-    onDown: () -> Unit,
-    onLeft: () -> Unit,
-    onRight: () -> Unit,
-    onTab: () -> Unit,
-    onEsc: () -> Unit,
-    onInsert: (String) -> Unit,
-) {
-    val keys: List<Pair<String, () -> Unit>> = listOf(
-        "ESC" to onEsc,
-        "TAB" to onTab,
-        "↑" to onUp,
-        "↓" to onDown,
-        "←" to onLeft,
-        "→" to onRight,
-        "-" to { onInsert("-") },
-        "\"" to { onInsert("\"") },
-        "." to { onInsert(".") },
-        "/" to { onInsert("/") },
-    )
+private fun KeyBar(spec: String, onKey: (KeyBarKey) -> Unit, onText: (String) -> Unit) {
+    val keys = remember(spec) {
+        spec.split(',').filter { it.isNotEmpty() }.map { token -> KeyBarKey.of(token.trim()) to token }
+    }
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
+            .testTag("keybar")
             .background(Term.surface),
     ) {
-        items(keys, key = { it.first }) { (label, action) ->
+        itemsIndexed(keys) { _, (named, token) ->
+            val label = named?.label ?: token
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .height(40.dp)
-                    .width(if (label.length > 1) 52.dp else 44.dp)
-                    .clickable(onClick = action),
+                    .height(42.dp)
+                    .widthIn(min = 44.dp)
+                    .clickable { if (named != null) onKey(named) else onText(token) }
+                    .padding(horizontal = 8.dp),
             ) {
                 Text(label, style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold))
             }
@@ -326,6 +402,7 @@ private fun KeyBar(
 
 @Composable
 private fun Prompt(vm: TerminalViewModel, focus: FocusRequester, onTapPrompt: () -> Unit) {
+    val promptStyle = Term.mono.copy(fontSize = (Term.fontSize + 2).sp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -333,12 +410,12 @@ private fun Prompt(vm: TerminalViewModel, focus: FocusRequester, onTapPrompt: ()
             .clickable(onClick = onTapPrompt)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        Text("$ ", style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold, fontSize = 16.sp))
+        Text("$ ", style = promptStyle.copy(color = Term.prompt, fontWeight = FontWeight.Bold))
         BasicTextField(
             value = vm.input,
             onValueChange = vm::onInputChange,
             singleLine = true,
-            textStyle = Term.mono.copy(fontSize = 16.sp),
+            textStyle = promptStyle,
             cursorBrush = SolidColor(Term.prompt),
             keyboardOptions = KeyboardOptions(
                 autoCorrectEnabled = false,
@@ -348,6 +425,7 @@ private fun Prompt(vm: TerminalViewModel, focus: FocusRequester, onTapPrompt: ()
             keyboardActions = KeyboardActions(onGo = { vm.submit() }),
             modifier = Modifier
                 .weight(1f)
+                .testTag("prompt")
                 .focusRequester(focus)
                 .onPreviewKeyEvent { e ->
                     if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -359,6 +437,8 @@ private fun Prompt(vm: TerminalViewModel, focus: FocusRequester, onTapPrompt: ()
                         e.key == Key.Enter || e.key == Key.NumPadEnter -> { vm.submit(); true }
                         e.isCtrlPressed && e.key == Key.L -> { vm.clearScreen(); true }
                         e.isCtrlPressed && e.key == Key.U -> { vm.escape(); true }
+                        e.isCtrlPressed && e.key == Key.A -> { vm.onKeyBar(KeyBarKey.HOME); true }
+                        e.isCtrlPressed && e.key == Key.E -> { vm.onKeyBar(KeyBarKey.END); true }
                         else -> false
                     }
                 },

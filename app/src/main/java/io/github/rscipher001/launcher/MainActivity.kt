@@ -15,6 +15,11 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.rscipher001.launcher.terminal.TerminalViewModel
 import io.github.rscipher001.launcher.ui.KolahalTheme
+import io.github.rscipher001.launcher.ui.Palettes
+import io.github.rscipher001.launcher.ui.Term
+import io.github.rscipher001.launcher.data.Keys
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.toArgb
 import io.github.rscipher001.launcher.ui.ScriptEditor
 import io.github.rscipher001.launcher.ui.TerminalScreen
 
@@ -30,7 +35,10 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        applyTheme()
         setContent {
+            val configVersion by vm.config.version.collectAsStateWithLifecycle()
+            LaunchedEffect(configVersion) { applyTheme() }
             KolahalTheme {
                 val editing by vm.editing.collectAsStateWithLifecycle()
                 val script = editing
@@ -58,6 +66,12 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (intent.hasCategory(Intent.CATEGORY_HOME)) vm.onHomePressed()
+    }
+
+    private fun applyTheme() {
+        Term.palette = Palettes.named(vm.config[Keys.THEME])
+        Term.fontSize = vm.config[Keys.FONT_SIZE]
+        window.decorView.setBackgroundColor(Term.bg.toArgb())
     }
 
     private fun requestNotifications() {

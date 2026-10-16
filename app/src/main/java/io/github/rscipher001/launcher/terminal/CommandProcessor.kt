@@ -8,6 +8,9 @@ import android.provider.Settings
 import io.github.rscipher001.launcher.apps.AppEntry
 import io.github.rscipher001.launcher.apps.AppRepository
 import io.github.rscipher001.launcher.apps.ProfileKind
+import io.github.rscipher001.launcher.data.Config
+import io.github.rscipher001.launcher.data.ConfigKey
+import io.github.rscipher001.launcher.data.Keys
 import io.github.rscipher001.launcher.data.LogContext
 import io.github.rscipher001.launcher.data.LogKind
 import io.github.rscipher001.launcher.data.LogRepository
@@ -39,6 +42,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private val apps = AppRepository.get(context)
     private val scripts = ScriptRepository.get(context)
     private val unlocks = UnlockCounter.get(context)
+    private val conf = Config.get(context)
 
     fun run(line: String) {
         val trimmed = line.trim()
@@ -70,6 +74,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "home" -> startSettings(Settings.ACTION_HOME_SETTINGS)
                 "date", "time" -> out(DateFormat.getDateTimeInstance().format(Date()))
                 "echo" -> out(rest)
+                "config", "set" -> config(args)
+                "theme" -> config(listOf("set", "theme") + args)
                 else -> fallbackLaunch(trimmed)
             }
         }.onFailure { error("$name: ${it.message ?: it.javaClass.simpleName}") }
@@ -150,7 +156,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val matches = apps.search(text)
         when {
             matches.isEmpty() -> error("command not found: $text  (try 'help')")
-            matches.size == 1 || matches[0].label.equals(text, ignoreCase = true) -> launch(matches[0])
+            matches[0].label.equals(text, ignoreCase = true) -> launch(matches[0])
+            matches.size == 1 && conf[Keys.AUTO_LAUNCH] -> launch(matches[0])
             else -> {
                 matches.take(8).forEach { out(appLine(it), appCtx(it)) }
                 info("${matches.size} matches — tap one to launch")
@@ -252,6 +259,55 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private fun help() {
         COMMANDS.forEach { out("${it.usage.padEnd(30)} ${it.help}") }
         info("anything else is matched against app names · tap a line to act · long-press for more")
+    }
+
+    // ---- config ---------------------------------------------------------------------------
+
+    private fun config(args: List<String>) {
+        val sub = args.firstOrNull()
+        when {
+            sub == null || sub == "ls" || sub == "list" -> {
+                Keys.ALL.forEach { k ->
+                    val marker = if (conf.isDefault(k)) "" else " *"
+                    out(
+                        "${k.key.padEnd(17)} ${conf.display(k).padEnd(8)} ${k.help}$marker",
+                        LogContext.of(LogContext.COMMAND to "config set ${k.key} "),
+                    )
+                }
+                info("tap a line to edit it · * = changed from default · 'config reset <key|all>'")
+            }
+            sub == "get" -> withKey(args.getOrNull(1)) { out("${it.key} = ${conf.display(it)}") }
+            sub == "reset" -> {
+                if (args.getOrNull(1) == "all") {
+                    Keys.ALL.forEach(conf::reset)
+                    info("all settings reset")
+                } else withKey(args.getOrNull(1)) {
+                    conf.reset(it)
+                    info("${it.key} = ${conf.display(it)} (default)")
+                }
+            }
+            sub == "set" -> setKey(args.getOrNull(1), args.drop(2).joinToString(" "))
+            Keys.byName(sub) != null -> setKey(sub, args.drop(1).joinToString(" "))
+            else -> error("usage: config [ls|get|set|reset] <key> [value]")
+        }
+    }
+
+    private inline fun withKey(name: String?, action: (ConfigKey<*>) -> Unit) {
+        val key = name?.let(Keys::byName)
+        if (key == null) error("unknown setting '${name.orEmpty()}' — run 'config'") else action(key)
+    }
+
+    private fun setKey(name: String?, value: String) = withKey(name) { key ->
+        if (value.isBlank()) return error("${key.key} = ${conf.display(key)}  (${hint(key)})")
+        if (conf.set(key, value)) info("${key.key} = ${conf.display(key)}")
+        else error("invalid value for ${key.key}: ${hint(key)}")
+    }
+
+    private fun hint(key: ConfigKey<*>) = when (key) {
+        is ConfigKey.Bool -> "on|off"
+        is ConfigKey.Num -> "${key.range.first}..${key.range.last}"
+        is ConfigKey.Choice -> key.choices.joinToString("|")
+        is ConfigKey.Text -> key.help
     }
 
     // ---- scripts --------------------------------------------------------------------------
@@ -372,6 +428,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("notifications", "notifications", "allow script notifications"),
             CommandSpec("home", "home", "choose the default launcher"),
             CommandSpec("settings", "settings", "system settings"),
+            CommandSpec("config", "config [set|get|reset] <key> <v>", "show or change settings"),
+            CommandSpec("theme", "theme <name>", "green amber mono dracula solarized"),
             CommandSpec("date", "date", "current date and time"),
             CommandSpec("echo", "echo <text>", "print text"),
         )
