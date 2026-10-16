@@ -78,6 +78,24 @@ fun DayDivider(row: LogRow.Day) {
     )
 }
 
+/** "── 3 new since you left ──" above the first unread script line. */
+@Composable
+fun UnreadDivider(row: LogRow.Unread) {
+    Text(
+        "── ${row.count} new since you left ──",
+        style = Term.mono.copy(color = Term.prompt, fontSize = (Term.fontSize - 1).sp, fontWeight = FontWeight.Bold),
+        modifier = Modifier.padding(top = 14.dp, bottom = 2.dp),
+    )
+}
+
+/** A stable colour per script name, so interleaved feeds are easy to tell apart. */
+fun scriptColor(name: String?): Color {
+    if (name == null) return Term.script
+    val p = Term.palette
+    val choices = listOf(p.script, p.link, p.info, p.work, p.private, p.prompt)
+    return choices[Math.floorMod(name.hashCode(), choices.size)]
+}
+
 /**
  * One log entry. A thin gutter bar groups command blocks (prompt colour), timer output (script
  * colour) and errors; old output is dimmed; the time sits right-aligned so it never shifts text.
@@ -133,7 +151,7 @@ fun LogLine(
                 isGrid -> AppGrid(apps(entry), onAppTap, onAppLongPress)
                 desc != null -> TwoColumns(entry, desc)
                 else -> {
-                    val text = remember(entry, Term.palette, charWidth) { renderLine(entry, charWidth) }
+                    val text = remember(entry, Term.palette, charWidth, row.unread) { renderLine(entry, charWidth, row.unread) }
                     Text(text, style = Term.mono)
                 }
             }
@@ -212,11 +230,11 @@ private val profileTag = Regex("^\\[([PWSC])] ")
  * Styles one log line. Wrapped continuation lines are indented past the prefix (`$ `, `[hn] `,
  * `[W] `) so each item reads as one block; [charWidth] is the monospace advance.
  */
-private fun renderLine(entry: LogEntry, charWidth: TextUnit) = buildAnnotatedString {
+private fun renderLine(entry: LogEntry, charWidth: TextUnit, unread: Boolean) = buildAnnotatedString {
     val profile = if (entry.kind == LogKind.OUTPUT) profileTag.find(entry.text) else null
     val prefixLen = when (entry.kind) {
         LogKind.COMMAND -> 2
-        LogKind.SCRIPT -> entry.source?.let { it.length + 3 } ?: 0
+        LogKind.SCRIPT -> (entry.source?.let { it.length + 3 } ?: 0) + (if (unread) 2 else 0)
         LogKind.OUTPUT -> profile?.value?.length ?: 2
         else -> 2
     }
@@ -227,9 +245,14 @@ private fun renderLine(entry: LogEntry, charWidth: TextUnit) = buildAnnotatedStr
                 withStyle(SpanStyle(color = Term.fg, fontWeight = FontWeight.Bold)) { append(entry.text) }
             }
             LogKind.ERROR -> withStyle(SpanStyle(color = Term.error)) { append(entry.text) }
-            LogKind.INFO -> withStyle(SpanStyle(color = Term.info)) { append(entry.text) }
+            LogKind.INFO -> {
+                val header = entry.ctx.values.containsKey(LogContext.RUN_HEADER)
+                val color = if (header) scriptColor(entry.source) else Term.info
+                withStyle(SpanStyle(color = color, fontWeight = if (header) FontWeight.Bold else null)) { append(entry.text) }
+            }
             LogKind.SCRIPT -> {
-                entry.source?.let { withStyle(SpanStyle(color = Term.dim)) { append("[$it] ") } }
+                if (unread) withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("• ") }
+                entry.source?.let { withStyle(SpanStyle(color = scriptColor(it))) { append("[$it] ") } }
                 withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.script)) { append(entry.text) }
             }
             LogKind.OUTPUT -> {

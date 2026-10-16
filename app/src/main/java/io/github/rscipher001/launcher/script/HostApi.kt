@@ -47,8 +47,16 @@ class HostApi(
     private val baseCtx: Map<String, String> =
         if (scriptId != null) mapOf(LogContext.SCRIPT to scriptName) else emptyMap()
 
+    /** Saved scripts get a `── name · 22:40 ──` header before their first line of a run. */
+    private var headerWritten = false
+
     fun log(text: String, ctx: Map<*, *>? = null) {
         effects++
+        if (scriptId != null && !headerWritten) {
+            headerWritten = true
+            val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date())
+            logs.add(LogKind.INFO, "── $scriptName · $time ──", scriptName, LogContext(baseCtx + mapOf(LogContext.RUN_HEADER to "1")))
+        }
         logs.add(LogKind.SCRIPT, text, scriptName, LogContext(baseCtx + Json.toStringMap(ctx)))
     }
 

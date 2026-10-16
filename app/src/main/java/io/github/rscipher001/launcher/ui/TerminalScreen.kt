@@ -225,15 +225,16 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 },
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
         ) {
-            items(reversedRows, key = { it.key }, contentType = { if (it is LogRow.Day) "day" else (it as LogRow.Entry).entry.kind }) { row ->
+            items(reversedRows, key = { it.key }, contentType = { if (it is LogRow.Entry) it.entry.kind else it.javaClass }) { row ->
                 when (row) {
                     is LogRow.Day -> DayDivider(row)
+                    is LogRow.Unread -> UnreadDivider(row)
                     is LogRow.Entry -> LogLine(
                         row = row,
                         timeMode = timeMode,
                         timeFormat = lineTimeFormat,
                         dim = dimOld,
-                        topGap = if (row.entry.kind == LogKind.COMMAND) commandGap else 0.dp,
+                        topGap = if (row.blockStart) commandGap else 0.dp,
                         charWidth = charWidth,
                         highlighted = menu?.entryId == row.entry.id,
                         apps = vm::appsOf,

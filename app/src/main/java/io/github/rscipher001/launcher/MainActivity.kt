@@ -70,6 +70,11 @@ class MainActivity : ComponentActivity() {
         vm.onResume()
     }
 
+    override fun onPause() {
+        super.onPause()
+        vm.onPause()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         // Same check as Launcher3: only a Home press while home is showing resets the prompt;

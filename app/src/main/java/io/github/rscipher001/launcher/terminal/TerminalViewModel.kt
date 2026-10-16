@@ -144,11 +144,20 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
             scriptList.filter { ScriptMeta.isCommand(it.code) }.map { it.name }
         }
         _entries.value = list
-        _rows.value = withContext(Dispatchers.Default) { buildRows(list) }
+        _rows.value = withContext(Dispatchers.Default) { buildRows(list, seenUpTo) }
         history = hist
     }
 
+    /** Snapshot of what was already seen when home was shown; newer script lines are unread. */
+    private var seenUpTo = Long.MAX_VALUE
+
+    fun onPause() {
+        _entries.value.lastOrNull()?.let { logs.seenUpTo = it.id }
+    }
+
     fun onResume() {
+        seenUpTo = logs.seenUpTo
+        viewModelScope.launch { reload() }
         unlockCounter.refresh()
         appsRepo.refresh()
     }

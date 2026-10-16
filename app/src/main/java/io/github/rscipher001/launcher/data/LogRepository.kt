@@ -91,6 +91,11 @@ class LogRepository private constructor(private val context: Context) {
         )
     }
 
+    /** Newest log id the user has seen (set when home is left), for unread markers. */
+    var seenUpTo: Long
+        get() = prefs.getLong(KEY_SEEN_UP_TO, Long.MAX_VALUE)
+        set(value) = prefs.edit().putLong(KEY_SEEN_UP_TO, value).apply()
+
     /** Script status lines live in the kv table; reuse the log change signal to refresh the header. */
     fun onStatusChanged() = changed()
 
@@ -106,6 +111,7 @@ class LogRepository private constructor(private val context: Context) {
 
     companion object {
         private const val KEY_CLEARED_UP_TO = "cleared_up_to"
+        private const val KEY_SEEN_UP_TO = "seen_up_to"
         const val ACTION_LOGS_CHANGED = "io.github.rscipher001.launcher.LOGS_CHANGED"
 
         @Volatile
