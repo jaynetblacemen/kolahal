@@ -235,10 +235,36 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     // ---- prompt ---------------------------------------------------------------------------
 
     fun onInputChange(value: TextFieldValue) {
+        val old = input.text
         // Cursor moves and IME composition updates must not abandon history navigation.
-        if (value.text != input.text) historyIndex = -1
+        if (value.text != old) historyIndex = -1
         input = value
+        // Only while typing forward at the end, so backspacing or editing mid-line never fires it.
+        if (value.text.length > old.length && value.selection.collapsed && value.selection.end == value.text.length) {
+            instantRun(value.text)
+        }
     }
+
+    private val commandUsages by lazy { CommandProcessor.COMMANDS.associate { it.name to it.usage } }
+
+    /** launch.instant: launch / run as soon as the input is unambiguous. */
+    private fun instantRun(text: String) {
+        val target = InstantRun.target(
+            text, config[Keys.LAUNCH_INSTANT], config[Keys.LAUNCH_INSTANT_MIN],
+            rankedApps = { appsRepo.searchRanked(it) }, appLabel = { it.label },
+            commands = commandUsages, aliases = appPrefs.aliases(), scriptCommands = _commandNames.value,
+        ) ?: return
+        setText("")
+        _events.tryEmit(UiEvent.ScrollToBottom)
+        when (target) {
+            is InstantRun.Target.App -> io { processor.launch(target.app) }
+            is InstantRun.Target.Command -> io { processor.run(target.line) }
+        }
+    }
+
+    /** In `launch.instant all` mode a tapped history line runs at once (unless it is sensitive). */
+    private fun runsOnTap(line: String) = config[Keys.LAUNCH_INSTANT] == InstantRun.ALL &&
+        InstantRun.canRun(line, commandUsages, appPrefs.aliases(), _commandNames.value)
 
     fun submit() {
         val line = input.text
@@ -432,8 +458,14 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                 io { processor.run(cmd, expand = false) }
             }
             entry.kind == LogKind.COMMAND || ctx.command != null -> {
-                setText(ctx.command ?: entry.text)
-                _events.tryEmit(UiEvent.FocusPrompt)
+                val line = ctx.command ?: entry.text
+                if (runsOnTap(line)) {
+                    _events.tryEmit(UiEvent.ScrollToBottom)
+                    io { processor.run(line) }
+                } else {
+                    setText(line)
+                    _events.tryEmit(UiEvent.FocusPrompt)
+                }
             }
             ctx.values[NOTIF] != null -> {
                 // The notification's own tap action if it's still live, otherwise just the app.

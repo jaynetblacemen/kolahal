@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Kolahal"
 include(":app")
+include(":baselineprofile")

@@ -61,6 +61,12 @@ profile support and scripts in *Lua 5.4* or *JavaScript (QuickJS)*.
   =contacts [query]=. Numbers in the log are tappable.
 - App shortcuts :: =shortcuts <app>= lists an app's launcher shortcuts; =open maps:home= starts one.
   They are also in every app's long-press sheet.
+- Instant launch :: With =launch.instant apps= (default) an app opens the moment the input matches only
+  one app: =grov= opens Grove, =grow= opens Groww, without Enter. =launch.instant all= also runs
+  commands and aliases that way (=setti= opens settings) and makes tapped history lines run at once.
+  Calls, messages, uninstall, profile switches, =clear= and other sensitive commands always need
+  Enter, and calls still open the dialer for you to confirm. =launch.instant.min= sets how many
+  letters to type first (2).
 - Calculator & units :: === 2^10=, === 5 km in mi=, === 72 f to c=, === 100 usd in eur= (rates cached
   for six hours).
 - Web :: =search=, =yt=, =wiki=, =maps=, =play=; the engine is =config search.engine= (ddg, google,

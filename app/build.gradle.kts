@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.baselineprofile)
 }
 
 // Optional release signing: create keystore.properties (storeFile, storePassword, keyAlias, keyPassword).
@@ -72,6 +73,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
     implementation(libs.androidx.documentfile)
+    implementation(libs.androidx.profileinstaller)
+    baselineProfile(project(":baselineprofile"))
 
     // Scripting engines: native Lua 5.4 (LuaJava) and QuickJS (quickjs-kt)
     implementation(libs.luajava)
