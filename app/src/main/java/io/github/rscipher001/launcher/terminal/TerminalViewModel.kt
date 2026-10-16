@@ -80,6 +80,13 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     /** Scripts, refreshed off the main thread whenever the log changes (every script action logs). */
     private val scriptCache = MutableStateFlow<List<Script>>(emptyList())
 
+    private val _commandNames = MutableStateFlow<List<String>>(emptyList())
+    /** Names of `@command` scripts; part of the suggestion inputs. */
+    val commandNames: StateFlow<List<String>> = _commandNames.asStateFlow()
+
+    /** Bumps when aliases, hidden apps or labels change. */
+    val appPrefsVersion: StateFlow<Int> get() = appPrefs.version
+
     private val _statuses = MutableStateFlow<Map<String, String>>(emptyMap())
     /** Header lines pinned by scripts with `status(text)`, keyed by script name. */
     val statuses: StateFlow<Map<String, String>> = _statuses.asStateFlow()
@@ -125,6 +132,9 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         }
         scriptCache.value = scriptList
         _statuses.value = withContext(Dispatchers.IO) { KvStore(context, HostApi.STATUS_SCOPE).all() }
+        _commandNames.value = withContext(Dispatchers.Default) {
+            scriptList.filter { ScriptMeta.isCommand(it.code) }.map { it.name }
+        }
         _entries.value = list
         history = hist
     }
@@ -227,7 +237,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         val scriptList = scriptCache.value
         if (parts.size == 1) {
             val names = CommandProcessor.COMMANDS.map { it.name } +
-                scriptList.filter { ScriptMeta.isCommand(it.code) }.map { it.name } +
+                _commandNames.value +
                 appPrefs.aliases().keys
             val cmds = names.distinct()
                 .filter { it.startsWith(head) && it != head }
@@ -304,8 +314,9 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         val ctx = entry.ctx
         when {
             ctx.values[LogContext.RUN] != null -> {
-                setText(ctx.values.getValue(LogContext.RUN))
-                submit()
+                val cmd = ctx.values.getValue(LogContext.RUN)
+                _events.tryEmit(UiEvent.ScrollToBottom)
+                io { processor.run(cmd, expand = false) }
             }
             entry.kind == LogKind.COMMAND || ctx.command != null -> setText(ctx.command ?: entry.text)
             ctx.pkg != null -> appFor(ctx)?.let { app -> io { processor.launch(app) } }
@@ -451,6 +462,16 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         io {
             ScriptFolder(context).setFolder(uri)
             logs.add(LogKind.INFO, "script folder set — 'script export' / 'script import' to sync")
+        }
+    }
+
+    fun onNotificationPermission(granted: Boolean) {
+        io {
+            logs.add(
+                if (granted) LogKind.INFO else LogKind.ERROR,
+                if (granted) "notifications allowed" else "notifications denied — tap to open notification settings",
+                ctx = if (granted) LogContext.EMPTY else LogContext.of(LogContext.RUN to "notifications settings"),
+            )
         }
     }
 

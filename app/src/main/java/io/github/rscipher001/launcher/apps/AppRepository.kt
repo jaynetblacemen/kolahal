@@ -171,15 +171,22 @@ class AppRepository private constructor(private val context: Context) {
         return _apps.value
             .asSequence()
             .filter { (kind == null || it.profile.kind == kind) && (includeHidden || !it.hidden) }
-            .mapNotNull { app -> score(app.label.lowercase(), q)?.let { app to it } }
-            .sortedWith(
-                compareBy<Pair<AppEntry, Int>>({ it.second })
-                    .thenByDescending { prefs.frecency(it.first.key, now) }
-                    .thenBy { it.first.label.length }
-                    .thenBy { it.first.profile.kind.ordinal }
-            )
-            .map { it.first }
+            .mapNotNull { app -> score(app.label.lowercase(), q)?.let { Ranked(app, it) } }
             .toList()
+            // Frecency is read once per match, not on every comparison.
+            .onEach { it.frecency = prefs.frecency(it.app.key, now) }
+            .sortedWith(
+                compareBy<Ranked>({ it.tier })
+                    .thenByDescending { it.frecency }
+                    .thenBy { it.app.label.length }
+                    .thenBy { it.app.profile.kind.ordinal }
+            )
+            .map { it.app }
+            .toList()
+    }
+
+    private class Ranked(val app: AppEntry, val tier: Int) {
+        var frecency = 0.0
     }
 
     private fun score(label: String, q: String): Int? = when {

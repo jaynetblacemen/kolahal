@@ -9,3 +9,6 @@
 .externalNativeBuild/
 .cxx/
 .kotlin/
+keystore.properties
+*.jks
+*.keystore

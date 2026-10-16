@@ -19,9 +19,12 @@ class ScriptFolder(private val context: Context) {
     val uri: Uri? get() = prefs.getString(KEY_URI, null)?.let(Uri::parse)
 
     fun setFolder(tree: Uri) {
-        context.contentResolver.takePersistableUriPermission(
-            tree, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-        )
+        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        context.contentResolver.takePersistableUriPermission(tree, flags)
+        // Persisted grants are capped per app; drop the previous folder's grant.
+        uri?.takeIf { it != tree }?.let { old ->
+            runCatching { context.contentResolver.releasePersistableUriPermission(old, flags) }
+        }
         prefs.edit().putString(KEY_URI, tree.toString()).apply()
     }
 
@@ -36,9 +39,19 @@ class ScriptFolder(private val context: Context) {
     fun export(): Int {
         val dir = folder()
         val all = scripts.all()
+        // One listing instead of a provider round-trip per findFile() call.
+        val files = dir.listFiles().associateBy { it.name }
+        // Remove files of scripts that the previous export listed but that no longer exist.
+        val previous = files[MANIFEST]?.let { readManifest(it.uri) }.orEmpty()
+        val current = all.map { "${it.name}.${it.lang.ext}" }.toSet()
+        previous.keys.filterNotNull().forEach { name ->
+            val m = previous[name] ?: return@forEach
+            val fileName = "$name.${m["lang"]}"
+            if (fileName !in current) files[fileName]?.delete()
+        }
         for (s in all) {
             val fileName = "${s.name}.${s.lang.ext}"
-            val file = dir.findFile(fileName) ?: dir.createFile(MIME_TEXT, fileName)
+            val file = files[fileName] ?: dir.createFile(MIME_TEXT, fileName)
                 ?: throw IllegalStateException("can't create $fileName")
             context.contentResolver.openOutputStream(file.uri, "wt")!!.use { it.write(s.code.toByteArray()) }
         }
@@ -55,7 +68,7 @@ class ScriptFolder(private val context: Context) {
                 )
             },
         )
-        val manifestFile = dir.findFile(MANIFEST) ?: dir.createFile("application/json", MANIFEST)
+        val manifestFile = files[MANIFEST] ?: dir.createFile("application/json", MANIFEST)
             ?: throw IllegalStateException("can't create $MANIFEST")
         context.contentResolver.openOutputStream(manifestFile.uri, "wt")!!.use {
             it.write(Json.stringify(manifest).toByteArray())
@@ -68,19 +81,17 @@ class ScriptFolder(private val context: Context) {
     /** Reads `*.lua` / `*.js` from the folder, creating or updating scripts; applies the manifest. */
     fun import(): ImportResult {
         val dir = folder()
-        val manifest = dir.findFile(MANIFEST)?.let { readText(it.uri) }
-            ?.let { runCatching { Json.parse(it) as? Map<*, *> }.getOrNull() }
-            ?.get("scripts") as? List<*>
-        val settings = manifest.orEmpty().filterIsInstance<Map<*, *>>().associateBy { it["name"]?.toString() }
+        val files = dir.listFiles()
+        val settings = files.firstOrNull { it.name == MANIFEST }?.let { readManifest(it.uri) }.orEmpty()
 
         var created = 0
         var updated = 0
         val skipped = ArrayList<String>()
-        for (file in dir.listFiles()) {
+        for (file in files) {
             val fileName = file.name ?: continue
-            if (!file.isFile) continue
             val lang = ScriptLang.of(fileName.substringAfterLast('.', "")) ?: continue
-            val name = fileName.substringBeforeLast('.')
+            if (file.isDirectory) continue
+            val name = fileName.substringBeforeLast('.').lowercase()
             if (!NAME.matches(name)) {
                 skipped += fileName
                 continue
@@ -101,14 +112,21 @@ class ScriptFolder(private val context: Context) {
             }
             settings[name]?.let { m ->
                 (m["every"] as? Number)?.let { scripts.setInterval(script.id, it.toInt()) }
-                (m["at"] as? List<*>)?.let { at -> scripts.setAtTimes(script.id, at.map { it.toString() }) }
+                (m["at"] as? List<*>)?.let { at ->
+                    scripts.setAtTimes(script.id, at.mapNotNull { ScriptScheduler.normalizeTime(it.toString()) }.distinct().sorted())
+                }
                 (m["notify"] as? Boolean)?.let { scripts.setNotify(script.id, it) }
                 (m["enabled"] as? Boolean)?.let { scripts.setEnabled(script.id, it) }
             }
-            scripts.byId(script.id)?.let { ScriptScheduler.sync(context, it) }
+            runCatching { scripts.byId(script.id)?.let { ScriptScheduler.sync(context, it) } }
         }
         return ImportResult(created, updated, skipped)
     }
+
+    /** Manifest entries keyed by script name. */
+    private fun readManifest(uri: Uri): Map<String?, Map<*, *>> =
+        (readText(uri)?.let { runCatching { Json.parse(it) as? Map<*, *> }.getOrNull() }?.get("scripts") as? List<*>)
+            .orEmpty().filterIsInstance<Map<*, *>>().associateBy { it["name"]?.toString()?.lowercase() }
 
     private fun readText(uri: Uri): String? =
         context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
@@ -117,6 +135,6 @@ class ScriptFolder(private val context: Context) {
         const val KEY_URI = "uri"
         const val MANIFEST = "kolahal.json"
         const val MIME_TEXT = "application/octet-stream"
-        val NAME = Regex("^[A-Za-z0-9_-]{1,40}$")
+        val NAME = Regex("^[a-z0-9_-]{1,40}$")
     }
 }

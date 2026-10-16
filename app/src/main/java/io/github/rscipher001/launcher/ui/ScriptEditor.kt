@@ -149,7 +149,8 @@ fun ScriptEditor(
                 keyboardOptions = KeyboardOptions(
                     autoCorrectEnabled = false,
                     capitalization = KeyboardCapitalization.None,
-                    keyboardType = KeyboardType.Password,
+                    // Plain text (not password) so non-Latin layouts and voice input work in code.
+                    keyboardType = KeyboardType.Text,
                 ),
                 modifier = Modifier
                     .widthIn(min = 600.dp)

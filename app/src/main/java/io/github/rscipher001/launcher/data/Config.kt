@@ -55,7 +55,10 @@ object Keys {
     val AUTO_LAUNCH = ConfigKey.Bool("launch.single", true, "launch automatically when only one app matches")
     val SHOW_TIMESTAMPS = ConfigKey.Bool("log.time", false, "prefix log lines with their time")
     val FOCUS_ON_HOME = ConfigKey.Bool("keyboard.onhome", false, "open the soft keyboard whenever home is shown")
-    val IME_SUGGESTIONS = ConfigKey.Bool("keyboard.suggestions", false, "allow keyboard autocorrect / word suggestions")
+    val IME_SUGGESTIONS = ConfigKey.Bool(
+        "keyboard.suggestions", false,
+        "prompt keyboard suggestions (off uses a password-type field: no autocorrect, but Latin-only on some keyboards)",
+    )
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,

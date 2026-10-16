@@ -47,7 +47,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             }
             if (result != null) {
                 logs.add(LogKind.OUTPUT, result, name, LogContext.of(LogContext.COPY to result) + errorCtx.values)
-            } else if (repl && host.linesLogged == 0) {
+            } else if (repl && host.effects == 0) {
                 logs.add(LogKind.OUTPUT, "nil", name)
             }
             host.commit()

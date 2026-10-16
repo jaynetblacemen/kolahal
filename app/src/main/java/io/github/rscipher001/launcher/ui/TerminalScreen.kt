@@ -143,7 +143,9 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
 
     val reversed = remember(entries) { entries.asReversed() }
     val maxSuggestions = remember(configVersion) { config[Keys.SUGGESTIONS] }
-    val suggestions = remember(vm.input.text, apps, maxSuggestions) {
+    val commandNames by vm.commandNames.collectAsStateWithLifecycle()
+    val prefsVersion by vm.appPrefsVersion.collectAsStateWithLifecycle()
+    val suggestions = remember(vm.input.text, apps, maxSuggestions, commandNames, prefsVersion) {
         vm.suggestions(vm.input.text).take(maxSuggestions)
     }
     val showTime = remember(configVersion) { config[Keys.SHOW_TIMESTAMPS] }

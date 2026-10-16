@@ -59,13 +59,18 @@ class AppPrefs private constructor(context: Context) {
 
     // ---- aliases --------------------------------------------------------------------------
 
-    fun aliases(): Map<String, String> =
-        aliasPrefs.all.mapNotNull { (k, v) -> (v as? String)?.let { k to it } }.toMap().toSortedMap()
+    @Volatile private var aliasCache: Map<String, String>? = null
 
-    fun alias(name: String): String? = aliasPrefs.getString(name, null)
+    fun aliases(): Map<String, String> = aliasCache ?: aliasPrefs.all
+        .mapNotNull { (k, v) -> (v as? String)?.let { k to it } }.toMap().toSortedMap()
+        .also { aliasCache = it }
+
+    fun alias(name: String): String? = aliases()[name]
 
     fun setAlias(name: String, expansion: String?) {
         aliasPrefs.edit().apply { if (expansion == null) remove(name) else putString(name, expansion) }.apply()
+        aliasCache = null
+        _version.value++
     }
 
     companion object {

@@ -30,6 +30,10 @@ import io.github.rscipher001.launcher.script.ScriptScheduler
 import io.github.rscipher001.launcher.script.ScriptTemplates
 import io.github.rscipher001.launcher.unlock.UnlockCounter
 import java.text.DateFormat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.util.Date
 
 /** UI-only operations the processor cannot do from an application context. */
@@ -54,12 +58,20 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private val conf = Config.get(context)
     private val prefs = AppPrefs.get(context)
     private val folder = ScriptFolder(context)
+    private val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    fun run(line: String) {
+    private fun background(label: String, block: () -> Unit) {
+        backgroundScope.launch {
+            runCatching(block).onFailure { error("$label: ${it.message ?: it.javaClass.simpleName}") }
+        }
+    }
+
+    /** [expand] = false runs [line] literally (tap-to-run lines must not be rewritten by aliases). */
+    fun run(line: String, expand: Boolean = true) {
         val typed = line.trim()
         if (typed.isEmpty()) return
         logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
-        val trimmed = expandAliases(typed)
+        val trimmed = if (expand) expandAliases(typed) else typed
         // "= 6*7" is a quick calculator (any Lua expression).
         if (trimmed.startsWith("=")) return eval(ScriptLang.LUA, trimmed.drop(1).trim())
         val name = trimmed.substringBefore(' ').lowercase()
@@ -88,7 +100,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "rss" -> rss(rest)
                 "url", "web" -> openUrl(rest)
                 "search", "g" -> search(rest)
-                "notifications" -> notifications()
+                "notifications" -> notifications(args)
                 "setup" -> setup()
                 "status" -> statusCommand(args)
                 "usage-access" -> startActivity(unlocks.usageAccessIntent())
@@ -131,6 +143,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         when {
             !rest.contains('=') -> prefs.alias(name)?.let { out("$name = $it") } ?: error("no alias '$name'")
             name.isEmpty() || expansion.isEmpty() -> error("usage: alias <name> = <command>")
+            name in COMMANDS.map { it.name } -> error("'$name' is a built-in command and can't be an alias")
             else -> {
                 prefs.setAlias(name, expansion)
                 info("alias $name = $expansion")
@@ -348,9 +361,20 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         info("search: $query", LogContext.of(LogContext.URL to url))
     }
 
-    private fun notifications() {
-        if (Notifier.canPost(context)) info("notifications are allowed")
-        else ui.requestNotificationPermission()
+    /** Asks for the runtime permission when it can; otherwise (pre-13, or turned off) opens settings. */
+    private fun notifications(args: List<String>) {
+        val permissionMissing = Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(
+            android.Manifest.permission.POST_NOTIFICATIONS,
+        ) != PackageManager.PERMISSION_GRANTED
+        when {
+            args.firstOrNull() == "settings" || (!permissionMissing && !Notifier.canPost(context)) ->
+                startActivity(
+                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                )
+            permissionMissing -> ui.requestNotificationPermission()
+            else -> info("notifications are allowed")
+        }
     }
 
     /** `status` lists script status lines; `status clear <name|all>` removes them. */
@@ -407,10 +431,10 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     }
 
     private fun help() {
-        COMMANDS.forEach { out("${it.usage.padEnd(30)} ${it.help}", LogContext.of(LogContext.COMMAND to it.name + " ")) }
+        COMMANDS.forEach { out("${it.usage}  — ${it.help}", LogContext.of(LogContext.COMMAND to it.name + " ")) }
         scripts.all().filter { ScriptMeta.isCommand(it.code) }.forEach { s ->
             val desc = ScriptMeta.description(s.code) ?: "${s.lang.ext} script"
-            out("${s.name.padEnd(30)} $desc", LogContext.of(LogContext.COMMAND to s.name + " ", LogContext.SCRIPT to s.name))
+            out("${s.name}  — $desc", LogContext.of(LogContext.COMMAND to s.name + " ", LogContext.SCRIPT to s.name))
         }
         info("anything else is matched against app names · tap a line to act · long-press for more")
     }
@@ -477,14 +501,15 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 folder.uri?.let { info("script folder: ${it.lastPathSegment}") }
                 ui.pickScriptFolder()
             }
-            "export" -> info("exported ${folder.export()} scripts + kolahal.json")
-            "import" -> {
+            // Folder sync can be slow on SAF providers; run it off the serial command queue.
+            "export" -> background("export") { info("exported ${folder.export()} scripts + kolahal.json") }
+            "import" -> background("import") {
                 val r = folder.import()
                 info("imported: ${r.created} new, ${r.updated} updated" + if (r.skipped.isNotEmpty()) ", skipped ${r.skipped.joinToString()}" else "")
             }
             "new" -> {
                 val (name, lang) = parseName(target ?: return error("usage: script new <name>[.lua|.js] [lua|js] [--cmd]"))
-                if (!Regex("^[A-Za-z0-9_-]{1,40}$").matches(name)) return error("script names: letters, digits, - and _ only")
+                if (!Regex("^[a-z0-9_-]{1,40}$").matches(name)) return error("script names: lowercase letters, digits, - and _ only")
                 if (name in COMMANDS.map { it.name }) return error("'$name' is a built-in command, pick another name")
                 val asCommand = "--cmd" in args || "cmd" in args
                 val chosen = args.drop(2).firstNotNullOfOrNull(ScriptLang::of) ?: lang ?: ScriptLang.LUA
@@ -585,7 +610,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private fun parseName(raw: String): Pair<String, ScriptLang?> {
         val ext = raw.substringAfterLast('.', "")
         val lang = ScriptLang.of(ext)
-        return (if (lang != null) raw.substringBeforeLast('.') else raw) to lang
+        return (if (lang != null) raw.substringBeforeLast('.') else raw).lowercase() to lang
     }
 
     companion object {

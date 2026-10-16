@@ -36,14 +36,15 @@ class HostApi(
     private val logs = LogRepository.get(context)
     private val store = KvStore(context, scriptId?.let(ScriptRepository::scopeOf) ?: "repl")
 
-    var linesLogged = 0
+    /** Visible side effects (log lines, status, notifications); a REPL run with none prints "nil". */
+    var effects = 0
         private set
 
     private val baseCtx: Map<String, String> =
         if (scriptId != null) mapOf(LogContext.SCRIPT to scriptName) else emptyMap()
 
     fun log(text: String, ctx: Map<*, *>? = null) {
-        linesLogged++
+        effects++
         logs.add(LogKind.SCRIPT, text, scriptName, LogContext(baseCtx + Json.toStringMap(ctx)))
     }
 
@@ -52,6 +53,7 @@ class HostApi(
     }
 
     fun notify(title: String, body: String, ctx: Map<*, *>? = null): Boolean {
+        effects++
         val values = Json.toStringMap(ctx)
         // With notifications off for this script, the script's own log lines already show the content.
         if (!notifyEnabled) return false
@@ -126,6 +128,11 @@ class HostApi(
 
     /** Pins a short line for this script into the launcher header; null or empty clears it. */
     fun status(text: String?) {
+        effects++
+        if (scriptId == null) {
+            log("status() only works in saved scripts (it is keyed by script name)")
+            return
+        }
         val value = text?.lines()?.firstOrNull()?.take(STATUS_MAX)?.takeIf { it.isNotBlank() }
         KvStore(context, STATUS_SCOPE).set(scriptName, value)
         logs.onStatusChanged()

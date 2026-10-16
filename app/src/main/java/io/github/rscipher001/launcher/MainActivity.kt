@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
     private val vm: TerminalViewModel by viewModels()
 
     private val notificationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { vm.onNotificationPermission(it) }
 
     private val pickFolder =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { vm.onScriptFolderPicked(it) }
