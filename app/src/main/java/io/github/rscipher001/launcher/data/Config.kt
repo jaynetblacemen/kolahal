@@ -54,11 +54,12 @@ object Keys {
     val AUTO_LAUNCH = ConfigKey.Bool("launch.single", true, "launch automatically when only one app matches")
     val SHOW_TIMESTAMPS = ConfigKey.Bool("log.time", false, "prefix log lines with their time")
     val FOCUS_ON_HOME = ConfigKey.Bool("keyboard.onhome", false, "open the soft keyboard whenever home is shown")
+    val IME_SUGGESTIONS = ConfigKey.Bool("keyboard.suggestions", false, "allow keyboard autocorrect / word suggestions")
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
         HEADER_PROFILES, CLOCK_24H, KEYBAR_SHOW, KEYBAR, THEME, FONT_SIZE, SUGGESTIONS, AUTO_LAUNCH,
-        SHOW_TIMESTAMPS, FOCUS_ON_HOME,
+        SHOW_TIMESTAMPS, FOCUS_ON_HOME, IME_SUGGESTIONS,
     )
 
     fun byName(name: String) = ALL.firstOrNull { it.key == name.lowercase() }

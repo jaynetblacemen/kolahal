@@ -11,9 +11,17 @@ interface ScriptEngine {
      * Runs [code] to completion.
      *
      * @param repl when true, the code is a one-liner typed at the prompt and its value is returned.
+     * @param args arguments when the script is invoked as a command (`args` / `argline` globals).
      * @return a printable rendering of the result value, or null when there is nothing to show.
      */
-    suspend fun run(code: String, chunkName: String, host: HostApi, timeoutMs: Long, repl: Boolean): String?
+    suspend fun run(
+        code: String,
+        chunkName: String,
+        host: HostApi,
+        timeoutMs: Long,
+        repl: Boolean,
+        args: List<String> = emptyList(),
+    ): String?
 
     companion object {
         fun forLang(lang: ScriptLang): ScriptEngine = when (lang) {
@@ -25,6 +33,28 @@ interface ScriptEngine {
 
 /** Starter code for `script new`. */
 object ScriptTemplates {
+    /** Template for a script that runs from the prompt: `<name> some args`. */
+    fun command(lang: ScriptLang, name: String): String = when (lang) {
+        ScriptLang.LUA -> """
+            -- @command
+            -- @desc current weather: $name [city]
+            -- Run as '$name london'. Arguments: args (table), argline (string). The return value is printed.
+            local city = argline ~= "" and argline or "London"
+            local r = http.get("https://wttr.in/" .. city:gsub(" ", "+") .. "?format=3")
+            if not r.ok then error("HTTP " .. r.status) end
+            return (r.body:gsub("%s+$", ""))
+        """.trimIndent()
+        ScriptLang.JS -> """
+            // @command
+            // @desc current weather: $name [city]
+            // Run as '$name london'. Arguments: args (array), argline (string). The return value is printed.
+            const city = argline || "London";
+            const r = await http.get("https://wttr.in/" + encodeURIComponent(city) + "?format=3");
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            return r.body.trim();
+        """.trimIndent()
+    }
+
     fun forLang(lang: ScriptLang, name: String): String = when (lang) {
         ScriptLang.LUA -> """
             -- $name.lua — runs on its timer in the :script process.

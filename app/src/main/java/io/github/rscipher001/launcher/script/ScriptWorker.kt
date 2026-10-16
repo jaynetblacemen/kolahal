@@ -32,6 +32,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         val code = script?.code ?: inputData.getString(KEY_CODE) ?: return Result.failure()
         val name = script?.name ?: lang.ext
         val repl = script == null
+        val args = inputData.getStringArray(KEY_ARGS)?.toList().orEmpty()
 
         val host = HostApi(ctx, name, script?.id, notifyEnabled = script?.notify ?: true)
         val engine = ScriptEngine.forLang(lang)
@@ -41,7 +42,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         )
         val status = try {
             val result = withTimeout(TIMEOUT_MS + 2_000) {
-                engine.run(code, name, host, TIMEOUT_MS, repl)
+                engine.run(code, name, host, TIMEOUT_MS, repl, args)
             }
             if (result != null) {
                 logs.add(LogKind.OUTPUT, result, name, LogContext.of(LogContext.COPY to result) + errorCtx.values)
@@ -67,6 +68,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         const val KEY_LANG = "lang"
         const val KEY_CODE = "code"
         const val KEY_SCHEDULED = "scheduled"
+        const val KEY_ARGS = "args"
         const val TIMEOUT_MS = 60_000L
     }
 }

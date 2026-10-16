@@ -63,6 +63,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -174,6 +175,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
         Prompt(
             vm = vm,
             focus = focus,
+            imeSuggestions = remember(configVersion) { config[Keys.IME_SUGGESTIONS] },
             onTapPrompt = {
                 runCatching { focus.requestFocus() }
                 keyboard?.show()
@@ -401,7 +403,12 @@ private fun KeyBar(spec: String, onKey: (KeyBarKey) -> Unit, onText: (String) ->
 }
 
 @Composable
-private fun Prompt(vm: TerminalViewModel, focus: FocusRequester, onTapPrompt: () -> Unit) {
+private fun Prompt(
+    vm: TerminalViewModel,
+    focus: FocusRequester,
+    imeSuggestions: Boolean,
+    onTapPrompt: () -> Unit,
+) {
     val promptStyle = Term.mono.copy(fontSize = (Term.fontSize + 2).sp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -418,8 +425,10 @@ private fun Prompt(vm: TerminalViewModel, focus: FocusRequester, onTapPrompt: ()
             textStyle = promptStyle,
             cursorBrush = SolidColor(Term.prompt),
             keyboardOptions = KeyboardOptions(
-                autoCorrectEnabled = false,
+                autoCorrectEnabled = imeSuggestions,
                 capitalization = KeyboardCapitalization.None,
+                // Password type is the reliable way to switch off IME autocorrect and suggestions.
+                keyboardType = if (imeSuggestions) KeyboardType.Text else KeyboardType.Password,
                 imeAction = ImeAction.Go,
             ),
             keyboardActions = KeyboardActions(onGo = { vm.submit() }),

@@ -6,6 +6,8 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import io.github.rscipher001.launcher.apps.AppEntry
+import io.github.rscipher001.launcher.apps.AppPrefs
+import io.github.rscipher001.launcher.script.ScriptMeta
 import io.github.rscipher001.launcher.apps.AppRepository
 import io.github.rscipher001.launcher.apps.ProfileKind
 import io.github.rscipher001.launcher.data.Config
@@ -43,16 +45,23 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private val scripts = ScriptRepository.get(context)
     private val unlocks = UnlockCounter.get(context)
     private val conf = Config.get(context)
+    private val prefs = AppPrefs.get(context)
 
     fun run(line: String) {
-        val trimmed = line.trim()
-        if (trimmed.isEmpty()) return
-        logs.add(LogKind.COMMAND, trimmed, ctx = LogContext.of(LogContext.COMMAND to trimmed))
+        val typed = line.trim()
+        if (typed.isEmpty()) return
+        logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
+        val trimmed = expandAliases(typed)
         val name = trimmed.substringBefore(' ').lowercase()
         val rest = trimmed.substringAfter(' ', "").trim()
         val args = tokenize(rest)
         runCatching {
             when (name) {
+                "alias" -> alias(rest)
+                "unalias" -> unalias(args)
+                "hide" -> withApp(args) { setHidden(it, true) }
+                "unhide" -> withApp(args, includeHidden = true) { setHidden(it, false) }
+                "rename" -> rename(args)
                 "help", "?" -> help()
                 "apps", "ls" -> listApps(args)
                 "open", "launch" -> open(args)
@@ -76,9 +85,79 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "echo" -> out(rest)
                 "config", "set" -> config(args)
                 "theme" -> config(listOf("set", "theme") + args)
-                else -> fallbackLaunch(trimmed)
+                else -> scriptCommand(name, args) ?: fallbackLaunch(trimmed)
             }
         }.onFailure { error("$name: ${it.message ?: it.javaClass.simpleName}") }
+    }
+
+    // ---- aliases --------------------------------------------------------------------------
+
+    /** Expands the first word through user aliases (up to a few levels, no cycles). */
+    private fun expandAliases(line: String): String {
+        var current = line
+        val seen = HashSet<String>()
+        repeat(5) {
+            val head = current.substringBefore(' ')
+            if (!seen.add(head)) return current
+            val expansion = prefs.alias(head) ?: return current
+            current = (expansion + " " + current.substringAfter(' ', "")).trim()
+        }
+        return current
+    }
+
+    private fun alias(rest: String) {
+        if (rest.isBlank()) {
+            val all = prefs.aliases()
+            if (all.isEmpty()) info("no aliases — e.g. alias m = open maps")
+            all.forEach { (k, v) -> out("$k = $v", LogContext.of(LogContext.COMMAND to k)) }
+            return
+        }
+        val name = rest.substringBefore('=').trim().substringBefore(' ')
+        val expansion = rest.substringAfter('=', "").trim().removeSurrounding("\"").removeSurrounding("'")
+        when {
+            !rest.contains('=') -> prefs.alias(name)?.let { out("$name = $it") } ?: error("no alias '$name'")
+            name.isEmpty() || expansion.isEmpty() -> error("usage: alias <name> = <command>")
+            else -> {
+                prefs.setAlias(name, expansion)
+                info("alias $name = $expansion")
+            }
+        }
+    }
+
+    private fun unalias(args: List<String>) {
+        val name = args.firstOrNull() ?: return error("usage: unalias <name>")
+        if (prefs.alias(name) == null) return error("no alias '$name'")
+        prefs.setAlias(name, null)
+        info("removed alias $name")
+    }
+
+    // ---- hide / rename --------------------------------------------------------------------
+
+    private fun setHidden(app: AppEntry, hidden: Boolean) {
+        prefs.setHidden(app.key, hidden)
+        apps.refresh()
+        info("${if (hidden) "hidden" else "unhidden"} ${appLine(app)}", appCtx(app))
+    }
+
+    /** `rename <app> = <new label>`, or `rename <app> =` to restore the original. */
+    private fun rename(args: List<String>) {
+        val eq = args.indexOf("=")
+        if (eq <= 0) return error("usage: rename <app> [-w] = <new name>")
+        withApp(args.subList(0, eq), includeHidden = true) { app ->
+            val label = args.drop(eq + 1).joinToString(" ").ifBlank { null }
+            prefs.setLabel(app.key, label)
+            apps.refresh()
+            info("${app.originalLabel} → ${label ?: app.originalLabel}", appCtx(app))
+        }
+    }
+
+    // ---- script commands ------------------------------------------------------------------
+
+    /** Runs a `@command` script named [name]; returns null if there is none. */
+    private fun scriptCommand(name: String, args: List<String>): Unit? {
+        val script = scripts.byName(name)?.takeIf { ScriptMeta.isCommand(it.code) } ?: return null
+        ScriptScheduler.runNow(context, script, args)
+        return Unit
     }
 
     // ---- output helpers -------------------------------------------------------------------
@@ -113,7 +192,10 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "private" -> ProfileKind.PRIVATE
             else -> null
         }
-        val list = apps.apps.value.filter { kind == null || it.profile.kind == kind }
+        val showHidden = "-a" in args || "hidden" in args
+        val list = apps.apps.value.filter {
+            (kind == null || it.profile.kind == kind) && (if ("hidden" in args) it.hidden else showHidden || !it.hidden)
+        }
         if (list.isEmpty()) {
             info("no apps" + (kind?.let { " in ${it.label} profile" } ?: ""))
             return
@@ -122,10 +204,11 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         info("${list.size} apps  ·  [P] personal  [W] work  [S] private")
     }
 
-    private fun resolveApp(args: List<String>): List<AppEntry> = apps.search(stripFlags(args), profileFlag(args))
+    private fun resolveApp(args: List<String>, includeHidden: Boolean = false): List<AppEntry> =
+        apps.search(stripFlags(args), profileFlag(args), includeHidden)
 
-    private inline fun withApp(args: List<String>, action: (AppEntry) -> Unit) {
-        val matches = resolveApp(args)
+    private inline fun withApp(args: List<String>, includeHidden: Boolean = false, action: (AppEntry) -> Unit) {
+        val matches = resolveApp(args, includeHidden)
         when {
             matches.isEmpty() -> error("no app matches '${stripFlags(args)}'")
             else -> action(matches.first())
@@ -144,11 +227,16 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     fun launch(app: AppEntry) {
         if (app.profile.quiet) {
             val cmd = if (app.profile.kind == ProfileKind.PRIVATE) "private on" else "work on"
-            error("${app.profile.kind.label} profile is paused — run '$cmd' first")
+            logs.add(
+                LogKind.ERROR,
+                "${app.profile.kind.label} profile is paused — tap to run '$cmd'",
+                ctx = LogContext.of(LogContext.COMMAND to cmd),
+            )
             return
         }
-        apps.launch(app)
-        info("launched ${appLine(app)}", appCtx(app))
+        runCatching { apps.launch(app) }
+            .onSuccess { info("launched ${appLine(app)}", appCtx(app)) }
+            .onFailure { error("can't launch ${app.label}: ${it.message ?: it.javaClass.simpleName}") }
     }
 
     /** Anything that isn't a command is treated as an app name. */
@@ -257,7 +345,11 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     }
 
     private fun help() {
-        COMMANDS.forEach { out("${it.usage.padEnd(30)} ${it.help}") }
+        COMMANDS.forEach { out("${it.usage.padEnd(30)} ${it.help}", LogContext.of(LogContext.COMMAND to it.name + " ")) }
+        scripts.all().filter { ScriptMeta.isCommand(it.code) }.forEach { s ->
+            val desc = ScriptMeta.description(s.code) ?: "${s.lang.ext} script"
+            out("${s.name.padEnd(30)} $desc", LogContext.of(LogContext.COMMAND to s.name + " ", LogContext.SCRIPT to s.name))
+        }
         info("anything else is matched against app names · tap a line to act · long-press for more")
     }
 
@@ -318,10 +410,13 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         when (sub) {
             "ls", "list" -> listScripts()
             "new" -> {
-                val (name, lang) = parseName(target ?: return error("usage: script new <name>[.lua|.js] [lua|js]"))
-                val chosen = args.getOrNull(2)?.let(ScriptLang::of) ?: lang ?: ScriptLang.LUA
+                val (name, lang) = parseName(target ?: return error("usage: script new <name>[.lua|.js] [lua|js] [--cmd]"))
+                if (name in COMMANDS.map { it.name }) return error("'$name' is a built-in command, pick another name")
+                val asCommand = "--cmd" in args || "cmd" in args
+                val chosen = args.drop(2).firstNotNullOfOrNull(ScriptLang::of) ?: lang ?: ScriptLang.LUA
                 if (scripts.byName(name) != null) return error("script '$name' exists — 'script edit $name'")
-                val script = scripts.create(name, chosen, ScriptTemplates.forLang(chosen, name))
+                val template = if (asCommand) ScriptTemplates.command(chosen, name) else ScriptTemplates.forLang(chosen, name)
+                val script = scripts.create(name, chosen, template)
                 info("created ${script.name}.${script.lang.ext}", scriptCtx(script))
                 ui.openEditor(script)
             }
@@ -432,6 +527,11 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("theme", "theme <name>", "green amber mono dracula solarized"),
             CommandSpec("date", "date", "current date and time"),
             CommandSpec("echo", "echo <text>", "print text"),
+            CommandSpec("alias", "alias [name = command]", "list or define aliases"),
+            CommandSpec("unalias", "unalias <name>", "remove an alias"),
+            CommandSpec("hide", "hide <app> [-w]", "hide an app from lists and search"),
+            CommandSpec("unhide", "unhide <app>", "show a hidden app again ('apps hidden')"),
+            CommandSpec("rename", "rename <app> = <name>", "custom label (empty restores)"),
         )
 
         val SCRIPT_SUBCOMMANDS = listOf("ls", "new", "edit", "run", "every", "notify", "on", "off", "rm", "cat")

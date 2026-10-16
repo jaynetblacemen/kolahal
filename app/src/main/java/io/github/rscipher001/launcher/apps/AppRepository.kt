@@ -39,9 +39,12 @@ data class AppEntry(
     val label: String,
     val component: ComponentName,
     val profile: Profile,
+    /** Label reported by the system, before any user rename. */
+    val originalLabel: String = label,
+    val hidden: Boolean = false,
 ) {
     val pkg: String get() = component.packageName
-    val key: String get() = "${component.flattenToShortString()}#${profile.serial}"
+    val key: String get() = keyOf(component, profile)
 }
 
 /**
@@ -52,6 +55,7 @@ class AppRepository private constructor(private val context: Context) {
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
     private val userManager = context.getSystemService(UserManager::class.java)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val prefs = AppPrefs.get(context)
 
     private val _apps = MutableStateFlow<List<AppEntry>>(emptyList())
     val apps: StateFlow<List<AppEntry>> = _apps.asStateFlow()
@@ -96,7 +100,17 @@ class AppRepository private constructor(private val context: Context) {
             val apps = profiles.flatMap { profile ->
                 runCatching { launcherApps.getActivityList(null, profile.user) }
                     .getOrDefault(emptyList())
-                    .map { AppEntry(it.label.toString(), it.componentName, profile) }
+                    .map { info ->
+                        val original = info.label.toString()
+                        val key = keyOf(info.componentName, profile)
+                        AppEntry(
+                            label = prefs.label(key) ?: original,
+                            component = info.componentName,
+                            profile = profile,
+                            originalLabel = original,
+                            hidden = prefs.isHidden(key),
+                        )
+                    }
             }.sortedWith(compareBy({ it.label.lowercase() }, { it.profile.kind.ordinal }))
             _profiles.value = profiles
             _apps.value = apps
@@ -132,14 +146,20 @@ class AppRepository private constructor(private val context: Context) {
     }
 
     /** Ranked fuzzy match: exact > prefix > word prefix > substring > subsequence. */
-    fun search(query: String, kind: ProfileKind? = null): List<AppEntry> {
+    fun search(query: String, kind: ProfileKind? = null, includeHidden: Boolean = false): List<AppEntry> {
         val q = query.trim().lowercase()
         if (q.isEmpty()) return emptyList()
+        val now = System.currentTimeMillis()
         return _apps.value
             .asSequence()
-            .filter { kind == null || it.profile.kind == kind }
+            .filter { (kind == null || it.profile.kind == kind) && (includeHidden || !it.hidden) }
             .mapNotNull { app -> score(app.label.lowercase(), q)?.let { app to it } }
-            .sortedWith(compareBy({ it.second }, { it.first.label.length }, { it.first.profile.kind.ordinal }))
+            .sortedWith(
+                compareBy<Pair<AppEntry, Int>>({ it.second })
+                    .thenByDescending { prefs.frecency(it.first.key, now) }
+                    .thenBy { it.first.label.length }
+                    .thenBy { it.first.profile.kind.ordinal }
+            )
             .map { it.first }
             .toList()
     }
@@ -161,6 +181,7 @@ class AppRepository private constructor(private val context: Context) {
 
     fun launch(app: AppEntry) {
         launcherApps.startMainActivity(app.component, app.profile.user, null, null)
+        prefs.recordLaunch(app.key)
     }
 
     fun openAppInfo(app: AppEntry) {
@@ -200,3 +221,6 @@ class AppRepository private constructor(private val context: Context) {
         }
     }
 }
+
+internal fun keyOf(component: ComponentName, profile: Profile) =
+    "${component.flattenToShortString()}#${profile.serial}"

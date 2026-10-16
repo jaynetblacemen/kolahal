@@ -42,8 +42,8 @@ class MainActivity : ComponentActivity() {
             KolahalTheme {
                 val editing by vm.editing.collectAsStateWithLifecycle()
                 val script = editing
-                // A launcher never "goes back" off the home screen.
-                BackHandler(enabled = true) { if (script != null) vm.closeEditor() }
+                // A launcher never "goes back" off the home screen; the editor installs its own handler.
+                BackHandler(enabled = script == null) { }
                 if (script != null) {
                     ScriptEditor(
                         script = script,

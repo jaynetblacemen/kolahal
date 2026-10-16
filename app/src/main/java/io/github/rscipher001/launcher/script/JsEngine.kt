@@ -22,12 +22,17 @@ class JsEngine : ScriptEngine {
         host: HostApi,
         timeoutMs: Long,
         repl: Boolean,
+        args: List<String>,
     ): String? {
         val js = QuickJs.create(Dispatchers.IO)
         try {
             js.memoryLimit = MEMORY_LIMIT
             js.evaluationTimeoutMillis = timeoutMs
             bindHost(js, host)
+            js.evaluate<Any?>(
+                "globalThis.args = ${Json.stringify(args)}; globalThis.argline = ${Json.stringify(args.joinToString(" "))};",
+                filename = "args.js",
+            )
             if (repl) return js.evaluate<Any?>(code, filename = "$chunkName.js")?.let(::render)
             // Wrap so scripts may `return`; top-level await makes evaluate() wait for completion,
             // and the value comes back through a binding (evaluate does not unwrap returned promises).

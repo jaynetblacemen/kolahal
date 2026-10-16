@@ -49,10 +49,13 @@ object ScriptScheduler {
         WorkManager.getInstance(context).cancelUniqueWork(uniqueName(scriptId))
     }
 
-    fun runNow(context: Context, script: Script) {
+    fun runNow(context: Context, script: Script, args: List<String> = emptyList()) {
         WorkManager.getInstance(context).enqueue(
             OneTimeWorkRequestBuilder<ScriptWorker>()
-                .setInputData(remoteData(context) { putLong(ScriptWorker.KEY_SCRIPT_ID, script.id) })
+                .setInputData(remoteData(context) {
+                    putLong(ScriptWorker.KEY_SCRIPT_ID, script.id)
+                    if (args.isNotEmpty()) putStringArray(ScriptWorker.KEY_ARGS, args.toTypedArray())
+                })
                 .build()
         )
     }

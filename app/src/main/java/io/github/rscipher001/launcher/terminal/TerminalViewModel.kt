@@ -13,6 +13,9 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.rscipher001.launcher.apps.AppEntry
+import io.github.rscipher001.launcher.apps.AppPrefs
+import io.github.rscipher001.launcher.data.ConfigKey
+import io.github.rscipher001.launcher.script.ScriptMeta
 import io.github.rscipher001.launcher.apps.AppRepository
 import io.github.rscipher001.launcher.apps.Profile
 import io.github.rscipher001.launcher.apps.ProfileKind
@@ -66,6 +69,10 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     private val scripts = ScriptRepository.get(app)
     private val unlockCounter = UnlockCounter.get(app)
     private val processor = CommandProcessor(app, this)
+    private val appPrefs = AppPrefs.get(app)
+
+    /** Scripts, refreshed off the main thread whenever the log changes (every script action logs). */
+    private val scriptCache = MutableStateFlow<List<Script>>(emptyList())
 
     private val _entries = MutableStateFlow<List<LogEntry>>(emptyList())
     val entries: StateFlow<List<LogEntry>> = _entries.asStateFlow()
@@ -102,7 +109,10 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     }
 
     private suspend fun reload() {
-        val (list, hist) = withContext(Dispatchers.IO) { logs.recent() to logs.commandHistory() }
+        val (list, hist, scriptList) = withContext(Dispatchers.IO) {
+            Triple(logs.recent(), logs.commandHistory(), scripts.all())
+        }
+        scriptCache.value = scriptList
         _entries.value = list
         history = hist
     }
@@ -200,20 +210,26 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         if (text.isBlank()) return emptyList()
         val parts = text.trimStart().split(' ')
         val head = parts.first().lowercase()
+        val scriptList = scriptCache.value
         if (parts.size == 1) {
-            val cmds = CommandProcessor.COMMANDS
-                .filter { it.name.startsWith(head) && it.name != head }
-                .map { Suggestion.Completion(it.name, it.name + " ") }
+            val names = CommandProcessor.COMMANDS.map { it.name } +
+                scriptList.filter { ScriptMeta.isCommand(it.code) }.map { it.name } +
+                appPrefs.aliases().keys
+            val cmds = names.distinct()
+                .filter { it.startsWith(head) && it != head }
+                .map { Suggestion.Completion(it, "$it ") }
             val appMatches = appsRepo.search(head).take(12).map { Suggestion.App(it) }
             return (cmds.take(3) + appMatches)
         }
         val arg = parts.drop(1).joinToString(" ")
+        val last = parts.last()
         return when (head) {
-            "open", "launch", "info", "uninstall" ->
-                appsRepo.search(arg.replace(Regex("\\s-\\w+"), "").trim()).take(12).map {
-                    if (head == "open" || head == "launch") Suggestion.App(it)
-                    else Suggestion.Completion("${it.label} [${it.profile.kind.tag}]", "$head ${it.label}" + flagFor(it))
-                }
+            "open", "launch", "info", "uninstall", "hide", "unhide", "rename" ->
+                appsRepo.search(arg.replace(Regex("\\s-\\w+"), "").trim(), includeHidden = head == "unhide")
+                    .take(12).map {
+                        if (head == "open" || head == "launch") Suggestion.App(it)
+                        else Suggestion.Completion("${it.label} [${it.profile.kind.tag}]", "$head ${it.label}" + flagFor(it))
+                    }
             "script" -> {
                 if (parts.size == 2) {
                     CommandProcessor.SCRIPT_SUBCOMMANDS.filter { it.startsWith(parts[1]) && it != parts[1] }
@@ -222,11 +238,37 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
                     val sub = parts[1]
                     val prefix = parts.getOrNull(2).orEmpty()
                     if (parts.size == 3 && sub != "new") {
-                        scripts.all().filter { it.name.startsWith(prefix) && it.name != prefix }
+                        scriptList.filter { it.name.startsWith(prefix) && it.name != prefix }
                             .map { Suggestion.Completion(it.name, "script $sub ${it.name} ") }
                     } else emptyList()
                 }
             }
+            "config", "set" -> {
+                val keyIndex = if (parts.getOrNull(1) in listOf("set", "get", "reset")) 2 else 1
+                when {
+                    parts.size == 2 && keyIndex == 2 -> emptyList()
+                    parts.size == keyIndex + 1 -> {
+                        val prefix = parts.take(keyIndex).joinToString(" ")
+                        val subs = if (keyIndex == 1) listOf("set", "get", "reset").filter { it.startsWith(last) } else emptyList()
+                        subs.map { Suggestion.Completion(it, "$prefix $it ") } +
+                            Keys.ALL.filter { it.key.startsWith(last) && it.key != last }
+                                .map { Suggestion.Completion(it.key, "$prefix ${it.key} ") }
+                    }
+                    parts.size == keyIndex + 2 -> {
+                        val key = Keys.byName(parts[keyIndex]) ?: return emptyList()
+                        val prefix = parts.take(keyIndex + 1).joinToString(" ")
+                        val values = when (key) {
+                            is ConfigKey.Bool -> listOf("on", "off")
+                            is ConfigKey.Choice -> key.choices
+                            else -> emptyList()
+                        }
+                        values.filter { it.startsWith(last) && it != last }.map { Suggestion.Completion(it, "$prefix $it") }
+                    }
+                    else -> emptyList()
+                }
+            }
+            "theme" -> Keys.THEME.choices.filter { it.startsWith(arg) && it != arg }
+                .map { Suggestion.Completion(it, "theme $it") }
             "work", "private" -> listOf("on", "off", "status")
                 .filter { it.startsWith(arg) && it != arg }
                 .map { Suggestion.Completion(it, "$head $it") }
@@ -327,6 +369,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     // ---- script editor --------------------------------------------------------------------
 
     fun saveScript(script: Script, code: String) {
+        _editing.value = script.copy(code = code)
         io { scripts.saveCode(script.id, code) }
     }
 
