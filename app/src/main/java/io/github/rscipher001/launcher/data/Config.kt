@@ -55,7 +55,8 @@ object Keys {
     val AUTO_LAUNCH = ConfigKey.Bool("launch.single", true, "launch automatically when only one app matches")
     val LAUNCH_TOP = ConfigKey.Bool("launch.top", true, "Enter launches the best match when it starts with what you typed")
     val SUGGEST_IDLE = ConfigKey.Bool("suggestions.idle", true, "show most-used apps when the prompt is empty")
-    val SHOW_TIMESTAMPS = ConfigKey.Bool("log.time", false, "prefix log lines with their time")
+    val SHOW_TIMESTAMPS = ConfigKey.Choice("log.time", "commands", listOf("off", "commands", "all"), "right-aligned times on log lines")
+    val LOG_DIM = ConfigKey.Bool("log.dim", true, "dim output older than the latest command")
     val LOG_SPACING = ConfigKey.Num("log.spacing", 12, 0..40, "gap (dp) above each command and its output")
     val FOCUS_ON_HOME = ConfigKey.Bool("keyboard.onhome", false, "open the soft keyboard whenever home is shown")
     val IME_SUGGESTIONS = ConfigKey.Bool(
@@ -66,7 +67,7 @@ object Keys {
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
         HEADER_PROFILES, HEADER_STATUS, CLOCK_24H, KEYBAR_SHOW, KEYBAR, THEME, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, AUTO_LAUNCH, LAUNCH_TOP,
-        SHOW_TIMESTAMPS, LOG_SPACING, FOCUS_ON_HOME, IME_SUGGESTIONS,
+        SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, FOCUS_ON_HOME, IME_SUGGESTIONS,
     )
 
     fun byName(name: String) = ALL.firstOrNull { it.key == name.lowercase() }

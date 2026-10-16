@@ -51,6 +51,10 @@ data class LogContext(val values: Map<String, String> = emptyMap()) {
         const val COMMAND = "command"
         /** A command that runs immediately when the line is tapped (setup checklist, hints). */
         const val RUN = "run"
+        /** Second column text (help, config, script listings render as two columns). */
+        const val DESC = "desc"
+        /** JSON list of {pkg, cls, user}: the line renders as a grid of app chips. */
+        const val APPS = "apps"
 
         val EMPTY = LogContext()
 

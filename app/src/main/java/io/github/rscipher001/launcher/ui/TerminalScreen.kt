@@ -97,6 +97,7 @@ import io.github.rscipher001.launcher.data.LogEntry
 import io.github.rscipher001.launcher.data.LogKind
 import io.github.rscipher001.launcher.status.Status
 import io.github.rscipher001.launcher.terminal.LogAction
+import io.github.rscipher001.launcher.terminal.LogRow
 import io.github.rscipher001.launcher.terminal.Suggestion
 import io.github.rscipher001.launcher.terminal.TerminalViewModel
 import io.github.rscipher001.launcher.terminal.UiEvent
@@ -154,14 +155,24 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         if (hasHardwareKeyboard) runCatching { focus.requestFocus() }
     }
 
-    val reversed = remember(entries) { entries.asReversed() }
+    val rows by vm.rows.collectAsStateWithLifecycle()
+    val reversedRows = remember(rows) { rows.asReversed() }
     val maxSuggestions = remember(configVersion) { config[Keys.SUGGESTIONS] }
     val commandNames by vm.commandNames.collectAsStateWithLifecycle()
     val prefsVersion by vm.appPrefsVersion.collectAsStateWithLifecycle()
     val suggestions = remember(vm.input.text, apps, maxSuggestions, commandNames, prefsVersion) {
         vm.suggestions(vm.input.text).take(maxSuggestions)
     }
-    val showTime = remember(configVersion) { config[Keys.SHOW_TIMESTAMPS] }
+    val timeMode = remember(configVersion) {
+        when (config[Keys.SHOW_TIMESTAMPS]) {
+            "all" -> TimeMode.ALL
+            "off" -> TimeMode.OFF
+            else -> TimeMode.COMMANDS
+        }
+    }
+    val dimOld = remember(configVersion) { config[Keys.LOG_DIM] }
+    var menu by remember { mutableStateOf<ActionMenu?>(null) }
+    menu?.let { ActionSheet(it, onDismiss = { menu = null }) }
     val commandGap = remember(configVersion) { config[Keys.LOG_SPACING].dp }
     // Monospace advance, used to indent wrapped lines past their prefix.
     val measurer = rememberTextMeasurer()
@@ -208,15 +219,24 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 },
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
         ) {
-            items(reversed, key = { it.id }, contentType = { it.kind }) { entry ->
-                LogLine(
-                    entry = entry,
-                    timeFormat = if (showTime) lineTimeFormat else null,
-                    topGap = if (entry.kind == LogKind.COMMAND) commandGap else 0.dp,
-                    charWidth = charWidth,
-                    onTap = vm::onTap,
-                    actions = vm::actionsFor,
-                )
+            items(reversedRows, key = { it.key }, contentType = { if (it is LogRow.Day) "day" else (it as LogRow.Entry).entry.kind }) { row ->
+                when (row) {
+                    is LogRow.Day -> DayDivider(row)
+                    is LogRow.Entry -> LogLine(
+                        row = row,
+                        timeMode = timeMode,
+                        timeFormat = lineTimeFormat,
+                        dim = dimOld,
+                        topGap = if (row.entry.kind == LogKind.COMMAND) commandGap else 0.dp,
+                        charWidth = charWidth,
+                        highlighted = menu?.entryId == row.entry.id,
+                        apps = vm::appsOf,
+                        onTap = vm::onTap,
+                        onLongPress = { e -> menu = ActionMenu(e.text, vm.actionsFor(e), e.id) },
+                        onAppTap = vm::launchApp,
+                        onAppLongPress = { app -> menu = ActionMenu(app.label, vm.appActions(app), null) },
+                    )
+                }
             }
         }
         SuggestionStrip(suggestions, onPick = vm::onSuggestion)
@@ -346,93 +366,6 @@ private fun Header(
                     maxLines = 1,
                     modifier = Modifier.fillMaxWidth().clickable { onStatusTap(name) },
                 )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun LogLine(
-    entry: LogEntry,
-    timeFormat: SimpleDateFormat?,
-    topGap: Dp,
-    charWidth: TextUnit,
-    onTap: (LogEntry) -> Unit,
-    actions: (LogEntry) -> List<LogAction>,
-) {
-    var menu by remember { mutableStateOf<List<LogAction>?>(null) }
-    val haptics = LocalHapticFeedback.current
-    // Building the styled line is the expensive part of a frame; do it once per entry/theme.
-    val text = remember(entry, timeFormat, Term.palette, charWidth) { renderLine(entry, timeFormat, charWidth) }
-    Box(Modifier.padding(top = topGap)) {
-        Text(
-            text = text,
-            style = Term.mono,
-            modifier = Modifier
-                .fillMaxWidth()
-                .combinedClickable(
-                    onClick = { onTap(entry) },
-                    onLongClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        menu = actions(entry)
-                    },
-                )
-                .padding(vertical = 3.dp),
-        )
-        DropdownMenu(
-            expanded = menu != null,
-            onDismissRequest = { menu = null },
-        ) {
-            menu?.forEach { action ->
-                DropdownMenuItem(
-                    text = { Text(action.label, style = Term.mono) },
-                    onClick = {
-                        menu = null
-                        action.run()
-                    },
-                )
-            }
-        }
-    }
-}
-
-private val profileTag = Regex("^\\[([PWSC])] ")
-
-/**
- * Styles one log line. Wrapped continuation lines are indented past the prefix (`$ `, `[hn] `,
- * `[W] `, time) so each item reads as one block; [charWidth] is the monospace advance.
- */
-private fun renderLine(entry: LogEntry, timeFormat: SimpleDateFormat?, charWidth: TextUnit) = buildAnnotatedString {
-    val time = timeFormat?.format(Date(entry.ts))?.plus(" ").orEmpty()
-    val profile = if (entry.kind == LogKind.OUTPUT) profileTag.find(entry.text) else null
-    val prefixLen = time.length + when (entry.kind) {
-        LogKind.COMMAND -> 2
-        LogKind.SCRIPT -> entry.source?.let { it.length + 3 } ?: 0
-        LogKind.OUTPUT -> profile?.value?.length ?: 2
-        else -> 2
-    }
-    withStyle(ParagraphStyle(textIndent = TextIndent(restLine = charWidth * prefixLen))) {
-        if (time.isNotEmpty()) withStyle(SpanStyle(color = Term.dim)) { append(time) }
-        when (entry.kind) {
-            LogKind.COMMAND -> {
-                withStyle(SpanStyle(color = Term.prompt)) { append("$ ") }
-                withStyle(SpanStyle(color = Term.fg, fontWeight = FontWeight.Bold)) { append(entry.text) }
-            }
-            LogKind.ERROR -> withStyle(SpanStyle(color = Term.error)) { append(entry.text) }
-            LogKind.INFO -> withStyle(SpanStyle(color = Term.info)) { append(entry.text) }
-            LogKind.SCRIPT -> {
-                entry.source?.let { withStyle(SpanStyle(color = Term.dim)) { append("[$it] ") } }
-                withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.script)) { append(entry.text) }
-            }
-            LogKind.OUTPUT -> {
-                if (profile != null) {
-                    val kind = ProfileKind.entries.first { it.tag == profile.groupValues[1] }
-                    withStyle(SpanStyle(color = Term.profileColor(kind), fontWeight = FontWeight.Bold)) { append(profile.value) }
-                    append(entry.text.substring(profile.value.length))
-                } else {
-                    withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.fg)) { append(entry.text) }
-                }
             }
         }
     }

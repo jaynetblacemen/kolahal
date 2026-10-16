@@ -1,0 +1,53 @@
+package io.github.rscipher001.launcher.terminal
+
+import androidx.compose.runtime.Immutable
+import io.github.rscipher001.launcher.data.LogEntry
+import io.github.rscipher001.launcher.data.LogKind
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+
+/** Which coloured gutter a line gets, so command blocks and timer output read as groups. */
+enum class Gutter { COMMAND, SCRIPT, ERROR }
+
+/** What the log list renders: entries plus synthetic day separators. */
+@Immutable
+sealed interface LogRow {
+    val key: Any
+
+    @Immutable
+    data class Entry(val entry: LogEntry, val dimmed: Boolean, val gutter: Gutter) : LogRow {
+        override val key: Any get() = entry.id
+    }
+
+    @Immutable
+    data class Day(val day: LocalDate) : LogRow {
+        override val key: Any get() = "day:$day"
+    }
+}
+
+/**
+ * Output older than the most recent command is dimmed, so the latest result stands out;
+ * timer-script lines that arrived after it stay bright. A separator marks each new day.
+ */
+fun buildRows(entries: List<LogEntry>, zone: ZoneId = ZoneId.systemDefault()): List<LogRow> {
+    val latestCommand = entries.lastOrNull { it.kind == LogKind.COMMAND }?.id ?: Long.MIN_VALUE
+    val today = LocalDate.now(zone)
+    val rows = ArrayList<LogRow>(entries.size + 4)
+    var previousDay: LocalDate? = null
+    for (e in entries) {
+        val day = Instant.ofEpochMilli(e.ts).atZone(zone).toLocalDate()
+        if (day != previousDay && (previousDay != null || day != today)) rows += LogRow.Day(day)
+        previousDay = day
+        rows += LogRow.Entry(
+            entry = e,
+            dimmed = e.id < latestCommand,
+            gutter = when (e.kind) {
+                LogKind.ERROR -> Gutter.ERROR
+                LogKind.SCRIPT -> Gutter.SCRIPT
+                else -> Gutter.COMMAND
+            },
+        )
+    }
+    return rows
+}

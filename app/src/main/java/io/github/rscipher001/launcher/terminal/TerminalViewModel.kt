@@ -17,6 +17,7 @@ import io.github.rscipher001.launcher.apps.AppEntry
 import io.github.rscipher001.launcher.apps.AppPrefs
 import io.github.rscipher001.launcher.data.ConfigKey
 import io.github.rscipher001.launcher.script.ScriptMeta
+import io.github.rscipher001.launcher.script.Json
 import io.github.rscipher001.launcher.script.ScriptFolder
 import io.github.rscipher001.launcher.script.HostApi
 import io.github.rscipher001.launcher.data.KvStore
@@ -66,7 +67,7 @@ sealed interface Suggestion {
 }
 
 /** One entry of a log line's long-press menu. */
-data class LogAction(val label: String, val run: () -> Unit)
+data class LogAction(val label: String, val destructive: Boolean = false, val run: () -> Unit)
 
 class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
     private val context = app.applicationContext
@@ -93,6 +94,10 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
 
     private val _entries = MutableStateFlow<List<LogEntry>>(emptyList())
     val entries: StateFlow<List<LogEntry>> = _entries.asStateFlow()
+
+    private val _rows = MutableStateFlow<List<LogRow>>(emptyList())
+    /** What the log list shows: entries (with dimming/gutter) and day separators. */
+    val rows: StateFlow<List<LogRow>> = _rows.asStateFlow()
 
     val apps: StateFlow<List<AppEntry>> = appsRepo.apps
     val profiles: StateFlow<List<Profile>> = appsRepo.profiles
@@ -136,6 +141,7 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
             scriptList.filter { ScriptMeta.isCommand(it.code) }.map { it.name }
         }
         _entries.value = list
+        _rows.value = withContext(Dispatchers.Default) { buildRows(list) }
         history = hist
     }
 
@@ -340,25 +346,20 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
         }
     }
 
-    /** Long-press: every action that makes sense for the saved context. */
+    /** Long-press: every action that makes sense for the saved context. Destructive ones come last. */
     fun actionsFor(entry: LogEntry): List<LogAction> {
         val ctx = entry.ctx
         val actions = ArrayList<LogAction>()
+        val danger = ArrayList<LogAction>()
         val command = ctx.command ?: entry.text.takeIf { entry.kind == LogKind.COMMAND }
         if (command != null) {
             actions += LogAction("Run again") { setText(command); submit() }
-            actions += LogAction("Edit in prompt") { setText(command) }
+            actions += LogAction("Edit in prompt") { setText(command); _events.tryEmit(UiEvent.FocusPrompt) }
         }
         appFor(ctx)?.let { app ->
-            val tag = "[${app.profile.kind.tag}]"
-            actions += LogAction("Launch ${app.label} $tag") { io { processor.launch(app) } }
-            actions += LogAction("App info") { io { appsRepo.openAppInfo(app) } }
-            actions += LogAction("Uninstall") { io { appsRepo.uninstall(app) } }
-            actions += LogAction("Copy package name") { copy(app.pkg) }
-            val twin = apps.value.firstOrNull { it.pkg == app.pkg && it.profile.serial != app.profile.serial }
-            if (twin != null) {
-                actions += LogAction("Launch in ${twin.profile.kind.label} profile") { io { processor.launch(twin) } }
-            }
+            val (safe, destructive) = appActions(app).partition { !it.destructive }
+            actions += safe
+            danger += destructive
         }
         ctx.url?.let { url ->
             actions += LogAction("Open link") { openUrl(url) }
@@ -385,9 +386,56 @@ class TerminalViewModel(app: Application) : AndroidViewModel(app), TerminalUi {
                 }
             }
         }
+        if (entry.id < 0) return actions + danger // synthetic entry (e.g. an app chip): nothing to copy or delete
+        val block = if (entry.kind == LogKind.COMMAND) blockOf(entry) else emptyList()
+        if (block.size > 1) {
+            actions += LogAction("Copy output") { copy(block.drop(1).joinToString("\n") { it.text }) }
+            danger += LogAction("Delete command and output", destructive = true) {
+                val ids = block.map { it.id }
+                io { ids.forEach(logs::delete) }
+            }
+        }
         actions += LogAction("Copy text") { copy(ctx.copy ?: entry.text) }
-        actions += LogAction("Delete line") { io { logs.delete(entry.id) } }
-        return actions
+        danger += LogAction("Delete line", destructive = true) { io { logs.delete(entry.id) } }
+        return actions + danger
+    }
+
+    /** Actions for one app (log lines and grid chips). */
+    fun appActions(app: AppEntry): List<LogAction> = buildList {
+        add(LogAction("Launch ${app.label} [${app.profile.kind.tag}]") { io { processor.launch(app) } })
+        apps.value.firstOrNull { it.pkg == app.pkg && it.profile.serial != app.profile.serial }?.let { twin ->
+            add(LogAction("Launch in ${twin.profile.kind.label} profile") { io { processor.launch(twin) } })
+        }
+        add(LogAction("App info") { io { appsRepo.openAppInfo(app) } })
+        add(LogAction("Copy package name") { copy(app.pkg) })
+        add(LogAction(if (app.hidden) "Unhide" else "Hide from lists") {
+            io {
+                appPrefs.setHidden(app.key, !app.hidden)
+                appsRepo.refresh()
+            }
+        })
+        add(LogAction("Uninstall", destructive = true) { io { appsRepo.uninstall(app) } })
+    }
+
+    fun launchApp(app: AppEntry) = io { processor.launch(app) }
+
+    /** A command line plus the output that followed it (up to the next command; timer output excluded). */
+    private fun blockOf(command: LogEntry): List<LogEntry> {
+        val all = _entries.value
+        val start = all.indexOfFirst { it.id == command.id }
+        if (start < 0) return listOf(command)
+        val rest = all.drop(start + 1).takeWhile { it.kind != LogKind.COMMAND }.filter { it.kind != LogKind.SCRIPT }
+        return listOf(command) + rest
+    }
+
+    /** Apps referenced by a grid line (`ctx.apps` = JSON list of {pkg, cls, user}). */
+    fun appsOf(entry: LogEntry): List<AppEntry> {
+        val raw = entry.ctx.values[LogContext.APPS] ?: return emptyList()
+        val list = runCatching { Json.parse(raw) as? List<*> }.getOrNull().orEmpty()
+        return list.filterIsInstance<Map<*, *>>().mapNotNull { m ->
+            val pkg = m["pkg"]?.toString() ?: return@mapNotNull null
+            appsRepo.find(pkg, m["cls"]?.toString(), m["user"]?.toString()?.toLongOrNull())
+        }
     }
 
     private fun appFor(ctx: LogContext): AppEntry? =

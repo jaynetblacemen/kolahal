@@ -11,6 +11,7 @@ import android.provider.Settings
 import io.github.rscipher001.launcher.apps.AppEntry
 import io.github.rscipher001.launcher.apps.AppPrefs
 import io.github.rscipher001.launcher.script.ScriptMeta
+import io.github.rscipher001.launcher.script.Json
 import io.github.rscipher001.launcher.script.ScriptFolder
 import io.github.rscipher001.launcher.script.HostApi
 import io.github.rscipher001.launcher.data.KvStore
@@ -228,8 +229,9 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             info("no apps" + (kind?.let { " in ${it.label} profile" } ?: ""))
             return
         }
-        list.forEach { out(appLine(it), appCtx(it)) }
-        info("${list.size} apps  ·  [P] personal  [W] work  [S] private  [C] clone")
+        if ("-l" in args) list.forEach { out(appLine(it), appCtx(it)) } else appGrid(list)
+        val kinds = list.map { it.profile.kind }.distinct().sortedBy { it.ordinal }
+        info("${list.size} apps · " + kinds.joinToString("  ") { "[${it.tag}] ${it.label}" })
     }
 
     private fun resolveApp(args: List<String>, includeHidden: Boolean = false): List<AppEntry> =
@@ -278,7 +280,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             // The top suggestion chip is what Enter launches, as long as it starts with the input.
             conf[Keys.LAUNCH_TOP] && ranked[0].second <= 2 -> launch(matches[0])
             else -> {
-                matches.take(8).forEach { out(appLine(it), appCtx(it)) }
+                appGrid(matches.take(12))
                 info("${matches.size} matches — tap one to launch")
             }
         }
@@ -304,6 +306,15 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 ctx = LogContext.of(LogContext.RUN to corrected),
             )
         }
+    }
+
+    /** One log line rendered as tappable app chips (long-press a chip for its actions). */
+    private fun appGrid(list: List<AppEntry>) {
+        val refs = list.map { mapOf("pkg" to it.pkg, "cls" to it.component.className, "user" to it.profile.serial) }
+        out(
+            list.joinToString(", ") { it.label },
+            LogContext.of(LogContext.APPS to Json.stringify(refs), LogContext.COPY to list.joinToString("\n") { appLine(it) }),
+        )
     }
 
     private fun profileToggle(kind: ProfileKind, args: List<String>) {
@@ -457,10 +468,23 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     }
 
     private fun help() {
-        COMMANDS.forEach { out("${it.usage}  — ${it.help}", LogContext.of(LogContext.COMMAND to it.name + " ")) }
-        scripts.all().filter { ScriptMeta.isCommand(it.code) }.forEach { s ->
+        val byName = COMMANDS.associateBy { it.name }
+        val placed = HashSet<String>()
+        for ((section, names) in HELP_SECTIONS) {
+            info(section)
+            names.mapNotNull(byName::get).forEach { spec ->
+                placed += spec.name
+                out(spec.usage, LogContext.of(LogContext.COMMAND to spec.name + " ", LogContext.DESC to spec.help))
+            }
+        }
+        COMMANDS.filter { it.name !in placed }.forEach { spec ->
+            out(spec.usage, LogContext.of(LogContext.COMMAND to spec.name + " ", LogContext.DESC to spec.help))
+        }
+        val commandScripts = scripts.all().filter { ScriptMeta.isCommand(it.code) }
+        if (commandScripts.isNotEmpty()) info("your script commands")
+        commandScripts.forEach { s ->
             val desc = ScriptMeta.description(s.code) ?: "${s.lang.ext} script"
-            out("${s.name}  — $desc", LogContext.of(LogContext.COMMAND to s.name + " ", LogContext.SCRIPT to s.name))
+            out(s.name, LogContext.of(LogContext.COMMAND to s.name + " ", LogContext.SCRIPT to s.name, LogContext.DESC to desc))
         }
         info("anything else is matched against app names · tap a line to act · long-press for more")
     }
@@ -475,8 +499,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 Keys.ALL.forEach { k ->
                     val marker = if (conf.isDefault(k)) "" else " *"
                     out(
-                        "${k.key.padEnd(17)} ${conf.display(k).padEnd(8)} ${k.help}$marker",
-                        LogContext.of(LogContext.COMMAND to "config set ${k.key} "),
+                        "${k.key} = ${conf.display(k)}$marker",
+                        LogContext.of(LogContext.COMMAND to "config set ${k.key} ", LogContext.DESC to k.help),
                     )
                 }
                 info("tap a line to edit it · * = changed from default · 'config reset <key|all>'")
@@ -621,7 +645,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 if (!s.enabled) add("disabled")
                 add(last)
             }
-            out("${s.name}.${s.lang.ext} · " + parts.joinToString(" · "), scriptCtx(s))
+            out("${s.name}.${s.lang.ext}", scriptCtx(s) + mapOf(LogContext.DESC to parts.joinToString(" · ")))
         }
     }
 
@@ -642,7 +666,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     companion object {
         val COMMANDS = listOf(
             CommandSpec("help", "help", "show this list"),
-            CommandSpec("apps", "apps [work|personal|private]", "list apps with profile tags"),
+            CommandSpec("apps", "apps [work|personal|private|hidden] [-l]", "app grid (-l: one per line)"),
             CommandSpec("open", "open <app> [-w|-p|-s]", "launch an app (or just type its name)"),
             CommandSpec("info", "info <app> [-w]", "open app info"),
             CommandSpec("uninstall", "uninstall <app> [-w]", "uninstall an app"),
@@ -674,6 +698,15 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("hide", "hide <app> [-w]", "hide an app from lists and search"),
             CommandSpec("unhide", "unhide <app>", "show a hidden app again ('apps hidden')"),
             CommandSpec("rename", "rename <app> = <name>", "custom label (empty restores)"),
+        )
+
+        /** `help` groups; commands not listed here are shown after the groups. */
+        val HELP_SECTIONS = linkedMapOf(
+            "apps" to listOf("open", "apps", "info", "uninstall", "hide", "unhide", "rename", "search", "url"),
+            "profiles" to listOf("work", "private"),
+            "scripts" to listOf("script", "lua", "js", "=", "rss", "status"),
+            "terminal" to listOf("help", "history", "clear", "alias", "unalias", "config", "theme", "echo", "date"),
+            "device" to listOf("setup", "unlocks", "notifications", "usage-access", "battery", "home", "settings"),
         )
 
         val SCRIPT_SUBCOMMANDS = listOf("ls", "new", "edit", "run", "every", "at", "notify", "on", "off", "rm", "cat", "dir", "export", "import")
