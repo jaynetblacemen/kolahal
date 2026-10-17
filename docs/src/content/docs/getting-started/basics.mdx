@@ -57,6 +57,32 @@ Command chips start with `$` (`$ maps`), app chips show the app name, and a ✕ 
 prompt clears it. Tap a chip to use it. Tab (on the key bar or a hardware keyboard) takes the first one. The number
 of chips is `suggestions` (default 12).
 
+By default (`suggestions.style list`) the suggestions are a **list** stacked directly above the
+prompt instead of chips: the best match sits at the bottom, nearest your thumb, highlighted with
+a ⏎ because it is what Enter and Tab act on. Command rows show `$ name` and the command's short
+description; app rows show the profile tag. The list takes at most about 40% of the screen and
+scrolls beyond that. Long-press an app row for its actions. `config set suggestions.style chips`
+brings back the chip strip (`suggestions.rows` applies to chips only).
+
+### App selector
+
+While the keyboard is down, a slim **A–Z rail** runs along the right edge of the log
+(`selector.rail`, on by default), like Niagara Launcher's. Letters with no apps are dimmed; `#`
+holds apps that start with a digit, a symbol or a non-Latin letter.
+
+- **Touch the rail and slide up or down.** The letter under your finger swells (its neighbours
+  a little), each letter change ticks, and a panel to the left lists that letter's apps at finger
+  height: favourites first (★), then by name, personal before work, with `[W]` / `[S]` tags and
+  paused profiles faded. Hidden apps are left out.
+- **Slide left onto an app and lift** to launch it. Hold still on a row for half a second for its
+  actions (the same sheet as long-pressing an app). Past the panel's top or bottom edge, a long
+  letter scrolls.
+- **Lift over the rail** and the panel stays open for a tap (drag it to scroll); a tap elsewhere or
+  3 seconds closes it.
+
+Android lets an app keep at most 200dp of each screen edge from the back gesture, so only the
+middle 200dp of the rail does; above and below it a swipe in from the edge still goes back.
+
 ## The log
 
 Each command and its output form a **block** with a coloured gutter. Script output and errors

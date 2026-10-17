@@ -12,6 +12,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.rscipher001.launcher.terminal.TerminalViewModel
 import io.github.rscipher001.launcher.terminal.Screen
@@ -248,10 +250,34 @@ private fun HomePager(vm: TerminalViewModel, terminal: @androidx.compose.runtime
     BackHandler(enabled = pager.currentPage != terminalPage) {
         scope.launch { pager.animateScrollToPage(terminalPage) }
     }
+    // The pager's own scrolling grabs touches before its children, which starved the A–Z rail.
+    // Our detector runs after the children instead: a swipe the rail or a log line already
+    // claimed (consumed) never turns the page.
     androidx.compose.foundation.pager.HorizontalPager(
         state = pager,
         beyondViewportPageCount = 1,
+        userScrollEnabled = false,
         key = { it },
+        modifier = androidx.compose.ui.Modifier.pointerInput(pager) {
+            val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
+            detectHorizontalDragGestures(
+                onDragStart = { tracker.resetTracking() },
+                onDragEnd = {
+                    val v = tracker.calculateVelocity().x
+                    val target = when {
+                        v < -800f -> pager.currentPage + 1
+                        v > 800f -> pager.currentPage - 1
+                        else -> (pager.currentPage + pager.currentPageOffsetFraction).let { kotlin.math.round(it).toInt() }
+                    }.coerceIn(0, 1)
+                    scope.launch { pager.animateScrollToPage(target) }
+                },
+                onDragCancel = { scope.launch { pager.animateScrollToPage(pager.currentPage) } },
+            ) { change, dx ->
+                tracker.addPosition(change.uptimeMillis, change.position)
+                change.consume()
+                pager.dispatchRawDelta(-dx)
+            }
+        },
     ) { page ->
         if (page == terminalPage) terminal() else io.github.rscipher001.launcher.ui.WidgetPanel(vm)
     }

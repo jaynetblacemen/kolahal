@@ -383,6 +383,18 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 Text("↓", style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize + 4).sp))
             }
         }
+        // [selector] selector.rail: Niagara-style A–Z rail over the log's right edge, keyboard down only.
+        val railOn = remember(configVersion) { config[Keys.SELECTOR_RAIL] }
+        if (railOn && !WindowInsets.isImeVisible) {
+            val pinnedKeys = remember(apps, prefsVersion) { vm.pinnedKeys() }
+            AppRail(
+                apps = apps,
+                pinned = pinnedKeys,
+                onLaunch = vm::launchApp,
+                onLongPress = { app -> menu = ActionMenu(app.label, vm.appActions(app), null) },
+            )
+        }
+        // [/selector]
         }
         // A hardware keyboard already has these keys: the bar follows the on-screen keyboard.
         val typing = promptFocused && WindowInsets.isImeVisible
@@ -403,7 +415,20 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 )
             }
         }
-        if (!suggestionsAuto || typing || vm.input.text.isNotEmpty()) SuggestionStrip(suggestions, rows = remember(configVersion) { config[Keys.SUGGESTION_ROWS] }, onPick = vm::onSuggestion)
+        // [selector] suggestions.style: list (default, bottom-anchored above the prompt) or chips.
+        val suggestionsStyle = remember(configVersion) { config[Keys.SUGGESTIONS_STYLE] }
+        if (!suggestionsAuto || typing || vm.input.text.isNotEmpty()) {
+            if (suggestionsStyle == "chips") {
+                SuggestionStrip(suggestions, rows = remember(configVersion) { config[Keys.SUGGESTION_ROWS] }, onPick = vm::onSuggestion)
+            } else {
+                SuggestionList(
+                    suggestions,
+                    onPick = vm::onSuggestion,
+                    onAppLongPress = { app -> menu = ActionMenu(app.label, vm.appActions(app), null) },
+                )
+            }
+        }
+        // [/selector]
         // keybar.auto: only while typing, so an idle home shows more of the log.
         val keyBarAuto = remember(configVersion) { config[Keys.KEYBAR_AUTO] }
         val promptTypingHeight = remember(configVersion) { config[Keys.PROMPT_HEIGHT_TYPING].dp }

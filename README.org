@@ -22,6 +22,11 @@ cd docs && npm install && npm run dev    # http://localhost:4321/kolahal/
     highlighted first suggestion chip.
   - With an empty prompt, the strip shows your most-used apps, ranked by frecency. The strip is
     hidden until you start typing (=suggestions.auto off= keeps it visible).
+  - Suggestions are a list stacked above the prompt, best match at the bottom nearest your thumb,
+    with each command's short description (=suggestions.style chips= brings back the chip strip).
+  - A–Z app rail (=selector.rail=, Niagara-style) on the right edge while the keyboard is down:
+    slide along it to see each letter's apps, slide left onto one and lift to launch, or hold on
+    a row for its actions. No keyboard needed.
 - Profiles ::
   - Personal, work (managed profile), Android 15+ private space and clone profiles appear together.
   - Apps are tagged =[W]= / =[S]= / =[C]= in their own colours. =[P]= is shown only when the same
