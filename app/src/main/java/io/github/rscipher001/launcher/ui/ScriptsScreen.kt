@@ -135,7 +135,7 @@ fun ScriptsScreen(
                                 R.drawable.ic_upload,
                                 "Import .lua / .js files",
                                 "Pick files from the file manager. The file name becomes the script name; importing again updates it.",
-                                onImportFiles,
+                                onClick = onImportFiles,
                             ),
                         )
                     )

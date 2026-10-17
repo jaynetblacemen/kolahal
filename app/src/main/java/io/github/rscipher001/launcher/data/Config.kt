@@ -64,6 +64,7 @@ object Keys {
         "colour theme",
     )
     val GUI_COLORS = ConfigKey.Choice("gui.colors", "theme", listOf("theme", "system"), "settings screens follow the terminal theme or the system (Material You) colours")
+    val STATUS_BAR = ConfigKey.Choice("statusbar", "show", listOf("show", "hide", "immersive"), "full screen: hide the status bar, or both system bars (immersive); swipe from the edge to peek")
     val FONT_SIZE = ConfigKey.Num("font.size", 14, 10..24, "terminal font size (sp)")
     val SUGGESTIONS = ConfigKey.Num("suggestions", 12, 0..30, "max suggestions shown while typing")
     val AUTO_LAUNCH = ConfigKey.Bool("launch.single", true, "launch automatically when only one app matches")
@@ -102,7 +103,7 @@ object Keys {
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
-        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, GUI_COLORS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGESTIONS_AUTO, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
+        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, GUI_COLORS, STATUS_BAR, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGESTIONS_AUTO, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_LINE_HEIGHT, CHIP_HEIGHT, LOG_KEEP_DAYS, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP,
         HEADER_TODO, WIDGETS_HOME, WIDGETS_HEIGHT,

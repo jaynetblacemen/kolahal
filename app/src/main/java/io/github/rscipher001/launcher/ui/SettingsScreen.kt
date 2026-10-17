@@ -71,70 +71,157 @@ import kotlin.math.roundToInt
 private val TITLES = mapOf(
     "theme" to "Theme",
     "gui.colors" to "Settings colours",
+    "statusbar" to "Full screen",
+    "font" to "Font",
     "font.size" to "Text size",
     "header.date" to "Date",
     "clock.24h" to "24-hour clock",
+    "header.device" to "Device name",
+    "header.icons" to "Icons instead of labels",
     "header.unlocks" to "Unlock count",
     "header.battery" to "Battery",
     "header.network" to "Network",
     "header.alarm" to "Next alarm",
     "header.profiles" to "Work / private state",
+    "header.media" to "Now playing",
+    "header.todo" to "Open todos",
     "header.status" to "Script status lines",
-    "header.device" to "Device name",
+    "header.autohide" to "Shrink while using the log",
+    "widgets.home" to "Widgets on home",
+    "widgets.height" to "Widget area height (dp)",
     "log.time" to "Times",
     "log.dim" to "Dim older output",
-    "log.spacing" to "Space between commands",
+    "log.spacing" to "Space between commands (dp)",
+    "log.lineheight" to "Line height (dp)",
     "log.keepdays" to "Keep log for (days)",
-    "launch.top" to "Enter opens the best match",
-    "launch.single" to "Open the only match",
-    "suggestions.idle" to "Most-used apps on empty prompt",
-    "suggestions" to "Suggestions shown",
+    "suggestions.auto" to "Only while typing",
+    "suggestions.idle" to "Favourites & most-used on empty prompt",
+    "suggestions" to "How many",
+    "chips.height" to "Chip height (dp)",
     "keybar.show" to "Show the key bar",
+    "keybar.auto" to "Only while typing",
+    "keybar.height" to "Row height (dp)",
+    "keybar" to "Row 1 keys",
+    "keybar2" to "Row 2 keys",
+    "prompt.height" to "Prompt height while typing (dp)",
+    "keyboard.suggestions" to "Keyboard autocorrect & suggestions",
+    "keyboard.onhome" to "Open the keyboard on Home",
+    "launch.instant" to "Instant launch",
+    "launch.instant.min" to "Letters before instant launch",
+    "launch.top" to "Enter opens the best match",
+    "launch.single" to "Enter opens the only match",
     "search.engine" to "Search engine",
     "search.url" to "Custom search URL",
-    "keybar" to "Key bar, row 1",
-    "keybar2" to "Key bar, row 2",
-    "keyboard.suggestions" to "Keyboard suggestions",
-    "keyboard.onhome" to "Open keyboard on home",
-    "widgets.home" to "Widgets on home",
-    "widgets.height" to "Home widget area height (dp)",
+    "gesture.doubletap" to "Double-tap empty space",
+    "gesture.swipedown" to "Swipe down on the header",
+    "gesture.swipeup" to "Swipe up on the prompt",
 )
 
-private val SECTIONS: List<Pair<String, List<ConfigKey<*>>>> = listOf(
-    "Appearance" to listOf(Keys.THEME, Keys.GUI_COLORS, Keys.FONT_SIZE),
-    "Header" to listOf(
-        Keys.HEADER_DATE, Keys.CLOCK_24H, Keys.HEADER_UNLOCKS, Keys.HEADER_BATTERY, Keys.HEADER_NETWORK,
-        Keys.HEADER_ALARM, Keys.HEADER_PROFILES, Keys.HEADER_STATUS, Keys.HEADER_MEDIA, Keys.HEADER_TODO, Keys.HEADER_DEVICE, Keys.HEADER_AUTOHIDE, Keys.HEADER_ICONS,
+/** A settings page: grouped keys (a null group title means no sub-header). */
+private class Category(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val icon: Int,
+    val groups: List<Pair<String?, List<ConfigKey<*>>>>,
+) {
+    val keys get() = groups.flatMap { it.second }
+}
+
+private val CATEGORIES = listOf(
+    Category(
+        "look", "Look & feel", "Theme, font, text size, full screen", R.drawable.ic_palette,
+        listOf(
+            "Terminal" to listOfNotNull(Keys.THEME, Keys.byName("font"), Keys.FONT_SIZE),
+            "Screen" to listOf(Keys.STATUS_BAR),
+            "Settings pages" to listOf(Keys.GUI_COLORS),
+        ),
     ),
-    "Log" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_SPACING, Keys.LOG_LINE_HEIGHT, Keys.LOG_KEEP_DAYS),
-    "Launching" to listOf(Keys.LAUNCH_INSTANT, Keys.LAUNCH_INSTANT_MIN, Keys.LAUNCH_TOP, Keys.AUTO_LAUNCH, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS_AUTO, Keys.SUGGESTIONS, Keys.SEARCH_ENGINE, Keys.SEARCH_URL),
-    "Widgets" to listOf(Keys.WIDGETS_HOME, Keys.WIDGETS_HEIGHT),
-    "Gestures" to listOf(Keys.GESTURE_DOUBLE_TAP, Keys.GESTURE_SWIPE_DOWN, Keys.GESTURE_SWIPE_UP),
-    "Keyboard & key bar" to listOf(Keys.KEYBAR_SHOW, Keys.KEYBAR_AUTO, Keys.KEYBAR_HEIGHT, Keys.PROMPT_HEIGHT_TYPING, Keys.CHIP_HEIGHT, Keys.KEYBAR, Keys.KEYBAR2, Keys.IME_SUGGESTIONS, Keys.FOCUS_ON_HOME),
+    Category(
+        "home", "Home screen", "Clock, header items, widgets", R.drawable.ic_home,
+        listOf(
+            "Clock" to listOf(Keys.HEADER_DATE, Keys.CLOCK_24H, Keys.HEADER_DEVICE),
+            "Header items" to listOf(
+                Keys.HEADER_ICONS, Keys.HEADER_UNLOCKS, Keys.HEADER_BATTERY, Keys.HEADER_NETWORK, Keys.HEADER_ALARM,
+                Keys.HEADER_PROFILES, Keys.HEADER_MEDIA, Keys.HEADER_TODO, Keys.HEADER_STATUS,
+            ),
+            "Behaviour" to listOf(Keys.HEADER_AUTOHIDE),
+            "Widgets" to listOf(Keys.WIDGETS_HOME, Keys.WIDGETS_HEIGHT),
+        ),
+    ),
+    Category(
+        "log", "Log", "Times, spacing, line height, history", R.drawable.ic_stat_terminal,
+        listOf(
+            "Display" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_SPACING, Keys.LOG_LINE_HEIGHT),
+            "History" to listOf(Keys.LOG_KEEP_DAYS),
+        ),
+    ),
+    Category(
+        "typing", "Typing", "Suggestions, key bar, prompt, keyboard", R.drawable.ic_keyboard,
+        listOf(
+            "Suggestions" to listOf(Keys.SUGGESTIONS_AUTO, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS, Keys.CHIP_HEIGHT),
+            "Key bar" to listOf(Keys.KEYBAR_SHOW, Keys.KEYBAR_AUTO, Keys.KEYBAR_HEIGHT, Keys.KEYBAR, Keys.KEYBAR2),
+            "Prompt & keyboard" to listOf(Keys.PROMPT_HEIGHT_TYPING, Keys.IME_SUGGESTIONS, Keys.FOCUS_ON_HOME),
+        ),
+    ),
+    Category(
+        "launch", "Launching & search", "Instant launch, Enter, web search", R.drawable.ic_search,
+        listOf(
+            "Launching" to listOf(Keys.LAUNCH_INSTANT, Keys.LAUNCH_INSTANT_MIN, Keys.LAUNCH_TOP, Keys.AUTO_LAUNCH),
+            "Web search" to listOf(Keys.SEARCH_ENGINE, Keys.SEARCH_URL),
+        ),
+    ),
+    Category(
+        "gestures", "Gestures", "Double-tap and swipes", R.drawable.ic_touch,
+        listOf(null to listOf(Keys.GESTURE_DOUBLE_TAP, Keys.GESTURE_SWIPE_DOWN, Keys.GESTURE_SWIPE_UP)),
+    ),
 )
+
+/** Keys no page lists (e.g. added later) still get a home under "More". */
+private val OTHER: Category by lazy {
+    val listed = CATEGORIES.flatMap { it.keys }.toSet()
+    Category("other", "More", "Everything else", R.drawable.ic_tune, listOf(null to Keys.ALL.filter { it !in listed }))
+}
+
+private fun allCategories() = CATEGORIES + listOfNotNull(OTHER.takeIf { it.keys.isNotEmpty() })
+
+private fun matches(key: ConfigKey<*>, q: String): Boolean {
+    val title = TITLES[key.key] ?: key.key
+    return listOf(title, key.key, key.help).any { it.contains(q, ignoreCase = true) }
+}
 
 /**
- * Material 3 Expressive settings: grouped segmented lists, switches, connected button groups,
- * sliders and theme swatches. Each row observes only its own value, so a change redraws one row.
+ * Material 3 Expressive settings. The main page has a search box, the setting categories, the
+ * manager pages and backup; each category opens its own page with grouped rows. Each row observes
+ * only its own value, so a change redraws one row.
  */
 @Composable
 fun SettingsScreen(
     vm: TerminalViewModel,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
+    onImportFont: () -> Unit = {},
 ) {
     val config = vm.config
     val version = vm.config.version.collectAsStateWithLifecycle()
     val useSystemColors by remember { derivedStateOf { version.value; config[Keys.GUI_COLORS] == "system" } }
     val notice by vm.notice.collectAsStateWithLifecycle()
-    BackHandler { vm.closeScreen() }
+    var openId by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
+    var query by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
+    val open = allCategories().firstOrNull { it.id == openId }
+    // Back closes a category page first, then the search, then Settings.
+    BackHandler {
+        when {
+            open != null -> openId = null
+            query.isNotEmpty() -> query = ""
+            else -> vm.closeScreen()
+        }
+    }
 
     GuiTheme(useSystemColors) {
         val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
         val snackbar = remember { SnackbarHostState() }
         LaunchedEffect(notice) { notice?.let { snackbar.showSnackbar(it) } }
-        val listed = remember { SECTIONS.flatMap { it.second }.toSet() }
-        val other = remember { Keys.ALL.filter { it !in listed } }
 
         Scaffold(
             modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
@@ -142,9 +229,9 @@ fun SettingsScreen(
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
                 LargeFlexibleTopAppBar(
-                    title = { Text("Settings") },
-                    subtitle = { Text("Kolahal") },
-                    navigationIcon = { BackButton(vm::closeScreen) },
+                    title = { Text(open?.title ?: "Settings") },
+                    subtitle = { Text(open?.subtitle ?: "Kolahal") },
+                    navigationIcon = { BackButton { if (open != null) openId = null else vm.closeScreen() } },
                     scrollBehavior = scroll,
                 )
             },
@@ -156,40 +243,76 @@ fun SettingsScreen(
                 ),
                 modifier = Modifier.fillMaxSize(),
             ) {
+                if (open != null) {
+                    for ((title, keys) in open.groups) {
+                        if (keys.isEmpty()) continue
+                        item(key = "h:${open.id}:$title") { if (title != null) GroupHeader(title) else Spacer(Modifier.height(8.dp)) }
+                        keys.forEachIndexed { index, key ->
+                            item(key = key.key) { SettingItem(vm, config, key, version, index, keys.size, onImportFont) }
+                        }
+                    }
+                    return@LazyColumn
+                }
+
+                item(key = "search") {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        singleLine = true,
+                        placeholder = { Text("Search settings") },
+                        leadingIcon = { Icon(painterResource(R.drawable.ic_search), null) },
+                        trailingIcon = if (query.isNotEmpty()) {
+                            { IconButton(onClick = { query = "" }) { Icon(painterResource(R.drawable.ic_close), "Clear") } }
+                        } else null,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        shape = MaterialTheme.shapes.extraLarge,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+                    )
+                }
+
+                if (query.isNotBlank()) {
+                    val hits = allCategories().flatMap { c -> c.keys.filter { matches(it, query.trim()) }.map { c to it } }
+                    if (hits.isEmpty()) {
+                        item(key = "nohits") {
+                            Text(
+                                "No setting matches “${query.trim()}”",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
+                    }
+                    hits.groupBy({ it.first }, { it.second }).forEach { (c, keys) ->
+                        item(key = "h:hit:${c.id}") { GroupHeader(c.title) }
+                        keys.forEachIndexed { index, key ->
+                            item(key = "hit:" + key.key) { SettingItem(vm, config, key, version, index, keys.size, onImportFont) }
+                        }
+                    }
+                    return@LazyColumn
+                }
+
+                item(key = "h:settings") { GroupHeader("Settings") }
+                item(key = "categories") {
+                    ActionGroup(allCategories().map { c -> Action(c.icon, c.title, c.subtitle, chevron = true) { openId = c.id } })
+                }
+                item(key = "h:manage") { GroupHeader("Manage") }
+                item(key = "manage") {
+                    ActionGroup(
+                        listOf(
+                            Action(R.drawable.ic_code, "Scripts", "Lua / JS scripts, timers, triggers, library", chevron = true) { vm.openScreen(Screen.SCRIPTS) },
+                            Action(R.drawable.ic_rss, "Feeds", "RSS / Atom subscriptions, OPML import / export", chevron = true) { vm.openScreen(Screen.FEEDS) },
+                            Action(R.drawable.ic_widgets, "Widgets", "Add, resize and arrange widgets", chevron = true) { vm.openScreen(Screen.WIDGETS) },
+                            Action(R.drawable.ic_check, "Setup checklist", "Default launcher, permissions, battery", chevron = true) { vm.openScreen(Screen.SETUP) },
+                        )
+                    )
+                }
                 item(key = "h:backup") { GroupHeader("Backup") }
                 item(key = "backup") {
                     ActionGroup(
                         listOf(
-                            Action(R.drawable.ic_download, "Export everything", "Settings, apps, scripts, todos, notes, reminders, feeds and the log in one JSON file", onExportBackup),
-                            Action(R.drawable.ic_upload, "Import from file", "Restore a Kolahal backup (replaces todos, notes, feeds and the log)", onImportBackup),
+                            Action(R.drawable.ic_download, "Export everything", "Settings, apps, scripts, todos, notes, reminders, feeds and the log in one file", onClick = onExportBackup),
+                            Action(R.drawable.ic_upload, "Import a backup", "Restores everything (replaces todos, notes, feeds and the log)", onClick = onImportBackup),
                         )
                     )
-                }
-                item(key = "h:scripts") { GroupHeader("Scripts") }
-                item(key = "scripts") {
-                    ActionGroup(
-                        listOf(
-                            Action(R.drawable.ic_code, "Script manager", "Import .lua / .js files, timers, notifications") { vm.openScreen(Screen.SCRIPTS) },
-                            Action(R.drawable.ic_rss, "Feed manager", "RSS/Atom subscriptions, intervals, OPML import / export") {
-                                vm.openScreen(Screen.FEEDS)
-                            },
-                            Action(R.drawable.ic_widgets, "Widgets", "Add, resize and arrange widgets; place them on home") {
-                                vm.openScreen(Screen.WIDGETS)
-                            },
-                            Action(R.drawable.ic_check, "Setup checklist", "Default launcher, permissions, battery") {
-                                vm.openScreen(Screen.SETUP)
-                            },
-                        )
-                    )
-                }
-                for ((title, keys) in SECTIONS + listOf("Other" to other)) {
-                    if (keys.isEmpty()) continue
-                    item(key = "h:$title") { GroupHeader(title) }
-                    keys.forEachIndexed { index, key ->
-                        item(key = key.key) {
-                            SettingItem(vm, config, key, version, index, keys.size)
-                        }
-                    }
                 }
             }
         }
@@ -197,7 +320,15 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingItem(vm: TerminalViewModel, config: Config, key: ConfigKey<*>, version: State<Int>, index: Int, count: Int) {
+private fun SettingItem(
+    vm: TerminalViewModel,
+    config: Config,
+    key: ConfigKey<*>,
+    version: State<Int>,
+    index: Int,
+    count: Int,
+    onImportFont: () -> Unit = {},
+) {
     // Only this row recomposes when its own value changes.
     val value by remember(key) { derivedStateOf { version.value; config.display(key) } }
     val changed by remember(key) { derivedStateOf { version.value; !config.isDefault(key) } }
@@ -206,7 +337,7 @@ private fun SettingItem(vm: TerminalViewModel, config: Config, key: ConfigKey<*>
     // Reset sits on the key-name line, so it never narrows the controls below it.
     val supporting: @Composable () -> Unit = {
         Column {
-            Text(key.help)
+            Text(key.help.replaceFirstChar { it.uppercase() })
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     key.key + if (changed) "  · changed" else "",
@@ -266,7 +397,8 @@ private fun SettingItem(vm: TerminalViewModel, config: Config, key: ConfigKey<*>
                                 onValueChange = { current = it },
                                 onValueChangeFinished = { vm.setConfig(key, current.roundToInt().toString()) },
                                 valueRange = key.range.first.toFloat()..key.range.last.toFloat(),
-                                steps = (key.range.last - key.range.first - 1).coerceAtLeast(0),
+                                // Ticks only for short ranges; wide ones (dp sizes, days) slide smoothly.
+                                steps = (key.range.last - key.range.first - 1).let { if (it in 1..11) it else 0 },
                             )
                         }
                     },
@@ -370,7 +502,7 @@ private fun ThemeSwatches(selected: String, onPick: (String) -> Unit) {
     }
 }
 
-data class Action(val icon: Int, val title: String, val subtitle: String, val onClick: () -> Unit)
+data class Action(val icon: Int, val title: String, val subtitle: String, val chevron: Boolean = false, val onClick: () -> Unit)
 
 /** A segmented group of clickable rows. */
 @Composable
@@ -383,6 +515,9 @@ fun ActionGroup(actions: List<Action>) {
                 shapes = segShapes(i, actions.size),
                 leadingContent = { Icon(painterResource(a.icon), null, tint = MaterialTheme.colorScheme.primary) },
                 supportingContent = { Text(a.subtitle) },
+                trailingContent = if (a.chevron) {
+                    { Icon(painterResource(R.drawable.ic_chevron_right), null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                } else null,
             ) { Text(a.title) }
         }
     }

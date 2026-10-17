@@ -173,12 +173,33 @@ class MainActivity : ComponentActivity() {
         if (intent.hasCategory(Intent.CATEGORY_HOME) && alreadyHome) vm.onHomePressed()
     }
 
+    /** `statusbar`: show, hide (status bar only) or immersive (status and navigation bars). */
+    private fun applyBars() {
+        val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+        val status = androidx.core.view.WindowInsetsCompat.Type.statusBars()
+        val nav = androidx.core.view.WindowInsetsCompat.Type.navigationBars()
+        // A swipe from the edge shows hidden bars for a moment, then they hide again.
+        controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        when (vm.config[Keys.STATUS_BAR]) {
+            "hide" -> { controller.hide(status); controller.show(nav) }
+            "immersive" -> controller.hide(status or nav)
+            else -> controller.show(status or nav)
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Dialogs and other apps can bring the bars back; re-apply when home regains focus.
+        if (hasFocus) applyBars()
+    }
+
     private fun applyTheme() {
         Term.palette = Palettes.named(vm.config[Keys.THEME])
         Term.fontSize = vm.config[Keys.FONT_SIZE]
         Term.lineHeight = vm.config[Keys.LOG_LINE_HEIGHT]
         Term.chipHeight = vm.config[Keys.CHIP_HEIGHT]
         window.decorView.setBackgroundColor(Term.bg.toArgb())
+        applyBars()
     }
 
     private fun requestNotifications() {

@@ -313,8 +313,8 @@ private fun FeedListPage(
                     item(key = "import") {
                         ActionGroup(
                             listOf(
-                                Action(R.drawable.ic_add, "Add a feed", "Paste a site or feed address (RSS or Atom)", onAdd),
-                                Action(R.drawable.ic_upload, "Import OPML", "Subscriptions exported from another feed reader", onImport),
+                                Action(R.drawable.ic_add, "Add a feed", "Paste a site or feed address (RSS or Atom)", onClick = onAdd),
+                                Action(R.drawable.ic_upload, "Import OPML", "Subscriptions exported from another feed reader", onClick = onImport),
                             )
                         )
                     }
