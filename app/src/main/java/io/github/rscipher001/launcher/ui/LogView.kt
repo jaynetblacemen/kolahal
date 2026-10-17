@@ -252,41 +252,11 @@ private fun TwoColumns(entry: LogEntry, desc: String) {
 /** `apps` output: one line of chips instead of one line per app. */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
-private fun AppGrid(allApps: List<AppEntry>, onTap: (AppEntry) -> Unit, onLongPress: (AppEntry) -> Unit) {
+private fun AppGrid(apps: List<AppEntry>, onTap: (AppEntry) -> Unit, onLongPress: (AppEntry) -> Unit) {
     val haptics = LocalHapticFeedback.current
-    if (allApps.isEmpty()) {
+    if (apps.isEmpty()) {
         Text("(apps no longer installed)", style = Term.mono.copy(color = Term.dim))
         return
-    }
-    // Big grids get a letter strip: tap a letter to show only those apps, tap it again for all.
-    val letters = remember(allApps) {
-        allApps.map { it.label.firstOrNull()?.uppercaseChar()?.takeIf(Char::isLetter) ?: '#' }.distinct().sorted()
-    }
-    var letter by remember(allApps) { mutableStateOf<Char?>(null) }
-    val apps = remember(allApps, letter) {
-        if (letter == null) allApps
-        else allApps.filter { (it.label.firstOrNull()?.uppercaseChar()?.takeIf(Char::isLetter) ?: '#') == letter }
-    }
-    if (allApps.size > 20 && letters.size > 1) {
-        androidx.compose.foundation.lazy.LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-        ) {
-            items(letters.size) { i ->
-                val c = letters[i]
-                val on = c == letter
-                Text(
-                    c.toString(),
-                    style = Term.mono.copy(color = if (on) Term.bg else Term.prompt, fontWeight = FontWeight.Bold),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    modifier = Modifier
-                        .background(if (on) Term.prompt else Color.Transparent, RoundedCornerShape(4.dp))
-                        .clickable(onClickLabel = "apps starting with $c") { letter = if (on) null else c }
-                        .size(width = 40.dp, height = 44.dp)
-                        .wrapContentHeight(),
-                )
-            }
-        }
     }
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
