@@ -176,6 +176,8 @@ class MainActivity : ComponentActivity() {
     private fun applyTheme() {
         Term.palette = Palettes.named(vm.config[Keys.THEME])
         Term.fontSize = vm.config[Keys.FONT_SIZE]
+        Term.lineHeight = vm.config[Keys.LOG_LINE_HEIGHT]
+        Term.chipHeight = vm.config[Keys.CHIP_HEIGHT]
         window.decorView.setBackgroundColor(Term.bg.toArgb())
     }
 

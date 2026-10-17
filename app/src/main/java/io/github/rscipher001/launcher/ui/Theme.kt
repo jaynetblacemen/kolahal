@@ -86,6 +86,12 @@ object Term {
     var palette by mutableStateOf(Palettes.green)
     var fontSize by mutableIntStateOf(14)
 
+    /** Minimum height (dp) of a plain log line (`log.lineheight`); tappable lines get +10, two-column rows +14. */
+    var lineHeight by mutableIntStateOf(30)
+
+    /** Minimum height (dp) of suggestion and app-grid chips (`chips.height`). */
+    var chipHeight by mutableIntStateOf(48)
+
     val bg get() = palette.bg
     val surface get() = palette.surface
     val fg get() = palette.fg

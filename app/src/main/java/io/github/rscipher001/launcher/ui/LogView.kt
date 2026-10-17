@@ -130,9 +130,9 @@ fun LogLine(
     // Lines that do something get a larger touch target than plain output.
     val actionable = entry.kind == LogKind.COMMAND || entry.ctx.values.keys.any { it in ACTIONABLE_KEYS }
     val minHeight = when {
-        desc != null -> 44.dp
-        actionable -> 40.dp
-        else -> 30.dp
+        desc != null -> (Term.lineHeight + 14).dp
+        actionable -> (Term.lineHeight + 10).dp
+        else -> Term.lineHeight.dp
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -213,7 +213,7 @@ private fun AppGrid(apps: List<AppEntry>, onTap: (AppEntry) -> Unit, onLongPress
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .heightIn(min = 48.dp)
+                    .heightIn(min = Term.chipHeight.dp)
                     .alpha(if (app.profile.quiet) 0.45f else 1f)
                     .background(color.copy(alpha = 0.10f), RoundedCornerShape(4.dp))
                     .combinedClickable(

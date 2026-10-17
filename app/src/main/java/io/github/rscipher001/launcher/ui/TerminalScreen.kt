@@ -546,13 +546,13 @@ private fun SuggestionStrip(items: List<Suggestion>, onPick: (Suggestion) -> Uni
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .heightIn(min = 48.dp)
+                    .heightIn(min = Term.chipHeight.dp)
                     .alpha(if (s is Suggestion.App && s.app.profile.quiet) 0.45f else 1f)
                     // The first chip is what Enter / TAB act on: fill it so that is visible.
                     .background(if (index == 0) color.copy(alpha = 0.18f) else Color.Transparent, RoundedCornerShape(4.dp))
                     .border(1.dp, color.copy(alpha = if (index == 0) 0.9f else 0.6f), RoundedCornerShape(4.dp))
                     .clickable { onPick(s) }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = (if (Term.chipHeight < 40) 2 else 8).dp),
             ) {
                 if (tag != null && tag != ProfileKind.PERSONAL.tag) {
                     Text(tag, style = Term.mono.copy(color = color, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp))
