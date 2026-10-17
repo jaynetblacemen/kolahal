@@ -168,6 +168,8 @@ fun HomeWidgets(vm: TerminalViewModel, visible: Boolean) {
         Modifier
             .fillMaxWidth()
             .animateContentSize()
+            // Folds and unfolds with the header animation instead of snapping.
+            .animateContentSize()
             .then(if (visible) Modifier.heightIn(max = cap) else Modifier.height(0.dp))
             .clipToBounds()
     ) {

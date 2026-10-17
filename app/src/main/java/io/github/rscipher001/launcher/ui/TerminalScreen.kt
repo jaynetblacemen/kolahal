@@ -96,6 +96,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.geometry.Size
 import io.github.rscipher001.launcher.R
@@ -245,31 +246,50 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 }
             }
         }
-        if (headerHidden) {
-            // Hidden while reading older output; nothing to draw.
-        } else if (headerCollapsed) CompactHeader(
-            status = status,
-            statusCount = if (config[Keys.HEADER_STATUS]) statuses.size else 0,
-            config = config,
-            version = configVersion,
-            onExpand = vm::expandHeader,
-            mediaPlaying = config[Keys.HEADER_MEDIA] && nowPlaying?.playing == true,
-        ) else Header(
-            unlocks = unlocks,
-            profiles = profiles,
-            status = status,
-            statuses = statuses,
-            config = config,
-            version = configVersion,
-            onStatusTap = vm::runScriptNamed,
-            onSwipeDown = { vm.onGesture(Keys.GESTURE_SWIPE_DOWN) },
-            onTarget = vm::onHeaderTap,
-            onProfileTap = vm::onProfileTap,
-            nowPlaying = nowPlaying?.takeIf { config[Keys.HEADER_MEDIA] },
-            onMediaToggle = vm::mediaToggle,
-            onMediaNext = vm::mediaNext,
-            todoCount = vm.todoCount.collectAsStateWithLifecycle().value,
-        )
+        // Header transitions slide like scrolling: up and out when hidden, back down when it
+        // returns, and full ↔ one-line morph in place. The log follows the size change smoothly.
+        androidx.compose.animation.AnimatedVisibility(
+            visible = !headerHidden,
+            enter = androidx.compose.animation.expandVertically(expandFrom = Alignment.Top) +
+                androidx.compose.animation.slideInVertically { -it },
+            exit = androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Top) +
+                androidx.compose.animation.slideOutVertically { -it },
+        ) {
+            androidx.compose.animation.AnimatedContent(
+                targetState = headerCollapsed,
+                transitionSpec = {
+                    (androidx.compose.animation.slideInVertically { -it / 3 } + androidx.compose.animation.fadeIn())
+                        .togetherWith(androidx.compose.animation.slideOutVertically { -it / 3 } + androidx.compose.animation.fadeOut())
+                        .using(androidx.compose.animation.SizeTransform(clip = true))
+                },
+                contentAlignment = Alignment.TopStart,
+                label = "header",
+            ) { collapsed ->
+                if (collapsed) CompactHeader(
+                    status = status,
+                    statusCount = if (config[Keys.HEADER_STATUS]) statuses.size else 0,
+                    config = config,
+                    version = configVersion,
+                    onExpand = vm::expandHeader,
+                    mediaPlaying = config[Keys.HEADER_MEDIA] && nowPlaying?.playing == true,
+                ) else Header(
+                    unlocks = unlocks,
+                    profiles = profiles,
+                    status = status,
+                    statuses = statuses,
+                    config = config,
+                    version = configVersion,
+                    onStatusTap = vm::runScriptNamed,
+                    onSwipeDown = { vm.onGesture(Keys.GESTURE_SWIPE_DOWN) },
+                    onTarget = vm::onHeaderTap,
+                    onProfileTap = vm::onProfileTap,
+                    nowPlaying = nowPlaying?.takeIf { config[Keys.HEADER_MEDIA] },
+                    onMediaToggle = vm::mediaToggle,
+                    onMediaNext = vm::mediaNext,
+                    todoCount = vm.todoCount.collectAsStateWithLifecycle().value,
+                )
+            }
+        }
         // widgets.home: widgets placed on home; they fold away with the header.
         HomeWidgets(vm, visible = !headerCollapsed)
         val hiddenLines by vm.hiddenLines.collectAsStateWithLifecycle()
