@@ -26,6 +26,10 @@ class LogRepository private constructor(private val context: Context) {
         source: String? = null,
         ctx: LogContext = LogContext.EMPTY,
     ): Long {
+        capture.get()?.let { buffer ->
+            buffer += Pending(kind, text, source, ctx, System.currentTimeMillis())
+            return -1
+        }
         val id = db.writableDatabase.insert("logs", null, ContentValues().apply {
             put("ts", System.currentTimeMillis())
             put("kind", kind.key)
@@ -39,9 +43,28 @@ class LogRepository private constructor(private val context: Context) {
 
     data class Pending(val kind: LogKind, val text: String, val source: String?, val ctx: LogContext, val ts: Long)
 
+    /** Per-thread output buffer for pipes; lines added on other threads are written as usual. */
+    private val capture = ThreadLocal<MutableList<Pending>?>()
+
+    /** Runs [block] with [add] on this thread buffered instead of written, and returns the buffer. */
+    fun <T> capture(block: () -> T): Pair<T, List<Pending>> {
+        val buffer = ArrayList<Pending>()
+        val previous = capture.get()
+        capture.set(buffer)
+        try {
+            return block() to buffer
+        } finally {
+            capture.set(previous)
+        }
+    }
+
     /** Inserts several lines in one transaction with a single change notification. */
     fun addAll(lines: List<Pending>) {
         if (lines.isEmpty()) return
+        capture.get()?.let { buffer ->
+            buffer += lines
+            return
+        }
         val w = db.writableDatabase
         w.beginTransaction()
         try {

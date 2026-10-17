@@ -115,6 +115,9 @@ terminal  help  history  clear [history|all]  restart [scripts]  alias [name = c
 device    settings  setup  unlocks [days]  notifications  usage-access  battery  home  system
 #+end_example
 
+Output can be filtered like a shell: =help | grep feed=, =history | tail 5=, =feed read | grep -v ad | head 3=,
+=contacts | count= (filters: =grep [-v]=, =head n=, =tail n=, =sort [-r]=, =uniq=, =count=).
+
 Anything that isn't a command, alias or script command is matched against app names. A mistyped
 command gets a tappable "did you mean".
 

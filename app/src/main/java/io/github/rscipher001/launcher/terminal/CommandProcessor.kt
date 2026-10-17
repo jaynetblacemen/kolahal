@@ -79,6 +79,20 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val typed = line.trim()
         if (typed.isEmpty()) return
         logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
+        val stages = Pipes.split(typed)
+        if (stages.size > 1) {
+            // `cmd | grep x | head 5`: capture what the command prints right away, then filter it.
+            val (_, captured) = logs.capture { execute(stages[0], expand) }
+            Pipes.apply(captured, stages.drop(1)).fold(
+                onSuccess = { logs.addAll(it) },
+                onFailure = { logs.addAll(captured); error(it.message ?: "bad pipe") },
+            )
+            return
+        }
+        execute(typed, expand)
+    }
+
+    private fun execute(typed: String, expand: Boolean) {
         val trimmed = if (expand) expandAliases(typed) else typed
         // "= 6*7" is a quick calculator (any Lua expression).
         if (trimmed.startsWith("=")) return calc(trimmed.drop(1).trim())
@@ -870,6 +884,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             out(s.name, LogContext.of(LogContext.COMMAND to s.name + " ", LogContext.SCRIPT to s.name, LogContext.DESC to desc))
         }
         info("anything else is matched against app names · tap a line to act · long-press for more")
+        info("pipes: help | grep feed · history | tail 5 · contacts | count  (grep [-v], head, tail, sort, uniq, count)")
     }
 
     // ---- config ---------------------------------------------------------------------------
