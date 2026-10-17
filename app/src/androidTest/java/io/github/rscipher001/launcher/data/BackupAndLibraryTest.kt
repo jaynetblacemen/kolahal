@@ -80,6 +80,45 @@ class BackupAndLibraryTest {
         file.delete()
     }
 
+    /** "Backup everything": todos, notes, feeds, script stores and pins survive export → wipe → import. */
+    @Test fun fullBackupRoundTrip() {
+        val todos = io.github.rscipher001.launcher.productivity.TodoStore.get(context)
+        val notes = io.github.rscipher001.launcher.productivity.NoteStore.get(context)
+        val feeds = io.github.rscipher001.launcher.feeds.FeedRepository.get(context)
+        val todoId = todos.add("bk todo")
+        notes.add("bk note")
+        val feed = feeds.add("https://example.com/bk-feed.xml")
+        val script = scripts.create("bktest", ScriptLang.LUA, "return 1")
+        KvStore(context, ScriptRepository.scopeOf(script.id)).set("seen", "42")
+        prefs.setPinned("bk/pin#0", true)
+
+        val file = File(context.cacheDir, "kolahal-full-backup-test.json")
+        val uri = Uri.fromFile(file)
+        Backup(context).export(uri)
+
+        // Wipe: the script comes back with a new id, so its store must follow it by name.
+        todos.remove(todoId)
+        notes.all().filter { it.text == "bk note" }.forEach { notes.remove(it.id) }
+        feeds.remove(feed.id)
+        scripts.delete(script.id)
+        prefs.setPinned("bk/pin#0", false)
+
+        val r = Backup(context).import(uri)
+        assertTrue(r.full)
+        assertTrue(todos.all().any { it.text == "bk todo" })
+        assertTrue(notes.all().any { it.text == "bk note" })
+        assertTrue(feeds.all().any { it.url == "https://example.com/bk-feed.xml" })
+        assertTrue(AppPrefs.get(context).isPinned("bk/pin#0"))
+        val restored = scripts.byName("bktest")!!
+        assertEquals("42", KvStore(context, ScriptRepository.scopeOf(restored.id)).get("seen"))
+
+        todos.all().filter { it.text == "bk todo" }.forEach { todos.remove(it.id) }
+        notes.all().filter { it.text == "bk note" }.forEach { notes.remove(it.id) }
+        feeds.all().filter { it.url.contains("bk-feed") }.forEach { feeds.remove(it.id) }
+        prefs.setPinned("bk/pin#0", false)
+        file.delete()
+    }
+
     @Test fun libraryLuaScriptsCompile() {
         val lib = ScriptLibrary(context)
         val lua = lib.entries.filter { it.lang == ScriptLang.LUA }

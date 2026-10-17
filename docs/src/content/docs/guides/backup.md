@@ -1,6 +1,6 @@
 ---
 title: Backup & moving devices
-description: Export settings, aliases, app labels and scripts to one JSON file, or sync scripts with a folder.
+description: Back up everything to one JSON file — settings, apps, scripts, todos, notes, reminders, feeds and the log — or sync scripts with a folder.
 ---
 
 There are three ways to move your setup between phones.
@@ -13,21 +13,30 @@ the system file picker. It contains:
 - settings you changed from the default,
 - aliases,
 - hidden apps, custom labels and pinned favourites,
-- every script with its code, timers, notification flag and enabled state.
+- every script with its code, timers, notification flag and enabled state,
+- <span class="k-new">new</span> **everything else** under `data`: todos, notes, reminders, feed subscriptions
+  with their items and read state, each script's `store` values, the whole log and ↑ history,
+  app launch history (frecency), unlock history, notification and trigger settings.
 
 It's plain JSON, so you can edit it on a computer. **Import from file** loads it on any phone.
 
 ```json
-{ "kolahal": 1,
+{ "kolahal": 2,
   "config":  { "theme": "gruvbox-material", "log.spacing": "16" },
   "aliases": { "m": "open maps" },
   "apps":    { "hidden": [], "labels": {}, "pinned": [] },
   "scripts": [ { "name": "hn", "lang": "lua", "code": "...", "every": 30,
-                 "at": ["08:00"], "notify": true, "enabled": true } ] }
+                 "at": ["08:00"], "notify": true, "enabled": true } ],
+  "data":    { "prefs": { … }, "tables": { "todos": [ … ], "feeds": [ … ], "logs": [ … ] },
+               "scriptStores": { "hn": { "seen": "…" } } } }
 ```
 
 On import:
 
+- The `data` section **replaces** what is on the phone (todos, notes, reminders, feeds, the log…),
+  then the readable sections above are applied on top, so your hand edits to them win. Script
+  stores follow their script by name. Reminders, feeds and timers are rescheduled, and Kolahal
+  restarts to load it all. Older backups without `data` import as before.
 - Unknown or invalid settings are skipped and listed.
 - Aliases that would shadow a built-in command are skipped.
 - **New scripts arrive switched off**, so you can review them before they run on a timer. Scripts
@@ -38,7 +47,10 @@ On import:
 Hidden apps and labels are keyed by component and profile, so they carry over between phones only
 where those match.
 
-Feed subscriptions and the log are not part of the backup.
+Not included, because they can't move between phones: the folder picked with `script dir` (a
+storage permission you grant again) and home-screen widgets' live ids (widgets are listed so
+they can be added again). The file can contain private things (notifications in the log, notes),
+so keep it somewhere safe.
 
 ## Single script files
 

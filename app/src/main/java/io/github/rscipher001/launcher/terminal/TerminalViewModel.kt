@@ -918,7 +918,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     fun exportBackup(uri: Uri?) {
         if (uri == null) return
-        fileOp("backup") { notice("backup saved: settings, aliases, apps and ${Backup(context).export(uri)} scripts") }
+        fileOp("backup") { notice("backup saved: everything — settings, apps, ${Backup(context).export(uri)} scripts, todos, notes, reminders, feeds and the log") }
     }
 
     fun importBackup(uri: Uri?) {
@@ -929,9 +929,21 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             refreshScriptCaches()
             notice(
                 "imported ${r.settings} settings, ${r.aliases} aliases, ${r.scripts} scripts" +
+                    (if (r.full) ", ${r.restored} saved items (todos, notes, reminders, feeds, log…)" else "") +
                     (if (r.disabled > 0) " (${r.disabled} new scripts are off — enable them in Scripts)" else "") +
-                    if (r.skipped.isNotEmpty()) " · skipped ${r.skipped.joinToString()}" else ""
+                    (if (r.skipped.isNotEmpty()) " · skipped ${r.skipped.joinToString()}" else "") +
+                    if (r.full) " — restarting to load it all" else ""
             )
+            // A full restore replaced preferences and tables under every in-memory cache: start fresh.
+            if (r.full) {
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    context.startActivity(
+                        android.content.Intent(context, io.github.rscipher001.launcher.MainActivity::class.java)
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    )
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                }, 2_000)
+            }
         }
     }
 

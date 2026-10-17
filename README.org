@@ -219,8 +219,10 @@ end
 
 * Moving scripts and settings between devices
 
-- Backup file :: /Settings → backup → export…/ writes =kolahal-backup.json=: changed settings,
-  aliases, hidden/renamed apps, and every script with its code and timers. Edit it on a computer
+- Backup file :: /Settings → backup → export…/ writes =kolahal-backup.json= with everything:
+  changed settings, aliases, hidden/renamed/pinned apps, every script with its code and timers, and
+  under =data= todos, notes, reminders, feeds (with read state), script stores, the log and
+  launch/unlock history. Importing replaces that data and restarts the launcher. Edit it on a computer
   and use /import…/ to load it back on any phone.
 
   #+begin_src json

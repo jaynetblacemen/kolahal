@@ -1,0 +1,169 @@
+package io.github.rscipher001.launcher.data
+
+import android.content.ContentValues
+import android.content.Context
+import android.database.Cursor
+import android.database.sqlite.SQLiteDatabase
+import android.util.Base64
+import io.github.rscipher001.launcher.feeds.FeedDb
+
+/**
+ * The raw half of a backup: every app preference file and database table, so a restore brings
+ * back everything (todos, notes, reminders, feeds and their read state, script stores, the log,
+ * launch history, unlock history, notification and trigger settings…).
+ *
+ * The readable sections of [Backup] (config, aliases, apps, scripts) are applied after this, so
+ * hand edits to them win. Things that can't move between devices are left out: the picked script
+ * folder (a storage permission) and WorkManager's own schedule state (rebuilt on restore).
+ */
+object FullBackup {
+    /** SharedPreferences files that hold user data. */
+    private val PREFS = listOf(
+        "config", "aliases", "apps", "notif_prefs", "script_library", "unlocks", "triggers", "launcher", "logs",
+    )
+
+    private class Table(val db: (Context) -> SQLiteDatabase, val name: String)
+
+    private val TABLES = listOf(
+        Table({ Db.get(it).writableDatabase }, "logs"),
+        Table({ Db.get(it).writableDatabase }, "kv"),
+        Table({ Db.get(it).writableDatabase }, "todos"),
+        Table({ Db.get(it).writableDatabase }, "notes"),
+        Table({ Db.get(it).writableDatabase }, "reminders"),
+        Table({ FeedDb.get(it).writableDatabase }, "feeds"),
+        Table({ FeedDb.get(it).writableDatabase }, "items"),
+    )
+
+    /** kv scopes are "script:<id>"; ids differ between devices, so backups key them by script name. */
+    private const val SCRIPT_SCOPE = "script:"
+
+    fun export(context: Context): Map<String, Any?> {
+        val scriptNames = ScriptRepository.get(context).all().associate { ScriptRepository.scopeOf(it.id) to it.name }
+        val tables = LinkedHashMap<String, Any?>()
+        val scriptKv = LinkedHashMap<String, MutableMap<String, String?>>()
+        for (t in TABLES) {
+            val rows = query(t.db(context), t.name)
+            tables[t.name] = if (t.name != "kv") rows else rows.filter { row ->
+                val scope = row["scope"] as? String ?: return@filter false
+                if (!scope.startsWith(SCRIPT_SCOPE)) return@filter true
+                // Stores of deleted scripts are dropped; the rest move under the script's name.
+                scriptNames[scope]?.let { name -> scriptKv.getOrPut(name) { LinkedHashMap() }[row["k"].toString()] = row["v"] as? String }
+                false
+            }
+        }
+        return mapOf(
+            "prefs" to PREFS.associateWith { file -> exportPrefs(context, file) },
+            "tables" to tables,
+            "scriptStores" to scriptKv,
+        )
+    }
+
+    /** Replaces preferences and tables with the backup's. Returns how many rows were restored. */
+    fun importRaw(context: Context, data: Map<*, *>): Int {
+        (data["prefs"] as? Map<*, *>)?.forEach { (file, entries) ->
+            if (file is String && file in PREFS && entries is Map<*, *>) importPrefs(context, file, entries)
+        }
+        var rows = 0
+        val tables = data["tables"] as? Map<*, *> ?: return 0
+        for (t in TABLES) {
+            val list = (tables[t.name] as? List<*>)?.filterIsInstance<Map<*, *>>() ?: continue
+            val db = t.db(context)
+            db.beginTransaction()
+            try {
+                if (t.name == "kv") {
+                    // Keep this device's script stores; they are re-attached by name afterwards.
+                    db.delete("kv", "scope NOT LIKE ?", arrayOf("$SCRIPT_SCOPE%"))
+                } else {
+                    db.delete(t.name, null, null)
+                }
+                for (row in list) {
+                    if (db.insertWithOnConflict(t.name, null, values(row), SQLiteDatabase.CONFLICT_REPLACE) != -1L) rows++
+                }
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
+        }
+        return rows
+    }
+
+    /** After scripts exist (by name), puts each script's store back under its new id. */
+    fun importScriptStores(context: Context, data: Map<*, *>) {
+        val stores = data["scriptStores"] as? Map<*, *> ?: return
+        val repo = ScriptRepository.get(context)
+        stores.forEach { (name, entries) ->
+            val script = repo.byName(name.toString()) ?: return@forEach
+            val kv = KvStore(context, ScriptRepository.scopeOf(script.id))
+            (entries as? Map<*, *>)?.forEach { (k, v) -> if (k != null) kv.set(k.toString(), v?.toString()) }
+        }
+    }
+
+    // ---- preferences: values are tagged so ints, longs and string sets survive JSON --------------
+
+    private fun exportPrefs(context: Context, file: String): Map<String, Any?> =
+        context.getSharedPreferences(file, Context.MODE_PRIVATE).all.mapValues { (_, v) ->
+            when (v) {
+                is Boolean -> mapOf("b" to v)
+                is Int -> mapOf("i" to v)
+                is Long -> mapOf("l" to v)
+                is Float -> mapOf("f" to v.toDouble())
+                is Set<*> -> mapOf("set" to v.map { it.toString() })
+                else -> mapOf("s" to v?.toString())
+            }
+        }
+
+    private fun importPrefs(context: Context, file: String, entries: Map<*, *>) {
+        val edit = context.getSharedPreferences(file, Context.MODE_PRIVATE).edit().clear()
+        entries.forEach { (k, tagged) ->
+            val key = k?.toString() ?: return@forEach
+            val m = tagged as? Map<*, *> ?: return@forEach
+            when {
+                "b" in m -> edit.putBoolean(key, m["b"] == true)
+                "i" in m -> edit.putInt(key, (m["i"] as? Number)?.toInt() ?: 0)
+                "l" in m -> edit.putLong(key, (m["l"] as? Number)?.toLong() ?: 0L)
+                "f" in m -> edit.putFloat(key, (m["f"] as? Number)?.toFloat() ?: 0f)
+                "set" in m -> edit.putStringSet(key, (m["set"] as? List<*>)?.map { it.toString() }?.toSet() ?: emptySet())
+                else -> edit.putString(key, m["s"]?.toString())
+            }
+        }
+        // commit, not apply: the app restarts right after a restore.
+        edit.commit()
+    }
+
+    // ---- tables ------------------------------------------------------------------------------
+
+    private fun query(db: SQLiteDatabase, table: String): List<Map<String, Any?>> =
+        db.rawQuery("SELECT * FROM $table", null).use { c ->
+            val out = ArrayList<Map<String, Any?>>(c.count)
+            while (c.moveToNext()) {
+                val row = LinkedHashMap<String, Any?>()
+                for (i in 0 until c.columnCount) {
+                    row[c.getColumnName(i)] = when (c.getType(i)) {
+                        Cursor.FIELD_TYPE_NULL -> null
+                        Cursor.FIELD_TYPE_INTEGER -> c.getLong(i)
+                        Cursor.FIELD_TYPE_FLOAT -> c.getDouble(i)
+                        Cursor.FIELD_TYPE_BLOB -> mapOf("base64" to Base64.encodeToString(c.getBlob(i), Base64.NO_WRAP))
+                        else -> c.getString(i)
+                    }
+                }
+                out += row
+            }
+            out
+        }
+
+    private fun values(row: Map<*, *>) = ContentValues().apply {
+        row.forEach { (k, v) ->
+            val col = k?.toString() ?: return@forEach
+            when (v) {
+                null -> putNull(col)
+                is Boolean -> put(col, if (v) 1 else 0)
+                is Int -> put(col, v)
+                is Long -> put(col, v)
+                is Double -> if (v % 1.0 == 0.0 && kotlin.math.abs(v) < 9e15) put(col, v.toLong()) else put(col, v)
+                is Number -> put(col, v.toLong())
+                is Map<*, *> -> (v["base64"] as? String)?.let { put(col, Base64.decode(it, Base64.NO_WRAP)) }
+                else -> put(col, v.toString())
+            }
+        }
+    }
+}

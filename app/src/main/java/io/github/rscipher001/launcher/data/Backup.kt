@@ -39,18 +39,29 @@ class Backup(private val context: Context) {
                     "at" to it.atTimes, "notify" to it.notify, "enabled" to it.enabled,
                 )
             },
+            // Everything else: todos, notes, reminders, feeds, script stores, log, history.
+            "data" to FullBackup.export(context),
         )
         Files.writeText(context, uri, Json.stringify(data))
         return all.size
     }
 
-    data class Result(val settings: Int, val aliases: Int, val scripts: Int, val disabled: Int, val skipped: List<String>)
+    data class Result(
+        val settings: Int, val aliases: Int, val scripts: Int, val disabled: Int, val skipped: List<String>,
+        /** Rows restored from the raw data section (0 for older, settings-only backups). */
+        val restored: Int = 0,
+        val full: Boolean = false,
+    )
 
     fun import(uri: Uri): Result {
         val text = Files.readText(context, uri)
         val root = Json.parse(text) as? Map<*, *> ?: throw IllegalStateException("not a Kolahal backup")
         if (root["kolahal"] == null) throw IllegalStateException("not a Kolahal backup (missing \"kolahal\")")
         val skipped = ArrayList<String>()
+
+        // Raw data first, so the readable sections below (which people edit by hand) win.
+        val data = root["data"] as? Map<*, *>
+        val restored = data?.let { FullBackup.importRaw(context, it) } ?: 0
 
         var settings = 0
         (root["config"] as? Map<*, *>)?.forEach { (k, v) ->
@@ -110,11 +121,17 @@ class Backup(private val context: Context) {
             runCatching { scripts.byId(script.id)?.let { ScriptScheduler.sync(context, it) } }
             count++
         }
-        return Result(settings, aliases, count, disabled, skipped)
+        if (data != null) {
+            FullBackup.importScriptStores(context, data)
+            runCatching { io.github.rscipher001.launcher.productivity.ReminderScheduler.rescheduleAll(context) }
+            runCatching { io.github.rscipher001.launcher.feeds.FeedScheduler.sync(context) }
+            runCatching { ScriptScheduler.syncAll(context) }
+        }
+        return Result(settings, aliases, count, disabled, skipped, restored, full = data != null)
     }
 
     companion object {
-        const val VERSION = 1
+        const val VERSION = 2
         const val FILE_NAME = "kolahal-backup.json"
         val NAME = Regex("^[a-z0-9_-]{1,40}$")
         private val BUILT_INS get() = io.github.rscipher001.launcher.terminal.CommandProcessor.COMMANDS.map { it.name }.toSet()
