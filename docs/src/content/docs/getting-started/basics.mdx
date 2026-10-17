@@ -27,7 +27,8 @@ Type a command, or any part of an app name, and press Enter.
 - <span class="k-new">new</span> **Instant launch** (`launch.instant`, default `apps`): as soon as what you typed
   can only mean one app, it opens without Enter. With apps *Groww* and *Grove*, `grov` opens Grove and
   `grow` opens Groww. The same app in several profiles counts as one match (the copy you use most opens).
-  `launch.instant all` also runs commands and aliases this way (`setti` opens settings) and makes a
+  `launch.instant all` also runs commands that take no arguments, and aliases, this way (`setti`
+  opens settings; `contacts` waits for Enter so you can still type `contacts bob`), and makes a
   tapped history line run immediately. Sensitive commands never run without Enter: `call`, `sms`,
   `uninstall`, `work`, `private`, `clear`, `restart`, `lock`, `script`, `config`, `alias` and similar.
   Calls always open the dialer, so you confirm there. `launch.instant.min` (default 2) is how many
