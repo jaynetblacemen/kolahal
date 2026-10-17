@@ -120,6 +120,19 @@ class LogRepository private constructor(private val context: Context) {
         changed()
     }
 
+    /** Puts a deleted line back with its original id, so it returns to the same place. */
+    fun restore(e: LogEntry) {
+        db.writableDatabase.insertWithOnConflict("logs", null, ContentValues().apply {
+            put("id", e.id)
+            put("ts", e.ts)
+            put("kind", e.kind.key)
+            put("source", e.source)
+            put("text", e.text)
+            put("ctx", e.ctx.toJson())
+        }, android.database.sqlite.SQLiteDatabase.CONFLICT_IGNORE)
+        changed()
+    }
+
     /** Empties ↑ recall; the log itself (commands and their output) stays as it is. */
     fun clearHistory() {
         val maxId = db.readableDatabase.rawQuery("SELECT COALESCE(MAX(id), 0) FROM logs", null)

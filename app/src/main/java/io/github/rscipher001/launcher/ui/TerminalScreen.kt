@@ -151,6 +151,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 UiEvent.ScrollToBottom -> { pinned = true; listState.scrollToItem(0) }
                 // Handled by MainActivity so it works from every page (setup, script manager).
                 UiEvent.RequestNotificationPermission, UiEvent.RequestContactsPermission, UiEvent.RequestCalendarPermission, UiEvent.PickFont -> Unit
+                UiEvent.ShowQuick -> Unit // opened by the collector below, where the menu lives
                 UiEvent.FocusPrompt -> {
                     runCatching { focus.requestFocus() }
                     if (!currentHasHardwareKeyboard) currentKeyboard?.show()
@@ -199,6 +200,9 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     }
     val dimOld = remember(configVersion) { config[Keys.LOG_DIM] }
     var menu by remember { mutableStateOf<ActionMenu?>(null) }
+    LaunchedEffect(Unit) {
+        vm.events.collect { if (it == UiEvent.ShowQuick) menu = ActionMenu("Quick", vm.quickActions(), null) }
+    }
     menu?.let { ActionSheet(it, onDismiss = { menu = null }) }
     val commandGap = remember(configVersion) { config[Keys.LOG_SPACING].dp }
     // Monospace advance, used to indent wrapped lines past their prefix.
@@ -296,6 +300,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                         onLongPress = { e -> menu = ActionMenu(e.text, vm.actionsFor(e), e.id) },
                         onAppTap = vm::launchApp,
                         onAppLongPress = { app -> menu = ActionMenu(app.label, vm.appActions(app), null) },
+                        onSwipeCopy = vm::swipeCopy,
+                        onSwipeDelete = vm::swipeDelete,
                     )
                 }
             }
@@ -341,7 +347,21 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         // suggestions.auto: hidden on an idle home; shown while typing, or whenever there is input
         // (so hardware-keyboard typing still gets them).
         val suggestionsAuto = remember(configVersion) { config[Keys.SUGGESTIONS_AUTO] }
-        if (!suggestionsAuto || typing || vm.input.text.isNotEmpty()) SuggestionStrip(suggestions, onPick = vm::onSuggestion)
+        val undoEntry by vm.undoDelete.collectAsStateWithLifecycle()
+        if (undoEntry != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().background(Term.surface).heightIn(min = 44.dp).padding(start = 12.dp),
+            ) {
+                Text("line deleted", style = Term.mono.copy(color = Term.dim), modifier = Modifier.weight(1f))
+                Text(
+                    "UNDO",
+                    style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold),
+                    modifier = Modifier.clickable(onClick = vm::undoSwipeDelete).heightIn(min = 44.dp).wrapContentHeight().padding(horizontal = 16.dp),
+                )
+            }
+        }
+        if (!suggestionsAuto || typing || vm.input.text.isNotEmpty()) SuggestionStrip(suggestions, rows = remember(configVersion) { config[Keys.SUGGESTION_ROWS] }, onPick = vm::onSuggestion)
         // keybar.auto: only while typing, so an idle home shows more of the log.
         val keyBarAuto = remember(configVersion) { config[Keys.KEYBAR_AUTO] }
         val promptTypingHeight = remember(configVersion) { config[Keys.PROMPT_HEIGHT_TYPING].dp }
@@ -369,6 +389,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             // prompt.height applies while typing; idle keeps the roomy default.
             height = if (typing) promptTypingHeight else 52.dp,
             keyBarOn = keyBarOn,
+            onQuick = { vm.openQuick() },
             onToggleKeyBar = {
                 config.set(Keys.KEYBAR_SHOW, if (keyBarOn) "off" else "on")
                 // The bar shows while typing (keybar.auto): turning it on brings the keyboard up too.
@@ -631,8 +652,31 @@ private fun Header(
 }
 
 @Composable
-private fun SuggestionStrip(items: List<Suggestion>, onPick: (Suggestion) -> Unit) {
+private fun SuggestionStrip(items: List<Suggestion>, rows: Int, onPick: (Suggestion) -> Unit) {
     if (items.isEmpty()) return
+    val key = { _: Int, s: Suggestion ->
+        when (s) {
+            is Suggestion.App -> "a:" + s.app.key
+            is Suggestion.Completion -> "c:" + s.replacement
+        }
+    }
+    // suggestions.rows 2: twice as many chips in reach before any sideways scrolling.
+    if (rows >= 2 && items.size > 3) {
+        androidx.compose.foundation.lazy.staggeredgrid.LazyHorizontalStaggeredGrid(
+            rows = androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells.Fixed(2),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height((Term.chipHeight * 2 + 6).dp)
+                .testTag("suggestions")
+                .padding(vertical = 2.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp),
+            horizontalItemSpacing = 8.dp,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            items(items.size, key = { key(it, items[it]) }) { index -> SuggestionChip(index, items[index], onPick) }
+        }
+        return
+    }
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
@@ -641,12 +685,13 @@ private fun SuggestionStrip(items: List<Suggestion>, onPick: (Suggestion) -> Uni
         contentPadding = PaddingValues(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        itemsIndexed(items, key = { _, s ->
-            when (s) {
-                is Suggestion.App -> "a:" + s.app.key
-                is Suggestion.Completion -> "c:" + s.replacement
-            }
-        }) { index, s ->
+        itemsIndexed(items, key = key) { index, s -> SuggestionChip(index, s, onPick) }
+    }
+}
+
+@Composable
+private fun SuggestionChip(index: Int, s: Suggestion, onPick: (Suggestion) -> Unit) {
+        run {
             val (color, tag) = when (s) {
                 is Suggestion.App -> Term.profileColor(s.app.profile.kind) to s.app.profile.kind.tag
                 is Suggestion.Completion -> Term.dim to null
@@ -673,7 +718,6 @@ private fun SuggestionStrip(items: List<Suggestion>, onPick: (Suggestion) -> Uni
                 Text(s.label, style = Term.mono.copy(color = if (s is Suggestion.App) Term.fg else Term.dim))
             }
         }
-    }
 }
 
 /** Named keys the touch key bar understands; anything else in the spec is inserted literally. */
@@ -805,6 +849,7 @@ private fun Prompt(
     onFocus: (Boolean) -> Unit,
     height: Dp,
     keyBarOn: Boolean,
+    onQuick: () -> Unit,
     onToggleKeyBar: () -> Unit,
     onTapPrompt: () -> Unit,
 ) {
@@ -826,7 +871,17 @@ private fun Prompt(
             // Vertical room comes from [height] (centred), so small values really shrink the line.
             .padding(horizontal = 12.dp, vertical = 2.dp),
     ) {
-        Text("$ ", style = promptStyle.copy(color = Term.prompt, fontWeight = FontWeight.Bold))
+        // Tap `$`: the quick sheet (settings, battery, profiles, …) within thumb reach.
+        Text(
+            "$ ",
+            style = promptStyle.copy(color = Term.prompt, fontWeight = FontWeight.Bold),
+            modifier = Modifier
+                .testTag("prompt-quick")
+                .clickable(onClickLabel = "quick actions", onClick = onQuick)
+                .heightIn(min = 32.dp)
+                .padding(end = 2.dp)
+                .wrapContentHeight(),
+        )
         BasicTextField(
             value = vm.input,
             onValueChange = vm::onInputChange,

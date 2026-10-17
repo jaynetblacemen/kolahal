@@ -43,7 +43,9 @@ cd docs && npm install && npm run dev    # http://localhost:4321/kolahal/
     make both slimmer while typing. =log.lineheight= and =chips.height= tighten log lines and
     suggestion chips.| . ← ↓ → ⏎=); arrows and backspace repeat
     when held, and dragging sideways moves the cursor.
-  - Tap any line for its main action; long-press opens an action sheet.
+  - Tap any line for its main action; long-press opens an action sheet. Swipe a line right to copy
+    it, left to delete it (with undo). Tap =$= on the prompt for the quick sheet (settings, battery,
+    profiles, widgets, lock…) within thumb reach.
   - Pinch the log to resize text, swipe down on the header for notifications, tap empty space for
     the keyboard.
   - Gestures (Settings → Gestures, or =config set gesture.*=): double-tap empty log space locks the

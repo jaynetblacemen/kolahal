@@ -72,6 +72,7 @@ sealed interface UiEvent {
     data object RequestContactsPermission : UiEvent
     data object RequestCalendarPermission : UiEvent
     data object PickFont : UiEvent
+    data object ShowQuick : UiEvent
 }
 
 /** Something the user can tap in the suggestion strip. */
@@ -554,6 +555,12 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         if (command != null) {
             actions += LogAction("Run again") { setText(command); submit() }
             actions += LogAction("Edit in prompt") { setText(command); _events.tryEmit(UiEvent.FocusPrompt) }
+        } else if (entry.kind != LogKind.SCRIPT) {
+            // Plain output: offer the command that printed it.
+            producingCommand(entry)?.let { cmd ->
+                actions += LogAction("Run '${cmd.text}' again") { setText(cmd.text); submit() }
+                actions += LogAction("Edit '${cmd.text}' in prompt") { setText(cmd.text); _events.tryEmit(UiEvent.FocusPrompt) }
+            }
         }
         appFor(ctx)?.let { app ->
             val (safe, destructive) = appActions(app).partition { !it.destructive }
@@ -644,6 +651,19 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun launchApp(app: AppEntry) = io { processor.launch(app) }
 
     /** A command line plus the output that followed it (up to the next command; timer output excluded). */
+    /** The command line above [entry] in its block (null for script output or orphan lines). */
+    private fun producingCommand(entry: LogEntry): LogEntry? {
+        val all = _entries.value
+        val index = all.indexOfFirst { it.id == entry.id }
+        if (index < 0) return null
+        for (i in index - 1 downTo 0) {
+            val e = all[i]
+            // Timer script lines can land inside a block; they are not part of it.
+            if (e.kind == LogKind.COMMAND) return e
+        }
+        return null
+    }
+
     private fun blockOf(command: LogEntry): List<LogEntry> {
         val all = _entries.value
         val start = all.indexOfFirst { it.id == command.id }
@@ -683,6 +703,32 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             .putExtra(Intent.EXTRA_TEXT, url)
         startActivity(Intent.createChooser(send, null))
     }
+
+    private val _undoDelete = MutableStateFlow<LogEntry?>(null)
+    /** The line a swipe just deleted; the terminal offers Undo for a few seconds. */
+    val undoDelete: StateFlow<LogEntry?> = _undoDelete.asStateFlow()
+    private var undoJob: kotlinx.coroutines.Job? = null
+
+    /** Swipe left on a log line. */
+    fun swipeDelete(entry: LogEntry) {
+        io { logs.delete(entry.id) }
+        _undoDelete.value = entry
+        undoJob?.cancel()
+        undoJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(8_000)
+            _undoDelete.value = null
+        }
+    }
+
+    fun undoSwipeDelete() {
+        val entry = _undoDelete.value ?: return
+        _undoDelete.value = null
+        undoJob?.cancel()
+        io { logs.restore(entry) }
+    }
+
+    /** Swipe right on a log line. */
+    fun swipeCopy(entry: LogEntry) = copy(entry.text)
 
     private fun copy(text: String) {
         context.getSystemService(ClipboardManager::class.java)
@@ -724,6 +770,34 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     }
 
     /** Resuming is harmless, pausing asks for a second tap (the logged line). */
+    /**
+     * The quick sheet (tap `$` on the prompt, or the `quick` gesture): everything the header
+     * offers, in thumb reach at the bottom of the screen.
+     */
+    fun openQuick() { _events.tryEmit(UiEvent.ShowQuick) }
+
+    fun quickActions(): List<LogAction> = buildList {
+        add(LogAction("⚙  Settings") { openScreen(Screen.SETTINGS) })
+        add(LogAction("▾  Notifications") { expandNotifications() })
+        add(LogAction("◷  Alarms & clock") { onHeaderTap(HeaderTarget.ALARM) })
+        add(LogAction("▮  Battery") { onHeaderTap(HeaderTarget.BATTERY) })
+        add(LogAction("⇅  Network") { onHeaderTap(HeaderTarget.NETWORK) })
+        add(LogAction("#  Unlocks this week") { onHeaderTap(HeaderTarget.UNLOCKS) })
+        profiles.value.filter { it.kind == ProfileKind.WORK || it.kind == ProfileKind.PRIVATE }.forEach { p ->
+            val cmd = if (p.kind == ProfileKind.PRIVATE) "private" else "work"
+            add(
+                LogAction(if (p.quiet) "▸  Resume ${p.kind.label} profile" else "‖  Pause ${p.kind.label} profile") {
+                    runCommand("$cmd ${if (p.quiet) "on" else "off"}")
+                },
+            )
+        }
+        add(LogAction("☰  Apps") { runCommand("apps") })
+        add(LogAction("◫  Widgets") { openScreen(Screen.WIDGETS) })
+        add(LogAction("≋  Feeds") { openScreen(Screen.FEEDS) })
+        add(LogAction("{}  Scripts") { openScreen(Screen.SCRIPTS) })
+        add(LogAction("⏻  Lock screen") { if (!io.github.rscipher001.launcher.gesture.LockService.lock()) runCommand("lock") })
+    }
+
     fun onProfileTap(profile: Profile) {
         val cmd = if (profile.kind == ProfileKind.PRIVATE) "private" else "work"
         if (profile.quiet) {
@@ -769,6 +843,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         when (val action = config[key].trim()) {
             "", g.NONE -> Unit
             g.SHADE -> expandNotifications()
+            "quick" -> _events.tryEmit(UiEvent.ShowQuick)
             // Locking needs no log line; only report when the accessibility service is off.
             // Without the service, explain once per session instead of on every stray double-tap.
             g.LOCK -> if (!io.github.rscipher001.launcher.gesture.LockService.lock() && !lockHintShown) {

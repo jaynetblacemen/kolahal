@@ -60,6 +60,7 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 | `launch.instant.min` | number 1–6 | `2` | letters to type before an instant launch |
 | `suggestions.idle` | bool | `on` | show most-used apps when the prompt is empty |
 | `suggestions.auto` | bool | `on` | show suggestions only while typing (keyboard up or text in the prompt) |
+| `suggestions.rows` | number 1–2 | `2` | rows of suggestion chips while typing |
 | `suggestions` | number 0–30 | `12` | max suggestions shown while typing |
 | `search.engine` | choice: `duckduckgo` `google` `bing` `brave` `startpage` `kagi` `custom` | `duckduckgo` | web search engine for `search` / `g` |
 | `search.url` | text | `https://duckduckgo.com/?q=%s` | custom search URL (`%s` = query), used when `search.engine` = `custom` |

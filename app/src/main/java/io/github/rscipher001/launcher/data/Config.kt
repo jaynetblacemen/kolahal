@@ -81,6 +81,7 @@ object Keys {
     val LAUNCH_TOP = ConfigKey.Bool("launch.top", true, "Enter launches the best match when it starts with what you typed")
     val SUGGEST_IDLE = ConfigKey.Bool("suggestions.idle", true, "show most-used apps when the prompt is empty")
     val SUGGESTIONS_AUTO = ConfigKey.Bool("suggestions.auto", true, "show suggestions only while typing (keyboard up or text in the prompt)")
+    val SUGGESTION_ROWS = ConfigKey.Num("suggestions.rows", 2, 1..2, "rows of suggestion chips while typing")
     val SHOW_TIMESTAMPS = ConfigKey.Choice("log.time", "commands", listOf("off", "commands", "all"), "right-aligned times on log lines")
     val LOG_DIM = ConfigKey.Bool("log.dim", true, "dim output older than the latest command")
     val LOG_SPACING = ConfigKey.Num("log.spacing", 12, 0..40, "gap (dp) above each command and its output")
@@ -103,13 +104,13 @@ object Keys {
     val WIDGETS_HOME = ConfigKey.Bool("widgets.home", true, "show widgets placed on home under the header (they hide with it while the log is in use)")
     val WIDGETS_HEIGHT = ConfigKey.Num("widgets.height", 180, 60..480, "max height (dp) of the home widget area; it scrolls when widgets need more")
 
-    val GESTURE_DOUBLE_TAP = ConfigKey.Text("gesture.doubletap", "lock", "double-tap empty log space: a command, lock, shade or none")
-    val GESTURE_SWIPE_DOWN = ConfigKey.Text("gesture.swipedown", "shade", "swipe down on the header: a command, lock, shade or none")
-    val GESTURE_SWIPE_UP = ConfigKey.Text("gesture.swipeup", "apps", "swipe up on the prompt: a command, lock, shade or none")
+    val GESTURE_DOUBLE_TAP = ConfigKey.Text("gesture.doubletap", "lock", "double-tap empty log space: a command, lock, shade, quick (the quick sheet) or none")
+    val GESTURE_SWIPE_DOWN = ConfigKey.Text("gesture.swipedown", "shade", "swipe down on the header: a command, lock, shade, quick or none")
+    val GESTURE_SWIPE_UP = ConfigKey.Text("gesture.swipeup", "apps", "swipe up on the prompt: a command, lock, shade, quick or none")
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
-        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, GUI_COLORS, STATUS_BAR, FONT, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGESTIONS_AUTO, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
+        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, GUI_COLORS, STATUS_BAR, FONT, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGESTIONS_AUTO, SUGGESTION_ROWS, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_LINE_HEIGHT, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_FRESH, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP,
         HEADER_TODO, WIDGETS_HOME, WIDGETS_HEIGHT,
