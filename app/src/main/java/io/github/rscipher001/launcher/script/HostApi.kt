@@ -226,7 +226,12 @@ class HostApi(
     fun appsList(): List<Map<String, Any?>> {
         val la = context.getSystemService(android.content.pm.LauncherApps::class.java)
         val me = android.os.Process.myUserHandle()
-        return la.profiles.flatMap { user ->
+        val um = context.getSystemService(android.os.UserManager::class.java)
+        // Private space (and any paused profile) stays invisible to scripts.
+        return la.profiles.filter { user ->
+            !runCatching { um.isQuietModeEnabled(user) }.getOrDefault(false) &&
+                (android.os.Build.VERSION.SDK_INT < 35 || runCatching { la.getLauncherUserInfo(user)?.userType }.getOrNull() != android.os.UserManager.USER_TYPE_PROFILE_PRIVATE)
+        }.flatMap { user ->
             runCatching { la.getActivityList(null, user) }.getOrDefault(emptyList()).map {
                 mapOf("label" to it.label.toString(), "pkg" to it.componentName.packageName, "profile" to if (user == me) "personal" else "other")
             }
@@ -244,6 +249,11 @@ class HostApi(
     fun runCommand(command: String): Boolean {
         if (!interactive) {
             logError("launcher.run is only available when the script is run from the prompt")
+            return false
+        }
+        // State-changing commands (clear, uninstall, notifs clear, config, …) stay with the user.
+        if (io.github.rscipher001.launcher.terminal.InstantRun.isSensitive(command)) {
+            logError("launcher.run refused '${command.substringBefore(' ')}': sensitive commands must be typed")
             return false
         }
         flush()
@@ -281,6 +291,12 @@ class HostApi(
         private val RESERVED_CTX = setOf(
             LogContext.RUN, LogContext.COMMAND, LogContext.SCRIPT, LogContext.LINE, LogContext.APPS,
             LogContext.RUN_HEADER, LogContext.DESC, LogContext.PKG, LogContext.CLS, LogContext.USER,
+            // Tap / long-press actions: a script must not be able to forge a dial, a live
+            // notification's PendingIntent, a shortcut or delete buttons for the user's data.
+            LogContext.PHONE, LogContext.CONTACT, LogContext.SHORTCUT, LogContext.TODO, LogContext.TODO_DONE,
+            LogContext.NOTE, LogContext.REMINDER, LogContext.EVENT,
+            io.github.rscipher001.launcher.notifications.KolahalNotificationListener.CTX_KEY,
+            io.github.rscipher001.launcher.feeds.FeedWorker.CTX_FEED,
         )
         private val METHODS_REQUIRING_BODY = setOf("POST", "PUT", "PATCH", "PROPPATCH", "REPORT")
 

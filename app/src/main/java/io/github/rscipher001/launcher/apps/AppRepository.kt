@@ -192,7 +192,7 @@ class AppRepository private constructor(private val context: Context) {
     fun top(n: Int): List<AppEntry> {
         val now = System.currentTimeMillis()
         val byKey = _apps.value.associateBy { it.key }
-        val pinned = prefs.pinned().mapNotNull { byKey[it] }.filter { !it.hidden }
+        val pinned = prefs.pinned().mapNotNull { byKey[it] }.filter { !it.hidden && !it.profile.quiet }
         val pinnedKeys = pinned.mapTo(HashSet()) { it.key }
         return pinned.take(n) + _apps.value.asSequence()
             .filter { !it.hidden && !it.profile.quiet && it.key !in pinnedKeys }

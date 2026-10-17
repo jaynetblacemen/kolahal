@@ -63,12 +63,19 @@ class InstantRunTest {
         assertEquals(Target.Command("st"), target("st", aliases = mapOf("st" to "settings")))
         assertFalse(InstantRun.canRun("mom", commands, mapOf("mom" to "call mom"), emptyList()))
         assertTrue(InstantRun.canRun("s", commands, mapOf("s" to "settings"), emptyList()))
+        assertFalse("chained aliases are followed", InstantRun.canRun("a", commands, mapOf("a" to "b", "b" to "clear all"), emptyList()))
+        assertFalse("alias cycles are refused", InstantRun.canRun("a", commands, mapOf("a" to "b", "b" to "a"), emptyList()))
     }
 
     @Test fun historyLines() {
         assertTrue(InstantRun.canRun("settings", commands, emptyMap(), emptyList()))
         assertTrue(InstantRun.canRun("theme gruvbox", commands, emptyMap(), emptyList()))
-        assertTrue("an app name", InstantRun.canRun("grove", commands, emptyMap(), emptyList()))
+        assertTrue("an app name", InstantRun.canRun("grove", commands, emptyMap(), emptyList()) { it == "grove" })
+        assertFalse("unknown words are not apps by default", InstantRun.canRun("grove", commands, emptyMap(), emptyList()))
+        assertFalse("synonym of a sensitive command", InstantRun.canRun("cls", commands, emptyMap(), emptyList()))
+        assertFalse("synonym of a sensitive command", InstantRun.canRun("reboot", commands, emptyMap(), emptyList()))
+        assertFalse("optional-argument commands wait for Enter", InstantRun.canRun("setup", commands, emptyMap(), emptyList()))
+        assertTrue(InstantRun.isSensitive("notifications-feed clear"))
         assertFalse(InstantRun.canRun("call mom", commands, emptyMap(), emptyList()))
         assertFalse(InstantRun.canRun("work off", commands, emptyMap(), emptyList()))
         assertFalse(InstantRun.canRun("weather london", commands, emptyMap(), listOf("weather")))

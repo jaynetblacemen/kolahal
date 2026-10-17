@@ -83,10 +83,11 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val typed = line.trim()
         if (typed.isEmpty()) return
         logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
-        val stages = Pipes.split(typed)
+        // Aliases first, so `alias hf = help | grep feed` pipes too.
+        val stages = Pipes.split(if (expand) expandAliases(typed) else typed)
         if (stages.size > 1) {
             // `cmd | grep x | head 5`: capture what the command prints right away, then filter it.
-            val (_, captured) = logs.capture { execute(stages[0], expand) }
+            val (_, captured) = logs.capture { execute(stages[0], expand = false) }
             Pipes.apply(captured, stages.drop(1)).fold(
                 onSuccess = { logs.addAll(it) },
                 onFailure = { logs.addAll(captured); error(it.message ?: "bad pipe") },

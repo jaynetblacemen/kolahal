@@ -17,6 +17,20 @@ object InstantRun {
         "todo", "note", "notes", "remind", "timer", "alarm",
     ) + io.github.rscipher001.launcher.control.ControlCommands.SENSITIVE
 
+    /** Other names the dispatcher accepts for a command; checks always use the canonical name. */
+    val SYNONYMS = mapOf(
+        "fav" to "pin", "unfav" to "unpin", "favs" to "pins", "?" to "help", "ls" to "apps", "launch" to "open",
+        "cls" to "clear", "reboot" to "restart", "notifications-feed" to "notifs", "web" to "url", "g" to "search",
+        "youtube" to "yt", "map" to "maps", "store" to "play", "screentime" to "usage", "dial" to "call",
+        "text" to "sms", "contact" to "contacts", "prefs" to "settings", "time" to "date", "set" to "config",
+        "vol" to "volume", "bluetooth" to "bt",
+    )
+
+    fun canonical(head: String): String = head.lowercase().let { SYNONYMS[it] ?: it }
+
+    /** True when the first word of [line], after synonyms, is a sensitive command. */
+    fun isSensitive(line: String): Boolean = canonical(line.trim().substringBefore(' ')) in SENSITIVE
+
     sealed interface Target<out A> {
         data class App<A>(val app: A) : Target<A>
         data class Command(val line: String) : Target<Nothing>
@@ -62,21 +76,32 @@ object InstantRun {
         }
     }
 
-    /** Whether a whole command line (e.g. tapped in the history) may run without Enter. */
+    /**
+     * Whether a whole command line (e.g. tapped in the history) may run without Enter. Aliases
+     * are expanded the way the dispatcher does (chained, cycle-safe); a word that isn't a command
+     * runs only if [isApp] says it names an app.
+     */
     fun canRun(
         line: String,
         commands: Map<String, String>,
         aliases: Map<String, String>,
         scriptCommands: Collection<String>,
+        isApp: (String) -> Boolean = { false },
     ): Boolean {
-        val parts = line.trim().split(Regex("\\s+"))
-        val head = parts.firstOrNull()?.lowercase() ?: return false
+        var current = line.trim()
+        val seen = HashSet<String>()
+        while (true) {
+            val head = current.substringBefore(' ').lowercase()
+            val expansion = aliases[head] ?: break
+            if (!seen.add(head) || seen.size > 5) return false
+            current = (expansion + " " + current.substringAfter(' ', "")).trim()
+        }
+        val parts = current.split(Regex("\\s+"))
+        val head = canonical(parts.firstOrNull() ?: return false)
         if (head.isEmpty() || head in SENSITIVE) return false
-        // An alias is as safe as what it expands to (one level; aliases don't chain).
-        aliases[head]?.let { return canRun(it + parts.drop(1).joinToString(" ", prefix = " "), commands, emptyMap(), scriptCommands) }
         if (head in scriptCommands) return false
-        val usage = commands[head] ?: return true // not a command: an app name
-        // A command that needs an argument would only print its usage.
-        return parts.size > 1 || "<" !in usage
+        val usage = commands[head] ?: return isApp(current)
+        // Only commands that take no arguments at all: `contacts` must still accept `contacts bob`.
+        return parts.size > 1 || usage.trim() == head
     }
 }

@@ -265,7 +265,9 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         if (value.text != old) historyIndex = -1
         input = value
         // Only while typing forward at the end, so backspacing or editing mid-line never fires it.
-        if (value.text.length > old.length && value.selection.collapsed && value.selection.end == value.text.length) {
+        // One character at a time (or IME composition): a paste of a whole word is not "typing".
+        val typed = value.text.length - old.length == 1 || value.composition != null
+        if (typed && value.text.length > old.length && value.selection.collapsed && value.selection.end == value.text.length) {
             instantRun(value.text)
         }
     }
@@ -290,7 +292,11 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     /** In `launch.instant all` mode a tapped history line runs at once (unless it is sensitive). */
     private fun runsOnTap(line: String) = config[Keys.LAUNCH_INSTANT] == InstantRun.ALL &&
-        InstantRun.canRun(line, commandUsages, appPrefs.aliases(), _commandNames.value)
+        // A trailing space marks a prefill ("apps " from help): it is waiting for an argument.
+        !line.endsWith(' ') &&
+        InstantRun.canRun(line, commandUsages, appPrefs.aliases(), _commandNames.value) { name ->
+            appsRepo.searchRanked(name).firstOrNull()?.second == 0
+        }
 
     fun submit() {
         val line = input.text
@@ -735,6 +741,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     fun expandNotifications() = io.github.rscipher001.launcher.gesture.Gestures.expandShade(context)
 
+    private var lockHintShown = false
+
     /** Runs the action configured for a gesture: lock, shade, none or a terminal command. */
     fun onGesture(key: io.github.rscipher001.launcher.data.ConfigKey.Text) {
         val g = io.github.rscipher001.launcher.gesture.Gestures
@@ -742,8 +750,17 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             "", g.NONE -> Unit
             g.SHADE -> expandNotifications()
             // Locking needs no log line; only report when the accessibility service is off.
-            g.LOCK -> if (!io.github.rscipher001.launcher.gesture.LockService.lock()) runCommand("lock")
-            else -> runCommand(action)
+            // Without the service, explain once per session instead of on every stray double-tap.
+            g.LOCK -> if (!io.github.rscipher001.launcher.gesture.LockService.lock() && !lockHintShown) {
+                lockHintShown = true
+                runCommand("lock")
+            }
+            // Gesture actions may be aliases, so they expand like typed input.
+            else -> {
+                collapseHeader()
+                _events.tryEmit(UiEvent.ScrollToBottom)
+                io { processor.run(action) }
+            }
         }
     }
 

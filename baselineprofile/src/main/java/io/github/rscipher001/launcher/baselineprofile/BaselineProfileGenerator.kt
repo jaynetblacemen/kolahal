@@ -16,11 +16,19 @@ class BaselineProfileGenerator {
     @get:Rule
     val rule = BaselineProfileRule()
 
+    private val target = InstrumentationRegistry.getArguments().getString("targetAppId") ?: "io.github.rscipher001.launcher"
+
+    /** Startup profile (dex layout): only the cold start to a drawn terminal. */
     @Test
-    fun generate() = rule.collect(
-        packageName = InstrumentationRegistry.getArguments().getString("targetAppId") ?: "io.github.rscipher001.launcher",
-        includeInStartupProfile = true,
-    ) {
+    fun startup() = rule.collect(packageName = target, includeInStartupProfile = true) {
+        pressHome()
+        startActivityAndWait()
+        device.waitForIdle()
+    }
+
+    /** Baseline profile: a whole normal session. */
+    @Test
+    fun generate() = rule.collect(packageName = target) {
         pressHome()
         startActivityAndWait()
         device.waitForIdle()
