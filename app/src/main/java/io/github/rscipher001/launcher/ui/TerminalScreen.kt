@@ -296,11 +296,14 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 }
             }
         }
-        SuggestionStrip(suggestions, onPick = vm::onSuggestion)
-        // keybar.auto: only while typing, so an idle home shows more of the log.
-        val keyBarAuto = remember(configVersion) { config[Keys.KEYBAR_AUTO] }
         // A hardware keyboard already has these keys: the bar follows the on-screen keyboard.
         val typing = promptFocused && WindowInsets.isImeVisible
+        // suggestions.auto: hidden on an idle home; shown while typing, or whenever there is input
+        // (so hardware-keyboard typing still gets them).
+        val suggestionsAuto = remember(configVersion) { config[Keys.SUGGESTIONS_AUTO] }
+        if (!suggestionsAuto || typing || vm.input.text.isNotEmpty()) SuggestionStrip(suggestions, onPick = vm::onSuggestion)
+        // keybar.auto: only while typing, so an idle home shows more of the log.
+        val keyBarAuto = remember(configVersion) { config[Keys.KEYBAR_AUTO] }
         val promptTypingHeight = remember(configVersion) { config[Keys.PROMPT_HEIGHT_TYPING].dp }
         val keyBarOn = remember(configVersion) { config[Keys.KEYBAR_SHOW] }
         if (keyBarOn && (!keyBarAuto || typing)) {
