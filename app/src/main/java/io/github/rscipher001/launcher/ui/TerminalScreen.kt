@@ -298,7 +298,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         // A hardware keyboard already has these keys: the bar follows the on-screen keyboard.
         val typing = promptFocused && WindowInsets.isImeVisible
         val promptTypingHeight = remember(configVersion) { config[Keys.PROMPT_HEIGHT_TYPING].dp }
-        if (remember(configVersion) { config[Keys.KEYBAR_SHOW] } && (!keyBarAuto || typing)) {
+        val keyBarOn = remember(configVersion) { config[Keys.KEYBAR_SHOW] }
+        if (keyBarOn && (!keyBarAuto || typing)) {
             KeyBar(
                 specs = remember(configVersion) { listOf(config[Keys.KEYBAR], config[Keys.KEYBAR2]) },
                 rowHeight = remember(configVersion) { config[Keys.KEYBAR_HEIGHT].dp },
@@ -320,6 +321,15 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             onFocus = { promptFocused = it },
             // prompt.height applies while typing; idle keeps the roomy default.
             height = if (typing) promptTypingHeight else 52.dp,
+            keyBarOn = keyBarOn,
+            onToggleKeyBar = {
+                config.set(Keys.KEYBAR_SHOW, if (keyBarOn) "off" else "on")
+                // The bar shows while typing (keybar.auto): turning it on brings the keyboard up too.
+                if (!keyBarOn && keyBarAuto && !typing) {
+                    runCatching { focus.requestFocus() }
+                    keyboard?.show()
+                }
+            },
             onTapPrompt = {
                 runCatching { focus.requestFocus() }
                 keyboard?.show()
@@ -692,6 +702,8 @@ private fun Prompt(
     imeSuggestions: Boolean,
     onFocus: (Boolean) -> Unit,
     height: Dp,
+    keyBarOn: Boolean,
+    onToggleKeyBar: () -> Unit,
     onTapPrompt: () -> Unit,
 ) {
     val promptStyle = Term.mono.copy(fontSize = (Term.fontSize + 2).sp)
@@ -748,6 +760,17 @@ private fun Prompt(
                     }
                 },
         )
+        // Key bar toggle (keybar.show); dim while the bar is off.
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .testTag("keybar-toggle")
+                .widthIn(min = 44.dp)
+                .heightIn(min = 32.dp)
+                .clickable(onClickLabel = "toggle key bar", onClick = onToggleKeyBar),
+        ) {
+            Text("⌨", style = promptStyle.copy(color = if (keyBarOn) Term.prompt else Term.dim))
+        }
     }
 }
 

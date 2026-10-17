@@ -35,7 +35,7 @@ cd docs && npm install && npm run dev    # http://localhost:4321/kolahal/
   - =help=, =config= and =script ls= render in two columns; =apps= is a grid of tappable chips.
 - Touch ::
   - A two-row key bar (=ESC / - ⇤ ↑ ⇥ ⌫= and =TAB  It shows only while the on-screen keyboard is up
-    for the prompt (=keybar.auto off= keeps it always visible). =keybar.height= and =prompt.height=
+    for the prompt; the ⌨ button at the end of the prompt line turns it on or off (=keybar.auto off= keeps it always visible). =keybar.height= and =prompt.height=
     make both slimmer while typing. =log.lineheight= and =chips.height= tighten log lines and
     suggestion chips.| . ← ↓ → ⏎=); arrows and backspace repeat
     when held, and dragging sideways moves the cursor.
