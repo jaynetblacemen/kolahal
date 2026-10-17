@@ -7,7 +7,7 @@ There are three ways to move your setup between phones.
 
 ## Backup file
 
-**Settings → Backup → Export settings & scripts** writes one file, `kolahal-backup.json`, through
+**Settings → Backup → Export everything** writes one file, `kolahal-backup.json`, through
 the system file picker. It contains:
 
 - settings you changed from the default,

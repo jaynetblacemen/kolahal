@@ -157,8 +157,8 @@ fun SettingsScreen(
                 item(key = "backup") {
                     ActionGroup(
                         listOf(
-                            Action(R.drawable.ic_download, "Export settings & scripts", "Save one JSON file you can edit and import anywhere", onExportBackup),
-                            Action(R.drawable.ic_upload, "Import from file", "Load a Kolahal backup JSON", onImportBackup),
+                            Action(R.drawable.ic_download, "Export everything", "Settings, apps, scripts, todos, notes, reminders, feeds and the log in one JSON file", onExportBackup),
+                            Action(R.drawable.ic_upload, "Import from file", "Restore a Kolahal backup (replaces todos, notes, feeds and the log)", onImportBackup),
                         )
                     )
                 }
