@@ -46,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -67,6 +68,8 @@ import io.github.rscipher001.launcher.terminal.CommandProcessor
 import io.github.rscipher001.launcher.terminal.TerminalViewModel
 import java.text.DateFormat
 import java.util.Date
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private val INTERVALS = listOf(0 to "Off", 15 to "15m", 30 to "30m", 60 to "1h", 180 to "3h", 360 to "6h", 720 to "12h", 1440 to "1d")
 
@@ -368,8 +371,17 @@ private fun NewScriptDialog(onDismiss: () -> Unit, onCreate: (String, ScriptLang
 @Composable
 private fun LibraryList(vm: TerminalViewModel, installed: List<Script>) {
     val lib = vm.library
-    val rows = remember(installed) { lib.entries.map { it to lib.state(it, installed) } }
-    val events = remember { lib.entries.associate { it.name to ScriptMeta.events(lib.code(it)) } }
+    // index.json and the script bodies come from assets; read them off the main thread.
+    val events by produceState(emptyMap<String, List<String>>(), lib) {
+        value = withContext(Dispatchers.IO) {
+            runCatching { lib.entries.associate { it.name to ScriptMeta.events(lib.code(it)) } }.getOrDefault(emptyMap())
+        }
+    }
+    val rows by produceState(emptyList<Pair<io.github.rscipher001.launcher.script.ScriptLibrary.Entry, io.github.rscipher001.launcher.script.ScriptLibrary.State>>(), lib, installed) {
+        value = withContext(Dispatchers.IO) {
+            runCatching { lib.entries.map { it to lib.state(it, installed) } }.getOrDefault(emptyList())
+        }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(androidx.compose.material3.ListItemDefaults.SegmentedGap)) {
         rows.forEachIndexed { i, (entry, state) ->
             androidx.compose.material3.SegmentedListItem(

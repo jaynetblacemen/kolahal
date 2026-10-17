@@ -166,6 +166,29 @@ class FeedRepository private constructor(context: Context) {
         if (n > 0) changed()
     }
 
+    /** Marks exactly [itemIds] read, in one transaction. */
+    fun markRead(itemIds: List<Long>) {
+        if (itemIds.isEmpty()) return
+        val values = ContentValues().apply { put("read", 1) }
+        val w = db.writableDatabase
+        var n = 0
+        w.beginTransaction()
+        try {
+            for (id in itemIds.distinct()) n += w.update("items", values, "id = ? AND read = 0", arrayOf(id.toString()))
+            w.setTransactionSuccessful()
+        } finally {
+            w.endTransaction()
+        }
+        if (n > 0) changed()
+    }
+
+    /** Unread items, optionally of one feed (same scope as [items] with unreadOnly). */
+    fun unreadCount(feedId: Long?): Int {
+        val (clause, args) = if (feedId == null) "" to emptyArray() else " AND feed_id = ?" to arrayOf(feedId.toString())
+        return db.readableDatabase.rawQuery("SELECT COUNT(*) FROM items WHERE read = 0$clause", args)
+            .use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+    }
+
     /** Marks every item read, or only those of [feedId]. */
     fun markAllRead(feedId: Long? = null) {
         val values = ContentValues().apply { put("read", 1) }

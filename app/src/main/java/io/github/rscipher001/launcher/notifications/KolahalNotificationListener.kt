@@ -52,6 +52,10 @@ class KolahalNotificationListener : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         if (instance?.get() === this) instance = null
+        // Access revoked or unbound: don't leave a copy of other apps' notifications on disk.
+        mirrorJob?.cancel()
+        // Synchronous (a single small delete) so onDestroy cancelling the scope can't skip it.
+        clearMirror(this)
     }
 
     override fun onDestroy() {
@@ -63,8 +67,19 @@ class KolahalNotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap?) {
         if (!accept(sbn, rankingMap)) return
         val n = toNotif(sbn)
+        val known = NotificationStore.find(n.key)?.let { !it.removed } == true
         NotificationStore.put(n, sbn.notification.contentIntent)
         mirror()
+        val extras = sbn.notification.extras
+        // Download/upload progress and "alert once" updates re-post the same key many times a
+        // second; keep the store current but don't spam the log or fire scripts for each tick.
+        if (isQuietRepost(
+                known = known,
+                flags = sbn.notification.flags,
+                progressMax = extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0),
+                indeterminate = extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false),
+            )
+        ) return
         maybeLog(n)
         io.github.rscipher001.launcher.script.TriggerDispatcher.get(this).fire(
             "notification",
@@ -142,6 +157,20 @@ class KolahalNotificationListener : NotificationListenerService() {
         const val MIRROR_SCOPE = "system"
         const val MIRROR_KEY = "notifications"
         private const val RATE_LIMIT_MS = 30_000L
+
+        /** Removes the notification snapshot mirrored for scripts. Never throws. */
+        fun clearMirror(context: android.content.Context) {
+            runCatching {
+                io.github.rscipher001.launcher.data.KvStore(context.applicationContext, MIRROR_SCOPE).set(MIRROR_KEY, null)
+            }
+        }
+
+        /**
+         * Whether a post is an update of an already-shown notification that shouldn't be logged or
+         * trigger scripts: alert-once updates and progress notifications. New keys always count.
+         */
+        internal fun isQuietRepost(known: Boolean, flags: Int, progressMax: Int, indeterminate: Boolean): Boolean =
+            known && (flags and Notification.FLAG_ONLY_ALERT_ONCE != 0 || progressMax > 0 || indeterminate)
 
         @Volatile
         private var instance: WeakReference<KolahalNotificationListener>? = null

@@ -15,6 +15,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 data class Contact(
@@ -46,11 +48,25 @@ class ContactsRepository private constructor(private val context: Context) {
             context.contentResolver.registerContentObserver(
                 ContactsContract.Contacts.CONTENT_URI, true,
                 object : ContentObserver(Handler(Looper.getMainLooper())) {
-                    override fun onChange(selfChange: Boolean) = refresh()
+                    // Sync adapters fire bursts of changes; coalesce them into one reload.
+                    override fun onChange(selfChange: Boolean) = reload(RELOAD_DEBOUNCE_MS)
                 },
             )
         }
-        scope.launch { runCatching { _contacts.value = load() } }
+        reload(0)
+    }
+
+    private var reloadJob: Job? = null
+
+    /** Cancels any pending reload and starts a new one after [delayMs]. */
+    @Synchronized
+    private fun reload(delayMs: Long) {
+        reloadJob?.cancel()
+        reloadJob = scope.launch {
+            if (delayMs > 0) delay(delayMs)
+            if (!hasPermission()) return@launch
+            runCatching { _contacts.value = load() }
+        }
     }
 
     private fun load(): List<Contact> {
@@ -116,6 +132,8 @@ class ContactsRepository private constructor(private val context: Context) {
     }
 
     companion object {
+        private const val RELOAD_DEBOUNCE_MS = 1_000L
+
         @Volatile
         private var instance: ContactsRepository? = null
 

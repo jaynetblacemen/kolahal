@@ -1,6 +1,5 @@
 package io.github.rscipher001.launcher.ui
 
-import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -228,7 +227,8 @@ private fun openItem(context: Context, scope: CoroutineScope, repo: FeedReposito
     } else {
         try {
             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        } catch (_: ActivityNotFoundException) {
+        } catch (_: Exception) {
+            // No handler, a malformed link, or a SecurityException from the target activity.
             scope.launch { snackbar.showSnackbar("no app can open $link") }
             return
         }

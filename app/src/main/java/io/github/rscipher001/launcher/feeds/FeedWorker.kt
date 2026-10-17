@@ -70,7 +70,8 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                     LogContext.of(LogContext.COMMAND to "feeds read ${feed.id}") + feedCtx, ts,
                 )
             }
-            if (feed.notify) notify(ctx, feed, r.newItems)
+            // A notification problem (bad link, system refusal) must not lose the log lines.
+            if (feed.notify) runCatching { notify(ctx, feed, r.newItems) }
         }
         if (lines.isEmpty()) return
         val time = io.github.rscipher001.launcher.data.Config.get(applicationContext).shortTime(ts)
@@ -86,7 +87,8 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val first = items.first()
         val title = feed.title?.takeIf { it.isNotBlank() } ?: feed.shortName
         val body = if (items.size == 1) first.title else "${items.size} new — ${first.title}"
-        Notifier.post(ctx, "feed-${feed.id}", title, body, first.link)
+        // Stable id per feed: a newer batch replaces the previous notification instead of stacking.
+        Notifier.post(ctx, "feed-${feed.id}", title, body, first.link, id = notificationId(feed.id))
     }
 
     companion object {
@@ -96,5 +98,8 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         /** Log context key carrying the feed id on feed lines. */
         const val CTX_FEED = "feed"
         const val MAX_LINES_PER_FEED = 10
+
+        /** Notification id for [feedId]; stable across runs so each feed has at most one. */
+        internal fun notificationId(feedId: Long): Int = ("feed:$feedId").hashCode()
     }
 }

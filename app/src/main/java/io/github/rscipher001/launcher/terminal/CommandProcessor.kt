@@ -620,15 +620,27 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 items.forEach {
                     logs.add(LogKind.SCRIPT, it.title, names[it.feedId] ?: "feed", LogContext.of(LogContext.URL to it.link, LogContext.COPY to it.title))
                 }
-                if (unreadOnly) repo.markAllRead(id)
+                // Only what was shown: older unread items beyond the limit stay unread.
+                if (unreadOnly) repo.markRead(items.map { it.id })
+                val left = if (unreadOnly) repo.unreadCount(id) else 0
+                if (left > 0) info("$left more unread — feed read${id?.let { " $it" }.orEmpty()} again")
             }
             "open" -> {
-                // Opens every unread item of a feed (or all feeds) in the browser, then marks them read.
-                val items = repo.items(feedId = id, unreadOnly = true, limit = 10).filter { it.link != null }
+                // Opens the newest unread items (with links) in the browser; only those are marked read.
+                val items = repo.items(feedId = id, unreadOnly = true, limit = 40)
+                    .filter { it.link != null }.take(MAX_FEED_OPEN)
                 if (items.isEmpty()) return info("nothing unread")
-                items.forEach { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it.link))) }
-                repo.markAllRead(id)
-                info("opened ${items.size} items")
+                val opened = items.filter { item ->
+                    runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(item.link))) }.isSuccess
+                }
+                repo.markRead(opened.map { it.id })
+                val left = repo.unreadCount(id)
+                val failed = items.size - opened.size
+                info(
+                    "opened ${opened.size} item${if (opened.size == 1) "" else "s"}" +
+                        (if (failed > 0) " ($failed couldn't be opened)" else "") +
+                        (if (left > 0) " · $left still unread" else ""),
+                )
             }
             "notify" -> {
                 id ?: return error("usage: feed notify <id> on|off")
@@ -692,6 +704,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "clear" -> {
                 actions.dismissAll()
                 store.clear()
+                // Also drop the snapshot scripts read, so cleared notifications don't linger on disk.
+                io.github.rscipher001.launcher.notifications.KolahalNotificationListener.clearMirror(context)
                 info("notifications cleared")
             }
             else -> error("usage: notifs [all|enable|mute <app>|unmute <app>|muted|log on|off|clear]")
@@ -1125,6 +1139,9 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     }
 
     companion object {
+        /** Most browser tabs one `feed open` launches; the rest stay unread. */
+        const val MAX_FEED_OPEN = 5
+
         val COMMANDS = listOf(
             CommandSpec("help", "help", "show this list"),
             *io.github.rscipher001.launcher.control.ControlCommands.SPECS.toTypedArray(),

@@ -72,31 +72,32 @@ object Notifier {
         }.getOrDefault(false)
     }
 
-    /** Posts a script notification. Tapping opens [url] if given, otherwise the launcher. */
-    fun post(context: Context, tag: String, title: String, body: String, url: String?): Boolean {
-        if (!canPost(context)) return false
-        val tapIntent = if (url != null) {
-            Intent(Intent.ACTION_VIEW, Uri.parse(url))
-        } else {
-            Intent(context, MainActivity::class.java)
-        }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        val id = (tag + title + body).hashCode()
-        val pi = PendingIntent.getActivity(
-            context, id, tapIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        val notification = NotificationCompat.Builder(context, CHANNEL_SCRIPTS)
-            .setSmallIcon(R.drawable.ic_stat_terminal)
-            .setContentTitle(title)
-            .setContentText(body)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setSubText(tag)
-            .setContentIntent(pi)
-            .setAutoCancel(true)
-            .build()
-        return runCatching {
+    /**
+     * Posts a script notification. Tapping opens [url] if given, otherwise the launcher. Pass [id]
+     * to replace an earlier notification with the same tag/id (e.g. one per feed); by default each
+     * distinct title/body gets its own. Never throws: a malformed [url] falls back to the launcher.
+     */
+    fun post(context: Context, tag: String, title: String, body: String, url: String?, id: Int? = null): Boolean =
+        runCatching {
+            if (!canPost(context)) return false
+            val notifId = id ?: (tag + title + body).hashCode()
+            val launcher = { Intent(context, MainActivity::class.java) }
+            val tapIntent = (url?.let { runCatching { Intent(Intent.ACTION_VIEW, Uri.parse(it)) }.getOrNull() } ?: launcher())
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            val pi = runCatching { PendingIntent.getActivity(context, notifId, tapIntent, flags) }.getOrNull()
+                ?: PendingIntent.getActivity(context, notifId, launcher().addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), flags)
+            val notification = NotificationCompat.Builder(context, CHANNEL_SCRIPTS)
+                .setSmallIcon(R.drawable.ic_stat_terminal)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+                .setSubText(tag)
+                .setContentIntent(pi)
+                .setAutoCancel(true)
+                .build()
             @Suppress("MissingPermission")
-            NotificationManagerCompat.from(context).notify(tag, id, notification)
+            NotificationManagerCompat.from(context).notify(tag, notifId, notification)
             true
         }.getOrDefault(false)
-    }
 }

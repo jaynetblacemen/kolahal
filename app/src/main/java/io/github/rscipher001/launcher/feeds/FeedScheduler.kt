@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit
 object FeedScheduler {
     const val UNIQUE_NAME = "feeds"
     private const val NOW_NAME = "feeds-now"
-    const val PERIOD_MIN = 30L
+    const val PERIOD_MIN = 15L
 
     /** Floor for a feed's interval (WorkManager's periodic floor; also keeps us polite to servers). */
     const val MIN_INTERVAL_MIN = 15
@@ -36,8 +36,9 @@ object FeedScheduler {
             .setConstraints(network)
             .addTag(UNIQUE_NAME)
             .build()
-        // KEEP: re-syncing must not push the next run further out.
-        wm.enqueueUniquePeriodicWork(UNIQUE_NAME, ExistingPeriodicWorkPolicy.KEEP, request)
+        // UPDATE (not REPLACE): re-syncing keeps the schedule, but installs that enqueued the old
+        // 30-minute period pick up the new one.
+        wm.enqueueUniquePeriodicWork(UNIQUE_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
     }
 
     /** Fetches [feedId] (or every enabled feed) right away, ignoring intervals. */
@@ -56,8 +57,8 @@ object FeedScheduler {
         isDue(feed.enabled, feed.lastFetch, feed.intervalMin, now)
 
     /**
-     * Pure due check. A small slack lets a feed on a 30-minute interval be picked up by every
-     * 30-minute run even when WorkManager fires a little early.
+     * Pure due check. A small slack lets a feed on a 15-minute interval be picked up by every
+     * 15-minute run even when WorkManager fires a little early.
      */
     fun isDue(enabled: Boolean, lastFetch: Long?, intervalMin: Int, now: Long): Boolean {
         if (!enabled) return false

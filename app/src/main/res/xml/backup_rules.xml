@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Auto Backup rules for Android 11 and lower; keep in sync with data_extraction_rules.xml. -->
+<full-backup-content>
+    <exclude domain="database" path="kolahal.db" />
+    <exclude domain="database" path="kolahal.db-journal" />
+    <exclude domain="database" path="kolahal.db-wal" />
+    <exclude domain="database" path="kolahal.db-shm" />
+    <exclude domain="database" path="feeds.db" />
+    <exclude domain="database" path="feeds.db-journal" />
+    <exclude domain="database" path="feeds.db-wal" />
+    <exclude domain="database" path="feeds.db-shm" />
+    <exclude domain="sharedpref" path="logs.xml" />
+</full-backup-content>

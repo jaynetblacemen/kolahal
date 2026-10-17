@@ -5,14 +5,17 @@ import io.github.rscipher001.launcher.script.Net
 import io.github.rscipher001.launcher.script.RssParser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.job
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
 import okhttp3.Response
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.charset.Charset
+import kotlin.coroutines.resumeWithException
 
 /**
  * Downloads and stores feeds. Uses conditional GETs (ETag / Last-Modified) so unchanged feeds cost
@@ -60,29 +63,21 @@ class FeedFetcher(context: Context) {
                 feed.lastModified?.let { header("If-Modified-Since", it) }
             }
             .build()
-        val call = Net.client.newCall(request)
-        // Abort the blocking call if the worker is stopped.
-        val cancelHandle = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
-        val (body, etag, lastModified) = try {
-            call.execute().use { resp ->
-                if (resp.code == 304) {
-                    repo.recordFetch(feed.id, "not modified")
-                    return emptyList()
-                }
-                if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
-                Triple(readCapped(resp), resp.header("ETag"), resp.header("Last-Modified"))
-            }
-        } finally {
-            cancelHandle.dispose()
+        val download = download(Net.client.newCall(request))
+        if (download == null) {
+            repo.recordFetch(feed.id, "not modified")
+            return emptyList()
         }
+        val (body, etag, lastModified) = download
 
         val parsed = RssParser.parse(body)
         if (parsed.items.isEmpty() && parsed.title == null) throw IOException("not a feed")
         val fresh = repo.insertItems(feed.id, parsed.items.map {
             FeedRepository.NewItem(
+                // guid keeps the raw link so dedupe against existing rows is unchanged.
                 guid = it.id.ifBlank { it.link ?: it.title },
                 title = it.title,
-                link = it.link,
+                link = safeLink(it.link, feed.url),
                 publishedText = it.date,
                 summary = it.summary,
             )
@@ -92,6 +87,35 @@ class FeedFetcher(context: Context) {
         repo.recordFetch(feed.id, status, etag, lastModified, newTitle)
         return fresh
     }
+
+    /**
+     * Runs [call] asynchronously and reads the (capped) body on OkHttp's thread. Returns
+     * (body, ETag, Last-Modified), or null on 304. Cancelling the coroutine cancels the call,
+     * which also aborts a body read in progress.
+     */
+    private suspend fun download(call: Call): Triple<String, String?, String?>? =
+        suspendCancellableCoroutine { cont ->
+            cont.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    // Ignored by the continuation when it was already cancelled.
+                    cont.resumeWithException(e)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    val result = runCatching {
+                        response.use { resp ->
+                            when {
+                                resp.code == 304 -> null
+                                !resp.isSuccessful -> throw IOException("HTTP ${resp.code}")
+                                else -> Triple(readCapped(resp), resp.header("ETag"), resp.header("Last-Modified"))
+                            }
+                        }
+                    }
+                    cont.resumeWith(result)
+                }
+            })
+        }
 
     /** Reads at most [MAX_BODY_BYTES], failing beyond that, and decodes using the declared charset. */
     private fun readCapped(resp: Response): String {
@@ -123,6 +147,21 @@ class FeedFetcher(context: Context) {
             val name = ENCODING.find(head)?.groupValues?.get(1) ?: return null
             return runCatching { Charset.forName(name) }.getOrNull()
         }
+
+        /**
+         * An item link safe to hand to ACTION_VIEW: [link] resolved against [feedUrl] when relative,
+         * kept only when the result is http(s). Anything else (javascript:, intent:, file:, content:,
+         * garbage) becomes null.
+         */
+        internal fun safeLink(link: String?, feedUrl: String): String? {
+            val raw = link?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+            val resolved = raw.toHttpUrlOrNull()
+                ?: if (SCHEME.containsMatchIn(raw)) null else feedUrl.toHttpUrlOrNull()?.resolve(raw)
+            return resolved?.takeIf { it.scheme == "http" || it.scheme == "https" }?.toString()
+        }
+
+        /** An explicit URI scheme (RFC 3986); such links are never resolved relative to the feed. */
+        private val SCHEME = Regex("^[A-Za-z][A-Za-z0-9+.-]*:")
 
         /** One-line reason for `last_status` and the log. */
         fun describe(e: Throwable): String =
