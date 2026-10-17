@@ -297,9 +297,11 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         val keyBarAuto = remember(configVersion) { config[Keys.KEYBAR_AUTO] }
         // A hardware keyboard already has these keys: the bar follows the on-screen keyboard.
         val typing = promptFocused && WindowInsets.isImeVisible
+        val promptTypingHeight = remember(configVersion) { config[Keys.PROMPT_HEIGHT_TYPING].dp }
         if (remember(configVersion) { config[Keys.KEYBAR_SHOW] } && (!keyBarAuto || typing)) {
             KeyBar(
                 specs = remember(configVersion) { listOf(config[Keys.KEYBAR], config[Keys.KEYBAR2]) },
+                rowHeight = remember(configVersion) { config[Keys.KEYBAR_HEIGHT].dp },
                 onKey = { key ->
                     if (key == KeyBarKey.KBD) {
                         runCatching { focus.requestFocus() }
@@ -316,6 +318,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             focus = focus,
             imeSuggestions = remember(configVersion) { config[Keys.IME_SUGGESTIONS] },
             onFocus = { promptFocused = it },
+            // prompt.height applies while typing; idle keeps the roomy default.
+            height = if (typing) promptTypingHeight else 52.dp,
             onTapPrompt = {
                 runCatching { focus.requestFocus() }
                 keyboard?.show()
@@ -582,17 +586,17 @@ private val REPEATING = setOf(KeyBarKey.UP, KeyBarKey.DOWN, KeyBarKey.LEFT, KeyB
  * Arrows and backspace repeat while held; dragging sideways across the bar moves the cursor.
  */
 @Composable
-private fun KeyBar(specs: List<String>, onKey: (KeyBarKey) -> Unit, onText: (String) -> Unit) {
+private fun KeyBar(specs: List<String>, rowHeight: Dp, onKey: (KeyBarKey) -> Unit, onText: (String) -> Unit) {
     Column(
         Modifier.fillMaxWidth().background(Term.surface),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        specs.filter { it.isNotBlank() }.forEach { KeyRow(it, onKey, onText) }
+        specs.filter { it.isNotBlank() }.forEach { KeyRow(it, rowHeight, onKey, onText) }
     }
 }
 
 @Composable
-private fun KeyRow(spec: String, onKey: (KeyBarKey) -> Unit, onText: (String) -> Unit) {
+private fun KeyRow(spec: String, rowHeight: Dp, onKey: (KeyBarKey) -> Unit, onText: (String) -> Unit) {
     val keys = remember(spec) {
         spec.split(',').map { it.trim() }.filter { it.isNotEmpty() }.map { token -> KeyBarKey.of(token) to token }
     }
@@ -604,7 +608,7 @@ private fun KeyRow(spec: String, onKey: (KeyBarKey) -> Unit, onText: (String) ->
     }
     val bar = Modifier
         .fillMaxWidth()
-        .height(48.dp)
+        .height(rowHeight)
         .testTag("keybar")
         .background(Term.surface)
 
@@ -687,6 +691,7 @@ private fun Prompt(
     focus: FocusRequester,
     imeSuggestions: Boolean,
     onFocus: (Boolean) -> Unit,
+    height: Dp,
     onTapPrompt: () -> Unit,
 ) {
     val promptStyle = Term.mono.copy(fontSize = (Term.fontSize + 2).sp)
@@ -694,7 +699,7 @@ private fun Prompt(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 52.dp)
+            .heightIn(min = height)
             // Swipe up on the prompt line: gesture.swipeup (the app grid by default).
             .pointerInput(Unit) {
                 var total = 0f
@@ -704,7 +709,8 @@ private fun Prompt(
                 ) { _, dy -> total += dy }
             }
             .clickable(onClick = onTapPrompt)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            // Vertical room comes from [height] (centred), so small values really shrink the line.
+            .padding(horizontal = 12.dp, vertical = 2.dp),
     ) {
         Text("$ ", style = promptStyle.copy(color = Term.prompt, fontWeight = FontWeight.Bold))
         BasicTextField(
