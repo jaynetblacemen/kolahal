@@ -91,6 +91,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import io.github.rscipher001.launcher.R
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import kotlinx.coroutines.withTimeoutOrNull
@@ -376,7 +380,13 @@ private fun CompactHeader(status: Status, statusCount: Int, config: Config, vers
                 pct <= 15 -> Term.error
                 else -> Term.dim
             }
-            Text("  bat $pct%" + if (status.charging) "+" else "", style = small.copy(color = color))
+            if (config[Keys.HEADER_ICONS]) {
+                Spacer(Modifier.width(10.dp))
+                BatteryGlyph(pct, status.charging, color, (Term.fontSize + 2).dp)
+                Text(" $pct%", style = small.copy(color = color))
+            } else {
+                Text("  bat $pct%" + if (status.charging) "+" else "", style = small.copy(color = color))
+            }
         }
         if (mediaPlaying) Text("  ♪", style = small.copy(color = Term.prompt))
         if (statusCount > 0) Text("  · $statusCount status", style = small.copy(color = Term.dim))
@@ -419,22 +429,49 @@ private fun Header(
     val alarmFmt = remember(is24h) { SimpleDateFormat(if (is24h) "EEE HH:mm" else "EEE h:mm a", Locale.getDefault()) }
     val small = Term.mono.copy(fontSize = (Term.fontSize - 1).sp)
 
+    val useIcons = config[Keys.HEADER_ICONS]
+    val iconSize = (Term.fontSize + 3).dp
+
+    /** A header item: an icon (header.icons) or a dim text label, then the value. */
     @Composable
-    fun Item(label: String, value: String, valueColor: Color = Term.fg, onClick: () -> Unit) {
-        Text(
-            buildAnnotatedString {
-                if (label.isNotEmpty()) withStyle(SpanStyle(color = Term.dim)) { append("$label ") }
-                withStyle(SpanStyle(color = valueColor, fontWeight = FontWeight.Bold)) { append(value) }
-            },
-            style = small,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+    fun Item(
+        label: String,
+        value: String,
+        valueColor: Color = Term.fg,
+        icon: (@Composable () -> Unit)? = null,
+        onClick: () -> Unit,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
             modifier = Modifier
                 // 48dp touch target even for short items like ⚙.
-                .clickable(onClick = onClick)
+                .clickable(onClickLabel = label.ifEmpty { null }, onClick = onClick)
                 .heightIn(min = 48.dp)
                 .widthIn(min = 48.dp)
-                .wrapContentHeight()
                 .padding(horizontal = 6.dp),
+        ) {
+            if (useIcons && icon != null) {
+                icon()
+                if (value.isNotEmpty()) Spacer(Modifier.width(4.dp))
+            }
+            Text(
+                buildAnnotatedString {
+                    if (label.isNotEmpty() && !(useIcons && icon != null)) withStyle(SpanStyle(color = Term.dim)) { append("$label ") }
+                    withStyle(SpanStyle(color = valueColor, fontWeight = FontWeight.Bold)) { append(value) }
+                },
+                style = small,
+            )
+        }
+    }
+
+    @Composable
+    fun Glyph(res: Int, tint: Color = Term.dim) {
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(res),
+            contentDescription = null,
+            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(tint),
+            modifier = Modifier.size(iconSize),
         )
     }
 
@@ -483,7 +520,9 @@ private fun Header(
         // `now` ticks each minute, so a paused session drops out after 30 minutes.
         if (nowPlaying != null && nowPlaying.showInHeader(now.time)) NowPlayingLine(nowPlaying, onMediaToggle, onMediaNext)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (config[Keys.HEADER_UNLOCKS]) Item("unlocks", unlocks.toString()) { onTarget(HeaderTarget.UNLOCKS) }
+            if (config[Keys.HEADER_UNLOCKS]) {
+                Item("unlocks", unlocks.toString(), icon = { Glyph(R.drawable.ic_lock_open) }) { onTarget(HeaderTarget.UNLOCKS) }
+            }
             val pct = status.batteryPct
             if (config[Keys.HEADER_BATTERY] && pct != null) {
                 val color = when {
@@ -491,21 +530,37 @@ private fun Header(
                     pct <= 15 -> Term.error
                     else -> Term.fg
                 }
-                Item("bat", "$pct%" + if (status.charging) "+" else "", color) { onTarget(HeaderTarget.BATTERY) }
+                Item(
+                    "bat", "$pct%" + if (status.charging && !useIcons) "+" else "", color,
+                    icon = { BatteryGlyph(pct, status.charging, color, iconSize) },
+                ) { onTarget(HeaderTarget.BATTERY) }
             }
             if (config[Keys.HEADER_NETWORK]) {
-                Item("net", status.network, if (status.network == "offline") Term.error else Term.fg) {
-                    onTarget(HeaderTarget.NETWORK)
+                val offline = status.network == "offline"
+                val netIcon = when (status.network) {
+                    "wifi" -> R.drawable.ic_wifi
+                    "cell" -> R.drawable.ic_signal
+                    "offline" -> R.drawable.ic_cloud_off
+                    else -> null
                 }
+                // With an icon the kind is obvious; only unusual kinds (eth, vpn…) keep their name.
+                Item(
+                    "net", if (useIcons && netIcon != null) "" else status.network, if (offline) Term.error else Term.fg,
+                    icon = netIcon?.let { res -> { Glyph(res, if (offline) Term.error else Term.fg) } },
+                ) { onTarget(HeaderTarget.NETWORK) }
             }
             if (config[Keys.HEADER_ALARM] && status.nextAlarm != null) {
-                Item("alarm", alarmFmt.format(Date(status.nextAlarm))) { onTarget(HeaderTarget.ALARM) }
+                Item("alarm", alarmFmt.format(Date(status.nextAlarm)), icon = { Glyph(R.drawable.ic_alarm) }) { onTarget(HeaderTarget.ALARM) }
             }
-            if (config[Keys.HEADER_TODO] && todoCount > 0) Item("todo", todoCount.toString()) { onTarget(HeaderTarget.TODO) }
+            if (config[Keys.HEADER_TODO] && todoCount > 0) {
+                Item("todo", todoCount.toString(), icon = { Glyph(R.drawable.ic_check) }) { onTarget(HeaderTarget.TODO) }
+            }
             Item("", "⚙", Term.dim) { onTarget(HeaderTarget.SETTINGS) }
             if (config[Keys.HEADER_PROFILES]) {
                 profiles.filter { it.kind != ProfileKind.PERSONAL && it.kind != ProfileKind.CLONE }.forEach { p ->
-                    Item(p.kind.label, if (p.quiet) "off" else "on", if (p.quiet) Term.dim else Term.profileColor(p.kind)) {
+                    val color = if (p.quiet) Term.dim else Term.profileColor(p.kind)
+                    val res = if (p.kind == ProfileKind.WORK) R.drawable.ic_work else R.drawable.ic_lock
+                    Item(p.kind.label, if (p.quiet) "off" else "on", color, icon = { Glyph(res, color) }) {
                         onProfileTap(p)
                     }
                 }
@@ -803,5 +858,44 @@ private fun Modifier.pinchToZoomFont(onChange: (Int) -> Unit, onEnd: (Int) -> Un
             }
         } while (event.changes.any { it.pressed })
         if (changed) onEnd(Term.fontSize)
+    }
+}
+
+/**
+ * A battery drawn to scale: outline, a fill proportional to [pct], and a bolt cut out of the
+ * fill while charging. Sized to sit on a line of header text.
+ */
+@Composable
+private fun BatteryGlyph(pct: Int, charging: Boolean, color: Color, height: Dp) {
+    val bg = Term.bg
+    androidx.compose.foundation.Canvas(Modifier.size(width = height * 1.6f, height = height)) {
+        val stroke = 1.4.dp.toPx()
+        val capW = size.width * 0.08f
+        val bodyW = size.width - capW
+        val bodyH = size.height * 0.62f
+        val top = (size.height - bodyH) / 2
+        val r = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
+        drawRoundRect(color, Offset(stroke / 2, top), Size(bodyW - stroke, bodyH), r, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+        drawRect(color, Offset(bodyW, top + bodyH * 0.3f), Size(capW, bodyH * 0.4f))
+        val inset = stroke * 1.8f
+        val fullW = bodyW - stroke - inset * 2
+        val fillW = fullW * (pct.coerceIn(0, 100) / 100f)
+        if (fillW > 0f) drawRect(color, Offset(stroke / 2 + inset, top + inset), Size(fillW, bodyH - inset * 2))
+        if (charging) {
+            // Bolt in the background colour so it reads on top of the fill.
+            val cx = stroke / 2 + inset + fullW / 2
+            val h = bodyH - inset * 2
+            val y0 = top + inset
+            val bolt = androidx.compose.ui.graphics.Path().apply {
+                moveTo(cx + h * 0.15f, y0)
+                lineTo(cx - h * 0.35f, y0 + h * 0.58f)
+                lineTo(cx, y0 + h * 0.58f)
+                lineTo(cx - h * 0.15f, y0 + h)
+                lineTo(cx + h * 0.35f, y0 + h * 0.42f)
+                lineTo(cx, y0 + h * 0.42f)
+                close()
+            }
+            drawPath(bolt, if (fillW > fullW / 2) bg else color)
+        }
     }
 }

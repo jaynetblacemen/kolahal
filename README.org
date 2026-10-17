@@ -47,7 +47,8 @@ cd docs && npm install && npm run dev    # http://localhost:4321/kolahal/
     down on the header pulls the shade, swipe up on the prompt shows the app grid. Each can be
     =lock=, =shade=, =none= or any command. =lock= and =shade= are also commands.
 - Header :: Large clock and date, then unlocks, battery, network, next alarm, profile state and
-  ⚙ (settings). Every item is tappable. While you scroll or after a command it shrinks to one line (time,
+  ⚙ (settings). Every item is tappable. Items are icons (a battery drawn to its level, Wi-Fi / mobile /
+  offline, unlocks, alarm, work / private); =header.icons off= shows text labels instead. While you scroll or after a command it shrinks to one line (time,
   battery, hidden status count) so the log gets the room; tap or swipe down on it, press Home or
   come back from an app to expand it (=header.autohide=).
 - Unlock counter :: Uses UsageStats =KEYGUARD_HIDDEN= events when Usage Access is granted, with an

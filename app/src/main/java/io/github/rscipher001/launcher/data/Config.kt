@@ -47,6 +47,7 @@ object Keys {
     val HEADER_MEDIA = ConfigKey.Bool("header.media", true, "show what's playing under the clock (tap: play/pause, long-press: next; needs notification access)")
     val HEADER_TODO = ConfigKey.Bool("header.todo", true, "show the open todo count (tap runs todo)")
     val HEADER_AUTOHIDE = ConfigKey.Bool("header.autohide", true, "shrink the header to one line while scrolling or after a command; Home or a tap brings it back")
+    val HEADER_ICONS = ConfigKey.Bool("header.icons", true, "icons for battery, network, unlocks, alarm and profiles in the header (off: text labels)")
     val CLOCK_24H = ConfigKey.Bool("clock.24h", true, "use 24-hour time in the header and log")
     val KEYBAR = ConfigKey.Text(
         "keybar", DEFAULT_KEYBAR,
@@ -100,7 +101,7 @@ object Keys {
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
-        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, GUI_COLORS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
+        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, GUI_COLORS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_LINE_HEIGHT, CHIP_HEIGHT, LOG_KEEP_DAYS, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP,
         HEADER_TODO, WIDGETS_HOME, WIDGETS_HEIGHT,
