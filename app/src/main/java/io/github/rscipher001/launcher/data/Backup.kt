@@ -32,7 +32,7 @@ class Backup(private val context: Context) {
             "kolahal" to VERSION,
             "config" to Keys.ALL.filterNot(config::isDefault).associate { it.key to config.display(it) },
             "aliases" to prefs.aliases(),
-            "apps" to mapOf("hidden" to prefs.hiddenKeys(), "labels" to prefs.labels()),
+            "apps" to mapOf("hidden" to prefs.hiddenKeys(), "labels" to prefs.labels(), "pinned" to prefs.pinned()),
             "scripts" to all.map {
                 mapOf(
                     "name" to it.name, "lang" to it.lang.ext, "code" to it.code, "every" to it.intervalMin,
@@ -72,6 +72,7 @@ class Backup(private val context: Context) {
         (root["apps"] as? Map<*, *>)?.let { apps ->
             (apps["hidden"] as? List<*>)?.forEach { prefs.setHidden(it.toString(), true) }
             (apps["labels"] as? Map<*, *>)?.forEach { (k, v) -> if (k != null) prefs.setLabel(k.toString(), v?.toString()) }
+            (apps["pinned"] as? List<*>)?.forEach { prefs.setPinned(it.toString(), true) }
         }
 
         var count = 0

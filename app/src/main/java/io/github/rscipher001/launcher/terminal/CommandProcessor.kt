@@ -104,6 +104,9 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "alias" -> alias(rest)
                 "unalias" -> unalias(args)
                 "hide" -> withApp(args) { setHidden(it, true) }
+                "pin", "fav" -> if (args.isEmpty()) listPinned() else withApp(args) { app -> prefs.setPinned(app.key, true); info("pinned ${app.label} — it leads the suggestions on an empty prompt") }
+                "unpin", "unfav" -> withApp(args) { app -> prefs.setPinned(app.key, false); info("unpinned ${app.label}") }
+                "pins", "favs" -> listPinned()
                 "unhide" -> withApp(args, includeHidden = true) { setHidden(it, false) }
                 "rename" -> rename(args)
                 "help", "?" -> help()
@@ -201,6 +204,14 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     }
 
     // ---- hide / rename --------------------------------------------------------------------
+
+    private fun listPinned() {
+        val byKey = apps.apps.value.associateBy { it.key }
+        val pinned = prefs.pinned().mapNotNull { byKey[it] }
+        if (pinned.isEmpty()) return info("no pinned apps — pin <app>, or long-press an app → Pin")
+        appGrid(pinned)
+        info("${pinned.size} pinned · unpin <app> to remove")
+    }
 
     private fun setHidden(app: AppEntry, hidden: Boolean) {
         prefs.setHidden(app.key, hidden)
@@ -1156,6 +1167,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("echo", "echo <text>", "print text"),
             CommandSpec("alias", "alias [name = command]", "list or define aliases"),
             CommandSpec("unalias", "unalias <name>", "remove an alias"),
+            CommandSpec("pin", "pin <app>", "favourite: first in the empty-prompt strip (pins lists them)"),
+            CommandSpec("unpin", "unpin <app>", "remove a favourite"),
             CommandSpec("hide", "hide <app> [-w]", "hide an app from lists and search"),
             CommandSpec("unhide", "unhide <app>", "show a hidden app again ('apps hidden')"),
             CommandSpec("rename", "rename <app> = <name>", "custom label (empty restores)"),
@@ -1163,7 +1176,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
 
         /** `help` groups; commands not listed here are shown after the groups. */
         val HELP_SECTIONS = linkedMapOf(
-            "apps" to listOf("open", "shortcuts", "apps", "info", "uninstall", "hide", "unhide", "rename", "usage"),
+            "apps" to listOf("open", "shortcuts", "apps", "pin", "unpin", "info", "uninstall", "hide", "unhide", "rename", "usage"),
             "people" to listOf("call", "sms", "contacts"),
             "web" to listOf("search", "yt", "wiki", "maps", "play", "url"),
             "feeds" to listOf("feeds", "feed", "rss", "notifs"),

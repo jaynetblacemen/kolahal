@@ -42,6 +42,19 @@ class AppPrefs private constructor(context: Context) {
         if (k.startsWith("label:") && v is String) k.removePrefix("label:") to v else null
     }.toMap()
 
+    // ---- favourites ------------------------------------------------------------------------
+
+    /** Pinned app keys in the user's order; shown first in the idle suggestion strip. */
+    fun pinned(): List<String> = apps.getString("pinned", null)?.split('\n')?.filter { it.isNotEmpty() }.orEmpty()
+
+    fun setPinned(key: String, pinned: Boolean) {
+        val list = pinned().filter { it != key }.let { if (pinned) it + key else it }
+        apps.edit().putString("pinned", list.joinToString("\n")).apply()
+        _version.update { it + 1 }
+    }
+
+    fun isPinned(key: String) = key in pinned()
+
     // ---- frecency -------------------------------------------------------------------------
 
     /** Records a launch: count plus last-used time, stored as "count:epochMillis". */

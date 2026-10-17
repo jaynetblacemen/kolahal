@@ -188,15 +188,18 @@ class AppRepository private constructor(private val context: Context) {
             .map { it.app to it.tier }
     }
 
-    /** Most frecent visible apps, for the idle suggestion strip. */
+    /** Pinned apps (in pin order), then the most frecent visible apps, for the idle suggestion strip. */
     fun top(n: Int): List<AppEntry> {
         val now = System.currentTimeMillis()
-        return _apps.value.asSequence()
-            .filter { !it.hidden && !it.profile.quiet }
+        val byKey = _apps.value.associateBy { it.key }
+        val pinned = prefs.pinned().mapNotNull { byKey[it] }.filter { !it.hidden }
+        val pinnedKeys = pinned.mapTo(HashSet()) { it.key }
+        return pinned.take(n) + _apps.value.asSequence()
+            .filter { !it.hidden && !it.profile.quiet && it.key !in pinnedKeys }
             .map { it to prefs.frecency(it.key, now) }
             .filter { it.second > 0.0 }
             .sortedByDescending { it.second }
-            .take(n)
+            .take((n - pinned.size).coerceAtLeast(0))
             .map { it.first }
             .toList()
     }

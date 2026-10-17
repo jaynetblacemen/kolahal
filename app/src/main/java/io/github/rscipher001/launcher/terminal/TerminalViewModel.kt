@@ -583,6 +583,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         }
         add(LogAction("App info") { io { appsRepo.openAppInfo(app) } })
         add(LogAction("Copy package name") { copy(app.pkg) })
+        val pinned = appPrefs.isPinned(app.key)
+        add(LogAction(if (pinned) "Unpin from favourites" else "Pin to favourites") { appPrefs.setPinned(app.key, !pinned) })
         add(LogAction(if (app.hidden) "Unhide" else "Hide from lists") {
             io {
                 appPrefs.setHidden(app.key, !app.hidden)
