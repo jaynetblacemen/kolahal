@@ -779,9 +779,17 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** Short result message shown on the GUI screens (also logged to the terminal). */
     val notice: StateFlow<String?> = _notice.asStateFlow()
 
+    /** Pages opened from other pages (Settings → Script manager); Back returns along it. */
+    private val backStack = ArrayDeque<Screen>()
+
     override fun openScreen(screen: Screen) {
         _notice.value = null
-        _screen.value = screen
+        synchronized(backStack) {
+            val current = _screen.value
+            if (screen == Screen.TERMINAL) backStack.clear()
+            else if (current != Screen.TERMINAL && current != screen) backStack.addLast(current)
+            _screen.value = screen
+        }
         if (screen == Screen.SCRIPTS) refreshScripts()
         if (screen == Screen.SETUP) refreshSetup()
     }
@@ -796,8 +804,12 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         check.fix?.let { cmd -> io { processor.run(cmd, expand = false) } }
     }
 
+    /** Back from a page: the page it was opened from, or the terminal. */
     fun closeScreen() {
-        _screen.value = Screen.TERMINAL
+        val previous = synchronized(backStack) { backStack.removeLastOrNull() } ?: Screen.TERMINAL
+        _screen.value = previous
+        if (previous == Screen.SCRIPTS) refreshScripts()
+        if (previous == Screen.SETUP) refreshSetup()
     }
 
     private fun refreshScripts() = io { scriptCache.value = scripts.all() }
@@ -1085,7 +1097,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun onHomePressed() {
         _editing.value?.let { return }
         expandHeader()
-        _screen.value = Screen.TERMINAL
+        openScreen(Screen.TERMINAL) // Home always lands on the terminal and forgets the page stack
         escape()
         _events.tryEmit(UiEvent.ScrollToBottom)
         if (config[Keys.FOCUS_ON_HOME]) _events.tryEmit(UiEvent.FocusPrompt)
