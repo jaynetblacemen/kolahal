@@ -34,7 +34,8 @@ cd docs && npm install && npm run dev    # http://localhost:4321/kolahal/
   - Day separators and right-aligned times. Wrapped lines indent past their prefix.
   - =help=, =config= and =script ls= render in two columns; =apps= is a grid of tappable chips.
 - Touch ::
-  - A two-row key bar (=ESC / - ⇤ ↑ ⇥ ⌫= and =TAB | . ← ↓ → ⏎=); arrows and backspace repeat
+  - A two-row key bar (=ESC / - ⇤ ↑ ⇥ ⌫= and =TAB  It shows only while the on-screen keyboard is up
+    for the prompt (=keybar.auto off= keeps it always visible).| . ← ↓ → ⏎=); arrows and backspace repeat
     when held, and dragging sideways moves the cursor.
   - Tap any line for its main action; long-press opens an action sheet.
   - Pinch the log to resize text, swipe down on the header for notifications, tap empty space for

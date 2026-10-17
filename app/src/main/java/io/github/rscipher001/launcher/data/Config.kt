@@ -54,6 +54,7 @@ object Keys {
     )
     val KEYBAR2 = ConfigKey.Text("keybar2", DEFAULT_KEYBAR2, "second key bar row (same syntax; empty for one row)")
     val KEYBAR_SHOW = ConfigKey.Bool("keybar.show", true, "show the touch key bar")
+    val KEYBAR_AUTO = ConfigKey.Bool("keybar.auto", true, "show the key bar only while the on-screen keyboard is up for the prompt (off: always)")
     val THEME = ConfigKey.Choice(
         "theme", "green",
         listOf("green", "amber", "mono", "dracula", "solarized", "gruvbox", "gruvbox-material"),
@@ -95,7 +96,7 @@ object Keys {
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
-        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA,HEADER_AUTOHIDE, CLOCK_24H, KEYBAR_SHOW, KEYBAR, KEYBAR2, THEME, GUI_COLORS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
+        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR, KEYBAR2, THEME, GUI_COLORS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_KEEP_DAYS, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP,
         HEADER_TODO, WIDGETS_HOME, WIDGETS_HEIGHT,

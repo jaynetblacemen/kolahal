@@ -47,6 +47,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.Key
@@ -111,6 +114,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, onPickFolder: () -> Unit) {
     val entries by vm.entries.collectAsStateWithLifecycle()
@@ -126,6 +130,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     val rows by vm.rows.collectAsStateWithLifecycle()
     val reversedRows = remember(rows) { rows.asReversed() }
     var pinned by remember { mutableStateOf(true) }
+    var promptFocused by remember { mutableStateOf(false) }
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val hasHardwareKeyboard = LocalConfiguration.current.keyboard != Configuration.KEYBOARD_NOKEYS
@@ -288,7 +293,11 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             }
         }
         SuggestionStrip(suggestions, onPick = vm::onSuggestion)
-        if (remember(configVersion) { config[Keys.KEYBAR_SHOW] }) {
+        // keybar.auto: only while typing, so an idle home shows more of the log.
+        val keyBarAuto = remember(configVersion) { config[Keys.KEYBAR_AUTO] }
+        // A hardware keyboard already has these keys: the bar follows the on-screen keyboard.
+        val typing = promptFocused && WindowInsets.isImeVisible
+        if (remember(configVersion) { config[Keys.KEYBAR_SHOW] } && (!keyBarAuto || typing)) {
             KeyBar(
                 specs = remember(configVersion) { listOf(config[Keys.KEYBAR], config[Keys.KEYBAR2]) },
                 onKey = { key ->
@@ -306,6 +315,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             vm = vm,
             focus = focus,
             imeSuggestions = remember(configVersion) { config[Keys.IME_SUGGESTIONS] },
+            onFocus = { promptFocused = it },
             onTapPrompt = {
                 runCatching { focus.requestFocus() }
                 keyboard?.show()
@@ -676,6 +686,7 @@ private fun Prompt(
     vm: TerminalViewModel,
     focus: FocusRequester,
     imeSuggestions: Boolean,
+    onFocus: (Boolean) -> Unit,
     onTapPrompt: () -> Unit,
 ) {
     val promptStyle = Term.mono.copy(fontSize = (Term.fontSize + 2).sp)
@@ -714,6 +725,7 @@ private fun Prompt(
                 .weight(1f)
                 .testTag("prompt")
                 .focusRequester(focus)
+                .onFocusChanged { onFocus(it.isFocused) }
                 .onPreviewKeyEvent { e ->
                     if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                     when {

@@ -110,7 +110,7 @@ private val SECTIONS: List<Pair<String, List<ConfigKey<*>>>> = listOf(
     "Launching" to listOf(Keys.LAUNCH_INSTANT, Keys.LAUNCH_INSTANT_MIN, Keys.LAUNCH_TOP, Keys.AUTO_LAUNCH, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS, Keys.SEARCH_ENGINE, Keys.SEARCH_URL),
     "Widgets" to listOf(Keys.WIDGETS_HOME, Keys.WIDGETS_HEIGHT),
     "Gestures" to listOf(Keys.GESTURE_DOUBLE_TAP, Keys.GESTURE_SWIPE_DOWN, Keys.GESTURE_SWIPE_UP),
-    "Keyboard & key bar" to listOf(Keys.KEYBAR_SHOW, Keys.KEYBAR, Keys.KEYBAR2, Keys.IME_SUGGESTIONS, Keys.FOCUS_ON_HOME),
+    "Keyboard & key bar" to listOf(Keys.KEYBAR_SHOW, Keys.KEYBAR_AUTO, Keys.KEYBAR, Keys.KEYBAR2, Keys.IME_SUGGESTIONS, Keys.FOCUS_ON_HOME),
 )
 
 /**
