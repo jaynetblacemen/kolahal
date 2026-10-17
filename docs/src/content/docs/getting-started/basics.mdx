@@ -39,7 +39,8 @@ Type a command, or any part of an app name, and press Enter.
 
 The strip above the key bar changes as you type:
 
-- **Empty prompt**: your most-used apps, ranked by frecency (how often and how recently you opened them).
+- **Empty prompt**: your [pinned favourites](../../guides/apps/#favourites) first, then your most-used apps, ranked
+  by frecency (how often and how recently you opened them).
   Turn this off with `config set suggestions.idle off`.
 - **First word**: up to three matching commands, aliases or script commands, plus matching apps.
   When Enter would launch an app, that app is the first, highlighted chip, so Enter, Tab and the
@@ -63,6 +64,24 @@ have their own colours, and output older than the latest command is dimmed (`log
 - Scroll to the top to load older entries. Entries older than `log.keepdays` (60) are trimmed.
 - `clear` clears the screen, `clear history` forgets the ↑ history but keeps the log, and
   `clear all` removes both.
+
+### Pipes
+
+<span class="k-new">new</span> Filter a command's output like a shell:
+
+```sh
+help | grep feed              # rows mentioning "feed" (the description column counts too)
+history | tail 5              # last five commands
+feed read | grep -v sponsored | head 3
+contacts | count              # how many lines
+config | sort
+```
+
+Filters: `grep [-v] <pattern>` (case-insensitive regex; an invalid regex is matched literally),
+`head [n]`, `tail [n]` (default 10), `sort [-r]`, `uniq`, `count` (or `wc`). Error lines always come
+through. Only output the command prints right away is filtered; replies that arrive later (network
+requests, scripts) are written as usual. A `|` only starts a filter when a filter name follows it,
+so `js a || b` and Lua code are left alone.
 
 ### Tap and long-press
 
@@ -98,6 +117,11 @@ item is tappable:
 | `work` / `private` | resumes a paused profile; pausing asks for a second tap | `header.profiles` |
 | ⚙ | the [settings screen](../../guides/themes-and-settings/) | |
 | Script status lines | runs that script | `header.status` |
+
+<span class="k-new">new</span> **Auto-hide** (`header.autohide`, on by default): while you scroll the log or after you run
+a command, the header shrinks to one line with the time, battery and the number of hidden status
+lines. Tap it or swipe down on it to expand it; pressing Home, coming back from an app or `clear`
+also brings it back.
 
 `header.device` adds a `kolahal@device` line. Swipe down on the header to pull down the
 notification shade (a [gesture](../../guides/gestures/) you can change).

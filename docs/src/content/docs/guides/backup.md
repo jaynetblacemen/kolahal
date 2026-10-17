@@ -12,7 +12,7 @@ the system file picker. It contains:
 
 - settings you changed from the default,
 - aliases,
-- hidden apps and custom labels,
+- hidden apps, custom labels and pinned favourites,
 - every script with its code, timers, notification flag and enabled state.
 
 It's plain JSON, so you can edit it on a computer. **Import from file** loads it on any phone.
@@ -21,7 +21,7 @@ It's plain JSON, so you can edit it on a computer. **Import from file** loads it
 { "kolahal": 1,
   "config":  { "theme": "gruvbox-material", "log.spacing": "16" },
   "aliases": { "m": "open maps" },
-  "apps":    { "hidden": [], "labels": {} },
+  "apps":    { "hidden": [], "labels": {}, "pinned": [] },
   "scripts": [ { "name": "hn", "lang": "lua", "code": "...", "every": 30,
                  "at": ["08:00"], "notify": true, "enabled": true } ] }
 ```

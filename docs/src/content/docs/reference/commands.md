@@ -22,6 +22,9 @@ Profile flags for app commands: `-w` work, `-p` personal, `-s` private space, `-
 | `uninstall <app> [-w]` | | uninstall an app |
 | `hide <app> [-w]` | | hide an app from lists and search |
 | `unhide <app>` | | show a hidden app again (`apps hidden` lists them) |
+| `pin <app>` | `fav` | favourite: first in the empty-prompt strip (`pin` alone lists them) |
+| `unpin <app>` | `unfav` | remove a favourite |
+| `pins` | `favs` | grid of pinned apps |
 | `rename <app> = <name>` | | custom label; `rename <app> =` restores the original |
 | `usage [days]` | `screentime` | screen time per app (1–30 days; needs Usage Access) |
 
