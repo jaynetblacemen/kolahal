@@ -88,6 +88,7 @@ private val TITLES = mapOf(
     "header.status" to "Script status lines",
     "header.autohide" to "Shrink while using the log",
     "widgets.home" to "Widgets on home",
+    "widgets.page" to "Widgets page (swipe sideways)",
     "widgets.height" to "Widget area height (dp)",
     "log.time" to "Times",
     "log.dim" to "Dim older output",
@@ -148,7 +149,7 @@ private val CATEGORIES = listOf(
                 Keys.HEADER_PROFILES, Keys.HEADER_MEDIA, Keys.HEADER_TODO, Keys.HEADER_STATUS,
             ),
             "Behaviour" to listOf(Keys.HEADER_AUTOHIDE),
-            "Widgets" to listOf(Keys.WIDGETS_HOME, Keys.WIDGETS_HEIGHT),
+            "Widgets" to listOf(Keys.WIDGETS_PAGE, Keys.WIDGETS_HOME, Keys.WIDGETS_HEIGHT),
         ),
     ),
     Category(

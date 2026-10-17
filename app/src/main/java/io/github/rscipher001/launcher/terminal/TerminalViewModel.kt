@@ -1292,7 +1292,12 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     }
 
     /** Pressing Home while already home: reset the prompt. */
+    private val _homePresses = MutableStateFlow(0)
+    /** Bumps on every Home press while already home; the widgets pager returns to the terminal. */
+    val homePresses: StateFlow<Int> = _homePresses.asStateFlow()
+
     fun onHomePressed() {
+        _homePresses.value++
         _editing.value?.let { return }
         expandHeader()
         openScreen(Screen.TERMINAL) // Home always lands on the terminal and forgets the page stack

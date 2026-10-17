@@ -77,3 +77,10 @@ widget add     # open the picker
 
 See also the [command reference](../../reference/commands/#widgets) and
 [configuration keys](../../reference/config/#widgets).
+
+## Widgets page
+
+Swipe sideways on home (from the header, empty space or the prompt; a swipe that starts on a log
+line copies or deletes that line instead) to reach a full widgets page beside the terminal. It shows
+the widgets placed on the *Widgets page*; **+ add** and **edit** are at the top. Back or Home returns
+to the terminal. `widgets.page` picks the side (`left`, the default, `right`) or turns it `off`.

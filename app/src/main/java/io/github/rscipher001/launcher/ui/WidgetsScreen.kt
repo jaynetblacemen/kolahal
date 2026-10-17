@@ -1,5 +1,9 @@
 package io.github.rscipher001.launcher.ui
 
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.navigationBarsPadding
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
@@ -167,7 +171,6 @@ fun HomeWidgets(vm: TerminalViewModel, visible: Boolean) {
     Box(
         Modifier
             .fillMaxWidth()
-            .animateContentSize()
             // Folds and unfolds with the header animation instead of snapping.
             .animateContentSize()
             .then(if (visible) Modifier.heightIn(max = cap) else Modifier.height(0.dp))
@@ -204,6 +207,77 @@ fun HomeWidgets(vm: TerminalViewModel, visible: Boolean) {
  * only). Long-press a widget or tap Edit for its toolbar: move, resize in 48dp steps, move to or
  * from home, remove. Entries restored from a backup show an "Add again" row.
  */
+/**
+ * The widgets page beside the terminal (`widgets.page`): every widget placed on the "Widgets page",
+ * full width and scrolling, in the terminal's colours. Add / edit jump to the GUI pages.
+ */
+@Composable
+fun WidgetPanel(vm: TerminalViewModel) {
+    val context = LocalContext.current
+    val widgets = remember { WidgetHost.get(context) }
+    val all by widgets.widgets.collectAsStateWithLifecycle()
+    val panel = remember(all) { WidgetOrder.inLocation(all, WidgetLocation.PANEL) }
+    val profiles by remember { AppRepository.get(context).profiles }.collectAsStateWithLifecycle()
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(Term.bg)
+            .cutoutSafePadding()
+            .navigationBarsPadding(),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+            Text("widgets", style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold), modifier = Modifier.weight(1f))
+            Text(
+                "+ add",
+                style = Term.mono.copy(color = Term.prompt),
+                modifier = Modifier
+                    .clickable { widgets.addLocation = WidgetLocation.PANEL; vm.openScreen(Screen.WIDGET_PICKER) }
+                    .heightIn(min = 48.dp)
+                    .wrapContentHeight()
+                    .padding(horizontal = 12.dp),
+            )
+            Text(
+                "edit",
+                style = Term.mono.copy(color = Term.dim),
+                modifier = Modifier
+                    .clickable { vm.openScreen(Screen.WIDGETS) }
+                    .heightIn(min = 48.dp)
+                    .wrapContentHeight()
+                    .padding(start = 12.dp),
+            )
+        }
+        if (panel.isEmpty()) {
+            Text(
+                "no widgets here yet · tap + add, or long-press a widget on home and move it to this page",
+                style = Term.mono.copy(color = Term.dim),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp),
+            )
+            return@Column
+        }
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            panel.forEach { w ->
+                key(w.key) {
+                    HostedWidget(
+                        w = w,
+                        height = w.heightDp.dp,
+                        pausedKind = profiles.pausedKind(w.profileSerial),
+                        onLongPress = { vm.openScreen(Screen.WIDGETS) },
+                    ) { why ->
+                        Text(
+                            "[$why] ${w.packageName}",
+                            style = Term.mono.copy(color = Term.dim),
+                            modifier = Modifier.fillMaxWidth().alpha(0.7f).padding(vertical = 6.dp, horizontal = 4.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) -> Unit) {
     val context = LocalContext.current

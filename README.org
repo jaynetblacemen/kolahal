@@ -124,6 +124,7 @@ cd docs && npm install && npm run dev    # http://localhost:4321/kolahal/
   script manager's Library section, or =script lib= / =script install <name>=.
 - Log history :: Scrolling to the top loads older entries; entries older than =log.keepdays= (60)
   are trimmed. =clear history= forgets the ↑ history but keeps the log.
+- Widgets page :: Swipe sideways on home for a page of widgets (=widgets.page left|right|off=).
 - Full screen :: Settings → Look & feel → Full screen (=config set statusbar hide=) hides the status bar;
   =immersive= hides the navigation bar too. Swipe from the edge to peek at them.
 - Themes :: green, amber, mono, dracula, solarized, gruvbox, gruvbox-material.

@@ -154,11 +154,13 @@ class MainActivity : ComponentActivity() {
                         Screen.SETUP -> SetupScreen(vm)
                         Screen.WIDGETS -> WidgetsScreen(vm, onReAdd = { entry, w -> widgetBinder.add(entry, w.location, w.key) })
                         Screen.WIDGET_PICKER -> WidgetPickerScreen(vm, onPick = { widgetBinder.add(it) })
-                        Screen.TERMINAL -> TerminalScreen(
-                            vm,
-                            onRequestNotifications = ::requestNotifications,
-                            onPickFolder = { pickFolder.launch(null) },
-                        )
+                        Screen.TERMINAL -> HomePager(vm) {
+                            TerminalScreen(
+                                vm,
+                                onRequestNotifications = ::requestNotifications,
+                                onPickFolder = { pickFolder.launch(null) },
+                            )
+                        }
                     }
                 }
             }
@@ -219,5 +221,38 @@ class MainActivity : ComponentActivity() {
 
     private fun requestNotifications() {
         if (Build.VERSION.SDK_INT >= 33) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+}
+
+/**
+ * `widgets.page`: the terminal with a widgets page beside it (left or right). Swipe sideways on
+ * home to reach it; Back or Home returns to the terminal. A swipe that starts on a log line still
+ * belongs to the line (copy / delete), so the page swipe works from the header, empty space or
+ * the prompt.
+ */
+@androidx.compose.runtime.Composable
+private fun HomePager(vm: TerminalViewModel, terminal: @androidx.compose.runtime.Composable () -> Unit) {
+    val version by vm.config.version.collectAsStateWithLifecycle()
+    val side = androidx.compose.runtime.remember(version) { vm.config[Keys.WIDGETS_PAGE] }
+    if (side == "off") {
+        terminal()
+        return
+    }
+    val terminalPage = if (side == "left") 1 else 0
+    val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = terminalPage) { 2 }
+    val homePresses by vm.homePresses.collectAsStateWithLifecycle()
+    androidx.compose.runtime.LaunchedEffect(homePresses, side) {
+        if (pager.currentPage != terminalPage) pager.animateScrollToPage(terminalPage)
+    }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    BackHandler(enabled = pager.currentPage != terminalPage) {
+        scope.launch { pager.animateScrollToPage(terminalPage) }
+    }
+    androidx.compose.foundation.pager.HorizontalPager(
+        state = pager,
+        beyondViewportPageCount = 1,
+        key = { it },
+    ) { page ->
+        if (page == terminalPage) terminal() else io.github.rscipher001.launcher.ui.WidgetPanel(vm)
     }
 }

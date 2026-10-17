@@ -102,6 +102,7 @@ object Keys {
     )
 
     val WIDGETS_HOME = ConfigKey.Bool("widgets.home", true, "show widgets placed on home under the header (they hide with it while the log is in use)")
+    val WIDGETS_PAGE = ConfigKey.Choice("widgets.page", "left", listOf("left", "right", "off"), "a widgets page beside the terminal: swipe sideways on home to reach it")
     val WIDGETS_HEIGHT = ConfigKey.Num("widgets.height", 180, 60..480, "max height (dp) of the home widget area; it scrolls when widgets need more")
 
     val GESTURE_DOUBLE_TAP = ConfigKey.Text("gesture.doubletap", "lock", "double-tap empty log space: a command, lock, shade, quick (the quick sheet) or none")
@@ -113,7 +114,7 @@ object Keys {
         HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, GUI_COLORS, STATUS_BAR, FONT, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGESTIONS_AUTO, SUGGESTION_ROWS, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_LINE_HEIGHT, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_FRESH, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP,
-        HEADER_TODO, WIDGETS_HOME, WIDGETS_HEIGHT,
+        HEADER_TODO, WIDGETS_HOME, WIDGETS_PAGE, WIDGETS_HEIGHT,
     )
 
     fun byName(name: String) = ALL.firstOrNull { it.key == name.lowercase() }

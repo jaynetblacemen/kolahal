@@ -82,6 +82,7 @@ See [Widgets](../../guides/widgets/).
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
 | `widgets.home` | bool | `on` | show widgets placed on home under the header (they hide with it while the log is in use) |
+| `widgets.page` | choice: `left` `right` `off` | `left` | a widgets page beside the terminal: swipe sideways on home to reach it |
 | `widgets.height` | number 60–480 | `180` | max height (dp) of the home widget area; it scrolls when widgets need more |
 
 ## Keyboard and key bar
