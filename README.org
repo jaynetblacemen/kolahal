@@ -85,6 +85,12 @@ cd docs && npm install && npm run dev    # http://localhost:4321/kolahal/
   =contacts [query]=. Numbers in the log are tappable.
 - Favourites :: =pin <app>= (or long-press → Pin) puts an app first in the empty-prompt strip, in pin
   order, ahead of the most-used ones. =pins= lists them, =unpin <app>= removes one.
+- Productivity :: =todo buy milk= / =todo= (tap ticks an item; long-press edits or deletes;
+  =todo done 2=, =todo clear=; the header shows the open count, =header.todo=). =note <text>= and
+  =notes [grep <q>|rm <n>]= (tap copies). =remind 10m tea=, =remind tomorrow 9:00 call mom=,
+  =remind fri 8am …= post a notification on time and survive reboots; =reminders=, =remind rm <n>=.
+  =timer 25m focus= and =alarm 7:30 gym= hand off to the clock app. =agenda [days]= lists upcoming
+  calendar events by day (tap opens one; asks for the calendar permission on first use).
 - App shortcuts :: =shortcuts <app>= lists an app's launcher shortcuts; =open maps:home= starts one.
   They are also in every app's long-press sheet.
 - Instant launch :: With =launch.instant apps= (default) an app opens the moment the input matches only
@@ -125,6 +131,9 @@ control   media [play|pause|toggle|next|prev|stop]   mp   next   prev   torch [o
           volume [0-100|up|down|mute]   ring [normal|vibrate|silent]   dnd [on|off|alarms|none|access]
           brightness [0-100|up|down|auto|access]   rotate [on|off]   screen-timeout <30s|1m|…>
           wifi   bt   nfc   data
+productivity  todo [<text>|add|done|undo|edit|rm <n>|all|clear]   note <text>   notes [grep <q>|rm <n>]
+          remind <when> <text>   reminders   remind rm <n>   timer <dur> [label]   alarm <HH:MM> [label]
+          alarms   stopwatch   agenda [days]
 profiles  work [on|off|status]   private [on|off|status]
 scripts   scripts (manager)   script ls|lib|install|new|edit|run|cat|rm|on|off|every|at|notify|triggers|dir|export|import
           lua <code>   js <code>   = <expression>   status [clear <name|all>]

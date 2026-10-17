@@ -40,6 +40,9 @@ class MainActivity : ComponentActivity() {
     private val contactsPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { vm.onContactsPermission(it) }
 
+    private val calendarPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { vm.onCalendarPermission(it) }
+
     private val pickFolder =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { vm.onScriptFolderPicked(it) }
 
@@ -71,6 +74,7 @@ class MainActivity : ComponentActivity() {
                 when (it) {
                     UiEvent.RequestNotificationPermission -> requestNotifications()
                     UiEvent.RequestContactsPermission -> contactsPermission.launch(Manifest.permission.READ_CONTACTS)
+                    UiEvent.RequestCalendarPermission -> calendarPermission.launch(Manifest.permission.READ_CALENDAR)
                     else -> Unit
                 }
             }

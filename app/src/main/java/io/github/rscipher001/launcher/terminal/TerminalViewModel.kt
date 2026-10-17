@@ -69,6 +69,7 @@ sealed interface UiEvent {
     data object HideKeyboard : UiEvent
     data object PickScriptFolder : UiEvent
     data object RequestContactsPermission : UiEvent
+    data object RequestCalendarPermission : UiEvent
 }
 
 /** Something the user can tap in the suggestion strip. */
@@ -229,6 +230,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             scriptList.filter { ScriptMeta.isCommand(it.code) }.map { it.name }
         }
         _entries.value = list
+        refreshProductivity()
         _rows.value = withContext(Dispatchers.Default) { buildRows(list, seenUpTo, unreadUntil) }
         history = hist
     }
@@ -455,6 +457,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             "work", "private" -> listOf("on", "off", "status")
                 .filter { it.startsWith(arg) && it != arg }
                 .map { Suggestion.Completion(it, "$head $it") }
+            in CommandProcessor.PRODUCTIVITY -> productivitySuggestions(head, parts)
             else -> io.github.rscipher001.launcher.control.ControlCommands.suggest(head, arg)
                 .map { (label, line) -> Suggestion.Completion(label, line) }
         }
@@ -477,6 +480,13 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             errorLine != null && ctx.script != null -> {
                 val name = ctx.script!!
                 io { scripts.byName(name)?.let { openEditorAt(it, errorLine) } }
+            }
+            ctx.values[LogContext.NOTE] != null -> copy(ctx.copy ?: entry.text)
+            ctx.values[LogContext.EVENT] != null -> ProductivityCommands.eventIntent(ctx)?.let(::startActivity)
+            // Cancelling takes Enter (or the long-press "Cancel reminder").
+            ctx.values[LogContext.REMINDER] != null -> {
+                setText("remind rm #${ctx.values.getValue(LogContext.REMINDER)}")
+                _events.tryEmit(UiEvent.FocusPrompt)
             }
             ctx.values[LogContext.RUN] != null -> {
                 val cmd = ctx.values.getValue(LogContext.RUN)
@@ -567,6 +577,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                 }
             }
         }
+        productivityActions(ctx, actions, danger)
         if (entry.id < 0) return actions + danger // synthetic entry (e.g. an app chip): nothing to copy or delete
         val block = if (entry.kind == LogKind.COMMAND) blockOf(entry) else emptyList()
         if (block.size > 1) {
@@ -682,6 +693,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             HeaderTarget.BATTERY -> startActivity(Intent(Intent.ACTION_POWER_USAGE_SUMMARY))
             HeaderTarget.NETWORK -> startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
             HeaderTarget.SETTINGS -> openScreen(Screen.SETTINGS)
+            HeaderTarget.TODO -> runCommand("todo")
         }
     }
 
@@ -958,6 +970,98 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     override fun clearScreen() {
         expandHeader()
         io { logs.clearScreen() }
+    }
+
+    // ---- productivity (todo, notes, reminders, agenda) --------------------------------------
+
+    private val _todoCount = MutableStateFlow(0)
+    /** Open todos, for the header (header.todo). */
+    val todoCount: StateFlow<Int> = _todoCount.asStateFlow()
+
+    /** Suggestion data, refreshed with the log (every todo / note / remind command logs). */
+    @Volatile private var todoCache: List<io.github.rscipher001.launcher.productivity.Todo> = emptyList()
+    @Volatile private var noteCache: List<io.github.rscipher001.launcher.productivity.Note> = emptyList()
+    @Volatile private var reminderCache: List<io.github.rscipher001.launcher.productivity.Reminder> = emptyList()
+
+    private fun refreshProductivity() {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                todoCache = io.github.rscipher001.launcher.productivity.TodoStore.get(context).all()
+                noteCache = io.github.rscipher001.launcher.productivity.NoteStore.get(context).all()
+                reminderCache = io.github.rscipher001.launcher.productivity.ReminderStore.get(context).all()
+                _todoCount.value = todoCache.count { !it.done }
+            }
+        }
+    }
+
+    /** Long-press entries for todo, note and reminder lines (destructive ones go to [danger]). */
+    private fun productivityActions(ctx: LogContext, actions: MutableList<LogAction>, danger: MutableList<LogAction>) {
+        ctx.values[LogContext.TODO]?.let { id ->
+            val done = ctx.values[LogContext.TODO_DONE] == "1"
+            actions += LogAction(if (done) "Mark not done" else "Mark done") { runCommand("todo ${if (done) "undo" else "done"} #$id") }
+            actions += LogAction("Edit in prompt") {
+                setText("todo edit #$id ${ctx.copy.orEmpty()}")
+                _events.tryEmit(UiEvent.FocusPrompt)
+            }
+            danger += LogAction("Delete todo", destructive = true) { runCommand("todo rm #$id") }
+        }
+        ctx.values[LogContext.NOTE]?.let { id ->
+            danger += LogAction("Delete note", destructive = true) { runCommand("notes rm #$id") }
+        }
+        ctx.values[LogContext.REMINDER]?.let { id ->
+            danger += LogAction("Cancel reminder", destructive = true) { runCommand("remind rm #$id") }
+        }
+        if (ctx.values[LogContext.EVENT] != null) {
+            actions += LogAction("Open event") { ProductivityCommands.eventIntent(ctx)?.let(::startActivity) }
+        }
+    }
+
+    private fun productivitySuggestions(head: String, parts: List<String>): List<Suggestion> {
+        val sub = parts.getOrNull(1).orEmpty()
+        fun subs(list: List<String>) = if (parts.size == 2) {
+            list.filter { it.startsWith(sub) && it != sub }.map { Suggestion.Completion(it, "$head $it ") }
+        } else emptyList()
+        // `todo done ` → the open items, by their list number (what `todo` shows).
+        fun items(labels: List<Pair<Int, String>>) = if (parts.size == 3) {
+            labels.filter { (n, text) -> parts[2].isEmpty() || n.toString().startsWith(parts[2]) || text.contains(parts[2], ignoreCase = true) }
+                .take(12).map { (n, text) -> Suggestion.Completion("$n. $text", "$head $sub $n") }
+        } else emptyList()
+        val numberedTodos = todoCache.mapIndexed { i, t -> i + 1 to t }
+        return when (head) {
+            "todo" -> when (sub) {
+                "done", "toggle" -> items(numberedTodos.filter { !it.second.done }.map { it.first to it.second.text })
+                "undo", "undone" -> items(numberedTodos.filter { it.second.done }.map { it.first to it.second.text })
+                "rm", "edit" -> items(numberedTodos.map { it.first to it.second.text })
+                else -> subs(ProductivityCommands.TODO_SUBCOMMANDS)
+            }
+            "notes" -> if (sub == "rm") items(noteCache.mapIndexed { i, n -> i + 1 to n.text }) else subs(ProductivityCommands.NOTES_SUBCOMMANDS)
+            "remind" -> when {
+                sub == "rm" -> items(reminderCache.mapIndexed { i, r -> i + 1 to r.text })
+                parts.size == 2 -> (listOf("rm") + listOf("10m", "30m", "1h", "tomorrow 9:00"))
+                    .filter { it.startsWith(sub) && it != sub }.map { Suggestion.Completion(it, "remind $it ") }
+                else -> emptyList()
+            }
+            "timer" -> if (parts.size == 2) listOf("5m", "10m", "15m", "25m", "1h")
+                .filter { it.startsWith(sub) && it != sub }.map { Suggestion.Completion(it, "timer $it ") } else emptyList()
+            "agenda" -> if (parts.size == 2) listOf("1", "7", "14")
+                .filter { it.startsWith(sub) && it != sub }.map { Suggestion.Completion("$it days", "agenda $it") } else emptyList()
+            else -> emptyList()
+        }
+    }
+
+    override fun requestCalendarPermission() {
+        _events.tryEmit(UiEvent.RequestCalendarPermission)
+    }
+
+    fun onCalendarPermission(granted: Boolean) {
+        refreshSetup()
+        io {
+            if (granted) {
+                logs.add(LogKind.INFO, "calendar allowed — tap to see your agenda", ctx = LogContext.of(LogContext.RUN to "agenda"))
+            } else {
+                logs.add(LogKind.ERROR, "calendar permission denied — tap to open app settings", ctx = LogContext.of(LogContext.RUN to "agenda --settings"))
+            }
+        }
     }
 
     /** Pressing Home while already home: reset the prompt. */

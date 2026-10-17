@@ -68,6 +68,12 @@ object SetupChecks {
                 "brightness access",
             ),
             SetupCheck(
+                "Calendar (agenda)",
+                "Optional: upcoming events with the agenda command",
+                io.github.rscipher001.launcher.productivity.Agenda.hasPermission(context),
+                "agenda --allow",
+            ),
+            SetupCheck(
                 "Battery unrestricted",
                 "Timer scripts run on schedule instead of being deferred",
                 power.isIgnoringBatteryOptimizations(context.packageName),

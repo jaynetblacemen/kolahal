@@ -99,6 +99,25 @@ See [Media and device controls](../../guides/media-and-controls/).
 | `data` | | Internet / mobile data panel |
 | `toggles` | | the state of every toggle; tap a line to change it |
 
+## productivity
+
+See [Productivity](../../guides/productivity/). `<n>` is the number shown in the list.
+
+| Usage | Aliases | Description |
+| --- | --- | --- |
+| `todo [<text>\|add <text>]` | | list open todos, or add one (`todo buy milk`); tap an item to tick it |
+| `todo done\|undo\|rm <n>` | | tick, untick or delete an item |
+| `todo edit <n> <text>` | | change an item's text |
+| `todo all` / `todo clear` | | include finished items / delete finished items |
+| `note <text>` | | save a quick note |
+| `notes [grep <text>\|rm <n>]` | | notes, newest first; tap copies |
+| `remind <when> <text>` | | notification later: `10m`, `2h`, `1h30m`, `18:30`, `6pm`, `tomorrow 9:00`, `fri 8am` |
+| `reminders` / `remind rm <n>` | | pending reminders / cancel one |
+| `timer <5m\|1h30m\|25> [label]` | | start a timer in the clock app (no args: show timers) |
+| `alarm <HH:MM\|7am> [label]` | | set an alarm in the clock app (no args: show alarms) |
+| `alarms` / `stopwatch` | | open the clock app |
+| `agenda [days]` | | upcoming calendar events (3 days by default, up to 31); tap opens one |
+
 ## profiles
 
 | Usage | Description |

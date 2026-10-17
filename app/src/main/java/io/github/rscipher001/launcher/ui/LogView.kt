@@ -178,7 +178,7 @@ fun LogLine(
 
 private val ACTIONABLE_KEYS = setOf(
     LogContext.URL, LogContext.PKG, LogContext.COMMAND, LogContext.RUN, LogContext.SCRIPT, LogContext.APPS, LogContext.LINE,
-    LogContext.PHONE, LogContext.SHORTCUT, "notif",
+    LogContext.PHONE, LogContext.SHORTCUT, "notif", LogContext.NOTE, LogContext.EVENT, LogContext.REMINDER,
 )
 
 /** `help`, `config` and `script ls` rows: name on the left, description wrapping on the right. */

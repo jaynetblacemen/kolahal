@@ -50,6 +50,8 @@ interface TerminalUi {
     fun openEditor(script: Script)
     fun requestNotificationPermission()
     fun clearScreen()
+    /** READ_CALENDAR for `agenda`. */
+    fun requestCalendarPermission() {}
 }
 
 data class CommandSpec(val name: String, val usage: String, val help: String)
@@ -68,6 +70,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private val folder = ScriptFolder(context)
     private val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val controls by lazy { io.github.rscipher001.launcher.control.ControlCommands(context) }
+    private val productivity = ProductivityCommands(context, ui)
 
     private fun background(label: String, block: () -> Unit) {
         backgroundScope.launch {
@@ -158,6 +161,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "config", "set" -> if (name == "config" && args.isEmpty()) ui.openScreen(Screen.SETTINGS) else config(args, rest)
                 "theme" -> config(listOf("set", "theme") + args)
                 in io.github.rscipher001.launcher.control.ControlCommands.NAMES -> controls.run(name, args)
+                in PRODUCTIVITY -> productivity.run(name, rest)
                 else -> scriptCommand(name, args) ?: fallbackLaunch(trimmed)
             }
         }.onFailure { error("$name: ${it.message ?: it.javaClass.simpleName}") }
@@ -1175,7 +1179,20 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("hide", "hide <app> [-w]", "hide an app from lists and search"),
             CommandSpec("unhide", "unhide <app>", "show a hidden app again ('apps hidden')"),
             CommandSpec("rename", "rename <app> = <name>", "custom label (empty restores)"),
+            CommandSpec("todo", "todo [<text>|add|done|undo|edit|rm <n>|all|clear]", "todo list (tap an item to tick it)"),
+            CommandSpec("note", "note <text>", "save a quick note"),
+            CommandSpec("notes", "notes [grep <text>|rm <n>]", "your notes, newest first (tap copies)"),
+            CommandSpec("remind", "remind <when> <text>", "notify later · 10m · 1h30m · 18:30 · tomorrow 9:00 · fri 8am · rm <n>"),
+            CommandSpec("reminders", "reminders", "pending reminders"),
+            CommandSpec("timer", "timer <5m|1h30m> [label]", "start a timer in the clock app (no args: show timers)"),
+            CommandSpec("alarm", "alarm <HH:MM> [label]", "set an alarm in the clock app"),
+            CommandSpec("alarms", "alarms", "show the clock app's alarms"),
+            CommandSpec("stopwatch", "stopwatch", "open the clock app"),
+            CommandSpec("agenda", "agenda [days]", "upcoming calendar events (tap opens one)"),
         )
+
+        /** Commands handled by [ProductivityCommands]. */
+        val PRODUCTIVITY = setOf("todo", "note", "notes", "remind", "reminders", "timer", "alarm", "alarms", "stopwatch", "agenda")
 
         /** `help` groups; commands not listed here are shown after the groups. */
         val HELP_SECTIONS = linkedMapOf(
@@ -1185,6 +1202,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "feeds" to listOf("feeds", "feed", "rss", "notifs"),
             "control" to io.github.rscipher001.launcher.control.ControlCommands.SPECS.map { it.name },
             "profiles" to listOf("work", "private"),
+            "productivity" to listOf("todo", "note", "notes", "remind", "reminders", "timer", "alarm", "alarms", "stopwatch", "agenda"),
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
             "terminal" to listOf("help", "history", "clear", "restart", "alias", "unalias", "config", "theme", "echo", "date"),
             "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "battery", "home", "lock", "shade", "accessibility", "system"),

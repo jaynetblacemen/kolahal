@@ -4,4 +4,6 @@
     <string name="lock_service_description">Lets Kolahal lock the screen when you double-tap the home screen or run the lock command. It does not observe or read anything on screen.</string>
     <string name="channel_scripts">Script notifications</string>
     <string name="channel_scripts_desc">Notifications posted by your timer scripts</string>
+    <string name="channel_reminders">Reminders</string>
+    <string name="channel_reminders_desc">Reminders you set with the remind command</string>
 </resources>

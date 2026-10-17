@@ -5,6 +5,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- call / sms / contacts commands (optional; asked for on first use). -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- agenda command (optional; asked for on first use). -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- timer / alarm commands hand off to the clock app. -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+    <!-- remind: on-time reminders (user-revocable on Android 12+; falls back to inexact) and re-arming after reboot. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
@@ -89,6 +96,21 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/lock_service" />
         </service>
+
+        <!-- remind: fires a reminder (only our own AlarmManager PendingIntents reach it). -->
+        <receiver
+            android:name=".productivity.ReminderReceiver"
+            android:exported="false" />
+
+        <!-- remind: re-arms pending reminders after a reboot or update. -->
+        <receiver
+            android:name=".productivity.ReminderBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <!-- WorkManager is initialised manually via Configuration.Provider (multi-process setup). -->
         <provider

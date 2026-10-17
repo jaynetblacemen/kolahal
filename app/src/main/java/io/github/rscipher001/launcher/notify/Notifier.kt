@@ -27,15 +27,49 @@ object Notifier {
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply { description = context.getString(R.string.channel_scripts_desc) }
         )
+        nm.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_REMINDERS,
+                context.getString(R.string.channel_reminders),
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply { description = context.getString(R.string.channel_reminders_desc) }
+        )
     }
 
-    fun canPost(context: Context): Boolean {
+    fun canPost(context: Context, channelId: String = CHANNEL_SCRIPTS): Boolean {
         val granted = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(
             context, Manifest.permission.POST_NOTIFICATIONS,
         ) == PackageManager.PERMISSION_GRANTED
         if (!granted || !NotificationManagerCompat.from(context).areNotificationsEnabled()) return false
-        val channel = context.getSystemService(NotificationManager::class.java).getNotificationChannel(CHANNEL_SCRIPTS)
+        val channel = context.getSystemService(NotificationManager::class.java).getNotificationChannel(channelId)
         return channel == null || channel.importance != NotificationManager.IMPORTANCE_NONE
+    }
+
+    const val CHANNEL_REMINDERS = "reminders"
+
+    /** Posts a `remind` notification; tapping opens the launcher. One notification per reminder id. */
+    fun postReminder(context: Context, id: Long, text: String): Boolean {
+        if (!canPost(context, CHANNEL_REMINDERS)) return false
+        val pi = PendingIntent.getActivity(
+            context, ("reminder$id").hashCode(),
+            Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val notification = NotificationCompat.Builder(context, CHANNEL_REMINDERS)
+            .setSmallIcon(R.drawable.ic_stat_terminal)
+            .setContentTitle(text)
+            .setContentText("reminder")
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pi)
+            .setAutoCancel(true)
+            .build()
+        return runCatching {
+            @Suppress("MissingPermission")
+            NotificationManagerCompat.from(context).notify(CHANNEL_REMINDERS, id.toInt(), notification)
+            true
+        }.getOrDefault(false)
     }
 
     /** Posts a script notification. Tapping opens [url] if given, otherwise the launcher. */

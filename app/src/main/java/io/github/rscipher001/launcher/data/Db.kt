@@ -55,15 +55,51 @@ class Db private constructor(context: Context) :
             )
             """.trimIndent()
         )
+        createProductivityTables(db)
+    }
+
+    /** `todo`, `note` and `remind` (schema version 3). */
+    private fun createProductivityTables(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS todos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                text TEXT NOT NULL,
+                done INTEGER NOT NULL DEFAULT 0,
+                created INTEGER NOT NULL,
+                done_at INTEGER
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                text TEXT NOT NULL,
+                created INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS reminders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                at INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                created INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) db.execSQL("ALTER TABLE scripts ADD COLUMN at_times TEXT")
+        if (oldVersion < 3) createProductivityTables(db)
     }
 
     companion object {
         private const val NAME = "kolahal.db"
-        private const val VERSION = 2
+        private const val VERSION = 3
 
         @Volatile
         private var instance: Db? = null

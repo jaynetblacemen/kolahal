@@ -64,6 +64,15 @@ data class LogContext(val values: Map<String, String> = emptyMap()) {
         const val DESC = "desc"
         /** JSON list of {pkg, cls, user}: the line renders as a grid of app chips. */
         const val APPS = "apps"
+        /** Productivity items by database id: a todo ("done" = 1 when finished), note, reminder. */
+        const val TODO = "todo"
+        const val TODO_DONE = "done"
+        const val NOTE = "note"
+        const val REMINDER = "reminder"
+        /** Calendar event id (with BEGIN/END of the instance): tap opens it. */
+        const val EVENT = "event"
+        const val BEGIN = "begin"
+        const val END = "end"
 
         val EMPTY = LogContext()
 

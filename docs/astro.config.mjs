@@ -55,6 +55,7 @@ export default defineConfig({
 						{ slug: 'guides/media-and-controls' },
 						{ slug: 'guides/feeds' },
 						{ slug: 'guides/people' },
+						{ slug: 'guides/productivity' },
 						{ slug: 'guides/web-and-calculator' },
 						{ slug: 'guides/gestures' },
 						{ slug: 'guides/themes-and-settings' },

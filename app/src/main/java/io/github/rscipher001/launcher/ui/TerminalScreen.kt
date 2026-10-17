@@ -138,7 +138,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             when (e) {
                 UiEvent.ScrollToBottom -> { pinned = true; listState.scrollToItem(0) }
                 // Handled by MainActivity so it works from every page (setup, script manager).
-                UiEvent.RequestNotificationPermission, UiEvent.RequestContactsPermission -> Unit
+                UiEvent.RequestNotificationPermission, UiEvent.RequestContactsPermission, UiEvent.RequestCalendarPermission -> Unit
                 UiEvent.FocusPrompt -> {
                     runCatching { focus.requestFocus() }
                     if (!currentHasHardwareKeyboard) currentKeyboard?.show()
@@ -233,6 +233,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             nowPlaying = nowPlaying?.takeIf { config[Keys.HEADER_MEDIA] },
             onMediaToggle = vm::mediaToggle,
             onMediaNext = vm::mediaNext,
+            todoCount = vm.todoCount.collectAsStateWithLifecycle().value,
         )
         LazyColumn(
             state = listState,
@@ -312,7 +313,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
 }
 
 /** What a tap on a header item does. */
-enum class HeaderTarget { CLOCK, UNLOCKS, BATTERY, NETWORK, ALARM, SETTINGS }
+enum class HeaderTarget { CLOCK, UNLOCKS, BATTERY, NETWORK, ALARM, SETTINGS, TODO }
 
 /** One-line header while the log is in use: time, battery and how many status lines are hidden. */
 @Composable
@@ -378,6 +379,7 @@ private fun Header(
     nowPlaying: io.github.rscipher001.launcher.control.NowPlaying? = null,
     onMediaToggle: () -> Unit = {},
     onMediaNext: () -> Unit = {},
+    todoCount: Int = 0,
 ) {
     val now by produceState(Date()) {
         while (true) {
@@ -473,6 +475,7 @@ private fun Header(
             if (config[Keys.HEADER_ALARM] && status.nextAlarm != null) {
                 Item("alarm", alarmFmt.format(Date(status.nextAlarm))) { onTarget(HeaderTarget.ALARM) }
             }
+            if (config[Keys.HEADER_TODO] && todoCount > 0) Item("todo", todoCount.toString()) { onTarget(HeaderTarget.TODO) }
             Item("", "⚙", Term.dim) { onTarget(HeaderTarget.SETTINGS) }
             if (config[Keys.HEADER_PROFILES]) {
                 profiles.filter { it.kind != ProfileKind.PERSONAL && it.kind != ProfileKind.CLONE }.forEach { p ->
