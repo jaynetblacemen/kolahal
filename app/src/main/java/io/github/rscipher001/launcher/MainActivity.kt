@@ -30,6 +30,11 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.toArgb
 import io.github.rscipher001.launcher.ui.ScriptEditor
 import io.github.rscipher001.launcher.ui.TerminalScreen
+import io.github.rscipher001.launcher.ui.WidgetPickerScreen
+import io.github.rscipher001.launcher.ui.WidgetsScreen
+import io.github.rscipher001.launcher.widgets.WidgetBinder
+import io.github.rscipher001.launcher.widgets.WidgetHost
+import io.github.rscipher001.launcher.widgets.WidgetLocation
 
 class MainActivity : ComponentActivity() {
     private val vm: TerminalViewModel by viewModels()
@@ -58,6 +63,30 @@ class MainActivity : ComponentActivity() {
 
     private val exportScript =
         registerForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { vm.finishExportScript(it) }
+
+    /** Add-a-widget flow (bind permission + configure activity). */
+    private val widgetBinder = WidgetBinder(this) { placed ->
+        // Back to where the picker was opened from; widgets for the page land on the page.
+        if (vm.screen.value == Screen.WIDGET_PICKER) vm.closeScreen()
+        if (placed.location == WidgetLocation.PANEL && vm.screen.value != Screen.WIDGETS) vm.openScreen(Screen.WIDGETS)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        WidgetHost.get(this).startListening()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        WidgetHost.get(this).stopListening()
+    }
+
+    @Deprecated("Needed for AppWidgetHost.startAppWidgetConfigureActivityForResult, which reports here")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        widgetBinder.onActivityResult(requestCode, resultCode, data)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
@@ -112,6 +141,8 @@ class MainActivity : ComponentActivity() {
                         )
                         Screen.FEEDS -> FeedsScreen(vm, onRequestNotifications = ::requestNotifications)
                         Screen.SETUP -> SetupScreen(vm)
+                        Screen.WIDGETS -> WidgetsScreen(vm, onReAdd = { entry, w -> widgetBinder.add(entry, w.location, w.key) })
+                        Screen.WIDGET_PICKER -> WidgetPickerScreen(vm, onPick = { widgetBinder.add(it) })
                         Screen.TERMINAL -> TerminalScreen(
                             vm,
                             onRequestNotifications = ::requestNotifications,

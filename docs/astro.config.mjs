@@ -57,6 +57,7 @@ export default defineConfig({
 						{ slug: 'guides/people' },
 						{ slug: 'guides/productivity' },
 						{ slug: 'guides/web-and-calculator' },
+						{ slug: 'guides/widgets' },
 						{ slug: 'guides/gestures' },
 						{ slug: 'guides/themes-and-settings' },
 						{ slug: 'guides/backup' },

@@ -32,6 +32,7 @@ import io.github.rscipher001.launcher.notify.Notifier
 import io.github.rscipher001.launcher.script.ScriptScheduler
 import io.github.rscipher001.launcher.script.ScriptTemplates
 import io.github.rscipher001.launcher.unlock.UnlockCounter
+import io.github.rscipher001.launcher.widgets.listing
 import java.text.DateFormat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +42,7 @@ import java.util.Date
 
 /** UI-only operations the processor cannot do from an application context. */
 /** Full-screen GUI pages besides the terminal (the script editor is separate). */
-enum class Screen { TERMINAL, SETTINGS, SCRIPTS, SETUP, FEEDS }
+enum class Screen { TERMINAL, SETTINGS, SCRIPTS, SETUP, FEEDS, WIDGETS, WIDGET_PICKER }
 
 interface TerminalUi {
     fun requestContactsPermission()
@@ -132,6 +133,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "rss" -> rss(rest)
                 "feeds" -> if (args.isEmpty()) ui.openScreen(Screen.FEEDS) else feeds(args)
                 "feed" -> feeds(args)
+                "widgets" -> if (args.isEmpty()) ui.openScreen(Screen.WIDGETS) else widgets(args)
+                "widget" -> widgets(args)
                 "notifs", "notifications-feed" -> notifs(args)
                 "url", "web" -> openUrl(rest)
                 "search", "g" -> search(rest)
@@ -569,6 +572,26 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "${app.label} › ${s.shortLabel}",
                 appCtx(app) + mapOf(LogContext.SHORTCUT to s.id, LogContext.DESC to (s.longLabel ?: s.shortLabel ?: "").toString()),
             )
+        }
+    }
+
+    // ---- widgets ----------------------------------------------------------------------------
+
+    /** `widgets ls` prints the placed widgets (tap opens the page); `widget add [home]` opens the picker. */
+    private fun widgets(args: List<String>) {
+        val host = io.github.rscipher001.launcher.widgets.WidgetHost.get(context)
+        when (args.firstOrNull()) {
+            null -> ui.openScreen(Screen.WIDGETS)
+            "ls", "list" -> {
+                val lines = host.listing(context)
+                if (lines.isEmpty()) return info("no widgets yet — widget add (or widget add home) opens the picker", LogContext.of(LogContext.RUN to "widget add"))
+                lines.forEach { (text, desc) -> out(text, LogContext.of(LogContext.RUN to "widgets", LogContext.DESC to desc)) }
+            }
+            "add" -> {
+                host.addLocation = io.github.rscipher001.launcher.widgets.WidgetLocation.of(args.getOrNull(1))
+                ui.openScreen(Screen.WIDGET_PICKER)
+            }
+            else -> error("usage: widgets [ls] · widget add [home]")
         }
     }
 
@@ -1160,6 +1183,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("rss", "rss <url>", "fetch a feed into the log once"),
             CommandSpec("feed", "feed [add <url>|rm|fetch|read|open|notify|every] [id]", "RSS/Atom subscriptions with unread counts (no args: text list)"),
             CommandSpec("feeds", "feeds", "feed manager screen (add, intervals, notifications, OPML)"),
+            CommandSpec("widgets", "widgets [ls]", "home-screen widgets page (ls: text list)"),
+            CommandSpec("widget", "widget add [home]", "pick a widget to add (home: show it under the header)"),
             CommandSpec("notifs", "notifs [all|enable|mute <app>|muted|clear]", "your notifications in the terminal"),
             CommandSpec("search", "search <query>", "web search (engine: config search.engine)"),
             CommandSpec("yt", "yt <query>", "search YouTube"),
@@ -1223,6 +1248,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "productivity" to listOf("todo", "note", "notes", "remind", "reminders", "timer", "alarm", "alarms", "stopwatch", "agenda"),
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
             "terminal" to listOf("help", "history", "clear", "restart", "alias", "unalias", "config", "theme", "echo", "date"),
+            "widgets" to listOf("widgets", "widget"),
             "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "battery", "home", "lock", "shade", "accessibility", "system"),
         )
 

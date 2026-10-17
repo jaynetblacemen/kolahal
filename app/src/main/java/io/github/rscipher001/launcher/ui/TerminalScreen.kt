@@ -235,6 +235,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             onMediaNext = vm::mediaNext,
             todoCount = vm.todoCount.collectAsStateWithLifecycle().value,
         )
+        // widgets.home: widgets placed on home; they fold away with the header.
+        HomeWidgets(vm, visible = !headerCollapsed)
         LazyColumn(
             state = listState,
             reverseLayout = true,

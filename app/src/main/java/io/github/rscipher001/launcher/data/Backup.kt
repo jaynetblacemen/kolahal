@@ -41,6 +41,8 @@ class Backup(private val context: Context) {
             },
             // Everything else: todos, notes, reminders, feeds, script stores, log, history.
             "data" to FullBackup.export(context),
+            // Widget ids can't move between devices; the list lets the Widgets page offer "Add again".
+            "widgets" to runCatching { io.github.rscipher001.launcher.widgets.WidgetHost.get(context).exportWidgets() }.getOrDefault(emptyList()),
         )
         Files.writeText(context, uri, Json.stringify(data))
         return all.size
@@ -120,6 +122,10 @@ class Backup(private val context: Context) {
             }
             runCatching { scripts.byId(script.id)?.let { ScriptScheduler.sync(context, it) } }
             count++
+        }
+        (root["widgets"] as? List<*>)?.let { list ->
+            @Suppress("UNCHECKED_CAST")
+            runCatching { io.github.rscipher001.launcher.widgets.WidgetHost.get(context).importWidgets(list.filterIsInstance<Map<String, Any?>>()) }
         }
         if (data != null) {
             FullBackup.importScriptStores(context, data)

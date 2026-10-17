@@ -67,6 +67,15 @@ Each takes a command, `lock`, `shade` or `none`. See [Gestures](../../guides/ges
 | `gesture.swipedown` | text | `shade` | swipe down on the header |
 | `gesture.swipeup` | text | `apps` | swipe up on the prompt |
 
+## Widgets
+
+See [Widgets](../../guides/widgets/).
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `widgets.home` | bool | `on` | show widgets placed on home under the header (they hide with it while the log is in use) |
+| `widgets.height` | number 60–480 | `180` | max height (dp) of the home widget area; it scrolls when widgets need more |
+
 ## Keyboard and key bar
 
 | Key | Type | Default | Description |

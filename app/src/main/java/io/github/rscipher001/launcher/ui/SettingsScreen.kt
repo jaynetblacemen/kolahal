@@ -96,6 +96,8 @@ private val TITLES = mapOf(
     "keybar2" to "Key bar, row 2",
     "keyboard.suggestions" to "Keyboard suggestions",
     "keyboard.onhome" to "Open keyboard on home",
+    "widgets.home" to "Widgets on home",
+    "widgets.height" to "Home widget area height (dp)",
 )
 
 private val SECTIONS: List<Pair<String, List<ConfigKey<*>>>> = listOf(
@@ -106,6 +108,7 @@ private val SECTIONS: List<Pair<String, List<ConfigKey<*>>>> = listOf(
     ),
     "Log" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_SPACING, Keys.LOG_KEEP_DAYS),
     "Launching" to listOf(Keys.LAUNCH_INSTANT, Keys.LAUNCH_INSTANT_MIN, Keys.LAUNCH_TOP, Keys.AUTO_LAUNCH, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS, Keys.SEARCH_ENGINE, Keys.SEARCH_URL),
+    "Widgets" to listOf(Keys.WIDGETS_HOME, Keys.WIDGETS_HEIGHT),
     "Gestures" to listOf(Keys.GESTURE_DOUBLE_TAP, Keys.GESTURE_SWIPE_DOWN, Keys.GESTURE_SWIPE_UP),
     "Keyboard & key bar" to listOf(Keys.KEYBAR_SHOW, Keys.KEYBAR, Keys.KEYBAR2, Keys.IME_SUGGESTIONS, Keys.FOCUS_ON_HOME),
 )
@@ -169,6 +172,9 @@ fun SettingsScreen(
                             Action(R.drawable.ic_code, "Script manager", "Import .lua / .js files, timers, notifications") { vm.openScreen(Screen.SCRIPTS) },
                             Action(R.drawable.ic_rss, "Feed manager", "RSS/Atom subscriptions, intervals, OPML import / export") {
                                 vm.openScreen(Screen.FEEDS)
+                            },
+                            Action(R.drawable.ic_widgets, "Widgets", "Add, resize and arrange widgets; place them on home") {
+                                vm.openScreen(Screen.WIDGETS)
                             },
                             Action(R.drawable.ic_check, "Setup checklist", "Default launcher, permissions, battery") {
                                 vm.openScreen(Screen.SETUP)

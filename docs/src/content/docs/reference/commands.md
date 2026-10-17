@@ -173,6 +173,16 @@ Script names use lowercase letters, digits, `-` and `_` (up to 40), and can't be
 | `echo <text>` | | print text |
 | `date` | `time` | current date and time |
 
+## widgets
+
+See [Widgets](../../guides/widgets/).
+
+| Usage | Aliases | Description |
+| --- | --- | --- |
+| `widgets` | | Widgets page: placed widgets, add, resize, arrange, move to / from home |
+| `widgets ls` | `widget ls` | placed widgets as text lines (tap one to open the page) |
+| `widget add [home]` | | open the widget picker (`home`: the new widget goes under the header) |
+
 ## device
 
 | Usage | Aliases | Description |

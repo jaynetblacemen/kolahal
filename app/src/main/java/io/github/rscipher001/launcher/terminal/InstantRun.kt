@@ -14,7 +14,7 @@ object InstantRun {
     val SENSITIVE = setOf(
         "call", "sms", "uninstall", "work", "private", "clear", "restart", "lock", "script", "alias", "unalias",
         "config", "hide", "unhide", "rename", "feed", "feeds", "notifs", "lua", "js", "=", "url", "echo",
-        "todo", "note", "notes", "remind", "timer", "alarm",
+        "todo", "note", "notes", "remind", "timer", "alarm", "widget",
     ) + io.github.rscipher001.launcher.control.ControlCommands.SENSITIVE
 
     /** Other names the dispatcher accepts for a command; checks always use the canonical name. */
