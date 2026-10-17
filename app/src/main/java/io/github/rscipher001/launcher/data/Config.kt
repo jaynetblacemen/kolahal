@@ -46,7 +46,7 @@ object Keys {
     val HEADER_STATUS = ConfigKey.Bool("header.status", true, "show status lines pinned by scripts")
     val HEADER_MEDIA = ConfigKey.Bool("header.media", true, "show what's playing under the clock (tap: play/pause, long-press: next; needs notification access)")
     val HEADER_TODO = ConfigKey.Bool("header.todo", true, "show the open todo count (tap runs todo)")
-    val HEADER_AUTOHIDE = ConfigKey.Bool("header.autohide", true, "shrink the header to one line while scrolling or after a command; Home or a tap brings it back")
+    val HEADER_AUTOHIDE = ConfigKey.Bool("header.autohide", true, "scrolling back hides the header, scrolling forward or a command shows it as one line; Home or a tap restores it")
     val HEADER_ICONS = ConfigKey.Bool("header.icons", true, "icons for battery, network, unlocks, alarm and profiles in the header (off: text labels)")
     val CLOCK_24H = ConfigKey.Bool("clock.24h", true, "use 24-hour time in the header and log")
     val KEYBAR = ConfigKey.Text(

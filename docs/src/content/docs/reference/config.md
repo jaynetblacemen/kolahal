@@ -24,7 +24,7 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 | `header.status` | bool | `on` | show status lines pinned by scripts |
 | `header.media` | bool | `on` | show what's playing under the clock: tap plays / pauses, long-press skips (needs notification access; see [Media](../../guides/media-and-controls/#in-the-header)) |
 | `header.todo` | bool | `on` | show the open todo count (tap runs `todo`) |
-| `header.autohide` | bool | `on` | shrink the header to one line while scrolling or after a command; Home or a tap brings it back |
+| `header.autohide` | bool | `on` | scrolling back through older output hides the header; scrolling toward the newest shows it as one line (also after a command); Home or a tap brings the full header back |
 | `header.icons` | bool | `on` | icons for battery, network, unlocks, alarm and profiles in the header (off: text labels) |
 | `clock.24h` | bool | `on` | use 24-hour time in the header and log |
 

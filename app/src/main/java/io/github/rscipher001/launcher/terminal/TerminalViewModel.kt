@@ -130,12 +130,26 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** header.autohide: the header shrinks to one line while the log is in use. */
     val headerCollapsed: StateFlow<Boolean> = _headerCollapsed.asStateFlow()
 
+    private val _headerHidden = MutableStateFlow(false)
+    /** Scrolling back through older output hides the header entirely (header.autohide). */
+    val headerHidden: StateFlow<Boolean> = _headerHidden.asStateFlow()
+
     fun collapseHeader() {
-        if (config[Keys.HEADER_AUTOHIDE]) _headerCollapsed.value = true
+        if (!config[Keys.HEADER_AUTOHIDE]) return
+        _headerCollapsed.value = true
+        _headerHidden.value = false
+    }
+
+    /** Scrolling toward older lines: no header at all, the log gets the whole screen. */
+    fun hideHeader() {
+        if (!config[Keys.HEADER_AUTOHIDE]) return
+        _headerCollapsed.value = true
+        _headerHidden.value = true
     }
 
     fun expandHeader() {
         _headerCollapsed.value = false
+        _headerHidden.value = false
     }
 
     private val _screen = MutableStateFlow(Screen.TERMINAL)

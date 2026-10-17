@@ -96,6 +96,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.geometry.Size
 import io.github.rscipher001.launcher.R
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -224,11 +225,29 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             .imePadding()
     ) {
         val headerCollapsed by vm.headerCollapsed.collectAsStateWithLifecycle()
-        // Scrolling the log by hand shrinks the header (header.autohide) to give the log the room.
-        LaunchedEffect(listState) {
-            snapshotFlow { listState.isScrollInProgress }.collect { if (it) vm.collapseHeader() }
+        val headerHidden by vm.headerHidden.collectAsStateWithLifecycle()
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val headerScroll = remember(vm, density) {
+            val threshold = with(density) { 24.dp.toPx() }
+            object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+                var travelled = 0f
+                override fun onPreScroll(available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
+                    val dy = available.y
+                    if (dy == 0f) return Offset.Zero
+                    // Reversed log: a positive delta (finger moving down) reveals older lines.
+                    if (travelled != 0f && (dy > 0) != (travelled > 0)) travelled = 0f
+                    travelled += dy
+                    when {
+                        travelled > threshold -> { vm.hideHeader(); travelled = 0f }
+                        travelled < -threshold -> { vm.collapseHeader(); travelled = 0f }
+                    }
+                    return Offset.Zero
+                }
+            }
         }
-        if (headerCollapsed) CompactHeader(
+        if (headerHidden) {
+            // Hidden while reading older output; nothing to draw.
+        } else if (headerCollapsed) CompactHeader(
             status = status,
             statusCount = if (config[Keys.HEADER_STATUS]) statuses.size else 0,
             config = config,
@@ -260,6 +279,9 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             reverseLayout = true,
             modifier = Modifier
                 .fillMaxSize()
+                // header.autohide by direction: toward older lines the header goes away entirely,
+                // back toward the newest it returns as the one-line mini header.
+                .nestedScroll(headerScroll)
                 .testTag("log")
                 .pinchToZoomFont(onChange = { Term.fontSize = it }, onEnd = vm::saveFontSize)
                 // Taps that no log line consumed (empty space) bring up the keyboard.
