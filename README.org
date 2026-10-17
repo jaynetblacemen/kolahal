@@ -122,6 +122,10 @@ cd docs && npm install && npm run dev    # http://localhost:4321/kolahal/
 - Full screen :: Settings → Look & feel → Full screen (=config set statusbar hide=) hides the status bar;
   =immersive= hides the navigation bar too. Swipe from the edge to peek at them.
 - Themes :: green, amber, mono, dracula, solarized, gruvbox, gruvbox-material.
+- Fonts :: =font= switches the terminal font (log, prompt, header, suggestions, key bar, editor):
+  the system monospace or the bundled JetBrains Mono, Fira Code, IBM Plex Mono and Source Code Pro
+  (all SIL Open Font License 1.1; licence texts in =app/src/main/assets/licenses/=). =font import=
+  (or the settings screen) loads your own .ttf/.otf (up to 10 MB) as =custom=.
 - Hardware keyboard ::
   - Prompt: =↑/↓= history, =Tab= complete, =Esc= clear, =Enter= run, =Ctrl+L= clear screen,
     =Ctrl+U= kill line, =Ctrl+A/E= start/end.
@@ -150,7 +154,8 @@ productivity  todo [<text>|add|done|undo|edit|rm <n>|all|clear]   note <text>   
 profiles  work [on|off|status]   private [on|off|status]
 scripts   scripts (manager)   script ls|lib|install|new|edit|run|cat|rm|on|off|every|at|notify|triggers|dir|export|import
           lua <code>   js <code>   = <expression>   status [clear <name|all>]
-terminal  help  history  clear [history|all]  restart [scripts]  alias [name = command]  unalias  config  theme <name>  echo  date
+terminal  help  history  clear [history|all]  restart [scripts]  alias [name = command]  unalias  config  theme <name>
+          font [<name>|import]  echo  date
 widgets   widgets (page)   widgets ls   widget add [home]
 device    settings  setup  unlocks [days]  notifications  usage-access  battery  home  system
 #+end_example

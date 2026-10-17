@@ -170,6 +170,7 @@ Script names use lowercase letters, digits, `-` and `_` (up to 40), and can't be
 | `unalias <name>` | | remove an alias |
 | `config [ls\|set\|get\|reset] <key> <v>` | `set` | settings (no args opens the settings page) |
 | `theme <name>` | | `green` `amber` `mono` `dracula` `solarized` `gruvbox` `gruvbox-material` |
+| `font [<name>\|import]` | | terminal font: `system` `jetbrains-mono` `fira-code` `ibm-plex-mono` `source-code-pro` `custom`; no args lists them (tap to apply), `import` picks a .ttf/.otf |
 | `echo <text>` | | print text |
 | `date` | `time` | current date and time |
 

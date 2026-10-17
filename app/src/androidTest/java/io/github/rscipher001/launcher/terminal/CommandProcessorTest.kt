@@ -30,6 +30,7 @@ class CommandProcessorTest {
 
     private val ui = object : TerminalUi {
         override fun pickScriptFolder() = Unit
+        override fun requestFontImport() = Unit
         override fun openScreen(screen: Screen) = Unit
         override fun requestContactsPermission() = Unit
         override fun requestCalendarPermission() = Unit

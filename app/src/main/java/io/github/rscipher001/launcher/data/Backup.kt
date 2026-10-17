@@ -42,6 +42,10 @@ class Backup(private val context: Context) {
             // Everything else: todos, notes, reminders, feeds, script stores, log, history.
             "data" to FullBackup.export(context),
             // Widget ids can't move between devices; the list lets the Widgets page offer "Add again".
+            // An imported terminal font travels with the backup (base64; imports are capped at 10 MB).
+            "font" to io.github.rscipher001.launcher.ui.TermFonts.customFile(context)?.let { f ->
+                mapOf("name" to f.name, "base64" to android.util.Base64.encodeToString(f.readBytes(), android.util.Base64.NO_WRAP))
+            },
             "widgets" to runCatching { io.github.rscipher001.launcher.widgets.WidgetHost.get(context).exportWidgets() }.getOrDefault(emptyList()),
         )
         Files.writeText(context, uri, Json.stringify(data))
@@ -122,6 +126,17 @@ class Backup(private val context: Context) {
             }
             runCatching { scripts.byId(script.id)?.let { ScriptScheduler.sync(context, it) } }
             count++
+        }
+        (root["font"] as? Map<*, *>)?.let { font ->
+            val name = font["name"]?.toString()?.takeIf { it == "custom.ttf" || it == "custom.otf" }
+            val data = (font["base64"] as? String)?.let { runCatching { android.util.Base64.decode(it, android.util.Base64.NO_WRAP) }.getOrNull() }
+            if (name != null && data != null && data.size <= 10 * 1024 * 1024) {
+                runCatching {
+                    val dir = java.io.File(context.filesDir, "fonts").apply { mkdirs() }
+                    dir.listFiles()?.filter { it.name.startsWith("custom.") }?.forEach { it.delete() }
+                    java.io.File(dir, name).writeBytes(data)
+                }
+            }
         }
         (root["widgets"] as? List<*>)?.let { list ->
             @Suppress("UNCHECKED_CAST")

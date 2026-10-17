@@ -22,6 +22,7 @@ import io.github.rscipher001.launcher.apps.ProfileKind
 import io.github.rscipher001.launcher.data.Config
 import io.github.rscipher001.launcher.data.ConfigKey
 import io.github.rscipher001.launcher.data.Keys
+import io.github.rscipher001.launcher.ui.TermFonts
 import io.github.rscipher001.launcher.data.LogContext
 import io.github.rscipher001.launcher.data.LogKind
 import io.github.rscipher001.launcher.data.LogRepository
@@ -48,6 +49,8 @@ interface TerminalUi {
     fun requestContactsPermission()
     fun openScreen(screen: Screen)
     fun pickScriptFolder()
+    /** File picker for `font import` (a .ttf/.otf). */
+    fun requestFontImport()
     fun openEditor(script: Script)
     fun requestNotificationPermission()
     fun clearScreen()
@@ -164,6 +167,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "echo" -> out(rest)
                 "config", "set" -> if (name == "config" && args.isEmpty()) ui.openScreen(Screen.SETTINGS) else config(args, rest)
                 "theme" -> config(listOf("set", "theme") + args)
+                "font" -> font(args)
                 in io.github.rscipher001.launcher.control.ControlCommands.NAMES -> controls.run(name, args)
                 in PRODUCTIVITY -> productivity.run(name, rest)
                 else -> scriptCommand(name, args) ?: fallbackLaunch(trimmed)
@@ -974,6 +978,27 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         }
     }
 
+    /** `font` lists (tap applies), `font <name>` sets, `font import` opens the file picker. */
+    private fun font(args: List<String>) {
+        val sub = args.firstOrNull()?.lowercase()
+        val hasCustom = TermFonts.customFile(context) != null
+        when {
+            sub == null || sub == "ls" || sub == "list" -> {
+                val current = conf[Keys.FONT]
+                TermFonts.names.forEach { name ->
+                    if (name == TermFonts.CUSTOM && !hasCustom) return@forEach
+                    val mark = if (name == current) "*" else " "
+                    out("$mark ${name.padEnd(16)} ${TermFonts.label(name)}", LogContext.of(LogContext.RUN to "font $name"))
+                }
+                info("tap a font to use it · 'font import' adds your own .ttf/.otf · size: config font.size")
+            }
+            sub == "import" -> ui.requestFontImport()
+            sub == TermFonts.CUSTOM && !hasCustom ->
+                logs.add(LogKind.ERROR, "no custom font yet — tap to import a .ttf/.otf", ctx = LogContext.of(LogContext.RUN to "font import"))
+            else -> setKey(Keys.FONT.key, sub, "")
+        }
+    }
+
     private inline fun withKey(name: String?, action: (ConfigKey<*>) -> Unit) {
         val key = name?.let(Keys::byName)
         if (key == null) error("unknown setting '${name.orEmpty()}' — run 'config'") else action(key)
@@ -1213,6 +1238,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("system", "system", "Android system settings"),
             CommandSpec("config", "config [ls|set|get|reset] <key> <v>", "settings (no args opens the settings page)"),
             CommandSpec("theme", "theme <name>", "green amber mono dracula solarized gruvbox gruvbox-material"),
+            CommandSpec("font", "font [<name>|import]", "terminal font: system jetbrains-mono fira-code ibm-plex-mono source-code-pro custom (no args: list)"),
             CommandSpec("date", "date", "current date and time"),
             CommandSpec("echo", "echo <text>", "print text"),
             CommandSpec("alias", "alias [name = command]", "list or define aliases"),
@@ -1247,7 +1273,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "profiles" to listOf("work", "private"),
             "productivity" to listOf("todo", "note", "notes", "remind", "reminders", "timer", "alarm", "alarms", "stopwatch", "agenda"),
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
-            "terminal" to listOf("help", "history", "clear", "restart", "alias", "unalias", "config", "theme", "echo", "date"),
+            "terminal" to listOf("help", "history", "clear", "restart", "alias", "unalias", "config", "theme", "font", "echo", "date"),
             "widgets" to listOf("widgets", "widget"),
             "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "battery", "home", "lock", "shade", "accessibility", "system"),
         )

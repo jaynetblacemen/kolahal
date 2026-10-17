@@ -86,6 +86,9 @@ object Term {
     var palette by mutableStateOf(Palettes.green)
     var fontSize by mutableIntStateOf(14)
 
+    /** Terminal typeface (`font`); [FontFamily.Monospace] is the system monospace. */
+    var fontFamily by mutableStateOf<FontFamily>(FontFamily.Monospace)
+
     /** Minimum height (dp) of a plain log line (`log.lineheight`); tappable lines get +10, two-column rows +14. */
     var lineHeight by mutableIntStateOf(30)
 
@@ -109,20 +112,23 @@ object Term {
         ProfileKind.CLONE -> palette.info
     }
 
-    private var monoCache: Triple<Palette, Int, TextStyle>? = null
+    private class MonoCache(val palette: Palette, val size: Int, val family: FontFamily, val style: TextStyle)
 
-    /** Base terminal text style, rebuilt only when the palette or font size changes. */
+    private var monoCache: MonoCache? = null
+
+    /** Base terminal text style, rebuilt only when the palette, font size or font changes. */
     val mono: TextStyle
         get() {
             val p = palette
             val size = fontSize
-            monoCache?.let { (cp, cs, style) -> if (cp === p && cs == size) return style }
+            val family = fontFamily
+            monoCache?.let { if (it.palette === p && it.size == size && it.family === family) return it.style }
             return TextStyle(
-                fontFamily = FontFamily.Monospace,
+                fontFamily = family,
                 fontSize = size.sp,
                 lineHeight = (size * 1.36f).sp,
                 color = p.fg,
-            ).also { monoCache = Triple(p, size, it) }
+            ).also { monoCache = MonoCache(p, size, family, it) }
         }
 }
 

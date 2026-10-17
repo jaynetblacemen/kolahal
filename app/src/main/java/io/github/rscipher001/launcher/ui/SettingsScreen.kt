@@ -132,7 +132,7 @@ private val CATEGORIES = listOf(
     Category(
         "look", "Look & feel", "Theme, font, text size, full screen", R.drawable.ic_palette,
         listOf(
-            "Terminal" to listOfNotNull(Keys.THEME, Keys.byName("font"), Keys.FONT_SIZE),
+            "Terminal" to listOf(Keys.THEME, Keys.FONT, Keys.FONT_SIZE),
             "Screen" to listOf(Keys.STATUS_BAR),
             "Settings pages" to listOf(Keys.GUI_COLORS),
         ),
@@ -372,6 +372,8 @@ private fun SettingItem(
                         Spacer(Modifier.height(10.dp))
                         if (key == Keys.THEME) {
                             ThemeSwatches(value) { vm.setConfig(key, it) }
+                        } else if (key == Keys.FONT) {
+                            FontChoices(value, { vm.setConfig(key, it) }, onImportFont)
                         } else if (key.choices.size > 4) {
                             ChipChoices(key.choices, value) { vm.setConfig(key, it) }
                         } else {

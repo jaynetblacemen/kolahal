@@ -47,6 +47,7 @@ import io.github.rscipher001.launcher.status.Status
 import io.github.rscipher001.launcher.data.Config
 import io.github.rscipher001.launcher.data.Keys
 import io.github.rscipher001.launcher.ui.KeyBarKey
+import io.github.rscipher001.launcher.ui.TermFonts
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -70,6 +71,7 @@ sealed interface UiEvent {
     data object PickScriptFolder : UiEvent
     data object RequestContactsPermission : UiEvent
     data object RequestCalendarPermission : UiEvent
+    data object PickFont : UiEvent
 }
 
 /** Something the user can tap in the suggestion strip. */
@@ -458,6 +460,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             }
             "theme" -> Keys.THEME.choices.filter { it.startsWith(arg) && it != arg }
                 .map { Suggestion.Completion(it, "theme $it") }
+            "font" -> (TermFonts.names + "import").filter { it.startsWith(arg) && it != arg }
+                .map { Suggestion.Completion(it, "font $it") }
             "call", "dial", "sms", "text" -> io.github.rscipher001.launcher.contacts.ContactsRepository.get(context)
                 .search(arg, 10).map { Suggestion.Completion((if (it.starred) "★ " else "") + it.name, "$head ${it.name}") }
             "work", "private" -> listOf("on", "off", "status")
@@ -983,6 +987,83 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     override fun pickScriptFolder() {
         _events.tryEmit(UiEvent.PickScriptFolder)
+    }
+
+    override fun requestFontImport() {
+        _events.tryEmit(UiEvent.PickFont)
+    }
+
+    /**
+     * Copies a picked .ttf/.otf to filesDir/fonts/custom.<ext> (replacing any earlier import),
+     * checks that Android can load it, and switches `font` to custom.
+     */
+    fun importFont(uri: Uri?) {
+        if (uri == null) return
+        fileOp("font import") {
+            val resolver = context.contentResolver
+            var name: String? = null
+            var size = -1L
+            resolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME, android.provider.OpenableColumns.SIZE), null, null, null)?.use { c ->
+                if (c.moveToFirst()) {
+                    name = c.getString(0)
+                    if (!c.isNull(1)) size = c.getLong(1)
+                }
+            }
+            val named = name?.substringAfterLast('.', "")?.lowercase()
+            // Some providers give no display name; then the file's own header decides.
+            if (named != null && named != "ttf" && named != "otf") throw IllegalArgumentException("pick a .ttf or .otf file (got $name)")
+            if (size > TermFonts.MAX_BYTES) throw IllegalArgumentException("font is larger than 10 MB")
+            val dir = TermFonts.dir(context).apply { mkdirs() }
+            val tmp = java.io.File(dir, "import.tmp")
+            try {
+                val input = resolver.openInputStream(uri) ?: throw java.io.IOException("cannot open the file")
+                input.use { inp ->
+                    tmp.outputStream().use { out ->
+                        val buf = ByteArray(64 * 1024)
+                        var total = 0L
+                        while (true) {
+                            val n = inp.read(buf)
+                            if (n < 0) break
+                            total += n
+                            if (total > TermFonts.MAX_BYTES) throw IllegalArgumentException("font is larger than 10 MB")
+                            out.write(buf, 0, n)
+                        }
+                    }
+                }
+                val magic = tmp.inputStream().use { s -> ByteArray(4).also { s.read(it) } }
+                val ext = when {
+                    magic.contentEquals(byteArrayOf(0x4F, 0x54, 0x54, 0x4F)) -> "otf" // "OTTO": CFF outlines
+                    magic.contentEquals(byteArrayOf(0, 1, 0, 0)) || magic.contentEquals("true".toByteArray()) -> "ttf"
+                    else -> throw IllegalArgumentException("${name ?: "the file"} is not a TrueType/OpenType font")
+                }
+                if (TermFonts.loadTypeface(tmp) == null) throw IllegalArgumentException("${name ?: "the file"} is not a font Android can load")
+                listOf("custom.ttf", "custom.otf").forEach { java.io.File(dir, it).delete() }
+                if (!tmp.renameTo(java.io.File(dir, "custom.$ext"))) throw java.io.IOException("could not save the font")
+            } finally {
+                tmp.delete()
+            }
+            fontErrorShown = false
+            withContext(Dispatchers.Main) {
+                TermFonts.revision++
+                config.set(Keys.FONT, TermFonts.CUSTOM)
+            }
+            notice("font = custom (${name ?: "imported font"})")
+        }
+    }
+
+    @Volatile private var fontErrorShown = false
+
+    /** The configured font could not be loaded (e.g. custom set but the file is gone); said once per run. */
+    fun onFontUnavailable(font: String) {
+        if (fontErrorShown) return
+        fontErrorShown = true
+        io {
+            logs.add(
+                LogKind.ERROR,
+                "font '$font' could not be loaded — using the system monospace · tap to import one",
+                ctx = LogContext.of(LogContext.RUN to "font import"),
+            )
+        }
     }
 
     fun onScriptFolderPicked(uri: Uri?) {

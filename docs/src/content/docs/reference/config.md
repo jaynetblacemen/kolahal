@@ -35,6 +35,7 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 | `theme` | choice: `green` `amber` `mono` `dracula` `solarized` `gruvbox` `gruvbox-material` | `green` | colour theme (also `theme <name>`) |
 | `gui.colors` | choice: `theme` `system` | `theme` | settings screens follow the terminal theme or the system (Material You) colours |
 | `statusbar` | choice: `show` `hide` `immersive` | `show` | full screen: hide the status bar, or both system bars (immersive); swipe from the edge to peek |
+| `font` | choice: `system` `jetbrains-mono` `fira-code` `ibm-plex-mono` `source-code-pro` `custom` | `system` | terminal font (also `font <name>`); `custom` is a .ttf/.otf imported with `font import` |
 | `font.size` | number 10–24 | `14` | terminal font size (sp); pinching the log changes it too |
 
 ## Log

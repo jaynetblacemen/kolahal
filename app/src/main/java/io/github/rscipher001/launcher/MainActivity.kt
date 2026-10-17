@@ -24,6 +24,8 @@ import io.github.rscipher001.launcher.ui.SetupScreen
 import io.github.rscipher001.launcher.ui.KolahalTheme
 import io.github.rscipher001.launcher.ui.Palettes
 import io.github.rscipher001.launcher.ui.Term
+import io.github.rscipher001.launcher.ui.TermFonts
+import androidx.compose.ui.text.font.FontFamily
 import io.github.rscipher001.launcher.data.Keys
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -56,6 +58,13 @@ class MainActivity : ComponentActivity() {
 
     private val importBackup =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { vm.importBackup(it) }
+
+    private val fontPicker =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { vm.importFont(it) }
+
+    // Font MIME types are rarely set right by file managers; importFont checks the name and header.
+    private fun launchFontPicker() =
+        fontPicker.launch(arrayOf("font/ttf", "font/otf", "application/x-font-ttf", "application/octet-stream", "*/*"))
 
     // Many file managers label .lua / .js as octet-stream or text, so accept anything and filter by name.
     private val importScripts =
@@ -104,6 +113,7 @@ class MainActivity : ComponentActivity() {
                     UiEvent.RequestNotificationPermission -> requestNotifications()
                     UiEvent.RequestContactsPermission -> contactsPermission.launch(Manifest.permission.READ_CONTACTS)
                     UiEvent.RequestCalendarPermission -> calendarPermission.launch(Manifest.permission.READ_CALENDAR)
+                    UiEvent.PickFont -> launchFontPicker()
                     else -> Unit
                 }
             }
@@ -130,6 +140,7 @@ class MainActivity : ComponentActivity() {
                             vm,
                             onExportBackup = { exportBackup.launch(Backup.FILE_NAME) },
                             onImportBackup = { importBackup.launch(arrayOf("application/json", "text/*", "application/octet-stream")) },
+                            onImportFont = ::launchFontPicker,
                         )
                         Screen.SCRIPTS -> ScriptsScreen(
                             vm,
@@ -196,6 +207,10 @@ class MainActivity : ComponentActivity() {
     private fun applyTheme() {
         Term.palette = Palettes.named(vm.config[Keys.THEME])
         Term.fontSize = vm.config[Keys.FONT_SIZE]
+        val font = vm.config[Keys.FONT]
+        val family = TermFonts.family(this, font)
+        if (family == null) vm.onFontUnavailable(font)
+        Term.fontFamily = family ?: FontFamily.Monospace
         Term.lineHeight = vm.config[Keys.LOG_LINE_HEIGHT]
         Term.chipHeight = vm.config[Keys.CHIP_HEIGHT]
         window.decorView.setBackgroundColor(Term.bg.toArgb())
