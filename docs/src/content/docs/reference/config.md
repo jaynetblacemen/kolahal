@@ -22,6 +22,7 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 | `header.alarm` | bool | `on` | show the next alarm |
 | `header.profiles` | bool | `on` | show work/private profile state |
 | `header.status` | bool | `on` | show status lines pinned by scripts |
+| `header.media` | bool | `on` | show what's playing under the clock: tap plays / pauses, long-press skips (needs notification access; see [Media](../../guides/media-and-controls/#in-the-header)) |
 | `header.autohide` | bool | `on` | shrink the header to one line while scrolling or after a command; Home or a tap brings it back |
 | `clock.24h` | bool | `on` | use 24-hour time in the header and log |
 

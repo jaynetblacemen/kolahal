@@ -146,6 +146,13 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     val unlocksToday: StateFlow<Int> = unlockCounter.today
     val status: StateFlow<Status> = DeviceStatus.get(app).status
     val config: Config = Config.get(app)
+    private val mediaRepo = io.github.rscipher001.launcher.control.MediaRepository.get(app)
+    /** Active media session for the header (null without notification access or when idle). */
+    val nowPlaying: StateFlow<io.github.rscipher001.launcher.control.NowPlaying?> = mediaRepo.nowPlaying
+
+    /** Header now-playing line: tap toggles play/pause, long-press (or ⏭) skips. */
+    fun mediaToggle() = io { mediaRepo.send(io.github.rscipher001.launcher.control.MediaRepository.Action.TOGGLE) }
+    fun mediaNext() = io { mediaRepo.send(io.github.rscipher001.launcher.control.MediaRepository.Action.NEXT) }
 
     var input by mutableStateOf(TextFieldValue(""))
         private set
@@ -181,6 +188,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     }
 
     init {
+        mediaRepo.start()
         androidx.core.content.ContextCompat.registerReceiver(
             context, runCommandReceiver, android.content.IntentFilter(HostApi.ACTION_RUN_COMMAND),
             androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
@@ -244,6 +252,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         if (_screen.value == Screen.SETUP) refreshSetup()
         unlockCounter.refresh()
         appsRepo.refresh()
+        mediaRepo.start() // picks up notification access granted while we were away
     }
 
     // ---- prompt ---------------------------------------------------------------------------
@@ -446,7 +455,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             "work", "private" -> listOf("on", "off", "status")
                 .filter { it.startsWith(arg) && it != arg }
                 .map { Suggestion.Completion(it, "$head $it") }
-            else -> emptyList()
+            else -> io.github.rscipher001.launcher.control.ControlCommands.suggest(head, arg)
+                .map { (label, line) -> Suggestion.Completion(label, line) }
         }
     }
 

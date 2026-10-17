@@ -44,6 +44,7 @@ object Keys {
     val HEADER_ALARM = ConfigKey.Bool("header.alarm", true, "show the next alarm")
     val HEADER_PROFILES = ConfigKey.Bool("header.profiles", true, "show work/private profile state")
     val HEADER_STATUS = ConfigKey.Bool("header.status", true, "show status lines pinned by scripts")
+    val HEADER_MEDIA = ConfigKey.Bool("header.media", true, "show what's playing under the clock (tap: play/pause, long-press: next; needs notification access)")
     val HEADER_AUTOHIDE = ConfigKey.Bool("header.autohide", true, "shrink the header to one line while scrolling or after a command; Home or a tap brings it back")
     val CLOCK_24H = ConfigKey.Bool("clock.24h", true, "use 24-hour time in the header and log")
     val KEYBAR = ConfigKey.Text(
@@ -90,7 +91,7 @@ object Keys {
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
-        HEADER_PROFILES, HEADER_STATUS, HEADER_AUTOHIDE, CLOCK_24H, KEYBAR_SHOW, KEYBAR, KEYBAR2, THEME, GUI_COLORS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
+        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA,HEADER_AUTOHIDE, CLOCK_24H, KEYBAR_SHOW, KEYBAR, KEYBAR2, THEME, GUI_COLORS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_KEEP_DAYS, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP,
     )

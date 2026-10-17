@@ -45,6 +45,11 @@ Declared in the manifest:
 | `EXPAND_STATUS_BAR` | swipe down on the header (or `shade`) pulls down the notification shade |
 | `ACCESS_HIDDEN_PROFILES` | lets the default launcher see the Android 15+ private space |
 | `PACKAGE_USAGE_STATS` | Usage Access, which you grant in Settings: accurate unlock counts and `usage` screen time |
+| `ACCESS_NOTIFICATION_POLICY` | lists Kolahal on the Do Not Disturb access page, for `dnd` and `ring silent` (you still grant it) |
+| `WRITE_SETTINGS` | "Modify system settings", which you grant in Settings: `brightness`, `rotate`, `screen-timeout` |
+| `ACCESS_WIFI_STATE` | whether Wi-Fi is on, for `toggles` |
+
+`torch` needs no camera permission: it only switches the flash.
 
 Kolahal also asks Android for the list of launchable apps (a `<queries>` entry for launcher
 activities). That's needed to show your apps at all.
@@ -57,7 +62,9 @@ These are off until you enable them, usually from the [setup checklist](../../ge
 | --- | --- | --- |
 | Default home app | opens on Home; pausing/resuming profiles, app shortcuts, private space | works as a normal app |
 | Usage access | accurate unlocks, `usage` | unlocks counted while the launcher runs; no `usage` |
-| Notification access | notifications in the log, `notifs`, `notifications.recent()` | none of these |
+| Notification access | notifications in the log, `notifs`, `notifications.recent()`, `media` and the header's now-playing line (reading media sessions) | none of these |
+| Do Not Disturb access | `dnd`, `ring silent` | those print a tappable line to grant it |
+| Modify system settings | `brightness`, `rotate`, `screen-timeout` | those print a tappable line to grant it |
 | Accessibility service **Kolahal screen lock** | double-tap / `lock` locks the screen. It can't read window content and receives no events | no lock gesture |
 | Battery unrestricted | timers and feeds run on time | Android may defer them |
 

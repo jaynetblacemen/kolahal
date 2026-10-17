@@ -52,6 +52,7 @@ export default defineConfig({
 						{ slug: 'guides/profiles' },
 						{ slug: 'guides/apps' },
 						{ slug: 'guides/notifications' },
+						{ slug: 'guides/media-and-controls' },
 						{ slug: 'guides/feeds' },
 						{ slug: 'guides/people' },
 						{ slug: 'guides/web-and-calculator' },

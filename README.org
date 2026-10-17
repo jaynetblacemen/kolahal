@@ -66,6 +66,17 @@ cd docs && npm install && npm run dev    # http://localhost:4321/kolahal/
 - Notifications :: With notification access (=setup= → Notification access), new notifications
   appear in the log in their app's colour. Tap opens the notification, long-press dismisses it or
   mutes the app. =notifs= lists active ones; =notifs mute <app>=, =notifs log off=.
+- Media :: With notification access, =media= shows what's playing (app, title — artist, state,
+  position / duration); =media play|pause|toggle|next|prev|stop=, or =mp= (play/pause), =next=,
+  =prev=. The header shows "♪ Title — Artist" under the clock (=header.media=): tap toggles
+  play/pause, long-press or ⏭ skips. It hides 30 minutes after playback was paused; the compact
+  header shows a ♪ while something plays.
+- Device toggles :: =torch [on|off]=, =volume [0-100|up|down|mute]=, =ring [normal|vibrate|silent]=,
+  =dnd [on|off|alarms|none]=, =brightness [0-100|up|down|auto]=, =rotate [on|off]=,
+  =screen-timeout <30s|1m|…>=; =wifi=, =bt=, =nfc= and =data= open the system panel (Android doesn't
+  let apps switch radios). =toggles= lists everything; tap a line to change it. Silent / DND need Do
+  Not Disturb access and brightness / rotate / timeout need "Modify system settings"; without them
+  the command prints a tappable line that opens the grant page (also in =setup=).
 - Feeds :: Built-in RSS/Atom subscriptions with unread counts, per-feed intervals and optional
   notifications: =feed add <url>=, =feed= (list), =feed read [id]=, =feed open=, =feed every 1 2h=.
   =feeds= opens the feed manager screen: add feeds, read items (tap opens the link and marks it
@@ -110,6 +121,10 @@ people    call <name|number>   sms <name|number> [text]   contacts [query]
 web       search  yt  wiki  maps  play  url
 feeds     feeds (manager screen)   feed [ls|add <url>|rm|fetch|read|all|open|notify|every|on|off] [id]   rss <url>
           notifs [all|enable|mute <app>|unmute <app>|muted|log on|off|clear]
+control   media [play|pause|toggle|next|prev|stop]   mp   next   prev   torch [on|off]   toggles
+          volume [0-100|up|down|mute]   ring [normal|vibrate|silent]   dnd [on|off|alarms|none|access]
+          brightness [0-100|up|down|auto|access]   rotate [on|off]   screen-timeout <30s|1m|…>
+          wifi   bt   nfc   data
 profiles  work [on|off|status]   private [on|off|status]
 scripts   scripts (manager)   script ls|lib|install|new|edit|run|cat|rm|on|off|every|at|notify|triggers|dir|export|import
           lua <code>   js <code>   = <expression>   status [clear <name|all>]

@@ -76,6 +76,29 @@ Profile flags for app commands: `-w` work, `-p` personal, `-s` private space, `-
 (notification access settings), `notifs mute <app>`, `notifs unmute <app>`, `notifs muted`,
 `notifs log on|off`, `notifs clear` (dismiss all).
 
+## control
+
+See [Media and device controls](../../guides/media-and-controls/).
+
+| Usage | Aliases | Description |
+| --- | --- | --- |
+| `media [play\|pause\|toggle\|next\|prev\|stop]` | | now playing, or control it (needs notification access) |
+| `mp` | | play / pause |
+| `next` | | next track |
+| `prev` | | previous track |
+| `torch [on\|off]` | | flashlight (no argument toggles) |
+| `volume [0-100\|up\|down\|mute\|unmute]` | `vol` | media volume |
+| `ring [normal\|vibrate\|silent]` | | ringer mode (`silent` needs Do Not Disturb access) |
+| `dnd [on\|off\|alarms\|none\|status\|access]` | | Do Not Disturb (no argument toggles; `access` opens the grant page) |
+| `brightness [0-100\|up\|down\|auto\|access]` | | screen brightness (needs Modify system settings; `access` opens the grant page) |
+| `rotate [on\|off\|status]` | | auto-rotate (no argument toggles; needs Modify system settings) |
+| `screen-timeout [15s\|30s\|1m\|…]` | | screen-off timeout (needs Modify system settings) |
+| `wifi` | | Wi-Fi panel |
+| `bt` | `bluetooth` | Bluetooth settings |
+| `nfc` | | NFC panel |
+| `data` | | Internet / mobile data panel |
+| `toggles` | | the state of every toggle; tap a line to change it |
+
 ## profiles
 
 | Usage | Description |

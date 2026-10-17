@@ -102,7 +102,7 @@ private val SECTIONS: List<Pair<String, List<ConfigKey<*>>>> = listOf(
     "Appearance" to listOf(Keys.THEME, Keys.GUI_COLORS, Keys.FONT_SIZE),
     "Header" to listOf(
         Keys.HEADER_DATE, Keys.CLOCK_24H, Keys.HEADER_UNLOCKS, Keys.HEADER_BATTERY, Keys.HEADER_NETWORK,
-        Keys.HEADER_ALARM, Keys.HEADER_PROFILES, Keys.HEADER_STATUS, Keys.HEADER_DEVICE, Keys.HEADER_AUTOHIDE,
+        Keys.HEADER_ALARM, Keys.HEADER_PROFILES, Keys.HEADER_STATUS, Keys.HEADER_MEDIA, Keys.HEADER_DEVICE, Keys.HEADER_AUTOHIDE,
     ),
     "Log" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_SPACING, Keys.LOG_KEEP_DAYS),
     "Launching" to listOf(Keys.LAUNCH_INSTANT, Keys.LAUNCH_INSTANT_MIN, Keys.LAUNCH_TOP, Keys.AUTO_LAUNCH, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS, Keys.SEARCH_ENGINE, Keys.SEARCH_URL),

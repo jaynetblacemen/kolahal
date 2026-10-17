@@ -1,0 +1,69 @@
+---
+title: Media and device controls
+description: Control what's playing, the flashlight, volume, ringer, Do Not Disturb, brightness and rotation from the prompt.
+---
+
+The `control` group in `help` covers media playback and the quick toggles you would otherwise
+find in the quick settings. Every one of them prints a status line, and the lines are tappable.
+
+## Media
+
+Media control reads the active media sessions, which Android only allows for apps with
+**notification access**. Grant it with `notifs enable` (or **setup → Notification access**).
+Without it, media commands print a tappable line that opens the grant page.
+
+| Command | Does |
+| --- | --- |
+| `media` | now playing: `♪ Title — Artist`, with app, state and position / duration. Tap the line to play or pause |
+| `media play` / `media pause` / `media toggle` | start, pause or toggle playback |
+| `media next` / `media prev` / `media stop` | skip, go back, stop |
+| `mp` | play / pause |
+| `next`, `prev` | next / previous track |
+
+Kolahal follows the session that is playing; when nothing plays, the most recently played one.
+
+### In the header
+
+With `header.media` on (the default), the header shows `♪ Title — Artist` under the clock while
+something plays, and `‖ Title — Artist` while it is paused.
+
+- **Tap** the line to play or pause.
+- **Long-press** it, or tap **⏭**, to skip to the next track.
+
+The line disappears 30 minutes after playback was paused. When the header is collapsed, a small
+`♪` next to the time shows that something is playing. Turn the line off with
+`config header.media off`.
+
+## Toggles
+
+| Command | Does | Needs |
+| --- | --- | --- |
+| `torch [on\|off]` | flashlight; no argument toggles | nothing |
+| `volume [0-100\|up\|down\|mute\|unmute]` | media volume; prints the new level | nothing |
+| `ring [normal\|vibrate\|silent]` | ringer mode; no argument shows it | Do Not Disturb access for `silent` (and to leave silent) |
+| `dnd [on\|off\|alarms\|none]` | Do Not Disturb: `on` is priority only, `alarms` alarms only, `none` total silence; no argument toggles; `dnd status` shows it | Do Not Disturb access |
+| `brightness [0-100\|up\|down\|auto]` | screen brightness; a level switches adaptive brightness off, `auto` turns it on | Modify system settings |
+| `rotate [on\|off]` | auto-rotate; no argument toggles | Modify system settings |
+| `screen-timeout <15s\|30s\|1m\|5m\|…>` | screen-off timeout; no argument shows it | Modify system settings |
+| `wifi`, `bt`, `nfc`, `data` | open the Wi-Fi, Bluetooth, NFC or Internet panel | nothing |
+| `toggles` | one line per toggle with its current state | nothing |
+
+Android doesn't let apps switch Wi-Fi, Bluetooth, NFC or mobile data on and off, so those commands
+open the system panel (or the settings page) where you can do it in one tap.
+
+Tapping a line from `toggles` toggles that item, or opens its panel. If a permission is missing,
+the line opens the page to grant it instead.
+
+### Granting access
+
+Both kinds of access are optional, and the [setup checklist](../../getting-started/setup/) has a
+row for each:
+
+- **Do Not Disturb access** (`dnd access`): used by `dnd` and `ring silent`.
+- **Modify system settings** (`brightness access`): used by `brightness`, `rotate` and
+  `screen-timeout`.
+
+When a command needs one of them and it isn't granted, the command prints a tappable line that
+opens the right page.
+
+These commands change device state, so [instant launch](../../getting-started/basics/) never runs them without Enter.

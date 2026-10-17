@@ -67,6 +67,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private val prefs = AppPrefs.get(context)
     private val folder = ScriptFolder(context)
     private val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val controls by lazy { io.github.rscipher001.launcher.control.ControlCommands(context) }
 
     private fun background(label: String, block: () -> Unit) {
         backgroundScope.launch {
@@ -156,6 +157,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "echo" -> out(rest)
                 "config", "set" -> if (name == "config" && args.isEmpty()) ui.openScreen(Screen.SETTINGS) else config(args, rest)
                 "theme" -> config(listOf("set", "theme") + args)
+                in io.github.rscipher001.launcher.control.ControlCommands.NAMES -> controls.run(name, args)
                 else -> scriptCommand(name, args) ?: fallbackLaunch(trimmed)
             }
         }.onFailure { error("$name: ${it.message ?: it.javaClass.simpleName}") }
@@ -1120,6 +1122,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     companion object {
         val COMMANDS = listOf(
             CommandSpec("help", "help", "show this list"),
+            *io.github.rscipher001.launcher.control.ControlCommands.SPECS.toTypedArray(),
             CommandSpec("apps", "apps [work|personal|private|hidden] [-l]", "app grid (-l: one per line)"),
             CommandSpec("open", "open <app>[:shortcut] [-w|-p|-s]", "launch an app or one of its shortcuts"),
             CommandSpec("shortcuts", "shortcuts <app>", "an app's launcher shortcuts"),
@@ -1180,6 +1183,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "people" to listOf("call", "sms", "contacts"),
             "web" to listOf("search", "yt", "wiki", "maps", "play", "url"),
             "feeds" to listOf("feeds", "feed", "rss", "notifs"),
+            "control" to io.github.rscipher001.launcher.control.ControlCommands.SPECS.map { it.name },
             "profiles" to listOf("work", "private"),
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
             "terminal" to listOf("help", "history", "clear", "restart", "alias", "unalias", "config", "theme", "echo", "date"),

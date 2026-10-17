@@ -119,6 +119,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     val unlocks by vm.unlocksToday.collectAsStateWithLifecycle()
     val status by vm.status.collectAsStateWithLifecycle()
     val statuses by vm.statuses.collectAsStateWithLifecycle()
+    val nowPlaying by vm.nowPlaying.collectAsStateWithLifecycle()
     val configVersion by vm.config.version.collectAsStateWithLifecycle()
     val config = vm.config
     val listState = rememberLazyListState()
@@ -217,6 +218,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             config = config,
             version = configVersion,
             onExpand = vm::expandHeader,
+            mediaPlaying = config[Keys.HEADER_MEDIA] && nowPlaying?.playing == true,
         ) else Header(
             unlocks = unlocks,
             profiles = profiles,
@@ -228,6 +230,9 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             onSwipeDown = { vm.onGesture(Keys.GESTURE_SWIPE_DOWN) },
             onTarget = vm::onHeaderTap,
             onProfileTap = vm::onProfileTap,
+            nowPlaying = nowPlaying?.takeIf { config[Keys.HEADER_MEDIA] },
+            onMediaToggle = vm::mediaToggle,
+            onMediaNext = vm::mediaNext,
         )
         LazyColumn(
             state = listState,
@@ -311,7 +316,7 @@ enum class HeaderTarget { CLOCK, UNLOCKS, BATTERY, NETWORK, ALARM, SETTINGS }
 
 /** One-line header while the log is in use: time, battery and how many status lines are hidden. */
 @Composable
-private fun CompactHeader(status: Status, statusCount: Int, config: Config, version: Int, onExpand: () -> Unit) {
+private fun CompactHeader(status: Status, statusCount: Int, config: Config, version: Int, onExpand: () -> Unit, mediaPlaying: Boolean = false) {
     val now by produceState(Date()) {
         while (true) {
             value = Date()
@@ -346,6 +351,7 @@ private fun CompactHeader(status: Status, statusCount: Int, config: Config, vers
             }
             Text("  bat $pct%" + if (status.charging) "+" else "", style = small.copy(color = color))
         }
+        if (mediaPlaying) Text("  ♪", style = small.copy(color = Term.prompt))
         if (statusCount > 0) Text("  · $statusCount status", style = small.copy(color = Term.dim))
         Spacer(Modifier.weight(1f))
         Text("▾", style = small.copy(color = Term.dim))
@@ -369,6 +375,9 @@ private fun Header(
     onSwipeDown: () -> Unit,
     onTarget: (HeaderTarget) -> Unit,
     onProfileTap: (Profile) -> Unit,
+    nowPlaying: io.github.rscipher001.launcher.control.NowPlaying? = null,
+    onMediaToggle: () -> Unit = {},
+    onMediaNext: () -> Unit = {},
 ) {
     val now by produceState(Date()) {
         while (true) {
@@ -443,6 +452,8 @@ private fun Header(
                 )
             }
         }
+        // `now` ticks each minute, so a paused session drops out after 30 minutes.
+        if (nowPlaying != null && nowPlaying.showInHeader(now.time)) NowPlayingLine(nowPlaying, onMediaToggle, onMediaNext)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             if (config[Keys.HEADER_UNLOCKS]) Item("unlocks", unlocks.toString()) { onTarget(HeaderTarget.UNLOCKS) }
             val pct = status.batteryPct

@@ -12,6 +12,13 @@
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <!-- Lets the default launcher see the Android 15+ private space profile. -->
     <uses-permission android:name="android.permission.ACCESS_HIDDEN_PROFILES" />
+    <!-- Device controls: dnd / ring silent (user grants DND access), wi-fi state for 'toggles'. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- brightness / rotate / screen-timeout (user allows "Modify system settings"). -->
+    <uses-permission
+        android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
     <!-- Lets the home screen show an accurate unlock count (user grants it in Settings). -->
     <uses-permission
         android:name="android.permission.PACKAGE_USAGE_STATS"

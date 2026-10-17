@@ -14,7 +14,7 @@ object InstantRun {
     val SENSITIVE = setOf(
         "call", "sms", "uninstall", "work", "private", "clear", "restart", "lock", "script", "alias", "unalias",
         "config", "hide", "unhide", "rename", "feed", "feeds", "notifs", "lua", "js", "=", "url", "echo",
-    )
+    ) + io.github.rscipher001.launcher.control.ControlCommands.SENSITIVE
 
     sealed interface Target<out A> {
         data class App<A>(val app: A) : Target<A>

@@ -56,6 +56,18 @@ object SetupChecks {
                 "accessibility",
             ),
             SetupCheck(
+                "Do Not Disturb access (dnd, ring silent)",
+                "Optional: lets dnd and ring silent change Do Not Disturb",
+                context.getSystemService(android.app.NotificationManager::class.java).isNotificationPolicyAccessGranted,
+                "dnd access",
+            ),
+            SetupCheck(
+                "Modify system settings (brightness, rotate)",
+                "Optional: lets brightness, rotate and screen-timeout change system settings",
+                android.provider.Settings.System.canWrite(context),
+                "brightness access",
+            ),
+            SetupCheck(
                 "Battery unrestricted",
                 "Timer scripts run on schedule instead of being deferred",
                 power.isIgnoringBatteryOptimizations(context.packageName),
