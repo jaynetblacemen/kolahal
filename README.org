@@ -33,6 +33,9 @@ cd docs && npm install && npm run dev    # http://localhost:4321/kolahal/
   - Each command and its output form a block with a coloured gutter (scripts and errors have their
     own colours), and output older than the latest command is dimmed.
   - Day separators and right-aligned times. Wrapped lines indent past their prefix.
+  - Fresh screen (=log.fresh=, 10 min): back on home after a while, it starts clean; one tap shows
+    the earlier output. A ↓ button jumps to the newest lines; the header stays clear of the camera
+    cutout even in full screen.
   - =help=, =config= and =script ls= render in two columns; =apps= is a grid of tappable chips.
 - Touch ::
   - A two-row key bar (=ESC / - ⇤ ↑ ⇥ ⌫= and =TAB  It shows only while the on-screen keyboard is up

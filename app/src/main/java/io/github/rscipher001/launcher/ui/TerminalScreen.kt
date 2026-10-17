@@ -48,6 +48,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.ui.graphics.SolidColor
@@ -212,7 +215,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         Modifier
             .fillMaxSize()
             .background(Term.bg)
-            .statusBarsPadding()
+            .cutoutSafePadding()
             .navigationBarsPadding()
             .imePadding()
     ) {
@@ -246,12 +249,13 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         )
         // widgets.home: widgets placed on home; they fold away with the header.
         HomeWidgets(vm, visible = !headerCollapsed)
+        val hiddenLines by vm.hiddenLines.collectAsStateWithLifecycle()
+        Box(Modifier.weight(1f).fillMaxWidth()) {
         LazyColumn(
             state = listState,
             reverseLayout = true,
             modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
+                .fillMaxSize()
                 .testTag("log")
                 .pinchToZoomFont(onChange = { Term.fontSize = it }, onEnd = vm::saveFontSize)
                 // Taps that no log line consumed (empty space) bring up the keyboard.
@@ -265,7 +269,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 },
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
         ) {
-            if (reversedRows.isEmpty()) {
+            if (reversedRows.isEmpty() && hiddenLines == 0) {
                 item(key = "empty-hint") {
                     Text(
                         "type an app name or a command · help lists everything · ↑ recalls history · " +
@@ -295,6 +299,42 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                     )
                 }
             }
+            // log.fresh: the older output is hidden, not gone. Last item = top of the reversed list.
+            if (hiddenLines > 0) {
+                item(key = "hidden-lines") {
+                    Text(
+                        "▴ $hiddenLines earlier lines · tap to show",
+                        style = Term.mono.copy(color = Term.dim),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClickLabel = "show earlier output") { vm.showHidden() }
+                            .heightIn(min = 48.dp)
+                            .wrapContentHeight(),
+                    )
+                }
+            }
+        }
+        // Scrolled away from the newest lines: one tap back down.
+        val awayFromBottom by remember { derivedStateOf { listState.firstVisibleItemIndex > 2 } }
+        androidx.compose.animation.AnimatedVisibility(
+            visible = awayFromBottom,
+            enter = androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.fadeOut(),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
+        ) {
+            val scope = rememberCoroutineScope()
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .testTag("jump-latest")
+                    .size(48.dp)
+                    .background(Term.surface, RoundedCornerShape(24.dp))
+                    .border(1.dp, Term.prompt.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
+                    .clickable(onClickLabel = "jump to the newest lines") { pinned = true; scope.launch { listState.animateScrollToItem(0) } },
+            ) {
+                Text("↓", style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize + 4).sp))
+            }
+        }
         }
         // A hardware keyboard already has these keys: the bar follows the on-screen keyboard.
         val typing = promptFocused && WindowInsets.isImeVisible
@@ -626,6 +666,10 @@ private fun SuggestionStrip(items: List<Suggestion>, onPick: (Suggestion) -> Uni
                     Text(tag, style = Term.mono.copy(color = color, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp))
                     Spacer(Modifier.width(6.dp))
                 }
+                // Commands carry the prompt's `$`, so "maps" (command) and "Maps" (app) read apart.
+                if (s is Suggestion.Completion) {
+                    Text("$ ", style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold))
+                }
                 Text(s.label, style = Term.mono.copy(color = if (s is Suggestion.App) Term.fg else Term.dim))
             }
         }
@@ -818,6 +862,19 @@ private fun Prompt(
                     }
                 },
         )
+        // Clear: touch typing has no Esc when the key bar is hidden.
+        if (vm.input.text.isNotEmpty()) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .testTag("prompt-clear")
+                    .widthIn(min = 44.dp)
+                    .heightIn(min = 32.dp)
+                    .clickable(onClickLabel = "clear the prompt") { vm.escape() },
+            ) {
+                Text("✕", style = promptStyle.copy(color = Term.dim))
+            }
+        }
         // Key bar toggle (keybar.show); dim while the bar is off.
         Box(
             contentAlignment = Alignment.Center,

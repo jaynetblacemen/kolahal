@@ -87,6 +87,7 @@ object Keys {
     val LOG_LINE_HEIGHT = ConfigKey.Num("log.lineheight", 30, 16..56, "minimum height (dp) of a log line; tappable lines get a little more")
     val CHIP_HEIGHT = ConfigKey.Num("chips.height", 48, 28..64, "height (dp) of suggestion and app-grid chips")
     val LOG_KEEP_DAYS = ConfigKey.Num("log.keepdays", 60, 1..365, "delete log lines older than this many days")
+    val LOG_FRESH = ConfigKey.Num("log.fresh", 10, 0..240, "start home with a clean screen after this many minutes away (0: never); earlier output is one tap away")
     val SEARCH_ENGINE = ConfigKey.Choice(
         "search.engine", "duckduckgo",
         listOf("duckduckgo", "google", "bing", "brave", "startpage", "kagi", "custom"),
@@ -109,7 +110,7 @@ object Keys {
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
         HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, GUI_COLORS, STATUS_BAR, FONT, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGESTIONS_AUTO, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
-        SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_LINE_HEIGHT, CHIP_HEIGHT, LOG_KEEP_DAYS, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
+        SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_LINE_HEIGHT, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_FRESH, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP,
         HEADER_TODO, WIDGETS_HOME, WIDGETS_HEIGHT,
     )

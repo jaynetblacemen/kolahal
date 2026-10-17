@@ -231,6 +231,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         _commandNames.value = withContext(Dispatchers.Default) {
             scriptList.filter { ScriptMeta.isCommand(it.code) }.map { it.name }
         }
+        _hiddenLines.value = withContext(Dispatchers.IO) { logs.hiddenCount() }
         _entries.value = list
         refreshProductivity()
         _rows.value = withContext(Dispatchers.Default) { buildRows(list, seenUpTo, unreadUntil) }
@@ -240,15 +241,30 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** Script lines in (seenUpTo, unreadUntil] arrived while the user was away; later ones were seen live. */
     @Volatile private var seenUpTo = Long.MAX_VALUE
     @Volatile private var unreadUntil = Long.MAX_VALUE
+    @Volatile private var pausedAt = 0L
+
+    private val _hiddenLines = MutableStateFlow(0)
+    /** Lines a fresh-screen hide keeps out of view; the log shows a tap-to-restore line for them. */
+    val hiddenLines: StateFlow<Int> = _hiddenLines.asStateFlow()
+
+    fun showHidden() = io { logs.unhide() }
 
     fun onPause() {
         _entries.value.lastOrNull()?.let { logs.seenUpTo = it.id }
+        pausedAt = System.currentTimeMillis()
     }
 
     fun onResume() {
         // Coming back from an app is a fresh look at home: show the full header again.
         expandHeader()
         seenUpTo = logs.seenUpTo
+        // log.fresh: after a while away, home starts clean. Only what you had already seen is
+        // hidden (script lines that arrived meanwhile stay), and nothing is deleted.
+        val freshMin = config[Keys.LOG_FRESH]
+        val seen = seenUpTo
+        if (freshMin > 0 && pausedAt > 0 && System.currentTimeMillis() - pausedAt >= freshMin * 60_000L && seen != Long.MAX_VALUE) {
+            io { logs.hideScreen(seen) }
+        }
         viewModelScope.launch {
             unreadUntil = withContext(Dispatchers.IO) { logs.maxId() }
             requestReload()

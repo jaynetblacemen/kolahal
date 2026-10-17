@@ -48,6 +48,7 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 | `log.lineheight` | number 16–56 | `30` | minimum height (dp) of a log line; tappable lines get +10, two-column rows +14 |
 | `chips.height` | number 28–64 | `48` | height (dp) of suggestion and app-grid chips |
 | `log.keepdays` | number 1–365 | `60` | delete log lines older than this many days |
+| `log.fresh` | number 0–240 | `10` | start home with a clean screen after this many minutes away (0: never); earlier output is one tap away |
 
 ## Launching and suggestions
 

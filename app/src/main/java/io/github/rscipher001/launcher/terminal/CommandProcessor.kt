@@ -86,7 +86,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     fun run(line: String, expand: Boolean = true) {
         val typed = line.trim()
         if (typed.isEmpty()) return
-        logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
+        // The same command again with nothing printed in between (settings, settings…) is one line.
+        if (logs.last() != (LogKind.COMMAND to typed)) logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
         // Aliases first, so `alias hf = help | grep feed` pipes too.
         val stages = Pipes.split(if (expand) expandAliases(typed) else typed)
         if (stages.size > 1) {
@@ -300,8 +301,16 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             info("no apps" + (kind?.let { " in ${it.label} profile" } ?: ""))
             return
         }
-        if ("-l" in args) list.forEach { out(appLine(it), appCtx(it)) } else appGrid(list)
         val kinds = list.map { it.profile.kind }.distinct().sortedBy { it.ordinal }
+        when {
+            "-l" in args -> list.forEach { out(appLine(it), appCtx(it)) }
+            // One grid per profile instead of interleaving every app with its work twin.
+            kinds.size > 1 -> kinds.forEach { k ->
+                info("── ${k.label} ──")
+                appGrid(list.filter { it.profile.kind == k })
+            }
+            else -> appGrid(list)
+        }
         info("${list.size} apps · " + kinds.joinToString("  ") { "[${it.tag}] ${it.label}" })
     }
 

@@ -1,5 +1,11 @@
 package io.github.rscipher001.launcher.ui
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
@@ -148,3 +154,15 @@ fun KolahalTheme(content: @Composable () -> Unit) {
         content = content,
     )
 }
+
+/**
+ * Top / side padding that clears both the status bar and any camera cutout. With the status bar
+ * hidden (`statusbar hide`) its inset is 0, but the cutout's is not, so nothing ends up behind
+ * the camera hole.
+ */
+@androidx.compose.runtime.Composable
+fun androidx.compose.ui.Modifier.cutoutSafePadding(): androidx.compose.ui.Modifier = windowInsetsPadding(
+    androidx.compose.foundation.layout.WindowInsets.statusBars
+        .union(androidx.compose.foundation.layout.WindowInsets.displayCutout)
+        .only(androidx.compose.foundation.layout.WindowInsetsSides.Top + androidx.compose.foundation.layout.WindowInsetsSides.Horizontal),
+)

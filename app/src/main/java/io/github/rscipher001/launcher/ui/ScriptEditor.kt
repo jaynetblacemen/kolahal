@@ -357,7 +357,7 @@ fun ScriptEditor(
         Modifier
             .fillMaxSize()
             .background(Term.bg)
-            .statusBarsPadding()
+            .cutoutSafePadding()
             .navigationBarsPadding()
             .imePadding()
             .onPreviewKeyEvent { e ->

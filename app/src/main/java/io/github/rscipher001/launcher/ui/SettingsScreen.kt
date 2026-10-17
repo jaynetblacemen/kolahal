@@ -94,6 +94,7 @@ private val TITLES = mapOf(
     "log.spacing" to "Space between commands (dp)",
     "log.lineheight" to "Line height (dp)",
     "log.keepdays" to "Keep log for (days)",
+    "log.fresh" to "Fresh screen after (minutes away)",
     "suggestions.auto" to "Only while typing",
     "suggestions.idle" to "Favourites & most-used on empty prompt",
     "suggestions" to "How many",
@@ -153,7 +154,7 @@ private val CATEGORIES = listOf(
         "log", "Log", "Times, spacing, line height, history", R.drawable.ic_stat_terminal,
         listOf(
             "Display" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_SPACING, Keys.LOG_LINE_HEIGHT),
-            "History" to listOf(Keys.LOG_KEEP_DAYS),
+            "History" to listOf(Keys.LOG_FRESH, Keys.LOG_KEEP_DAYS),
         ),
     ),
     Category(

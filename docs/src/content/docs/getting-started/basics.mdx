@@ -53,7 +53,8 @@ The strip above the key bar changes as you type:
   `script run|edit|…`; keys and values after `config`; theme names after `theme`; contacts after
   `call` and `sms`; `on|off|status` after `work` and `private`.
 
-Tap a chip to use it. Tab (on the key bar or a hardware keyboard) takes the first one. The number
+Command chips start with `$` (`$ maps`), app chips show the app name, and a ✕ at the end of the
+prompt clears it. Tap a chip to use it. Tab (on the key bar or a hardware keyboard) takes the first one. The number
 of chips is `suggestions` (default 12).
 
 ## The log
@@ -65,6 +66,11 @@ have their own colours, and output older than the latest command is dimmed (`log
 - `help`, `config` and `script ls` render in two columns; `apps` is a grid of tappable chips.
 - Each script run gets a `── hn · 22:40 ──` header and a stable per-script colour. Lines that
   arrived while you were away are marked `•` under a "N new since you left" divider.
+- <span class="k-new">new</span> **Fresh screen** (`log.fresh`, 10 minutes): come back to home after a while and it
+  starts clean, so old output and app grids are not under your thumb. Nothing is deleted: tap
+  "▴ N earlier lines" to bring it back. Script lines that arrived while you were away stay visible.
+- When you scroll up, a ↓ button jumps back to the newest lines. Repeating a command with nothing
+  printed in between (`settings`, `settings`) doesn't add another line.
 - Scroll to the top to load older entries. Entries older than `log.keepdays` (60) are trimmed.
 - `clear` clears the screen, `clear history` forgets the ↑ history but keeps the log, and
   `clear all` removes both.

@@ -88,7 +88,7 @@ class LogRepository private constructor(private val context: Context) {
         val out = ArrayList<LogEntry>()
         db.readableDatabase.rawQuery(
             "SELECT id, ts, kind, source, text, ctx FROM logs WHERE id > ? ORDER BY id DESC LIMIT ?",
-            arrayOf(prefs.getLong(KEY_CLEARED_UP_TO, 0L).toString(), limit.toString()),
+            arrayOf(visibleAfter().toString(), limit.toString()),
         ).use { c ->
             while (c.moveToNext()) {
                 out += LogEntry(
@@ -131,9 +131,41 @@ class LogRepository private constructor(private val context: Context) {
     /** Deletes the whole log, history included. */
     fun clearAll() {
         db.writableDatabase.delete("logs", null, null)
-        prefs.edit().putLong(KEY_CLEARED_UP_TO, 0L).putLong(KEY_HISTORY_FROM, 0L).apply()
+        prefs.edit().putLong(KEY_CLEARED_UP_TO, 0L).putLong(KEY_HISTORY_FROM, 0L).putLong(KEY_HIDDEN_UP_TO, 0L).apply()
         changed()
     }
+
+    /** Lines at or below this id are not shown: the larger of a real clear and a fresh-screen hide. */
+    private fun visibleAfter(): Long = maxOf(prefs.getLong(KEY_CLEARED_UP_TO, 0L), prefs.getLong(KEY_HIDDEN_UP_TO, 0L))
+
+    /**
+     * Fresh screen (`log.fresh`): hides what is on screen without deleting anything. [hiddenCount]
+     * says how much can come back with [unhide].
+     */
+    fun hideScreen(upTo: Long = maxId()) {
+        prefs.edit().putLong(KEY_HIDDEN_UP_TO, upTo).apply()
+        changed()
+    }
+
+    fun unhide() {
+        prefs.edit().putLong(KEY_HIDDEN_UP_TO, 0L).apply()
+        changed()
+    }
+
+    /** Lines a fresh-screen hide is keeping out of view (0 when nothing can be restored). */
+    fun hiddenCount(): Int {
+        val cleared = prefs.getLong(KEY_CLEARED_UP_TO, 0L)
+        val hidden = prefs.getLong(KEY_HIDDEN_UP_TO, 0L)
+        if (hidden <= cleared) return 0
+        return db.readableDatabase.rawQuery(
+            "SELECT COUNT(*) FROM logs WHERE id > ? AND id <= ?", arrayOf(cleared.toString(), hidden.toString()),
+        ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+    }
+
+    /** The newest line, to avoid logging the same command twice in a row with nothing in between. */
+    fun last(): Pair<LogKind, String>? = db.readableDatabase.rawQuery(
+        "SELECT kind, text FROM logs WHERE id > ? ORDER BY id DESC LIMIT 1", arrayOf(visibleAfter().toString()),
+    ).use { c -> if (c.moveToFirst()) LogKind.of(c.getString(0)) to c.getString(1) else null }
 
     /** Hides everything currently on screen; command history is kept for recall. */
     fun clearScreen() {
@@ -182,6 +214,7 @@ class LogRepository private constructor(private val context: Context) {
 
     companion object {
         private const val KEY_CLEARED_UP_TO = "cleared_up_to"
+        private const val KEY_HIDDEN_UP_TO = "hidden_up_to"
         private const val KEY_SEEN_UP_TO = "seen_up_to"
         private const val KEY_HISTORY_FROM = "history_from"
         const val ACTION_LOGS_CHANGED = "io.github.rscipher001.launcher.LOGS_CHANGED"
