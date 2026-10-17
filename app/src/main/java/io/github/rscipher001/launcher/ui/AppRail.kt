@@ -1,30 +1,43 @@
 package io.github.rscipher001.launcher.ui
 
-import androidx.compose.animation.core.animateFloatAsState
+import android.os.SystemClock
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.systemGestureExclusion
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -32,9 +45,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -53,158 +67,249 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.rscipher001.launcher.apps.AppEntry
 import io.github.rscipher001.launcher.apps.ProfileKind
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import java.text.Normalizer
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sign
+import kotlin.math.sin
 
-/** Pure maths of the alphabet rail (bucketing, hit testing, popup placement); unit-tested. */
-internal object RailMath {
+/** One row of the selector list: an app under its section letter (or the favourites section). */
+internal data class SelectorEntry<T>(
+    val item: T,
+    val key: String,
+    /** Section letter shown in the gutter: `★`, `#` or A–Z. */
+    val section: Char,
+    /** Ordinal of the section in the list, for the per-section haptic tick. */
+    val sectionIndex: Int,
+    /** First row of its section: the gutter shows the letter here. */
+    val sectionStart: Boolean,
+    val favourite: Boolean,
+)
+
+/**
+ * Pure maths of the app selector (list building, scrub mapping, fisheye); unit-tested.
+ * Positions are in rows unless named `px`: row `i` spans `[i, i + 1)` of the list.
+ */
+internal object SelectorMath {
     const val OTHER = '#'
+    const val FAV = '★'
 
-    /** Rail order: `#` (digits, symbols, other scripts) first, as in the sorted app list, then A–Z. */
+    /** Section order: `#` (digits, symbols, other scripts) first, then A–Z. */
     val LETTERS: List<Char> = listOf(OTHER) + ('A'..'Z')
 
-    /** The rail letter of a label: its first letter or digit, accents stripped; anything outside A–Z is `#`. */
+    /** Section letter of a label: its first letter or digit, accents stripped; anything outside A–Z is `#`. */
     fun letterOf(label: String): Char {
         val first = label.firstOrNull { it.isLetterOrDigit() } ?: return OTHER
         val base = Normalizer.normalize(first.toString(), Normalizer.Form.NFD).first().uppercaseChar()
         return if (base in 'A'..'Z') base else OTHER
     }
 
-    /** Items per rail letter: pinned first, then by label, then by [profileRank] (personal before work). */
-    fun <T> buckets(items: List<T>, label: (T) -> String, pinned: (T) -> Boolean, profileRank: (T) -> Int): Map<Char, List<T>> =
-        items.groupBy { letterOf(label(it)) }.mapValues { (_, list) ->
-            list.sortedWith(compareBy<T>({ !pinned(it) }, { label(it).lowercase() }, { profileRank(it) }))
+    /**
+     * The whole list: favourites (if any) as a `★` section at the top, then every item
+     * alphabetically in `#`, A–Z sections; ties by label, then [profileRank] (personal first).
+     */
+    fun <T> build(
+        items: List<T>,
+        label: (T) -> String,
+        key: (T) -> String,
+        pinned: (T) -> Boolean,
+        profileRank: (T) -> Int,
+    ): List<SelectorEntry<T>> {
+        val byLabel = compareBy<T>({ label(it).lowercase() }, { profileRank(it) })
+        val favs = items.filter(pinned).sortedWith(byLabel)
+        val all = items.sortedWith(compareBy<T> { LETTERS.indexOf(letterOf(label(it))) }.then(byLabel))
+        val out = ArrayList<SelectorEntry<T>>(favs.size + all.size)
+        var section = -1
+        favs.forEachIndexed { i, it ->
+            if (i == 0) section++
+            out += SelectorEntry(it, "f:" + key(it), FAV, section, i == 0, true)
         }
-
-    /** Letter slot under [y] (rail-local px), clamped so sliding past either end keeps the end letter. */
-    fun letterIndexAt(y: Float, slot: Float, count: Int): Int =
-        floor(y / slot).toInt().coerceIn(0, count - 1)
-
-    /** Scale of a letter [distance] slots from the touched one: the Niagara-style wave. */
-    fun waveScale(distance: Int): Float = when (abs(distance)) {
-        0 -> 2.1f
-        1 -> 1.5f
-        2 -> 1.2f
-        else -> 1f
+        var prev: Char? = null
+        for (it in all) {
+            val letter = letterOf(label(it))
+            val start = letter != prev
+            if (start) section++
+            prev = letter
+            out += SelectorEntry(it, "a:" + key(it), letter, section, start, false)
+        }
+        return out
     }
 
-    /** Popup top so its [rows] are centred on [fingerY], kept inside a container of [containerH]. */
-    fun popupTop(fingerY: Float, rowH: Float, rows: Int, containerH: Float): Float {
-        val h = rowH * rows
-        return (fingerY - h / 2).coerceIn(0f, max(0f, containerH - h))
+    /** Dead band at each end of the strip: the first and last few percent pin the list's ends. */
+    const val DEAD = 0.04f
+
+    /**
+     * Strip position [t] (0 top … 1 bottom) → list scroll fraction: proportional, with dead
+     * bands and a slight ease at the ends so the first and last apps are easy to land on.
+     */
+    fun scrollFraction(t: Float): Float {
+        val u = ((t - DEAD) / (1f - 2 * DEAD)).coerceIn(0f, 1f)
+        val smooth = u * u * (3f - 2f * u)
+        return 0.7f * u + 0.3f * smooth
     }
 
-    /** Visible popup row under [fingerY], or null when the finger is above or below the popup. */
-    fun popupRowAt(fingerY: Float, top: Float, rowH: Float, rows: Int): Int? {
-        if (rows <= 0) return null
-        val i = floor((fingerY - top) / rowH).toInt()
-        return i.takeIf { it in 0 until rows }
+    /** Scroll offset (px) for [fraction] of a list of [count] rows of [rowPx] in a [viewportPx] window. */
+    fun scrollOffset(fraction: Float, count: Int, rowPx: Float, viewportPx: Float): Float =
+        fraction.coerceIn(0f, 1f) * maxScroll(count, rowPx, viewportPx)
+
+    fun maxScroll(count: Int, rowPx: Float, viewportPx: Float): Float = max(0f, count * rowPx - viewportPx)
+
+    /** The list position (rows) under a finger [yInPanel] px below the panel's top. */
+    fun contact(scrollPx: Float, yInPanel: Float, rowPx: Float): Float = (scrollPx + yInPanel) / rowPx
+
+    /** Row index at [contact], clamped into the list; -1 for no contact (NaN) or an empty list. */
+    fun focusedIndex(contact: Float, count: Int): Int =
+        if (contact.isNaN() || count <= 0) -1 else floor(contact).toInt().coerceIn(0, count - 1)
+
+    /** Peak magnification of the focused row, and the reach (rows) of the fisheye on each side. */
+    const val PEAK = 0.35f
+    const val REACH = 3f
+
+    /** Fisheye bell: 1 at the contact, tapering smoothly to 0 at ±[REACH] rows. */
+    private fun bell(x: Float): Float =
+        if (abs(x) >= REACH) 0f else (1f + cos(PI.toFloat() * x / REACH)) / 2f
+
+    /** Scale of a row whose centre is [x] rows from the contact point. */
+    fun fisheyeScale(x: Float): Float = 1f + PEAK * bell(x)
+
+    /**
+     * Extra vertical displacement (rows) of a row centred [x] rows from the contact, so magnified
+     * rows push their neighbours apart instead of overlapping: the integral of the extra scale.
+     */
+    fun fisheyeShift(x: Float): Float {
+        val a = min(abs(x), REACH)
+        val integral = (a + REACH / PI.toFloat() * sin(PI.toFloat() * a / REACH)) / 2f
+        return sign(x) * PEAK * integral
     }
 
-    /** -1 / +1 when the finger is above / below the popup (scroll that way), else 0. */
-    fun edgeDirection(fingerY: Float, top: Float, rowH: Float, rows: Int): Int = when {
-        fingerY < top -> -1
-        fingerY >= top + rowH * rows -> 1
-        else -> 0
+    /**
+     * Edge auto-scroll speed (px/ms, negative = up) for a finger [y] px below the panel's top,
+     * ramping up over a [zone] at each end of a panel [height] px tall.
+     */
+    fun edgeSpeed(y: Float, height: Float, zone: Float, maxSpeed: Float): Float {
+        val z = min(zone, height / 4f)
+        if (z <= 0f) return 0f
+        return when {
+            y < z -> -maxSpeed * ((z - y) / z).coerceIn(0f, 1f)
+            y > height - z -> maxSpeed * ((y - (height - z)) / z).coerceIn(0f, 1f)
+            else -> 0f
+        }
     }
-
-    /** First visible item after scrolling [dir] from [first], for [count] items shown [rows] at a time. */
-    fun scrolled(first: Int, dir: Int, count: Int, rows: Int): Int =
-        (first + dir).coerceIn(0, max(0, count - rows))
 }
 
-private class RailState {
-    /** Letter index under the finger while touching the rail (drives the wave); -1 at rest. */
-    var touchIndex by mutableIntStateOf(-1)
-    /** Letter whose popup is open. */
-    var active by mutableStateOf<Char?>(null)
-    var first by mutableIntStateOf(0)
-    /** Highlighted item (index into the letter's list). */
-    var selected by mutableStateOf<Int?>(null)
-    var popupTop by mutableFloatStateOf(0f)
-    /** Popup left open after release over the rail, waiting for a tap. */
-    var held by mutableStateOf(false)
+private enum class Mode { CLOSED, SCRUB, SELECT, OPEN }
+
+private class SelectorState {
+    var mode by mutableStateOf(Mode.CLOSED)
+    /** List position (rows) under the finger while it is down; NaN when not touching. */
+    var contact by mutableFloatStateOf(Float.NaN)
+    /** Finger Y in the selector's coordinates (drives the letter bubble). */
+    var fingerY by mutableFloatStateOf(0f)
+    /** Scroll offset (px) set by scrubbing. */
+    var scrollPx = 0f
     var interaction by mutableIntStateOf(0)
 
     fun close() {
-        active = null; held = false; selected = null; touchIndex = -1; first = 0
+        mode = Mode.CLOSED
+        contact = Float.NaN
     }
 }
 
-private const val MAX_ROWS = 8
-private const val LONG_PRESS_MS = 500L
-private const val EDGE_SCROLL_MS = 110L
-private const val HOLD_MS = 3_000L
+private val ROW_H = 42.dp
+private val STRIP_W = 36.dp
+private val TOP_GAP = 8.dp
+/** Leaves the "jump to latest" button in the log's bottom-right corner reachable. */
+private val BOTTOM_GAP = 72.dp
+private const val HOLD_MS = 450L
+private const val IDLE_MS = 4_000L
+private const val FRAME_MS = 16L
+
+private fun LazyListState.scrollToPx(px: Float, rowPx: Int) {
+    val index = (px / rowPx).toInt()
+    requestScrollToItem(index, (px - index * rowPx).roundToInt())
+}
 
 /**
- * Niagara-style alphabet rail along the right edge (`selector.rail`). Touch and slide along it:
- * the letter under the finger swells with its neighbours, a light tick marks each letter, and a
- * popup to the left lists that letter's apps at finger height. Slide left into the popup to pick
- * a row and lift to launch; hold still on a row for its actions. Lifting over the rail leaves the
- * popup open for a tap (it closes on an outside tap or after 3 s).
+ * App selector on the right edge of the log (`selector.rail`): a slim handle at rest. Touch the
+ * edge and a panel slides in listing every app (favourites first, then A–Z). Sliding along the
+ * edge glides through the whole list proportionally; the row under the finger is magnified with
+ * its neighbours (fisheye) and a bubble shows its section letter, ticking once per section.
+ * Slide left into the panel to freeze the list and pick a row (auto-scrolling at the panel's
+ * ends); lift to launch, or hold still for its actions. Lifting on the edge leaves the panel
+ * open as a normal list (fling, tap, long-press); an outside tap, Back or 4 s idle closes it.
  *
- * Gesture exclusion: Android honours at most 200dp of exclusion per screen edge, so only the
- * rail's central 200dp opts out of the back swipe. Above and below that band the back gesture
- * keeps working; vertical slides work everywhere on the rail, and the slide left into the popup
- * is safe inside the band (the popup centres on the finger, which is usually there).
+ * The strip consumes all its touches, so the home pager never turns the page under it.
+ * Gesture exclusion: Android honours at most 200dp per screen edge, so only the strip's central
+ * 200dp opts out of the back swipe; elsewhere an edge swipe still goes back (and cancels).
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AppRail(
+fun AppSelector(
     apps: List<AppEntry>,
     pinned: Set<String>,
     onLaunch: (AppEntry) -> Unit,
     onLongPress: (AppEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val buckets = remember(apps, pinned) {
-        RailMath.buckets(apps.filter { !it.hidden }, { it.label }, { it.key in pinned }, { it.profile.kind.ordinal })
+    val entries = remember(apps, pinned) {
+        SelectorMath.build(
+            apps.filter { !it.hidden },
+            label = { it.label },
+            key = { it.key },
+            pinned = { it.key in pinned },
+            profileRank = { it.profile.kind.ordinal },
+        )
     }
-    val state = remember { RailState() }
+    val state = remember { SelectorState() }
+    val listState = rememberLazyListState()
     val haptics = LocalHapticFeedback.current
     val density = LocalDensity.current
-    // An app list change (uninstall, hide) must not leave a stale selection behind.
-    LaunchedEffect(buckets) { if (!state.held) state.close() }
-    LaunchedEffect(state.held, state.interaction) {
-        if (state.held) {
-            delay(HOLD_MS)
-            state.close()
+    val launch by rememberUpdatedState(onLaunch)
+    val longPress by rememberUpdatedState(onLongPress)
+
+    BackHandler(enabled = state.mode == Mode.OPEN) { state.close() }
+    // Left open: closes after a few idle seconds (scrolling it counts as use).
+    LaunchedEffect(state.mode, state.interaction) {
+        if (state.mode != Mode.OPEN) return@LaunchedEffect
+        snapshotFlow { listState.isScrollInProgress }.collectLatest { scrolling ->
+            if (!scrolling) {
+                delay(IDLE_MS)
+                state.close()
+            }
         }
     }
 
     BoxWithConstraints(modifier.fillMaxSize()) {
-        val letters = RailMath.LETTERS
-        // Letters share the height (leaving room for the jump-to-latest button), at most 18dp each.
-        val slotDp = ((maxHeight - 96.dp) / letters.size).coerceAtMost(18.dp)
-        if (slotDp < 9.dp) return@BoxWithConstraints
-        val railH = slotDp * letters.size
-        val touchW = 40.dp
-        val rowH = 44.dp
-        val containerH = constraints.maxHeight.toFloat()
         val containerW = constraints.maxWidth.toFloat()
-        val slotPx = with(density) { slotDp.toPx() }
-        val railHPx = with(density) { railH.toPx() }
-        val rowHPx = with(density) { rowH.toPx() }
-        val railTop = (containerH - railHPx) / 2
-        val maxRows = min(MAX_ROWS, (containerH / rowHPx).toInt()).coerceAtLeast(1)
+        val containerH = constraints.maxHeight.toFloat()
+        val stripTopPx = with(density) { TOP_GAP.toPx() }
+        val stripHPx = containerH - stripTopPx - with(density) { BOTTOM_GAP.toPx() }
+        if (stripHPx < with(density) { 160.dp.toPx() }) return@BoxWithConstraints
+        val count = entries.size
+        val rowPx = with(density) { ROW_H.roundToPx() }
+        // The panel spans the strip; a short list is centred on it instead.
+        val panelHPx = min(stripHPx, (count * rowPx).toFloat()).coerceAtLeast(rowPx.toFloat())
+        val panelTopPx = stripTopPx + (stripHPx - panelHPx) / 2
+        val panelW = with(density) { (containerW * 0.75f).toDp() }.coerceAtLeast(220.dp).coerceAtMost(maxWidth - 24.dp)
+        val panelWPx = with(density) { panelW.toPx() }
+        val stripWPx = with(density) { STRIP_W.toPx() }
         val exclusionPx = with(density) { 200.dp.toPx() }
-        val leavePx = with(density) { 6.dp.toPx() }
+        val leavePx = with(density) { 10.dp.toPx() }
+        val slopPx = with(density) { 8.dp.toPx() }
+        val edgeZonePx = with(density) { 56.dp.toPx() }
+        val edgeMaxSpeed = with(density) { 1.1.dp.toPx() } // px per ms at full depth
+        val open = state.mode != Mode.CLOSED
 
-        val current by rememberUpdatedState(buckets)
-        val launch by rememberUpdatedState(onLaunch)
-        val longPress by rememberUpdatedState(onLongPress)
-        fun appsOf(letter: Char?) = letter?.let { current[it] }.orEmpty()
-        fun rowsOf(letter: Char?) = min(appsOf(letter).size, maxRows)
-
-        val open = state.active != null && appsOf(state.active).isNotEmpty()
-
-        // Held open: a tap anywhere else closes it (and is swallowed, like a menu).
-        if (state.held) {
+        // Left open: a tap anywhere else closes it, and the whole touch is swallowed.
+        if (state.mode == Mode.OPEN) {
             Box(
                 Modifier
                     .fillMaxSize()
@@ -212,264 +317,306 @@ fun AppRail(
                         awaitEachGesture {
                             awaitFirstDown().consume()
                             state.close()
+                            while (true) {
+                                val e = awaitPointerEvent()
+                                e.changes.forEach { it.consume() }
+                                if (e.changes.none { it.pressed }) break
+                            }
                         }
                     }
             )
         }
 
-        if (open) {
-            val items = appsOf(state.active)
-            val rows = rowsOf(state.active)
-            val popupW = min(240f, (maxWidth - touchW - 24.dp).value).dp
-            val popupWPx = with(density) { popupW.toPx() }
-            val gapPx = with(density) { 4.dp.toPx() }
-            Box(
-                Modifier
-                    .offset { IntOffset((containerW - with(density) { touchW.toPx() } - gapPx - popupWPx).roundToInt(), state.popupTop.roundToInt()) }
-                    .width(popupW)
-                    .height(rowH * rows)
-                    .testTag("rail-popup")
-                    .background(Term.surface, RoundedCornerShape(6.dp))
-                    .border(1.dp, Term.prompt.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-                    // Held open: drag to scroll a long letter.
-                    .pointerInput(rows, items.size) {
-                        var acc = 0f
-                        detectVerticalDragGestures(onDragStart = { acc = 0f }) { change, dy ->
-                            change.consume()
-                            acc += dy
-                            while (acc <= -rowHPx) { state.first = RailMath.scrolled(state.first, 1, items.size, rows); acc += rowHPx }
-                            while (acc >= rowHPx) { state.first = RailMath.scrolled(state.first, -1, items.size, rows); acc -= rowHPx }
-                            state.interaction++
-                        }
-                    },
+        androidx.compose.animation.AnimatedVisibility(
+            visible = open && count > 0,
+            // Opaque from the first frame (no fade): readable while it slides in.
+            enter =
+                slideInHorizontally(spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)) { it / 4 },
+            exit = fadeOut(tween(140)) + slideOutHorizontally(tween(160)) { it / 4 },
+            modifier = Modifier.offset { IntOffset((containerW - panelWPx).roundToInt(), panelTopPx.roundToInt()) },
+        ) {
+            val shape = RoundedCornerShape(topStart = 14.dp, bottomStart = 14.dp)
+            LazyColumn(
+                state = listState,
+                userScrollEnabled = state.mode == Mode.OPEN,
+                modifier = Modifier
+                    .width(panelW)
+                    .height(with(density) { panelHPx.toDp() })
+                    .testTag("app-selector-panel")
+                    .clip(shape)
+                    .background(Term.surface, shape)
+                    .border(1.dp, Term.dim.copy(alpha = 0.25f), shape)
+                    // A sideways drag on the open panel must not turn the home page.
+                    .pointerInput(Unit) { detectHorizontalDragGestures { change, _ -> change.consume() } },
             ) {
-                Column(Modifier.fillMaxSize()) {
-                    for (r in 0 until rows) {
-                        val index = state.first + r
-                        val app = items.getOrNull(index) ?: break
-                        RailRow(
-                            app = app,
-                            pinned = app.key in pinned,
-                            selected = state.selected == index,
-                            height = rowH,
-                            onClick = { state.close(); launch(app) },
-                            onLongClick = { state.close(); longPress(app) },
-                        )
-                    }
+                itemsIndexed(entries, key = { _, e -> e.key }) { index, entry ->
+                    SelectorRow(
+                        entry = entry,
+                        index = index,
+                        count = count,
+                        state = state,
+                        rowPx = rowPx,
+                        pinned = entry.item.key in pinned,
+                        enabled = state.mode == Mode.OPEN,
+                        onClick = { state.close(); launch(entry.item) },
+                        onLongClick = { state.close(); longPress(entry.item) },
+                    )
                 }
-                val small = Term.mono.copy(color = Term.dim, fontSize = (Term.fontSize - 3).sp)
-                if (state.first > 0) Text("▴${state.first}", style = small, modifier = Modifier.align(Alignment.TopEnd).padding(end = 4.dp))
-                val below = items.size - state.first - rows
-                if (below > 0) Text("▾$below", style = small, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 4.dp))
             }
         }
 
+        // Section letter bubble, just left of the finger while scrubbing the edge.
+        val bubble by remember(entries) {
+            derivedStateOf { entries.getOrNull(SelectorMath.focusedIndex(state.contact, entries.size))?.section }
+        }
+        val bubbleSize = 52.dp
+        val bubblePx = with(density) { bubbleSize.toPx() }
+        if (state.mode == Mode.SCRUB) bubble?.let { letter ->
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            (containerW - stripWPx - bubblePx - 8.dp.toPx()).roundToInt(),
+                            (state.fingerY - bubblePx / 2).coerceIn(0f, containerH - bubblePx).roundToInt(),
+                        )
+                    }
+                    .size(bubbleSize)
+                    .background(Term.bg, CircleShape)
+                    .border(1.5.dp, Term.prompt, CircleShape),
+            ) {
+                Text(
+                    letter.toString(),
+                    style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize + 8).sp),
+                )
+            }
+        }
+
+        // The edge strip: invisible touch area with a slim handle; owns every touch it gets.
         Box(
             Modifier
-                .align(Alignment.CenterEnd)
-                .width(touchW)
-                .height(railH)
-                .testTag("app-rail")
-                .semantics { contentDescription = "app index: slide to browse apps by letter" }
+                .offset { IntOffset((containerW - stripWPx).roundToInt(), stripTopPx.roundToInt()) }
+                .width(STRIP_W)
+                .height(with(density) { stripHPx.toDp() })
+                .testTag("app-selector")
+                .semantics { contentDescription = "app selector: slide along the edge to browse all apps" }
                 // Only the central 200dp: Android ignores exclusion beyond 200dp per edge.
                 .systemGestureExclusion { c ->
                     val h = c.size.height.toFloat()
                     val top = ((h - exclusionPx) / 2).coerceAtLeast(0f)
                     Rect(0f, top, c.size.width.toFloat(), min(h, top + exclusionPx))
                 }
-                .pointerInput(slotPx, railTop, rowHPx, maxRows, containerH) {
+                .pointerInput(entries, rowPx, panelHPx, panelTopPx, stripHPx) {
                     awaitEachGesture {
-                        val down = awaitFirstDown()
+                        val down = awaitFirstDown(requireUnconsumed = false)
                         down.consume()
-                        state.held = false
-                        var lastIdx = -1
-                        var rowSince = 0L
-                        var lastEdgeScroll = 0L
-                        var inPopup = false
+                        if (count == 0) {
+                            while (awaitPointerEvent().changes.onEach { it.consume() }.any { it.pressed }) Unit
+                            return@awaitEachGesture
+                        }
+                        val maxScrollPx = SelectorMath.maxScroll(count, rowPx.toFloat(), panelHPx)
+                        var x = down.position.x
+                        var y = down.position.y
+                        var selecting = false
+                        var lastSection = -1
+                        var focus = -1
+                        var rowSince = SystemClock.uptimeMillis()
+                        var anchorY = y
+                        var anchorX = x
+                        var lastFrame = rowSince
 
-                        fun trackRail(y: Float) {
-                            val idx = RailMath.letterIndexAt(y, slotPx, letters.size)
-                            if (idx != lastIdx) {
-                                lastIdx = idx
-                                state.touchIndex = idx
-                                haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
-                                val letter = letters[idx]
-                                state.active = letter.takeIf { current[it].orEmpty().isNotEmpty() }
-                                state.first = 0
+                        fun update(now: Long) {
+                            val cy = stripTopPx + y
+                            state.fingerY = cy
+                            if (!selecting) {
+                                val f = SelectorMath.scrollFraction(y / stripHPx)
+                                state.scrollPx = SelectorMath.scrollOffset(f, count, rowPx.toFloat(), panelHPx)
+                                listState.scrollToPx(state.scrollPx, rowPx)
                             }
-                            state.selected = null
-                            state.popupTop = RailMath.popupTop(railTop + y, rowHPx, rowsOf(state.active), containerH)
+                            val yIn = (cy - panelTopPx).coerceIn(0f, panelHPx - 1f)
+                            state.contact = SelectorMath.contact(state.scrollPx, yIn, rowPx.toFloat())
+                            val f = SelectorMath.focusedIndex(state.contact, count)
+                            val section = entries[f].sectionIndex
+                            if (section != lastSection) {
+                                if (lastSection != -1) haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+                                lastSection = section
+                            }
+                            // Any real movement (either axis) restarts the hold: sliding sideways
+                            // along one row toward the panel is not "holding still".
+                            if (f != focus || abs(y - anchorY) > slopPx || abs(x - anchorX) > slopPx) {
+                                focus = f
+                                rowSince = now
+                                anchorY = y
+                                anchorX = x
+                            }
                         }
 
-                        fun trackPopup(y: Float, now: Long) {
-                            val items = appsOf(state.active)
-                            val rows = rowsOf(state.active)
-                            if (rows == 0) return
-                            val cy = railTop + y
-                            val row = RailMath.popupRowAt(cy, state.popupTop, rowHPx, rows)
-                            if (row == null) {
-                                // Past the top or bottom edge of a long letter: scroll, one row per tick.
-                                if (now - lastEdgeScroll >= EDGE_SCROLL_MS) {
-                                    val dir = RailMath.edgeDirection(cy, state.popupTop, rowHPx, rows)
-                                    val next = RailMath.scrolled(state.first, dir, items.size, rows)
-                                    lastEdgeScroll = now
-                                    if (next != state.first) state.first = next
-                                    val edgeItem = state.first + if (dir < 0) 0 else rows - 1
-                                    if (edgeItem != state.selected) {
-                                        state.selected = edgeItem
-                                        rowSince = now
-                                        haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+                        state.interaction++
+                        state.mode = Mode.SCRUB
+                        try {
+                            update(rowSince)
+                            while (true) {
+                                val now = SystemClock.uptimeMillis()
+                                val speed = if (selecting) {
+                                    SelectorMath.edgeSpeed(stripTopPx + y - panelTopPx, panelHPx, edgeZonePx, edgeMaxSpeed)
+                                } else 0f
+                                val scrolling = speed != 0f &&
+                                    !(speed < 0f && state.scrollPx <= 0f) && !(speed > 0f && state.scrollPx >= maxScrollPx)
+                                val wait = when {
+                                    scrolling -> FRAME_MS
+                                    selecting -> (HOLD_MS - (now - rowSince)).coerceAtLeast(1L)
+                                    else -> Long.MAX_VALUE
+                                }
+                                if (!scrolling) lastFrame = now
+                                val event = if (wait == Long.MAX_VALUE) awaitPointerEvent() else withTimeoutOrNull(wait) { awaitPointerEvent() }
+                                if (event == null) {
+                                    val t = SystemClock.uptimeMillis()
+                                    if (scrolling) {
+                                        // Near the panel's top or bottom: glide on, faster the deeper.
+                                        state.scrollPx = (state.scrollPx + speed * (t - lastFrame)).coerceIn(0f, maxScrollPx)
+                                        lastFrame = t
+                                        listState.scrollToPx(state.scrollPx, rowPx)
+                                        update(t)
+                                        continue
                                     }
+                                    if (selecting && t - rowSince >= HOLD_MS) {
+                                        // Held still on a row: its actions.
+                                        val app = entries[focus].item
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        state.close()
+                                        longPress(app)
+                                        break
+                                    }
+                                    continue
                                 }
-                            } else {
-                                val index = state.first + row
-                                if (index != state.selected) {
-                                    state.selected = index
-                                    rowSince = now
-                                    haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
-                                }
-                            }
-                        }
-
-                        trackRail(down.position.y)
-                        var lastY = down.position.y
-                        while (true) {
-                            val now = System.currentTimeMillis()
-                            val selectedApp = state.selected?.let { appsOf(state.active).getOrNull(it) }
-                            val edge = inPopup && RailMath.popupRowAt(railTop + lastY, state.popupTop, rowHPx, rowsOf(state.active)) == null
-                            val wait = when {
-                                edge -> EDGE_SCROLL_MS
-                                inPopup && selectedApp != null -> (LONG_PRESS_MS - (now - rowSince)).coerceAtLeast(1L)
-                                else -> Long.MAX_VALUE
-                            }
-                            val event = if (wait == Long.MAX_VALUE) awaitPointerEvent() else withTimeoutOrNull(wait) { awaitPointerEvent() }
-                            if (event == null) {
-                                val t = System.currentTimeMillis()
-                                if (edge) { trackPopup(lastY, t); continue }
-                                // Held still on a row: its actions.
-                                if (selectedApp != null && t - rowSince >= LONG_PRESS_MS) {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    state.close()
-                                    longPress(selectedApp)
-                                    break
-                                }
-                                continue
-                            }
-                            val change = event.changes.firstOrNull { it.id == down.id }
-                            if (change == null) {
-                                state.close()
-                                break
-                            }
-                            if (!change.pressed) {
-                                // A cancel (e.g. the system took the touch for the back gesture)
-                                // arrives as an already-consumed release: never launch on it.
-                                if (change.isConsumed) {
+                                val change = event.changes.firstOrNull { it.id == down.id }
+                                if (change == null) {
                                     state.close()
                                     break
                                 }
-                                val app = state.selected?.let { appsOf(state.active).getOrNull(it) }
-                                when {
-                                    inPopup && app != null -> { state.close(); launch(app) }
-                                    !inPopup && state.active != null -> {
-                                        state.held = true
-                                        state.touchIndex = -1
+                                if (!change.pressed) {
+                                    // A cancel (e.g. the system took the touch for the back gesture)
+                                    // arrives as an already-consumed release: never launch on it.
+                                    if (change.isConsumed) {
+                                        state.close()
+                                    } else if (selecting) {
+                                        val app = entries[focus].item
+                                        state.close()
+                                        launch(app)
+                                    } else {
+                                        // Lifted on the edge: leave the list open for a tap or a fling.
+                                        state.contact = Float.NaN
+                                        state.mode = Mode.OPEN
                                         state.interaction++
                                     }
-                                    else -> state.close()
+                                    break
                                 }
-                                break
+                                change.consume()
+                                x = change.position.x
+                                y = change.position.y
+                                selecting = x < -leavePx
+                                state.mode = if (selecting) Mode.SELECT else Mode.SCRUB
+                                update(SystemClock.uptimeMillis())
                             }
-                            change.consume()
-                            val p = change.position
-                            lastY = p.y
-                            inPopup = p.x < -leavePx
-                            if (inPopup) trackPopup(p.y, System.currentTimeMillis()) else trackRail(p.y)
+                        } catch (e: CancellationException) {
+                            state.close()
+                            throw e
                         }
-                        if (!state.held) state.touchIndex = -1
                     }
                 },
         ) {
-            // The visible strip: 24dp at the right edge, letters right-aligned.
+            // The handle: a slim bar hugging the edge, following the finger while touched.
+            val touching = state.mode == Mode.SCRUB || state.mode == Mode.SELECT
+            val handleH = 64.dp
+            val handleHPx = with(density) { handleH.toPx() }
             Column(
-                Modifier
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .width(24.dp)
-                    .fillMaxHeight()
-                    .background(Term.bg.copy(alpha = 0.6f), RoundedCornerShape(12.dp)),
+                    .padding(end = 3.dp)
+                    .graphicsLayer {
+                        translationY = if (touching) {
+                            (state.fingerY - stripTopPx - stripHPx / 2).coerceIn(-(stripHPx - handleHPx) / 2, (stripHPx - handleHPx) / 2)
+                        } else 0f
+                        alpha = if (open && !touching) 0.35f else 1f
+                    },
             ) {
-                val touching = state.touchIndex
-                val activeIdx = state.active?.let { letters.indexOf(it) } ?: -1
-                letters.forEachIndexed { i, letter ->
-                    val has = current[letter].orEmpty().isNotEmpty()
-                    val target = if (touching >= 0) RailMath.waveScale(i - touching) else 1f
-                    val scale by animateFloatAsState(target, tween(90), label = "rail-wave")
-                    val shiftPx = with(density) { 14.dp.toPx() }
-                    val color = when {
-                        i == activeIdx || i == touching -> Term.prompt
-                        has -> Term.fg.copy(alpha = 0.75f)
-                        else -> Term.dim.copy(alpha = 0.3f)
-                    }
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(slotDp)
-                            .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
-                                translationX = -(scale - 1f) * shiftPx
-                                transformOrigin = TransformOrigin(1f, 0.5f)
-                            },
-                    ) {
-                        Text(
-                            letter.toString(),
-                            style = Term.mono.copy(
-                                color = color,
-                                fontSize = (slotDp.value * 0.7f).coerceAtMost(12f).sp,
-                                lineHeight = (slotDp.value * 0.8f).sp,
-                                fontWeight = if (i == activeIdx || i == touching) FontWeight.Bold else FontWeight.Normal,
-                            ),
-                            maxLines = 1,
-                        )
-                    }
-                }
+                val small = Term.mono.copy(color = Term.dim.copy(alpha = 0.45f), fontSize = 8.sp, lineHeight = 9.sp)
+                if (!touching) Text("A", style = small)
+                Box(
+                    Modifier
+                        .padding(vertical = 2.dp)
+                        .width(3.dp)
+                        .height(handleH)
+                        .background(if (touching) Term.prompt else Term.dim.copy(alpha = 0.55f), RoundedCornerShape(2.dp))
+                )
+                if (!touching) Text("Z", style = small)
             }
         }
     }
 }
 
-/** One popup row: profile tag in its colour, ★ for favourites, the label; quiet profiles faded. */
+/** One list row: section letter in the gutter, profile tag in its colour, ★, the label. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun RailRow(
-    app: AppEntry,
+private fun SelectorRow(
+    entry: SelectorEntry<AppEntry>,
+    index: Int,
+    count: Int,
+    state: SelectorState,
+    rowPx: Int,
     pinned: Boolean,
-    selected: Boolean,
-    height: androidx.compose.ui.unit.Dp,
+    enabled: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
-    val color = Term.profileColor(app.profile.kind)
+    val app = entry.item
+    val focused by remember(index, count) {
+        derivedStateOf { SelectorMath.focusedIndex(state.contact, count) == index }
+    }
+    val quiet = app.profile.quiet
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .height(height)
-            .alpha(if (app.profile.quiet) 0.45f else 1f)
-            .background(if (selected) Term.prompt.copy(alpha = 0.2f) else Color.Transparent, RoundedCornerShape(6.dp))
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(horizontal = 10.dp),
+            .height(ROW_H)
+            // Fisheye in the draw phase only: no recomposition or relayout per frame.
+            .graphicsLayer {
+                val c = state.contact
+                if (c.isNaN()) {
+                    scaleX = 1f; scaleY = 1f; translationY = 0f
+                } else {
+                    val x = index + 0.5f - c
+                    val s = SelectorMath.fisheyeScale(x)
+                    scaleX = s; scaleY = s
+                    translationY = SelectorMath.fisheyeShift(x) * rowPx
+                }
+                transformOrigin = TransformOrigin(0f, 0.5f)
+                alpha = if (quiet) 0.45f else 1f
+            }
+            .background(if (focused) Term.prompt.copy(alpha = 0.14f) else Color.Transparent, RoundedCornerShape(6.dp))
+            .combinedClickable(enabled = enabled, onClick = onClick, onLongClick = onLongClick)
+            .padding(end = 12.dp),
     ) {
+        Text(
+            if (entry.sectionStart) entry.section.toString() else "",
+            style = Term.mono.copy(color = if (entry.favourite) Term.prompt.copy(alpha = 0.7f) else Term.dim.copy(alpha = 0.7f), fontSize = (Term.fontSize - 3).sp),
+            modifier = Modifier.width(26.dp).padding(start = 10.dp),
+            maxLines = 1,
+        )
         if (app.profile.kind != ProfileKind.PERSONAL) {
             Text(
                 "[${app.profile.kind.tag}] ",
-                style = Term.mono.copy(color = color, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp),
+                style = Term.mono.copy(color = Term.profileColor(app.profile.kind), fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp),
             )
         }
-        if (pinned) Text("★ ", style = Term.mono.copy(color = Term.prompt))
+        if (pinned && !entry.favourite) Text("★ ", style = Term.mono.copy(color = Term.prompt.copy(alpha = 0.7f)))
         Text(
             app.label,
-            style = Term.mono.copy(color = if (selected) Term.prompt else Term.fg, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal),
+            style = Term.mono.copy(
+                color = if (focused) Term.prompt else Term.fg,
+                fontWeight = if (focused) FontWeight.Bold else FontWeight.Normal,
+            ),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

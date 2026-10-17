@@ -100,7 +100,7 @@ private val TITLES = mapOf(
     "suggestions.idle" to "Favourites & most-used on empty prompt",
     "suggestions" to "How many",
     "suggestions.style" to "Style while typing",
-    "selector.rail" to "A–Z app rail",
+    "selector.rail" to "App selector (right edge)",
     "suggestions.rows" to "Chip rows",
     "chips.height" to "Chip height (dp)",
     "keybar.show" to "Show the key bar",

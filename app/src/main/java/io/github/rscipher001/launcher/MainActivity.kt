@@ -250,8 +250,8 @@ private fun HomePager(vm: TerminalViewModel, terminal: @androidx.compose.runtime
     BackHandler(enabled = pager.currentPage != terminalPage) {
         scope.launch { pager.animateScrollToPage(terminalPage) }
     }
-    // The pager's own scrolling grabs touches before its children, which starved the A–Z rail.
-    // Our detector runs after the children instead: a swipe the rail or a log line already
+    // The pager's own scrolling grabs touches before its children, which starved the app selector.
+    // Our detector runs after the children instead: a swipe the selector or a log line already
     // claimed (consumed) never turns the page.
     androidx.compose.foundation.pager.HorizontalPager(
         state = pager,

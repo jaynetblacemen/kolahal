@@ -664,7 +664,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     fun launchApp(app: AppEntry) = io { processor.launch(app) }
 
-    /** Keys of favourite apps (listed first, with ★, in the A–Z rail). */
+    /** Keys of favourite apps (listed first, with ★, in the app selector). */
     fun pinnedKeys(): Set<String> = appPrefs.pinned().toSet()
 
     /** A command line plus the output that followed it (up to the next command; timer output excluded). */

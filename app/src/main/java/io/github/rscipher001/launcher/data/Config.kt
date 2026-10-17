@@ -83,7 +83,7 @@ object Keys {
     val SUGGESTIONS_AUTO = ConfigKey.Bool("suggestions.auto", true, "show suggestions only while typing (keyboard up or text in the prompt)")
     val SUGGESTION_ROWS = ConfigKey.Num("suggestions.rows", 2, 1..2, "rows of suggestion chips while typing (suggestions.style chips)")
     val SUGGESTIONS_STYLE = ConfigKey.Choice("suggestions.style", "list", listOf("list", "chips"), "while typing: a list above the prompt (best match at the bottom, nearest the thumb) or a strip of chips")
-    val SELECTOR_RAIL = ConfigKey.Bool("selector.rail", true, "A–Z rail on the right edge while the keyboard is down: slide along it to see a letter's apps, slide left onto one and lift to launch")
+    val SELECTOR_RAIL = ConfigKey.Bool("selector.rail", true, "slide along the right edge to glide through all your apps; let go on one to launch")
     val SHOW_TIMESTAMPS = ConfigKey.Choice("log.time", "commands", listOf("off", "commands", "all"), "right-aligned times on log lines")
     val LOG_DIM = ConfigKey.Bool("log.dim", true, "dim output older than the latest command")
     val LOG_SPACING = ConfigKey.Num("log.spacing", 12, 0..40, "gap (dp) above each command and its output")

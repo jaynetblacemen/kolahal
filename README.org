@@ -24,9 +24,10 @@ cd docs && npm install && npm run dev    # http://localhost:4321/kolahal/
     hidden until you start typing (=suggestions.auto off= keeps it visible).
   - Suggestions are a list stacked above the prompt, best match at the bottom nearest your thumb,
     with each command's short description (=suggestions.style chips= brings back the chip strip).
-  - A–Z app rail (=selector.rail=, Niagara-style) on the right edge while the keyboard is down:
-    slide along it to see each letter's apps, slide left onto one and lift to launch, or hold on
-    a row for its actions. No keyboard needed.
+  - App selector (=selector.rail=) on the right edge while the keyboard is down: touch the edge
+    and a panel with all your apps (favourites first, then A–Z) slides in. Slide your thumb along
+    the edge to glide smoothly through the whole list, with the app under your finger magnified;
+    slide left onto one and lift to launch, or hold on it for its actions. No keyboard needed.
 - Profiles ::
   - Personal, work (managed profile), Android 15+ private space and clone profiles appear together.
   - Apps are tagged =[W]= / =[S]= / =[C]= in their own colours. =[P]= is shown only when the same

@@ -383,11 +383,11 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 Text("↓", style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize + 4).sp))
             }
         }
-        // [selector] selector.rail: Niagara-style A–Z rail over the log's right edge, keyboard down only.
+        // [selector] selector.rail: fluid full-list app selector on the log's right edge, keyboard down only.
         val railOn = remember(configVersion) { config[Keys.SELECTOR_RAIL] }
         if (railOn && !WindowInsets.isImeVisible) {
             val pinnedKeys = remember(apps, prefsVersion) { vm.pinnedKeys() }
-            AppRail(
+            AppSelector(
                 apps = apps,
                 pinned = pinnedKeys,
                 onLaunch = vm::launchApp,
