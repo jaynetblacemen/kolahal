@@ -172,6 +172,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.onResume()
+        io.github.rscipher001.launcher.apps.PackageEvents.get(this).recheck()
     }
 
     override fun onPause() {

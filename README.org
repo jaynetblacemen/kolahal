@@ -126,7 +126,7 @@ cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
 - Web :: =search=, =yt=, =wiki=, =maps=, =play=; the engine is =config search.engine= (ddg, google,
   bing, brave, startpage) or a custom =search.url= containing =%s=.
 - App events :: Installs, updates and uninstalls appear in the log (=log.packages=); an update, or an
-  uninstall followed by a reinstall within 45 s, is one "updated" line. =installs [n]= lists the history.
+  uninstall followed by a reinstall within 20 s, is one "updated" line. =installs [n]= lists the history.
 - Screen time :: =usage [days]= shows time per app (needs Usage Access).
 - Script library :: 15 ready-made Lua/JS scripts (weather, Hacker News, battery log, …) in the
   script manager's Library section, or =script lib= / =script install <name>=.

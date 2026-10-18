@@ -32,7 +32,11 @@ class PackageEvents private constructor(private val context: Context) {
     private val store = KvStore(context, "packages")
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
-    private val settle = Runnable { io.execute { runCatching { diff() } } }
+    /** While an install / update burst is settling (the short delay), [recheck] must not cut it short. */
+    @Volatile private var settlingUntil = 0L
+    /** When the pending diff runs (0: none pending). */
+    @Volatile private var dueAt = 0L
+    private val settle = Runnable { dueAt = 0L; io.execute { runCatching { diff() } } }
 
     /** [removedAt]: when it went missing (0 = installed); kept for a grace period before "uninstalled". */
     data class Pkg(val label: String, val version: String, val code: Long, val updated: Long, val profile: String, val removedAt: Long = 0L)
@@ -49,10 +53,26 @@ class PackageEvents private constructor(private val context: Context) {
         schedule(delayMs = 2_000)
     }
 
-    /** Waits for the burst of callbacks an install or update produces to finish, then diffs once. */
-    private fun schedule(delayMs: Long = SETTLE_MS) {
+    /**
+     * Waits for the burst of callbacks an install or update produces to finish, then diffs once.
+     * [keepSooner]: a diff already due earlier stays (it re-arms the grace check itself).
+     */
+    private fun schedule(delayMs: Long = SETTLE_MS, keepSooner: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (keepSooner && dueAt in now..now + delayMs) return
+        if (delayMs <= SETTLE_MS && !keepSooner) settlingUntil = now + delayMs
+        dueAt = now + delayMs
         main.removeCallbacks(settle)
         main.postDelayed(settle, delayMs)
+    }
+
+    /**
+     * Called when home comes back on screen. The grace-period re-check is a timer in this process,
+     * which a restart, kill or freeze can lose or delay; this catches up straight away. A settle
+     * already waiting (an install in progress) is left alone.
+     */
+    fun recheck() {
+        if (System.currentTimeMillis() >= settlingUntil) schedule(delayMs = 500, keepSooner = true)
     }
 
     /** Installed apps, and the serials of paused profiles (whose apps are hidden, not gone). */
@@ -126,20 +146,21 @@ class PackageEvents private constructor(private val context: Context) {
                 old.code != p.code || old.version != p.version || old.updated != p.updated -> events += Triple("updated", key, p)
             }
         }
-        var waiting = false
+        // Soonest moment a missing app has been gone for the whole grace period.
+        var nextCheck = Long.MAX_VALUE
         for ((key, p) in before) {
             if (key in now) continue
             when {
                 // A paused / locked profile hides its apps: they are not uninstalled.
                 key.substringAfter('#').toLongOrNull() in paused -> next[key] = p
-                p.removedAt == 0L -> { next[key] = p.copy(removedAt = t); waiting = true }
-                t - p.removedAt < GRACE_MS -> { next[key] = p; waiting = true }
+                p.removedAt == 0L -> { next[key] = p.copy(removedAt = t); nextCheck = minOf(nextCheck, GRACE_MS) }
+                t - p.removedAt < GRACE_MS -> { next[key] = p; nextCheck = minOf(nextCheck, GRACE_MS - (t - p.removedAt)) }
                 else -> events += Triple("uninstalled", key, p)
             }
         }
         save(next)
         // Check again once the grace period is over, so a real uninstall is still logged.
-        if (waiting) schedule(GRACE_MS + 500)
+        if (nextCheck != Long.MAX_VALUE) main.post { schedule(nextCheck + 500, keepSooner = true) }
         if (!enabled || events.isEmpty()) return
         val pending = events.map { (kind, key, p) ->
             val old = before[key]
@@ -195,7 +216,7 @@ class PackageEvents private constructor(private val context: Context) {
         /** An uninstall + reinstall (or the remove/add pair of an update) inside this window is one update. */
         private const val SETTLE_MS = 4_000L
         /** A missing app that reappears within this window was reinstalled: logged as an update. */
-        private const val GRACE_MS = 45_000L
+        private const val GRACE_MS = 20_000L
         private const val SNAPSHOT = "snapshot"
         private const val HISTORY = "history"
         private const val MAX_HISTORY = 200
