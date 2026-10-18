@@ -79,17 +79,49 @@ sealed interface UiEvent {
 sealed interface Suggestion {
     val label: String
 
+    /** Identity in the suggestion lists; [TerminalViewModel.suggestions] never returns two with the same key. */
+    val key: String
+
     data class App(val app: AppEntry) : Suggestion {
         override val label get() = app.label
+        override val key get() = "a:" + app.key
     }
 
-    data class Completion(override val label: String, val replacement: String) : Suggestion
+    data class Completion(override val label: String, val replacement: String) : Suggestion {
+        override val key get() = "c:" + replacement.trimEnd()
+    }
 }
 
 /** One entry of a log line's long-press menu. */
 private const val NOTIF = io.github.rscipher001.launcher.notifications.KolahalNotificationListener.CTX_KEY
 
 data class LogAction(val label: String, val destructive: Boolean = false, val run: () -> Unit)
+
+/** Usage line per command name, for option completion. */
+private val USAGES: Map<String, String> by lazy { CommandProcessor.COMMANDS.associate { it.name to it.usage } }
+
+/** A completable literal in a usage line: `work`, `ls`, `-l`; not `<app>`, `0-100` or `30s`. */
+private val OPTION = Regex("-?[a-z][a-z-]*")
+
+/** `feed [add <url>|rm] [id]` → `feed`, `[add <url>|rm]`, `[id]`: splits on spaces outside brackets. */
+private fun usageTokens(usage: String): List<String> = splitTopLevel(usage, ' ').filter { it.isNotBlank() }
+
+/** Splits on [sep] where it is not inside `[]` or `<>`. */
+private fun splitTopLevel(s: String, sep: Char): List<String> {
+    val out = ArrayList<String>()
+    var depth = 0
+    val cur = StringBuilder()
+    for (ch in s) {
+        when {
+            ch == '[' || ch == '<' -> { depth++; cur.append(ch) }
+            ch == ']' || ch == '>' -> { depth--; cur.append(ch) }
+            ch == sep && depth == 0 -> { out += cur.toString(); cur.clear() }
+            else -> cur.append(ch)
+        }
+    }
+    out += cur.toString()
+    return out
+}
 
 private const val PAGE = 400
 private const val KEY_PENDING_EXPORT = "pending_export"
@@ -441,17 +473,69 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             val enterLaunches = config[Keys.LAUNCH_TOP] && ranked.firstOrNull()?.second?.let { it <= 2 } == true &&
                 names.none { it == head }
             val apps = ranked.map { Suggestion.App(it.first) }
-            return if (enterLaunches) listOf(apps.first()) + cmds.take(3) + apps.drop(1) else cmds.take(3) + apps
+            return (if (enterLaunches) listOf(apps.first()) + cmds.take(3) + apps.drop(1) else cmds.take(3) + apps).distinctBy { it.key }
         }
+        val specific = argSuggestions(head, parts, scriptList)
+        // Commands without their own completer still get the options their usage line lists.
+        val options = if (specific.isEmpty()) usageOptions(head, parts) else emptyList()
+        val typed = text.trim()
+        return (specific + options + historySuggestions(text))
+            .filter { it !is Suggestion.Completion || it.replacement.trim() != typed }
+            .distinctBy { it.key }
+    }
+
+    /** Earlier commands that continue what is typed: the completer for free text (search, note, …). */
+    private fun historySuggestions(text: String): List<Suggestion> {
+        val typed = text.trimStart()
+        return history.asSequence()
+            .filter { it.length > typed.length && it.startsWith(typed, ignoreCase = true) }
+            .take(4)
+            .map { Suggestion.Completion(it, it) }
+            .toList()
+    }
+
+    /** Literal options at this argument position in the command's usage line (`apps [work|personal|…]`). */
+    private fun usageOptions(head: String, parts: List<String>): List<Suggestion> {
+        val usage = USAGES[head] ?: return emptyList()
+        val token = usageTokens(usage).drop(1).getOrNull(parts.size - 2) ?: return emptyList()
+        if (token.startsWith("<")) return emptyList() // a placeholder: <app>, <query>, …
+        val inner = token.removeSurrounding("[", "]")
+        val last = parts.last()
+        val before = parts.dropLast(1).joinToString(" ")
+        return splitTopLevel(inner, '|').mapNotNull { alt ->
+            val word = alt.trim().substringBefore(' ')
+            val rest = alt.trim().substringAfter(' ', "")
+            // `add <url>` and `mute <app>` take a value after them; `name = command` is not an option.
+            word.takeIf { it.matches(OPTION) && (rest.isEmpty() || rest.startsWith("<") || rest.startsWith("[")) }
+        }.filter { it.startsWith(last) && it != last }
+            .map { Suggestion.Completion(it, "$before $it ") }
+    }
+
+    private fun argSuggestions(head: String, parts: List<String>, scriptList: List<Script>): List<Suggestion> {
         val arg = parts.drop(1).joinToString(" ")
         val last = parts.last()
         return when (head) {
-            "open", "launch", "info", "uninstall", "hide", "unhide", "rename" ->
-                appsRepo.search(arg.replace(Regex("\\s-\\w+"), "").trim(), includeHidden = head == "unhide")
-                    .take(12).map {
-                        if (head == "open" || head == "launch") Suggestion.App(it)
-                        else Suggestion.Completion("${it.label} [${it.profile.kind.tag}]", "$head ${it.label}" + flagFor(it))
-                    }
+            "open", "launch" -> if (arg.contains(':')) shortcutSuggestions(head, arg)
+                else appsRepo.search(arg.replace(Regex("\\s-\\w+"), "").trim()).take(12).map { Suggestion.App(it) }
+            "info", "uninstall", "hide", "unhide", "rename", "shortcuts", "pin", "fav", "unpin", "unfav" ->
+                if (head == "rename" && arg.contains('=')) emptyList() else appCompletions(head, arg, includeHidden = head == "unhide")
+            "notifs" -> when {
+                parts.size >= 3 && parts[1] in listOf("mute", "unmute") -> appCompletions("notifs ${parts[1]}", parts.drop(2).joinToString(" "))
+                else -> emptyList()
+            }
+            "alias", "unalias" -> if (parts.size == 2) appPrefs.aliases().filterKeys { it.startsWith(last) }.map { (name, cmd) ->
+                if (head == "unalias") Suggestion.Completion("$name = $cmd", "unalias $name")
+                else Suggestion.Completion("$name = $cmd", "alias $name = $cmd")
+            } else emptyList()
+            "status" -> if (parts.size == 3 && parts[1] == "clear") (_statuses.value.keys + "all")
+                .filter { it.startsWith(last) && it != last }.map { Suggestion.Completion(it, "status clear $it") } else emptyList()
+            "feed" -> if (parts.size == 3 && parts[1] in listOf("rm", "read", "open", "notify", "every", "fetch")) feedCache
+                .filter { last.isEmpty() || it.id.toString().startsWith(last) || (it.title ?: it.url).contains(last, ignoreCase = true) }
+                .take(12).map { Suggestion.Completion("#${it.id} ${it.title ?: it.url}", "feed ${parts[1]} ${it.id}") } else emptyList()
+            "usage", "unlocks" -> if (parts.size == 2) listOf("1", "7", "14", "30")
+                .filter { it.startsWith(last) && it != last }.map { Suggestion.Completion(if (it == "1") "today" else "$it days", "$head $it") } else emptyList()
+            "installs", "updates" -> if (parts.size == 2) listOf("20", "50", "200")
+                .filter { it.startsWith(last) && it != last }.map { Suggestion.Completion("last $it", "$head $it") } else emptyList()
             "script" -> {
                 if (parts.size == 2) {
                     CommandProcessor.SCRIPT_SUBCOMMANDS.filter { it.startsWith(parts[1]) && it != parts[1] }
@@ -471,7 +555,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                     parts.size == 2 && keyIndex == 2 -> emptyList()
                     parts.size == keyIndex + 1 -> {
                         val prefix = parts.take(keyIndex).joinToString(" ")
-                        val subs = if (keyIndex == 1) listOf("set", "get", "reset").filter { it.startsWith(last) } else emptyList()
+                        val subs = if (keyIndex == 1) listOf("ls", "set", "get", "reset").filter { it.startsWith(last) } else emptyList()
                         subs.map { Suggestion.Completion(it, "$prefix $it ") } +
                             Keys.ALL.filter { it.key.startsWith(last) && it.key != last }
                                 .map { Suggestion.Completion(it.key, "$prefix ${it.key} ") }
@@ -493,14 +577,63 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                 .map { Suggestion.Completion(it, "theme $it") }
             "font" -> (TermFonts.names + "import").filter { it.startsWith(arg) && it != arg }
                 .map { Suggestion.Completion(it, "font $it") }
-            "call", "dial", "sms", "text" -> io.github.rscipher001.launcher.contacts.ContactsRepository.get(context)
-                .search(arg, 10).map { Suggestion.Completion((if (it.starred) "★ " else "") + it.name, "$head ${it.name}") }
+            "call", "dial", "sms", "text", "contacts", "contact" -> contactSuggestions(head, parts)
             "work", "private" -> listOf("on", "off", "status")
                 .filter { it.startsWith(arg) && it != arg }
                 .map { Suggestion.Completion(it, "$head $it") }
             in CommandProcessor.PRODUCTIVITY -> productivitySuggestions(head, parts)
             else -> io.github.rscipher001.launcher.control.ControlCommands.suggest(head, arg)
                 .map { (label, line) -> Suggestion.Completion(label, line) }
+        }
+    }
+
+    /** `<head> <app>` completions; the profile flag is added when the app exists in several profiles. */
+    private fun appCompletions(head: String, arg: String, includeHidden: Boolean = false): List<Suggestion> =
+        appsRepo.search(arg.replace(Regex("\\s-\\w+"), "").trim(), includeHidden = includeHidden)
+            .take(12).map { Suggestion.Completion("${it.label} [${it.profile.kind.tag}]", "$head ${it.label}" + flagFor(it)) }
+
+    /** Last app's shortcut labels, so typing after `open maps:` doesn't ask the system on every key. */
+    private var shortcutCache: Pair<String, List<String>>? = null
+
+    private var contactsLoadRequested = false
+
+    /** `open maps:` → that app's launcher shortcuts. */
+    private fun shortcutSuggestions(head: String, arg: String): List<Suggestion> {
+        val app = appsRepo.search(arg.substringBefore(':').trim()).firstOrNull() ?: return emptyList()
+        val labels = shortcutCache?.takeIf { it.first == app.key }?.second
+            ?: appsRepo.shortcuts(app).mapNotNull { (it.shortLabel ?: it.longLabel)?.toString() }.distinct()
+                .also { shortcutCache = app.key to it }
+        val wanted = arg.substringAfter(':').trim()
+        return labels.filter { it.contains(wanted, ignoreCase = true) }.take(12)
+            .map { Suggestion.Completion("${app.label} › $it", "$head ${app.label}:$it" + flagFor(app)) }
+    }
+
+    /**
+     * `call ` lists favourites first, then everyone; typing narrows by name or number. A name with
+     * several numbers gets one row per number and completes to the number, so each row is distinct
+     * and dials what it shows. `sms` always completes to the number: its first word is the recipient.
+     */
+    private fun contactSuggestions(head: String, parts: List<String>): List<Suggestion> {
+        val repo = io.github.rscipher001.launcher.contacts.ContactsRepository.get(context)
+        if (!repo.hasPermission()) return listOf(Suggestion.Completion("allow contacts access", "contacts --allow"))
+        val sms = head == "sms" || head == "text"
+        // `sms <number> hello…`: the recipient is done, the rest is the message.
+        if (sms && parts.size > 2 && io.github.rscipher001.launcher.contacts.ContactsRepository.looksLikeNumber(parts[1])) return emptyList()
+        val query = parts.drop(1).joinToString(" ")
+        val all = repo.contacts.value
+        // Allowed after start (e.g. from system settings): load now; [contacts] recomposes us when done.
+        if (all.isEmpty() && !contactsLoadRequested) { contactsLoadRequested = true; repo.refresh() }
+        val list =if (query.isBlank()) all.take(12) else repo.search(query, 12)
+        val numbersPerName = all.groupingBy { it.name.lowercase() }.eachCount()
+        return list.map { c ->
+            val shared = (numbersPerName[c.name.lowercase()] ?: 1) > 1
+            val label = (if (c.starred) "★ " else "") + c.name + if (shared) " · ${c.label} ${c.number}" else ""
+            val target = when {
+                head == "contacts" || head == "contact" -> c.name
+                sms || shared -> c.number
+                else -> c.name
+            }
+            Suggestion.Completion(label, "$head $target" + if (sms) " " else "")
         }
     }
 
@@ -1212,6 +1345,10 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     @Volatile private var todoCache: List<io.github.rscipher001.launcher.productivity.Todo> = emptyList()
     @Volatile private var noteCache: List<io.github.rscipher001.launcher.productivity.Note> = emptyList()
     @Volatile private var reminderCache: List<io.github.rscipher001.launcher.productivity.Reminder> = emptyList()
+    @Volatile private var feedCache: List<io.github.rscipher001.launcher.feeds.FeedInfo> = emptyList()
+
+    /** Contacts with numbers (empty without the permission); suggestions recompute when they load. */
+    val contacts get() = io.github.rscipher001.launcher.contacts.ContactsRepository.get(context).contacts
 
     private fun refreshProductivity() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -1221,6 +1358,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                 reminderCache = io.github.rscipher001.launcher.productivity.ReminderStore.get(context).all()
                 _todoCount.value = todoCache.count { !it.done }
             }
+            runCatching { feedCache = io.github.rscipher001.launcher.feeds.FeedRepository.get(context).all() }
         }
     }
 

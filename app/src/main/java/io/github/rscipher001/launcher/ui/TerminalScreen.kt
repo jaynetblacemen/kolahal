@@ -190,7 +190,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     val maxSuggestions = remember(configVersion) { config[Keys.SUGGESTIONS] }
     val commandNames by vm.commandNames.collectAsStateWithLifecycle()
     val prefsVersion by vm.appPrefsVersion.collectAsStateWithLifecycle()
-    val suggestions = remember(vm.input.text, apps, maxSuggestions, commandNames, prefsVersion) {
+    val contacts by vm.contacts.collectAsStateWithLifecycle()
+    val suggestions = remember(vm.input.text, apps, maxSuggestions, commandNames, prefsVersion, contacts) {
         vm.suggestions(vm.input.text).take(maxSuggestions)
     }
     val timeMode = remember(configVersion) {
@@ -722,12 +723,7 @@ private fun Header(
 @Composable
 private fun SuggestionStrip(items: List<Suggestion>, rows: Int, onPick: (Suggestion) -> Unit) {
     if (items.isEmpty()) return
-    val key = { _: Int, s: Suggestion ->
-        when (s) {
-            is Suggestion.App -> "a:" + s.app.key
-            is Suggestion.Completion -> "c:" + s.replacement
-        }
-    }
+    val key = { _: Int, s: Suggestion -> s.key }
     // suggestions.rows 2: twice as many chips in reach before any sideways scrolling.
     if (rows >= 2 && items.size > 3) {
         androidx.compose.foundation.lazy.staggeredgrid.LazyHorizontalStaggeredGrid(

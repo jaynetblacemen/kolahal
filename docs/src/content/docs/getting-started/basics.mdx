@@ -49,9 +49,18 @@ The strip above the key bar changes as you type:
 - **First word**: up to three matching commands, aliases or script commands, plus matching apps.
   When Enter would launch an app, that app is the first, highlighted chip, so Enter, Tab and the
   highlight always agree.
-- **Arguments**: app names after `open`, `info`, `hide`, `rename` and similar; script names after
-  `script run|edit|…`; keys and values after `config`; theme names after `theme`; contacts after
-  `call` and `sms`; `on|off|status` after `work` and `private`.
+- **Arguments**: almost every command completes what comes next.
+  - App names after `open`, `info`, `hide`, `rename`, `pin`, `shortcuts`, `notifs mute` and
+    similar. After `open maps:` you get that app's shortcuts.
+  - Contacts after `call`, `sms` and `contacts`: favourites first, then everyone, even before you
+    type a name. A contact with several numbers shows one row per number, and choosing one fills in
+    that number.
+  - Script names after `script run|edit|…`, keys and values after `config`, theme and font names,
+    feeds after `feed read|rm|…`, aliases after `unalias`, status lines after `status clear`.
+  - The options a command's usage lists, such as `apps work|personal|…`, `clear history|all`,
+    `torch on|off` or `dnd alarms`.
+  - Your earlier commands that start with what you typed, so `search ` or `yt ` offers your past
+    queries.
 
 Command chips start with `$` (`$ maps`), app chips show the app name, and a ✕ at the end of the
 prompt clears it. Tap a chip to use it. Tab (on the key bar or a hardware keyboard) takes the first one. The number

@@ -54,12 +54,7 @@ fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppL
             .heightIn(max = maxHeight)
             .testTag("suggestions"),
     ) {
-        itemsIndexed(items, key = { _, s ->
-            when (s) {
-                is Suggestion.App -> "a:" + s.app.key
-                is Suggestion.Completion -> "c:" + s.replacement
-            }
-        }) { index, s ->
+        itemsIndexed(items, key = { _, s -> s.key }) { index, s ->
             val first = index == 0
             val color = when (s) {
                 is Suggestion.App -> Term.profileColor(s.app.profile.kind)

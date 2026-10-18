@@ -13,7 +13,10 @@ contacts sam              # search (alias: contact)
 
 - The first time you use one of these, Kolahal asks for the **Contacts** permission. Nothing is
   uploaded; contacts are only read to match names.
-- While you type after `call` or `sms`, matching contacts appear as suggestions, favourites (★) first.
+- After `call `, `sms ` or `contacts ` your contacts appear as suggestions right away, favourites (★)
+  first, and narrow as you type a name or number. A contact with several numbers gets one row per
+  number; choosing one fills in that number. `sms` always completes to the number, so you can type
+  the message straight after it.
 - If a name matches several contacts, they are listed instead: tap one to call, long-press to
   message, open the contact or copy the number.
 - `call` opens the dialer with the number filled in. It never places the call by itself. `sms`
