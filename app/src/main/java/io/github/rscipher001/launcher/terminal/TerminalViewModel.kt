@@ -87,7 +87,8 @@ sealed interface Suggestion {
         override val key get() = "a:" + app.key
     }
 
-    data class Completion(override val label: String, val replacement: String) : Suggestion {
+    /** [app]: the app this completion is about (`uninstall maps`, `open maps:…`), for its icon. */
+    data class Completion(override val label: String, val replacement: String, val app: AppEntry? = null) : Suggestion {
         override val key get() = "c:" + replacement.trimEnd()
     }
 }
@@ -609,7 +610,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** `<head> <app>` completions; the profile flag is added when the app exists in several profiles. */
     private fun appCompletions(head: String, arg: String, includeHidden: Boolean = false): List<Suggestion> =
         appsRepo.search(arg.replace(Regex("\\s-\\w+"), "").trim(), includeHidden = includeHidden)
-            .take(12).map { Suggestion.Completion("${it.label} [${it.profile.kind.tag}]", "$head ${it.label}" + flagFor(it)) }
+            .take(12).map { Suggestion.Completion("${it.label} [${it.profile.kind.tag}]", "$head ${it.label}" + flagFor(it), app = it) }
 
     /** Last app's shortcut labels, so typing after `open maps:` doesn't ask the system on every key. */
     private var shortcutCache: Pair<String, List<String>>? = null
@@ -624,7 +625,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                 .also { shortcutCache = app.key to it }
         val wanted = arg.substringAfter(':').trim()
         return labels.filter { it.contains(wanted, ignoreCase = true) }.take(12)
-            .map { Suggestion.Completion("${app.label} › $it", "$head ${app.label}:$it" + flagFor(app)) }
+            .map { Suggestion.Completion("${app.label} › $it", "$head ${app.label}:$it" + flagFor(app), app = app) }
     }
 
     /**

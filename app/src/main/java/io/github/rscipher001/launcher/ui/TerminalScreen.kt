@@ -806,7 +806,8 @@ private fun SuggestionChip(index: Int, s: Suggestion, onPick: (Suggestion) -> Un
                 // suggestions.icons: the app's icon first (its badge marks work / private apps).
                 val iconSize = minOf(Term.fontSize + 6, Term.chipHeight - 4).dp
                 if (icons) {
-                    if (s is Suggestion.App) AppIcon(s.app, iconSize) else CommandIcon(iconSize)
+                    val app = (s as? Suggestion.App)?.app ?: (s as? Suggestion.Completion)?.app
+                    if (app != null) AppIcon(app, iconSize) else CommandIcon(iconSize)
                     Spacer(Modifier.width(6.dp))
                 }
                 // Commands carry the prompt's `$`, so "maps" (command) and "Maps" (app) read apart.

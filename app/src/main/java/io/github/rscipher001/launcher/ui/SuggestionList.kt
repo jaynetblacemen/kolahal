@@ -109,7 +109,7 @@ fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppL
                     is Suggestion.Completion -> {
                         // With icons on, a terminal icon takes the `$`'s place so labels line up with apps.
                         if (icons) {
-                            CommandIcon(iconSize)
+                            if (s.app != null) AppIcon(s.app, iconSize) else CommandIcon(iconSize)
                             Spacer(Modifier.width(8.dp))
                         } else {
                             Text("$ ", style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold))
