@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,6 +61,7 @@ fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppL
             .testTag("suggestions"),
     ) {
         itemsIndexed(items, key = { _, s -> s.key }) { index, s ->
+            val iconSize = minOf(Term.fontSize + 10, minOf(44, Term.chipHeight) - 8).dp
             val first = index == 0
             val color = when (s) {
                 is Suggestion.App -> Term.profileColor(s.app.profile.kind)
@@ -84,18 +86,20 @@ fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppL
                     is Suggestion.App -> {
                         // suggestions.icons: the app's icon first (its badge marks work / private apps).
                         if (icons) {
-                            AppIcon(s.app, minOf(Term.fontSize + 10, minOf(44, Term.chipHeight) - 8).dp)
+                            AppIcon(s.app, iconSize)
                             Spacer(Modifier.width(8.dp))
                         }
                         val kind = s.app.profile.kind
-                        if (kind != ProfileKind.PERSONAL) {
-                            Text(
-                                "[${kind.tag}] ",
-                                style = Term.mono.copy(color = color, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp),
-                            )
-                        }
+                        // The profile tag goes after the name, so every name starts in the same column.
                         Text(
-                            s.label,
+                            androidx.compose.ui.text.buildAnnotatedString {
+                                append(s.label)
+                                if (kind != ProfileKind.PERSONAL) {
+                                    withStyle(androidx.compose.ui.text.SpanStyle(color = color, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp)) {
+                                        append(" [${kind.tag}]")
+                                    }
+                                }
+                            },
                             style = Term.mono.copy(color = Term.fg, fontWeight = if (first) FontWeight.Bold else FontWeight.Normal),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -103,7 +107,13 @@ fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppL
                         )
                     }
                     is Suggestion.Completion -> {
-                        Text("$ ", style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold))
+                        // With icons on, a terminal icon takes the `$`'s place so labels line up with apps.
+                        if (icons) {
+                            CommandIcon(iconSize)
+                            Spacer(Modifier.width(8.dp))
+                        } else {
+                            Text("$ ", style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold))
+                        }
                         Text(
                             s.label,
                             style = Term.mono.copy(color = Term.fg, fontWeight = if (first) FontWeight.Bold else FontWeight.Normal),

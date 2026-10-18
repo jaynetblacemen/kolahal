@@ -804,19 +804,22 @@ private fun SuggestionChip(index: Int, s: Suggestion, onPick: (Suggestion) -> Un
                     .padding(horizontal = 12.dp, vertical = (if (Term.chipHeight < 40) 2 else 8).dp),
             ) {
                 // suggestions.icons: the app's icon first (its badge marks work / private apps).
-                if (icons && s is Suggestion.App) {
-                    AppIcon(s.app, minOf(Term.fontSize + 6, Term.chipHeight - 4).dp)
-                    Spacer(Modifier.width(6.dp))
-                }
-                if (tag != null && tag != ProfileKind.PERSONAL.tag) {
-                    Text(tag, style = Term.mono.copy(color = color, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp))
+                val iconSize = minOf(Term.fontSize + 6, Term.chipHeight - 4).dp
+                if (icons) {
+                    if (s is Suggestion.App) AppIcon(s.app, iconSize) else CommandIcon(iconSize)
                     Spacer(Modifier.width(6.dp))
                 }
                 // Commands carry the prompt's `$`, so "maps" (command) and "Maps" (app) read apart.
-                if (s is Suggestion.Completion) {
+                // (With icons on, the terminal icon above takes its place.)
+                if (s is Suggestion.Completion && !icons) {
                     Text("$ ", style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold))
                 }
                 Text(s.label, style = Term.mono.copy(color = if (s is Suggestion.App) Term.fg else Term.dim))
+                // The profile tag follows the name, as in the log.
+                if (tag != null && tag != ProfileKind.PERSONAL.tag) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(tag, style = Term.mono.copy(color = color, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp))
+                }
             }
         }
 }

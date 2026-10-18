@@ -59,3 +59,17 @@ fun AppIcon(app: AppEntry, size: Dp, modifier: Modifier = Modifier) {
     val bitmap = icon
     if (bitmap == null) Box(modifier.size(size)) else Image(bitmap, contentDescription = null, modifier = modifier.size(size))
 }
+
+/**
+ * Stands in for an app icon on command and argument suggestions when `suggestions.icons` is on,
+ * so every label starts in the same column. Drawn in the prompt colour, like the `$` it replaces.
+ */
+@Composable
+fun CommandIcon(size: Dp, modifier: Modifier = Modifier) {
+    androidx.compose.material3.Icon(
+        androidx.compose.ui.res.painterResource(io.github.rscipher001.launcher.R.drawable.ic_stat_terminal),
+        contentDescription = null,
+        tint = Term.prompt,
+        modifier = modifier.size(size),
+    )
+}
