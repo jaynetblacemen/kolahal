@@ -106,7 +106,7 @@ See [Widgets](/guides/widgets/).
 | `keybar.show` | bool | `off` | show the touch key bar |
 | `keybar.auto` | bool | `on` | show the key bar only while the on-screen keyboard is up for the prompt (off: always) |
 | `keybar.height` | number 20–64 | `40` | key bar row height (dp); smaller leaves more room for the log |
-| `prompt.height` | number 20–72 | `40` | prompt line height (dp) while the keyboard is up |
+| `prompt.height` | number 20–72 | `40` | prompt line height (dp), with the keyboard up or down; it never gets shorter than its text |
 | `keybar` | text | `ESC,/,-,HOME,UP,END,BKSP` | touch keys, comma separated: `ESC` `TAB` `UP` `DOWN` `LEFT` `RIGHT` `HOME` `END` `BKSP` `ENTER` `SPACE` `KBD` or literal text |
 | `keybar2` | text | `TAB,\|,.,LEFT,DOWN,RIGHT,ENTER` | second key bar row (same syntax; empty for one row) |
 | `keyboard.onhome` | bool | `off` | open the soft keyboard whenever home is shown |

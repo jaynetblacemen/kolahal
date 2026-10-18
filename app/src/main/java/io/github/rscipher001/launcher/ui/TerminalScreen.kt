@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -458,8 +459,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             focus = focus,
             imeSuggestions = remember(configVersion) { config[Keys.IME_SUGGESTIONS] },
             onFocus = { promptFocused = it },
-            // prompt.height applies while typing; idle keeps at least 40dp so it stays an easy tap.
-            height = if (typing) promptTypingHeight else maxOf(promptTypingHeight, 40.dp),
+            // prompt.height in both states, so the line doesn't jump under the finger as the keyboard opens.
+            height = promptTypingHeight,
             keyBarOn = keyBarOn,
             onQuick = { vm.openQuick() },
             onToggleKeyBar = {
@@ -934,6 +935,9 @@ private fun Prompt(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = height)
+            // As tall as [height] or the text, whichever is more; the $, ✕ and ⌨ targets fill it,
+            // so a tap anywhere on the line's height hits them.
+            .height(IntrinsicSize.Min)
             // Swipe up on the prompt line: gesture.swipeup, only while gesture.swipeup.on (off by
             // default). When off the detector isn't installed at all, so it can't misfire.
             .then(
@@ -956,7 +960,7 @@ private fun Prompt(
             modifier = Modifier
                 .testTag("prompt-quick")
                 .clickable(onClickLabel = "quick actions", onClick = onQuick)
-                .heightIn(min = 20.dp)
+                .fillMaxHeight()
                 .padding(end = 2.dp)
                 .wrapContentHeight(),
         )
@@ -1002,7 +1006,7 @@ private fun Prompt(
                 modifier = Modifier
                     .testTag("prompt-clear")
                     .widthIn(min = 44.dp)
-                    .heightIn(min = 20.dp)
+                    .fillMaxHeight()
                     .clickable(onClickLabel = "clear the prompt") { vm.escape() },
             ) {
                 Text("✕", style = promptStyle.copy(color = Term.dim))
@@ -1015,7 +1019,7 @@ private fun Prompt(
             modifier = Modifier
                 .testTag("keybar-toggle")
                 .widthIn(min = 44.dp)
-                .heightIn(min = 20.dp)
+                .fillMaxHeight()
                 .clickable(onClickLabel = "toggle key bar", onClick = onToggleKeyBar),
         ) {
             Text("⌨", style = promptStyle.copy(color = if (keyBarOn) Term.prompt else Term.dim))

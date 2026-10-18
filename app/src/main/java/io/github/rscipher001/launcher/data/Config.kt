@@ -57,7 +57,7 @@ object Keys {
     val KEYBAR_SHOW = ConfigKey.Bool("keybar.show", false, "Show the touch key bar")
     val KEYBAR_AUTO = ConfigKey.Bool("keybar.auto", true, "Show the key bar only while the on-screen keyboard is up for the prompt (off: always)")
     val KEYBAR_HEIGHT = ConfigKey.Num("keybar.height", 40, 20..64, "Key bar row height (dp); smaller leaves more room for the log")
-    val PROMPT_HEIGHT_TYPING = ConfigKey.Num("prompt.height", 40, 20..72, "Prompt line height (dp) while the keyboard is up; with the keyboard down it stays at least 40 for an easy tap")
+    val PROMPT_HEIGHT_TYPING = ConfigKey.Num("prompt.height", 40, 20..72, "Prompt line height (dp); it never gets shorter than its text")
     val THEME = ConfigKey.Choice(
         "theme", "green",
         listOf("green", "amber", "mono", "dracula", "solarized", "gruvbox", "gruvbox-material"),
