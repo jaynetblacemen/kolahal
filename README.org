@@ -12,7 +12,7 @@ GitHub Pages by =.github/workflows/docs.yml= on pushes to =main= that touch =doc
 locally:
 
 #+begin_src sh
-cd docs && npm install && npm run dev    # http://localhost:4321/kolahal/
+cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
 #+end_src
 
 * Features
