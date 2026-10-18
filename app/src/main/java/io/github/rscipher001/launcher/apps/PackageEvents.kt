@@ -166,15 +166,15 @@ class PackageEvents private constructor(private val context: Context) {
             val old = before[key]
             val tag = if (p.profile.isNotEmpty()) "[${p.profile}] " else ""
             val ver = when {
-                kind == "updated" && old != null && old.version.isNotEmpty() && old.version != p.version -> " · ${old.version} → ${p.version}"
-                kind != "uninstalled" && p.version.isNotEmpty() -> " · ${p.version}"
+                kind == "updated" && old != null && old.version.isNotEmpty() && old.version != p.version -> "\n${old.version} → ${p.version}"
+                kind != "uninstalled" && p.version.isNotEmpty() -> "\n${p.version}"
                 else -> ""
             }
             val glyph = when (kind) { "installed" -> "+"; "updated" -> "↻"; else -> "−" }
             val pkg = key.substringBefore('#')
             val ctx = if (kind == "uninstalled") LogContext.of(LogContext.COPY to pkg)
             else LogContext.of(LogContext.PKG to pkg, LogContext.USER to key.substringAfter('#'), LogContext.COPY to pkg)
-            // Second line (dimmed by the log view): package and version, so the first stays short.
+            // Detail lines (dimmed by the log view): the package, then the version.
             LogRepository.Pending(LogKind.INFO, "$glyph $kind $tag${p.label}\n$pkg$ver", "apps", ctx, System.currentTimeMillis())
         }
         logs.addAll(pending)
