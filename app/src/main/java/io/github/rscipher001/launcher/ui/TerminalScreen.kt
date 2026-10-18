@@ -956,7 +956,7 @@ private fun Prompt(
             modifier = Modifier
                 .testTag("prompt-quick")
                 .clickable(onClickLabel = "quick actions", onClick = onQuick)
-                .heightIn(min = 24.dp)
+                .heightIn(min = 20.dp)
                 .padding(end = 2.dp)
                 .wrapContentHeight(),
         )
@@ -1002,7 +1002,7 @@ private fun Prompt(
                 modifier = Modifier
                     .testTag("prompt-clear")
                     .widthIn(min = 44.dp)
-                    .heightIn(min = 24.dp)
+                    .heightIn(min = 20.dp)
                     .clickable(onClickLabel = "clear the prompt") { vm.escape() },
             ) {
                 Text("✕", style = promptStyle.copy(color = Term.dim))
@@ -1015,7 +1015,7 @@ private fun Prompt(
             modifier = Modifier
                 .testTag("keybar-toggle")
                 .widthIn(min = 44.dp)
-                .heightIn(min = 24.dp)
+                .heightIn(min = 20.dp)
                 .clickable(onClickLabel = "toggle key bar", onClick = onToggleKeyBar),
         ) {
             Text("⌨", style = promptStyle.copy(color = if (keyBarOn) Term.prompt else Term.dim))

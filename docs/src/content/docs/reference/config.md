@@ -46,7 +46,7 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 | `log.dim` | bool | `on` | dim output older than the latest command |
 | `log.spacing` | number 0–40 | `10` | gap (dp) above each output group: a command and its output, or a background batch (feeds, scripts) |
 | `log.gutter` | bool | `on` | thin colour bar at the left of each log line: green for commands, script colour for background output, red for errors |
-| `log.lineheight` | number 12–56 | `25` | minimum height (dp) of a log line; tappable lines get +10, two-column rows +14 |
+| `log.lineheight` | number 10–56 | `25` | minimum height (dp) of a log line; tappable lines get +10, two-column rows +14 |
 | `chips.height` | number 20–64 | `48` | height (dp) of suggestion and app-grid chips |
 | `log.keepdays` | number 1–365 | `60` | delete log lines older than this many days |
 | `log.fresh` | number 0–240 | `10` | start home with a clean screen after this many minutes away (0: never); earlier output is one tap away |
@@ -106,7 +106,7 @@ See [Widgets](/guides/widgets/).
 | `keybar.show` | bool | `off` | show the touch key bar |
 | `keybar.auto` | bool | `on` | show the key bar only while the on-screen keyboard is up for the prompt (off: always) |
 | `keybar.height` | number 20–64 | `40` | key bar row height (dp); smaller leaves more room for the log |
-| `prompt.height` | number 24–72 | `40` | prompt line height (dp) while the keyboard is up |
+| `prompt.height` | number 20–72 | `40` | prompt line height (dp) while the keyboard is up |
 | `keybar` | text | `ESC,/,-,HOME,UP,END,BKSP` | touch keys, comma separated: `ESC` `TAB` `UP` `DOWN` `LEFT` `RIGHT` `HOME` `END` `BKSP` `ENTER` `SPACE` `KBD` or literal text |
 | `keybar2` | text | `TAB,\|,.,LEFT,DOWN,RIGHT,ENTER` | second key bar row (same syntax; empty for one row) |
 | `keyboard.onhome` | bool | `off` | open the soft keyboard whenever home is shown |
