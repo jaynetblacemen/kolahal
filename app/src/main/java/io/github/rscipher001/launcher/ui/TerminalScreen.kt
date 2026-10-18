@@ -1002,9 +1002,10 @@ private fun Prompt(
                 Text("✕", style = promptStyle.copy(color = Term.dim))
             }
         }
-        // Key bar toggle (keybar.show); dim while the bar is off.
+        // Key bar toggle (keybar.show); dim while the bar is off. Flush right, in line with the log's edge;
+        // the touch target still reaches to its left.
         Box(
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.CenterEnd,
             modifier = Modifier
                 .testTag("keybar-toggle")
                 .widthIn(min = 44.dp)
