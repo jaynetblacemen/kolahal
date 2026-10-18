@@ -208,7 +208,8 @@ fun LogLine(
                     onLongPress(entry)
                 },
             )
-            .padding(start = 10.dp, top = 3.dp, bottom = 3.dp),
+            // Room for the gutter bar; without it the text lines up with the header and dividers.
+            .padding(start = if (gutter) 10.dp else 0.dp, top = 3.dp, bottom = 3.dp),
     ) {
         Box(Modifier.weight(1f)) {
             when {
