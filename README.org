@@ -186,26 +186,26 @@ command gets a tappable "did you mean".
 =--cmd= for a command template, or create scripts in the script manager. Both engines expose the
 same API:
 
-| Call                                                  | Result                                                                 |
-|-------------------------------------------------------+------------------------------------------------------------------------|
-| =log(text, ctx?)=                                     | Appends a line. =ctx.url= makes it a tappable link; other keys are kept. |
-| =notify(title, body, ctx?)=                           | Notification if enabled for the script; =ctx.url= opens on tap.        |
-| =status(text)=                                        | Pins one header line for this script; =status(nil)= clears it.         |
-| =http.get(url, headers?)=                             | ={ status, ok, body, headers }=                                        |
-| =http.request{ url, method, body, contentType, headers }= | Same as =http.get=; a table body is sent as JSON.                     |
-| =rss.fetch(url)= / =rss.parse(xml)=                   | ={ title, link, items = [{ title, link, id, date, summary }] }=        |
-| =rss.fresh(url)=                                      | Only items not returned before; marked seen only if the run succeeds.  |
-| =store.get(k)= / =store.set(k, v)=                    | Persistent per-script strings.                                         |
-| =http.cached(url, seconds)=                           | GET, reusing this script's stored response while it is fresh.          |
-| =clipboard.get()= / =clipboard.set(text)=             | =get= is usually nil in timers (only the focused app may read it).     |
-| =device.battery()=                                    | ={ level, charging }=                                                  |
-| =device.network()= / =device.unlocks()=               | ="wifi"=, ="cell"=, ="eth"=, ="offline"= / today's unlock count.       |
-| =apps.list()=                                         | =[{ label, pkg, profile }]=                                            |
-| =notifications.recent(n?)=                            | =[{ pkg, app, title, text, time }]=, newest first (notification access). |
-| =launcher.run(command)=                               | Runs a terminal command; only when the script is run from the prompt.  |
-| =sleep(ms)=                                           | Up to 5000 ms (=await sleep(ms)= in JS).                               |
-| =json.encode= / =json.decode=                         | Lua only (JS has =JSON=).                                              |
-| =args=, =argline=                                     | Arguments when run as a command.                                       |
+| Call                                                      | Result                                                                   |
+|-----------------------------------------------------------+--------------------------------------------------------------------------|
+| =log(text, ctx?)=                                         | Appends a line. =ctx.url= makes it a tappable link; other keys are kept. |
+| =notify(title, body, ctx?)=                               | Notification if enabled for the script; =ctx.url= opens on tap.          |
+| =status(text)=                                            | Pins one header line for this script; =status(nil)= clears it.           |
+| =http.get(url, headers?)=                                 | ={ status, ok, body, headers }=                                          |
+| =http.request{ url, method, body, contentType, headers }= | Same as =http.get=; a table body is sent as JSON.                        |
+| =rss.fetch(url)= / =rss.parse(xml)=                       | ={ title, link, items = [{ title, link, id, date, summary }] }=          |
+| =rss.fresh(url)=                                          | Only items not returned before; marked seen only if the run succeeds.    |
+| =store.get(k)= / =store.set(k, v)=                        | Persistent per-script strings.                                           |
+| =http.cached(url, seconds)=                               | GET, reusing this script's stored response while it is fresh.            |
+| =clipboard.get()= / =clipboard.set(text)=                 | =get= is usually nil in timers (only the focused app may read it).       |
+| =device.battery()=                                        | ={ level, charging }=                                                    |
+| =device.network()= / =device.unlocks()=                   | ="wifi"=, ="cell"=, ="eth"=, ="offline"= / today's unlock count.         |
+| =apps.list()=                                             | =[{ label, pkg, profile }]=                                              |
+| =notifications.recent(n?)=                                | =[{ pkg, app, title, text, time }]=, newest first (notification access). |
+| =launcher.run(command)=                                   | Runs a terminal command; only when the script is run from the prompt.    |
+| =sleep(ms)=                                               | Up to 5000 ms (=await sleep(ms)= in JS).                                 |
+| =json.encode= / =json.decode=                             | Lua only (JS has =JSON=).                                                |
+| =args=, =argline=                                         | Arguments when run as a command.                                         |
 
 In JS the network calls are =async= (=await http.get(...)=, and =Promise.all= works). Lua calls
 block, since scripts never run on the UI thread. A script's return value is printed. When a script
@@ -224,16 +224,16 @@ return (http.get("https://wttr.in/" .. city .. "?format=3").body:gsub("%s+$", ""
 Besides timers, a script can run when something happens. Add one or more =@on= lines
 (=-- @on unlock= in Lua, =// @on charger, unplug= in JS; commas or spaces separate events):
 
-| Event          | When                                                     | =event= fields                     |
-|----------------+----------------------------------------------------------+------------------------------------|
-| =unlock=       | The device is unlocked (user present)                    | =name=                             |
-| =charger=      | Power connected                                          | =name=, =level=, =plug= (ac/usb/wireless) |
-| =unplug=       | Power disconnected                                       | =name=, =level=                    |
-| =wifi=         | The default network becomes Wi-Fi                        | =name=, =network=                  |
-| =offline=      | No network left                                          | =name=                             |
+| Event          | When                                                        | =event= fields                                |
+|----------------+-------------------------------------------------------------+-----------------------------------------------|
+| =unlock=       | The device is unlocked (user present)                       | =name=                                        |
+| =charger=      | Power connected                                             | =name=, =level=, =plug= (ac/usb/wireless)     |
+| =unplug=       | Power disconnected                                          | =name=, =level=                               |
+| =wifi=         | The default network becomes Wi-Fi                           | =name=, =network=                             |
+| =offline=      | No network left                                             | =name=                                        |
 | =notification= | A notification reaches the feed (needs notification access) | =name=, =app=, =pkg=, =title=, =text=, =time= |
-| =boot=         | First launcher start after the phone boots               | =name=, =uptime= (seconds)         |
-| =headset=      | A wired headset is plugged in                            | =name=, =type=, =device=, =mic=    |
+| =boot=         | First launcher start after the phone boots                  | =name=, =uptime= (seconds)                    |
+| =headset=      | A wired headset is plugged in                               | =name=, =type=, =device=, =mic=               |
 
 The payload is the global =event= (=event.name=, =event.level=, …); it is =nil= in Lua and =null=
 in JS when the script runs from a timer, the prompt or the Run button. Only enabled scripts are
@@ -277,7 +277,7 @@ end
 
 #+begin_example
 MainActivity (HOME) ── TerminalViewModel ── CommandProcessor
-   screens: Terminal · Settings · Scripts · ScriptEditor
+   screens: Terminal (+ widgets page) · Settings · Feeds · Scripts · ScriptEditor · Widgets · Setup
                                │
         AppRepository (LauncherApps, all profiles) + AppPrefs (hidden, labels, frecency, aliases)
         UnlockCounter · DeviceStatus · Config · Backup
@@ -306,6 +306,103 @@ MainActivity (HOME) ── TerminalViewModel ── CommandProcessor
 - UI work :: One serial IO dispatcher with an exception handler, so a failed action is logged
   instead of crashing home. Log rows are pre-built off the main thread and rendered as immutable
   rows with cached text.
+
+* Repository layout
+
+A map for reviewing the code or finding where to make a change. Everything lives in one Gradle
+project; the app's code is under =app/src/main/java/io/github/rscipher001/launcher/=, written as
+=launcher/= below.
+
+#+begin_example
+kolahal/
+├── app/                        the launcher (the only shipping module)
+│   ├── build.gradle.kts        app id, SDK levels, R8, signing, dependencies
+│   └── src/
+│       ├── main/
+│       │   ├── AndroidManifest.xml   HOME activity, :script process, listener and accessibility services
+│       │   ├── assets/library/       ready-made scripts for `script lib` (index.json lists them)
+│       │   ├── assets/licenses/      OFL licences of the bundled fonts
+│       │   ├── java/…/launcher/      Kotlin sources, by package (table below)
+│       │   └── res/                  icons, fonts, XML config (accessibility service, backup rules, network security)
+│       ├── release/generated/baselineProfiles/   AOT profile for fast start (generated, committed)
+│       ├── test/               JVM unit tests (pure logic: parsing, ranking, layout math, formats)
+│       └── androidTest/        on-device tests (script engines, sandbox, :script process, commands)
+├── baselineprofile/            macrobenchmark module that generates the baseline profile
+├── docs/                       documentation site (Astro + Starlight, pnpm); see docs/README.md
+├── gradle/libs.versions.toml   every dependency version in one place
+├── .github/workflows/docs.yml  builds and publishes the docs to GitHub Pages
+└── README.org                  this file
+#+end_example
+
+** Packages
+
+| Package          | What it holds                                                                                                                                                                                                                                                                                                                                              | Start with                                    |
+|------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------|
+| (root)           | =LauncherApp=: process start-up (repositories, receivers, schedulers). =MainActivity=: the HOME activity, screen switching, widgets pager, permission and file pickers                                                                                                                                                                                     | =LauncherApp.kt=, =MainActivity.kt=           |
+| =terminal/=      | The terminal's brain. =TerminalViewModel= owns UI state, suggestions, taps and long-press menus; =CommandProcessor= parses and runs every command                                                                                                                                                                                                          | =TerminalViewModel.kt=, =CommandProcessor.kt= |
+|                  | Split-out command groups and helpers: =ProductivityCommands= (todo, notes, remind, timer, agenda), =Pipes= (shell-style filters such as grep, head and count after a command), =InstantRun= (run without Enter), =Units= (calculator), =SetupChecks=, =LogRows= (grouping, dimming, day dividers)                                                          |                                               |
+| =ui/=            | Compose screens. =TerminalScreen= (header, log, prompt, suggestions), =LogView= (one log line and the action sheet), =AppRail= (right-edge app selector), =SettingsScreen=, =FeedsScreen=, =ScriptsScreen= / =ScriptEditor=, =WidgetsScreen=, =SetupScreen=. =Theme= is the terminal palette, =GuiTheme= the Material 3 theme for GUI screens              | =TerminalScreen.kt=                           |
+| =data/=          | Storage and settings. =Config= (every =config= key, its default and help text: =Keys=), =Db= (the shared SQLite database), =LogRepository= (the log), =ScriptRepository= (+ =KvStore=), =Backup= / =FullBackup= (export and import)                                                                                                                        | =Config.kt=                                   |
+| =apps/=          | Installed apps across profiles (=AppRepository=, via LauncherApps), per-app preferences, frecency and aliases (=AppPrefs=), and the install / update / uninstall log (=PackageEvents=)                                                                                                                                                                     | =AppRepository.kt=                            |
+| =script/=        | Scripting. =ScriptEngine= with =LuaEngine= and =JsEngine= behind one =HostApi=; =ScriptWorker= runs scripts in the =:script= process; =ScriptScheduler= (timers), =TriggerDispatcher= (=@on= events), =ScriptMeta= (comment directives), =ApiDocs= (editor completion), library, file and folder sync, =Net= (the shared HTTP client), =Json=, =RssParser= | =HostApi.kt=, =ScriptWorker.kt=               |
+| =feeds/=         | Built-in RSS / Atom reader: =FeedDb= (its own database), =FeedRepository= (subscriptions, items, read state), =FeedFetcher= (conditional GETs), =FeedWorker= + =FeedScheduler= (background refresh), =Opml=                                                                                                                                                | =FeedRepository.kt=                           |
+| =notifications/= | Notification listener feeding the log and the =notifs= command, mute settings, and actions on a notification (open, dismiss)                                                                                                                                                                                                                               | =KolahalNotificationListener.kt=              |
+| =notify/=        | =Notifier=: the notifications Kolahal itself posts (script notify, reminders, feeds)                                                                                                                                                                                                                                                                       |                                               |
+| =control/=       | Device and media commands (=torch=, =volume=, =dnd=, =media=, =toggles= …), their argument parsing, and the media-session state                                                                                                                                                                                                                            | =ControlCommands.kt=                          |
+| =productivity/=  | Todo / note / reminder stores, reminder alarms, calendar agenda, and the time parser for =remind= / =timer= / =alarm=                                                                                                                                                                                                                                      | =Stores.kt=, =TimeSpec.kt=                    |
+| =contacts/=      | Contacts cache for =call= / =sms= / =contacts= and their suggestions                                                                                                                                                                                                                                                                                       |                                               |
+| =widgets/=       | App widget hosting: the host, the add / bind / configure flow, and pure layout bookkeeping (=WidgetModel=)                                                                                                                                                                                                                                                 | =WidgetHost.kt=                               |
+| =gesture/=       | Gesture actions (lock, shade, quick sheet, or any command) and the lock-screen accessibility service                                                                                                                                                                                                                                                       |                                               |
+| =status/=        | Battery, network and next alarm for the header                                                                                                                                                                                                                                                                                                             |                                               |
+| =unlock/=        | Unlock counting (Usage Access, with a screen-on fallback)                                                                                                                                                                                                                                                                                                  |                                               |
+
+** How a typed line flows
+
+1. =ui/TerminalScreen.kt= shows the prompt. Every keystroke updates =TerminalViewModel.input=, and
+   =TerminalViewModel.suggestions()= builds the suggestion list (commands, apps, then
+   per-command arguments, usage-line options and history).
+2. Enter (or =InstantRun=, a tap on a suggestion or a log line) calls =CommandProcessor.run(line)= on
+   the view model's single IO dispatcher.
+3. =run= expands aliases, splits =|= pipes (=Pipes=), logs the command line, then =execute= dispatches
+   on the first word in one =when=. Each branch calls a helper in =CommandProcessor= or a split-out
+   class (=ControlCommands=, =ProductivityCommands=, a script command, or an app launch as the
+   fallback).
+4. Commands write their output with =LogRepository.add= (=info=, =error=, =out= helpers). Each line
+   carries a =LogContext= (package, URL, phone number, run command …) that decides what a tap or
+   long-press on it does later (=TerminalViewModel.onTap= / =actionsFor=).
+5. The repository bumps its version; the view model reloads, =LogRows.buildRows= groups and dims the
+   lines off the main thread, and =LogView.LogLine= renders them.
+
+Background sources (scripts, feeds, notifications, app events) skip steps 1–3 and write to the log
+directly. Scripts do it from the =:script= process; a broadcast tells the UI process to reload.
+
+** Where data lives
+
+| Data                                                 | Where                                                                                         |
+|------------------------------------------------------+-----------------------------------------------------------------------------------------------|
+| Settings                                             | SharedPreferences, read through =data/Config.kt=                                              |
+| Log, scripts, todos, notes, reminders, script stores | =kolahal.db= (=data/Db.kt=), shared by both processes (WAL)                                   |
+| Feeds and their items                                | =feeds.db= (=feeds/FeedDb.kt=)                                                                |
+| App preferences, aliases, pins                       | SharedPreferences in =apps/AppPrefs.kt=                                                       |
+| Package snapshot and install history                 | =KvStore= scope =packages= (=apps/PackageEvents.kt=)                                          |
+| Widgets                                              | Bound AppWidget ids and their layout in SharedPreferences =widgets= (=widgets/WidgetHost.kt=) |
+| Imported font                                        | =filesDir/fonts/custom.ttf= (=ui/FontPicker.kt=)                                              |
+
+A backup (=Settings → Export everything=) bundles all of the above into one JSON file
+(=data/Backup.kt= and =data/FullBackup.kt=).
+
+** Common changes
+
+- New command :: add a =CommandSpec= to =CommandProcessor.COMMANDS= (help and completion read it), a
+  branch in =execute=, and the name to a =HELP_SECTIONS= group. Argument completion: options in the
+  usage line complete automatically; anything smarter goes in =TerminalViewModel.argSuggestions=.
+- New setting :: define it in =Keys= (=data/Config.kt=) and add it to =Keys.ALL=. Put it in a page in
+  =ui/SettingsScreen.kt= (=CATEGORIES=) with a title in =TITLES=; unplaced keys appear under "More".
+  Document it in =docs/src/content/docs/reference/config.md=.
+- New script API :: add it to =HostApi=, bind it in both =LuaEngine= and =JsEngine=, and describe it in
+  =ApiDocs= (=ApiDocsTest= checks that the names match).
+- Log line behaviour :: the tap and long-press logic is in =TerminalViewModel.onTap= / =actionsFor=,
+  keyed on =LogContext= values. Rendering is in =ui/LogView.kt=.
 
 * Build
 
