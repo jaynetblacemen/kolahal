@@ -128,7 +128,7 @@ class SelectorMathTest {
     }
 
     @Test fun completionHelpForCommandsAndKeys() {
-        assertEquals("show this list", completionHelp("help", "help "))
+        assertEquals("Show this list", completionHelp("help", "help "))
         assertEquals(io.github.rscipher001.launcher.data.Keys.SELECTOR_RAIL.help, completionHelp("selector.rail", "config set selector.rail "))
         assertNull(completionHelp("on", "config set selector.rail on"))
     }

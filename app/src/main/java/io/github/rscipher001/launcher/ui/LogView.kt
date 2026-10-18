@@ -79,7 +79,7 @@ private val dayFormat = DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefau
 @Composable
 fun DayDivider(row: LogRow.Day) {
     val label = remember(row.day) {
-        if (row.day == LocalDate.now().minusDays(1)) "yesterday" else row.day.format(dayFormat)
+        if (row.day == LocalDate.now().minusDays(1)) "Yesterday" else row.day.format(dayFormat)
     }
     Text(
         "── $label ──",
@@ -155,7 +155,7 @@ fun LogLine(
     // What the swipe will do, revealed under the line as it moves.
     if (swipe.value != 0f) {
         Text(
-            if (swipe.value > 0) "⧉ copy" else "delete ✕",
+            if (swipe.value > 0) "⧉ Copy" else "Delete ✕",
             style = Term.mono.copy(color = if (swipe.value > 0) Term.prompt else Term.error),
             modifier = Modifier.matchParentSize().wrapContentHeight().padding(horizontal = 16.dp),
             textAlign = if (swipe.value > 0) androidx.compose.ui.text.style.TextAlign.Start else androidx.compose.ui.text.style.TextAlign.End,

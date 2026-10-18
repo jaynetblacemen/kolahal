@@ -79,7 +79,7 @@ class FeedRepository private constructor(private val context: Context) {
             put("notify", if (config[io.github.rscipher001.launcher.data.Keys.FEEDS_NOTIFY]) 1 else 0)
         }, SQLiteDatabase.CONFLICT_IGNORE)
         changed()
-        return byUrl(normalized) ?: error("feed insert failed")
+        return byUrl(normalized) ?: error("Feed insert failed")
     }
 
     fun remove(id: Long) {

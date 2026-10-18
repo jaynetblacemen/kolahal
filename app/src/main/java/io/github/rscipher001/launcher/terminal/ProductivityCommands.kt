@@ -54,7 +54,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
             "stopwatch" -> {
                 // Android has no stopwatch intent; the clock app is one tab away.
                 startActivity(Intent(AlarmClock.ACTION_SHOW_TIMERS))
-                info("opened the clock app (there's no stopwatch intent)")
+                info("Opened the clock app (there's no stopwatch intent)")
             }
             "agenda" -> agenda(rest)
             else -> return false
@@ -79,14 +79,14 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
         val sub = w.firstOrNull()?.lowercase()
         val all = todos.all()
         fun pick(): Todo? = pickRef(w.getOrNull(1), all) { it.id }.also {
-            if (it == null) error("no todo '${w.getOrNull(1).orEmpty()}' — 'todo' lists them with numbers")
+            if (it == null) error("No todo '${w.getOrNull(1).orEmpty()}' — 'todo' lists them with numbers")
         }
         when (sub) {
             null, "ls", "list" -> listTodos(all, includeDone = false)
             "all" -> listTodos(all, includeDone = true)
             "add" -> addTodo(rest.trim().substringAfter(' ', "").trim())
             "done", "undo", "undone", "toggle" -> {
-                if (w.size < 2) return error("usage: todo $sub <n>")
+                if (w.size < 2) return error("Usage: todo $sub <n>")
                 val t = pick() ?: return
                 val done = when (sub) {
                     "done" -> true
@@ -97,13 +97,13 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
                 todoLine(t.copy(done = done), null, info = true)
             }
             "rm", "remove", "delete" -> {
-                if (w.size < 2) return error("usage: todo rm <n>")
+                if (w.size < 2) return error("Usage: todo rm <n>")
                 val t = pick() ?: return
                 todos.remove(t.id)
-                info("removed todo: ${t.text}")
+                info("Removed todo: ${t.text}")
             }
             "edit" -> {
-                if (w.size < 3) return error("usage: todo edit <n> <new text>")
+                if (w.size < 3) return error("Usage: todo edit <n> <new text>")
                 val t = pick() ?: return
                 val text = rest.trim().substringAfter(' ').trim().substringAfter(' ').trim()
                 todos.edit(t.id, text)
@@ -111,14 +111,14 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
             }
             "clear" -> {
                 val n = todos.clearDone()
-                info(if (n == 0) "no finished todos to clear" else "cleared $n finished todo${if (n == 1) "" else "s"}")
+                info(if (n == 0) "No finished todos to clear" else "Cleared $n finished todo${if (n == 1) "" else "s"}")
             }
             else -> addTodo(rest.trim())
         }
     }
 
     private fun addTodo(text: String) {
-        if (text.isBlank()) return error("usage: todo add <text>")
+        if (text.isBlank()) return error("Usage: todo add <text>")
         val id = todos.add(text)
         val open = todos.open()
         val pos = open.indexOfFirst { it.id == id } + 1
@@ -132,7 +132,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
         if (shown.isEmpty()) {
             return info(
                 if (all.isEmpty()) "no todos — 'todo <text>' adds one"
-                else "nothing open · $doneCount done ('todo all' shows them, 'todo clear' removes them)"
+                else "Nothing open · $doneCount done ('todo all' shows them, 'todo clear' removes them)"
             )
         }
         shown.forEach { t -> todoLine(t, all.indexOf(t) + 1) }
@@ -158,7 +158,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
 
     private fun addNote(text: String) {
         val id = notes.add(text.trim())
-        info("noted", noteCtx(id, text.trim()))
+        info("Noted", noteCtx(id, text.trim()))
     }
 
     private fun notes(rest: String) {
@@ -167,24 +167,24 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
             null, "ls", "list" -> listNotes(null)
             "grep", "find", "search" -> {
                 val q = rest.trim().substringAfter(' ', "").trim()
-                if (q.isEmpty()) return error("usage: notes grep <text>")
+                if (q.isEmpty()) return error("Usage: notes grep <text>")
                 listNotes(q)
             }
             "rm", "remove", "delete" -> {
                 val all = notes.all()
                 val n = pickRef(w.getOrNull(1), all) { it.id }
-                    ?: return error("usage: notes rm <n> — 'notes' lists them with numbers")
+                    ?: return error("Usage: notes rm <n> — 'notes' lists them with numbers")
                 notes.remove(n.id)
-                info("removed note: ${n.text}")
+                info("Removed note: ${n.text}")
             }
             "add" -> addNote(rest.trim().substringAfter(' ', ""))
-            else -> error("usage: notes [grep <text>|rm <n>] · note <text> adds one")
+            else -> error("Usage: notes [grep <text>|rm <n>] · note <text> adds one")
         }
     }
 
     private fun listNotes(query: String?) {
         val all = notes.all()
-        if (all.isEmpty()) return info("no notes — 'note <text>' saves one")
+        if (all.isEmpty()) return info("No notes — 'note <text>' saves one")
         val fmt = DateTimeFormatter.ofPattern(if (conf[Keys.CLOCK_24H]) "d MMM HH:mm" else "d MMM h:mm a", Locale.getDefault())
         val zone = ZoneId.systemDefault()
         var shown = 0
@@ -212,13 +212,13 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
             null, "ls", "list" -> return listReminders()
             "rm", "cancel", "remove" -> {
                 val r = pickRef(w.getOrNull(1), reminders.all()) { it.id }
-                    ?: return error("usage: remind rm <n> — 'reminders' lists them with numbers")
+                    ?: return error("Usage: remind rm <n> — 'reminders' lists them with numbers")
                 ReminderScheduler.cancel(context, r.id)
                 reminders.remove(r.id)
-                return info("cancelled reminder: ${r.text}")
+                return info("Cancelled reminder: ${r.text}")
             }
             "exact" -> {
-                if (Build.VERSION.SDK_INT < 31 || ReminderScheduler.canBeExact(context)) return info("reminders already fire on time")
+                if (Build.VERSION.SDK_INT < 31 || ReminderScheduler.canBeExact(context)) return info("Reminders already fire on time")
                 return startActivity(
                     Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.fromParts("package", context.packageName, null))
                 )
@@ -227,27 +227,27 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
         val zone = ZoneId.systemDefault()
         val now = LocalDateTime.now(zone)
         val parsed = TimeSpec.parseWhen(w, now)
-            ?: return error("usage: remind <10m|2h|1h30m|18:30|tomorrow 9:00|fri 8am> <text>")
+            ?: return error("Usage: remind <10m|2h|1h30m|18:30|tomorrow 9:00|fri 8am> <text>")
         val text = w.drop(parsed.consumed).joinToString(" ")
-        if (text.isBlank()) return error("what should I remind you of? remind ${w.take(parsed.consumed).joinToString(" ")} <text>")
+        if (text.isBlank()) return error("What should I remind you of? remind ${w.take(parsed.consumed).joinToString(" ")} <text>")
         val at = parsed.at.atZone(zone).toInstant().toEpochMilli()
         val r = reminders.add(at, text)
         ReminderScheduler.schedule(context, r)
         info(
-            "reminder set for ${whenLabel(at)} (in ${TimeSpec.formatDuration((at - System.currentTimeMillis() + 999) / 1000)}): $text",
+            "Reminder set for ${whenLabel(at)} (in ${TimeSpec.formatDuration((at - System.currentTimeMillis() + 999) / 1000)}): $text",
             reminderCtx(r),
         )
         if (!Notifier.canPost(context, Notifier.CHANNEL_REMINDERS)) {
-            error("notifications are off — the reminder will only appear in the log (tap to allow)", LogContext.of(LogContext.RUN to "notifications"))
+            error("Notifications are off — the reminder will only appear in the log (tap to allow)", LogContext.of(LogContext.RUN to "notifications"))
         }
         if (!ReminderScheduler.canBeExact(context)) {
-            info("exact alarms are off, so it may be a few minutes late — tap to allow them", LogContext.of(LogContext.RUN to "remind exact"))
+            info("Exact alarms are off, so it may be a few minutes late — tap to allow them", LogContext.of(LogContext.RUN to "remind exact"))
         }
     }
 
     private fun listReminders() {
         val all = reminders.all()
-        if (all.isEmpty()) return info("no reminders — e.g. remind 10m tea, remind tomorrow 9:00 call mom")
+        if (all.isEmpty()) return info("No reminders — e.g. remind 10m tea, remind tomorrow 9:00 call mom")
         val nowMs = System.currentTimeMillis()
         all.forEachIndexed { i, r ->
             out(
@@ -257,7 +257,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
                 ),
             )
         }
-        info("tap puts 'remind rm' in the prompt · long-press → Cancel reminder")
+        info("Tap puts 'remind rm' in the prompt · long-press → Cancel reminder")
     }
 
     private fun reminderCtx(r: Reminder) = LogContext.of(
@@ -284,28 +284,28 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
         val w = words(rest)
         if (w.isEmpty()) return startActivity(Intent(AlarmClock.ACTION_SHOW_TIMERS))
         val seconds = TimeSpec.parseDuration(w[0], bareMinutes = true)
-            ?: return error("usage: timer <5m|1h30m|90s|25> [label]")
-        if (seconds > 86_400) return error("timers can be at most 24h")
+            ?: return error("Usage: timer <5m|1h30m|90s|25> [label]")
+        if (seconds > 86_400) return error("Timers can be at most 24h")
         val label = w.drop(1).joinToString(" ")
         val intent = Intent(AlarmClock.ACTION_SET_TIMER)
             .putExtra(AlarmClock.EXTRA_LENGTH, seconds.toInt())
             .putExtra(AlarmClock.EXTRA_SKIP_UI, true)
         if (label.isNotEmpty()) intent.putExtra(AlarmClock.EXTRA_MESSAGE, label)
         startActivity(intent)
-        info("timer ${TimeSpec.formatDuration(seconds)}" + if (label.isNotEmpty()) " — $label" else "")
+        info("Timer ${TimeSpec.formatDuration(seconds)}" + if (label.isNotEmpty()) " — $label" else "")
     }
 
     private fun alarm(rest: String) {
         val w = words(rest)
         if (w.isEmpty()) return startActivity(Intent(AlarmClock.ACTION_SHOW_ALARMS))
-        val time = TimeSpec.parseClock(w[0], allowBareHour = true) ?: return error("usage: alarm <HH:MM|7am> [label]")
+        val time = TimeSpec.parseClock(w[0], allowBareHour = true) ?: return error("Usage: alarm <HH:MM|7am> [label]")
         val label = w.drop(1).joinToString(" ")
         val intent = Intent(AlarmClock.ACTION_SET_ALARM)
             .putExtra(AlarmClock.EXTRA_HOUR, time.hour)
             .putExtra(AlarmClock.EXTRA_MINUTES, time.minute)
         if (label.isNotEmpty()) intent.putExtra(AlarmClock.EXTRA_MESSAGE, label)
         startActivity(intent)
-        info("alarm ${String.format(Locale.ROOT, "%02d:%02d", time.hour, time.minute)}" + if (label.isNotEmpty()) " — $label" else "")
+        info("Alarm ${String.format(Locale.ROOT, "%02d:%02d", time.hour, time.minute)}" + if (label.isNotEmpty()) " — $label" else "")
     }
 
     // ---- agenda --------------------------------------------------------------------------------
@@ -316,17 +316,17 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
             return startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
         }
         if (arg == "--allow") {
-            return if (Agenda.hasPermission(context)) info("calendar is allowed") else ui.requestCalendarPermission()
+            return if (Agenda.hasPermission(context)) info("Calendar is allowed") else ui.requestCalendarPermission()
         }
         if (!Agenda.hasPermission(context)) {
-            return error("agenda needs calendar access — tap to allow", LogContext.of(LogContext.RUN to "agenda --allow"))
+            return error("Agenda needs calendar access — tap to allow", LogContext.of(LogContext.RUN to "agenda --allow"))
         }
         val days = arg?.toIntOrNull()?.coerceIn(1, 31) ?: DEFAULT_AGENDA_DAYS
         val zone = ZoneId.systemDefault()
         val today = LocalDate.now(zone)
         val grouped = Agenda.group(Agenda.query(context, today, days, zone), zone, today, days, System.currentTimeMillis())
         if (grouped.isEmpty()) {
-            return info(if (days == 1) "nothing left on your calendar today" else "nothing on your calendar in the next $days days")
+            return info(if (days == 1) "Nothing left on your calendar today" else "Nothing on your calendar in the next $days days")
         }
         val is24h = conf[Keys.CLOCK_24H]
         val timeFmt = DateTimeFormatter.ofPattern(if (is24h) "HH:mm" else "h:mma", Locale.getDefault())

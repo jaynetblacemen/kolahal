@@ -81,7 +81,7 @@ class ControlCommands(private val context: Context) {
             "next", "skip" -> MediaRepository.Action.NEXT
             "prev", "previous", "back" -> MediaRepository.Action.PREV
             "stop" -> MediaRepository.Action.STOP
-            else -> return error("usage: media [play|pause|toggle|next|prev|stop]")
+            else -> return error("Usage: media [play|pause|toggle|next|prev|stop]")
         }
         mediaAction(action)
     }
@@ -89,7 +89,7 @@ class ControlCommands(private val context: Context) {
     private fun nowPlaying() {
         if (needMediaAccess()) return
         media.start()
-        val np = media.snapshotNow() ?: return info("nothing playing")
+        val np = media.snapshotNow() ?: return info("Nothing playing")
         val pos = np.positionNow()
         val time = when {
             pos >= 0 && np.duration > 0 -> " · ${ControlArgs.clock(pos)} / ${ControlArgs.clock(np.duration)}"
@@ -105,13 +105,13 @@ class ControlCommands(private val context: Context) {
                 LogContext.DESC to "${np.app} · ${np.stateLabel}$time",
             ),
         )
-        info("tap to ${if (np.playing) "pause" else "play"} · media next|prev|stop · mp toggles")
+        info("Tap to ${if (np.playing) "pause" else "play"} · media next|prev|stop · mp toggles")
     }
 
     private fun mediaAction(action: MediaRepository.Action) {
         if (needMediaAccess()) return
         media.start()
-        val done = media.send(action) ?: return info("nothing playing")
+        val done = media.send(action) ?: return info("Nothing playing")
         val np = media.nowPlaying.value
         val what = when (done) {
             MediaRepository.Action.PLAY -> "▶ play"
@@ -128,13 +128,13 @@ class ControlCommands(private val context: Context) {
 
     private fun torch(arg: String?) {
         val want = ControlArgs.onOff(arg)
-        if (arg != null && want == null && arg != "toggle") return error("usage: torch [on|off]")
+        if (arg != null && want == null && arg != "toggle") return error("Usage: torch [on|off]")
         val t = Torch.get(context)
-        val id = t.cameraId ?: return error("no flashlight on this device")
+        val id = t.cameraId ?: return error("No flashlight on this device")
         val on = want ?: !t.isOn()
         runCatching { t.camera.setTorchMode(id, on) }
-            .onSuccess { info("torch ${if (on) "on" else "off"}", LogContext.of(LogContext.RUN to "torch")) }
-            .onFailure { error("torch: ${it.message ?: "camera in use"}") }
+            .onSuccess { info("Torch ${if (on) "on" else "off"}", LogContext.of(LogContext.RUN to "torch")) }
+            .onFailure { error("Torch: ${it.message ?: "camera in use"}") }
     }
 
     /** Torch state from [CameraManager.TorchCallback]; registered on first use. */
@@ -192,7 +192,7 @@ class ControlCommands(private val context: Context) {
 
     private fun volume(arg: String?) {
         val level = ControlArgs.volume(arg)
-        if (arg != null && level == null) return error("usage: volume [0-100|up|down|mute|unmute]")
+        if (arg != null && level == null) return error("Usage: volume [0-100|up|down|mute|unmute]")
         val s = AudioManager.STREAM_MUSIC
         val flags = AudioManager.FLAG_SHOW_UI
         runCatching {
@@ -205,7 +205,7 @@ class ControlCommands(private val context: Context) {
                 ControlArgs.Level.Unmute -> audio.adjustStreamVolume(s, AudioManager.ADJUST_UNMUTE, flags)
                 ControlArgs.Level.Auto -> Unit
             }
-        }.onFailure { return error("volume: ${it.message ?: it.javaClass.simpleName}") }
+        }.onFailure { return error("Volume: ${it.message ?: it.javaClass.simpleName}") }
         out(volumeLine(), LogContext.of(LogContext.COMMAND to "volume "))
     }
 
@@ -225,19 +225,19 @@ class ControlCommands(private val context: Context) {
 
     private fun ring(arg: String?) {
         val mode = when (arg) {
-            null -> return out("ringer ${ringLabel()}", LogContext.of(LogContext.COMMAND to "ring "))
+            null -> return out("Ringer ${ringLabel()}", LogContext.of(LogContext.COMMAND to "ring "))
             "normal", "on", "sound" -> AudioManager.RINGER_MODE_NORMAL
             "vibrate", "vib" -> AudioManager.RINGER_MODE_VIBRATE
             "silent", "off", "mute" -> AudioManager.RINGER_MODE_SILENT
-            else -> return error("usage: ring [normal|vibrate|silent]")
+            else -> return error("Usage: ring [normal|vibrate|silent]")
         }
         // Entering or leaving silent changes Do Not Disturb, which needs policy access.
         if ((mode == AudioManager.RINGER_MODE_SILENT || audio.ringerMode == AudioManager.RINGER_MODE_SILENT) &&
             needPolicyAccess("ring silent")
         ) return
         runCatching { audio.ringerMode = mode }
-            .onSuccess { info("ringer ${ringLabel()}") }
-            .onFailure { if (it is SecurityException) needPolicyAccess("changing the ringer") else error("ring: ${it.message}") }
+            .onSuccess { info("Ringer ${ringLabel()}") }
+            .onFailure { if (it is SecurityException) needPolicyAccess("changing the ringer") else error("Ring: ${it.message}") }
     }
 
     private fun dndLabel(filter: Int = notifications.currentInterruptionFilter) = when (filter) {
@@ -250,7 +250,7 @@ class ControlCommands(private val context: Context) {
 
     private fun dnd(arg: String?) {
         if (arg == "access") return open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS), "do not disturb access")
-        if (arg == "status") return out("do not disturb ${dndLabel()}", LogContext.of(LogContext.RUN to "dnd"))
+        if (arg == "status") return out("Do not disturb ${dndLabel()}", LogContext.of(LogContext.RUN to "dnd"))
         val filter = when (arg) {
             null, "toggle" -> if (notifications.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_ALL)
                 NotificationManager.INTERRUPTION_FILTER_PRIORITY else NotificationManager.INTERRUPTION_FILTER_ALL
@@ -258,12 +258,12 @@ class ControlCommands(private val context: Context) {
             "alarms" -> NotificationManager.INTERRUPTION_FILTER_ALARMS
             "none", "total", "silence" -> NotificationManager.INTERRUPTION_FILTER_NONE
             "off" -> NotificationManager.INTERRUPTION_FILTER_ALL
-            else -> return error("usage: dnd [on|off|alarms|none|status|access]")
+            else -> return error("Usage: dnd [on|off|alarms|none|status|access]")
         }
         if (needPolicyAccess("dnd")) return
         runCatching { notifications.setInterruptionFilter(filter) }
-            .onSuccess { info("do not disturb ${dndLabel(filter)}", LogContext.of(LogContext.RUN to "dnd")) }
-            .onFailure { error("dnd: ${it.message}") }
+            .onSuccess { info("Do not disturb ${dndLabel(filter)}", LogContext.of(LogContext.RUN to "dnd")) }
+            .onFailure { error("Dnd: ${it.message}") }
     }
 
     // ---- system settings (WRITE_SETTINGS) -------------------------------------------------
@@ -293,7 +293,7 @@ class ControlCommands(private val context: Context) {
     private fun brightness(arg: String?) {
         if (arg == "access") return open(writeSettingsIntent(), "modify system settings")
         val level = ControlArgs.brightness(arg)
-        if (arg != null && level == null) return error("usage: brightness [0-100|up|down|auto]")
+        if (arg != null && level == null) return error("Usage: brightness [0-100|up|down|auto]")
         if (level != null) {
             if (needWrite("brightness")) return
             val mode = Settings.System.SCREEN_BRIGHTNESS_MODE
@@ -319,21 +319,21 @@ class ControlCommands(private val context: Context) {
     private fun rotate(arg: String?) {
         if (arg == "status") return out("auto-rotate ${if (rotationOn()) "on" else "off"}", LogContext.of(LogContext.RUN to "rotate"))
         val want = ControlArgs.onOff(arg)
-        if (arg != null && want == null && arg != "toggle") return error("usage: rotate [on|off|status]")
+        if (arg != null && want == null && arg != "toggle") return error("Usage: rotate [on|off|status]")
         if (needWrite("rotate")) return
         val on = want ?: !rotationOn()
         Settings.System.putInt(resolver, Settings.System.ACCELEROMETER_ROTATION, if (on) 1 else 0)
-        info("auto-rotate ${if (on) "on" else "off"}", LogContext.of(LogContext.RUN to "rotate"))
+        info("Auto-rotate ${if (on) "on" else "off"}", LogContext.of(LogContext.RUN to "rotate"))
     }
 
     private fun timeoutMs() = Settings.System.getLong(resolver, Settings.System.SCREEN_OFF_TIMEOUT, 30_000L)
 
     private fun screenTimeout(arg: String?) {
-        if (arg == null) return out("screen timeout ${ControlArgs.formatDuration(timeoutMs())}", LogContext.of(LogContext.COMMAND to "screen-timeout "))
-        val ms = ControlArgs.duration(arg) ?: return error("usage: screen-timeout <15s|30s|1m|2m|5m|10m|30m>")
+        if (arg == null) return out("Screen timeout ${ControlArgs.formatDuration(timeoutMs())}", LogContext.of(LogContext.COMMAND to "screen-timeout "))
+        val ms = ControlArgs.duration(arg) ?: return error("Usage: screen-timeout <15s|30s|1m|2m|5m|10m|30m>")
         if (needWrite("screen-timeout")) return
         Settings.System.putLong(resolver, Settings.System.SCREEN_OFF_TIMEOUT, ms.coerceAtMost(Int.MAX_VALUE.toLong()))
-        info("screen timeout ${ControlArgs.formatDuration(ms)}")
+        info("Screen timeout ${ControlArgs.formatDuration(ms)}")
     }
 
     // ---- radios: Android only lets apps open the panel / settings page ---------------------
@@ -345,8 +345,8 @@ class ControlCommands(private val context: Context) {
 
     private fun open(intent: Intent, what: String) {
         runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-            .onSuccess { info("opened $what") }
-            .onFailure { error("can't open $what: ${it.message ?: it.javaClass.simpleName}") }
+            .onSuccess { info("Opened $what") }
+            .onFailure { error("Can't open $what: ${it.message ?: it.javaClass.simpleName}") }
     }
 
     private fun wifiOn(): Boolean? = runCatching {
@@ -368,50 +368,50 @@ class ControlCommands(private val context: Context) {
     /** One line per toggle; tapping a line toggles it (or opens its panel). */
     private fun toggles() {
         fun row(name: String, value: String, run: String, hint: String) =
-            out(name.padEnd(11) + value, LogContext.of(LogContext.RUN to run, LogContext.DESC to hint))
+            out(name.padEnd(15) + value, LogContext.of(LogContext.RUN to run, LogContext.DESC to hint))
 
         val torch = Torch.get(context)
         if (torch.cameraId != null) {
             torch.isOn()
-            row("torch", word(torch.known()), "torch", "tap to toggle")
+            row("Torch", word(torch.known()), "torch", "Tap to toggle")
         }
-        row("wi-fi", word(wifiOn()), "wifi", "tap for the wi-fi panel")
-        row("bluetooth", word(btOn()), "bt", "tap for bluetooth settings")
-        if (NfcAdapter.getDefaultAdapter(context) != null) row("nfc", word(nfcOn()), "nfc", "tap for the nfc panel")
-        row("data", word(dataOn()), "data", "tap for the internet panel")
+        row("Wi-Fi", word(wifiOn()), "wifi", "Tap for the Wi-Fi panel")
+        row("Bluetooth", word(btOn()), "bt", "Tap for Bluetooth settings")
+        if (NfcAdapter.getDefaultAdapter(context) != null) row("NFC", word(nfcOn()), "nfc", "Tap for the NFC panel")
+        row("Mobile data", word(dataOn()), "data", "Tap for the internet panel")
         val policy = hasPolicyAccess()
-        row("dnd", dndLabel(), if (policy) "dnd" else "dnd access", if (policy) "tap to toggle" else "tap to grant access")
-        row("ringer", ringLabel(), "ring " + if (audio.ringerMode == AudioManager.RINGER_MODE_NORMAL) "vibrate" else "normal", "tap to cycle normal / vibrate")
+        row("Do not disturb", dndLabel(), if (policy) "dnd" else "dnd access", if (policy) "Tap to toggle" else "Tap to grant access")
+        row("Ringer", ringLabel(), "ring " + if (audio.ringerMode == AudioManager.RINGER_MODE_NORMAL) "vibrate" else "normal", "Tap to cycle normal / vibrate")
         val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-        row("volume", "${ControlArgs.toPercent(audio.getStreamVolume(AudioManager.STREAM_MUSIC), max)}%", "volume mute", "tap to mute · volume <0-100>")
+        row("Volume", "${ControlArgs.toPercent(audio.getStreamVolume(AudioManager.STREAM_MUSIC), max)}%", "volume mute", "Tap to mute · volume <0-100>")
         val write = canWrite()
         row(
-            "rotate", if (rotationOn()) "on" else "off", if (write) "rotate" else "brightness access",
-            if (write) "tap to toggle" else "tap to allow modify system settings",
+            "Auto-rotate", if (rotationOn()) "on" else "off", if (write) "rotate" else "brightness access",
+            if (write) "Tap to toggle" else "Tap to allow modifying system settings",
         )
-        row("brightness", brightnessShort(), if (write) "brightness auto" else "brightness access", "tap for auto · brightness <0-100>")
-        row("timeout", ControlArgs.formatDuration(timeoutMs()), "screen-timeout", "screen-timeout <30s|1m|…>")
-        media.nowPlaying.value?.let { row("media", "${it.stateLabel} · ${it.line}", "media toggle", "tap to play / pause") }
+        row("Brightness", brightnessShort(), if (write) "brightness auto" else "brightness access", "Tap for auto · brightness <0-100>")
+        row("Screen timeout", ControlArgs.formatDuration(timeoutMs()), "screen-timeout", "Set with screen-timeout <30s|1m|…>")
+        media.nowPlaying.value?.let { row("Media", "${it.stateLabel} · ${it.line}", "media toggle", "Tap to play / pause") }
     }
 
     companion object {
         val SPECS = listOf(
-            CommandSpec("media", "media [play|pause|toggle|next|prev|stop]", "now playing, or control it (needs notification access)"),
-            CommandSpec("mp", "mp", "play / pause media"),
-            CommandSpec("next", "next", "next track"),
-            CommandSpec("prev", "prev", "previous track"),
-            CommandSpec("torch", "torch [on|off]", "flashlight (no args toggles)"),
-            CommandSpec("volume", "volume [0-100|up|down|mute]", "media volume"),
-            CommandSpec("ring", "ring [normal|vibrate|silent]", "ringer mode (silent needs DND access)"),
+            CommandSpec("media", "media [play|pause|toggle|next|prev|stop]", "Now playing, or control it (needs notification access)"),
+            CommandSpec("mp", "mp", "Play / pause media"),
+            CommandSpec("next", "next", "Next track"),
+            CommandSpec("prev", "prev", "Previous track"),
+            CommandSpec("torch", "torch [on|off]", "Flashlight (no args toggles)"),
+            CommandSpec("volume", "volume [0-100|up|down|mute]", "Media volume"),
+            CommandSpec("ring", "ring [normal|vibrate|silent]", "Ringer mode (silent needs DND access)"),
             CommandSpec("dnd", "dnd [on|off|alarms|none|access]", "Do Not Disturb (no args toggles)"),
-            CommandSpec("brightness", "brightness [0-100|up|down|auto]", "screen brightness (needs modify system settings)"),
-            CommandSpec("rotate", "rotate [on|off]", "auto-rotate (no args toggles)"),
-            CommandSpec("screen-timeout", "screen-timeout [30s|1m|5m…]", "screen off timeout"),
-            CommandSpec("wifi", "wifi", "wi-fi panel"),
-            CommandSpec("bt", "bt", "bluetooth settings"),
-            CommandSpec("nfc", "nfc", "nfc panel"),
-            CommandSpec("data", "data", "internet / mobile data panel"),
-            CommandSpec("toggles", "toggles", "status of every toggle (tap one to change it)"),
+            CommandSpec("brightness", "brightness [0-100|up|down|auto]", "Screen brightness (needs modify system settings)"),
+            CommandSpec("rotate", "rotate [on|off]", "Auto-rotate (no args toggles)"),
+            CommandSpec("screen-timeout", "screen-timeout [30s|1m|5m…]", "Screen off timeout"),
+            CommandSpec("wifi", "wifi", "Wi-Fi panel"),
+            CommandSpec("bt", "bt", "Bluetooth settings"),
+            CommandSpec("nfc", "nfc", "NFC panel"),
+            CommandSpec("data", "data", "Internet / mobile data panel"),
+            CommandSpec("toggles", "toggles", "Status of every toggle (tap one to change it)"),
         )
 
         /** Names this class handles (including aliases not listed in help). */

@@ -321,7 +321,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 item(key = "empty-hint") {
                     Text(
                         "type an app name or a command · help lists everything · ↑ recalls history · " +
-                            "tap a line to act, long-press for more · ⚙ settings",
+                            "Tap a line to act, long-press for more · ⚙ settings",
                         style = Term.mono.copy(color = Term.dim),
                         modifier = Modifier.padding(vertical = 12.dp),
                     )

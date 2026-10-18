@@ -254,7 +254,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             val firstRun = !prefs.getBoolean("intro_shown", false) && logs.recent(1).isEmpty()
             prefs.edit().putBoolean("intro_shown", true).apply()
             if (firstRun) {
-                logs.add(LogKind.INFO, "kolahal — a terminal launcher. type 'help' or start typing an app name.")
+                logs.add(LogKind.INFO, "Kolahal — a terminal launcher. type 'help' or start typing an app name.")
                 logs.add(LogKind.INFO, "↑/↓ recall commands · tap a line to reuse/open it · long-press for actions")
                 openScreen(Screen.SETUP) // first run: show the setup checklist
             }
@@ -686,7 +686,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             ctx.values[LogContext.SHORTCUT] != null && appFor(ctx) != null -> {
                 val app = appFor(ctx)!!
                 val id = ctx.values.getValue(LogContext.SHORTCUT)
-                io { runCatching { appsRepo.startShortcut(app, id) }.onFailure { logs.add(LogKind.ERROR, "shortcut unavailable: ${it.message}") } }
+                io { runCatching { appsRepo.startShortcut(app, id) }.onFailure { logs.add(LogKind.ERROR, "Shortcut unavailable: ${it.message}") } }
             }
             ctx.values[LogContext.PHONE] != null -> startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", ctx.values.getValue(LogContext.PHONE), null)))
             ctx.pkg != null -> appFor(ctx)?.let { app -> io { processor.launch(app) } }
@@ -718,7 +718,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         ctx.values[NOTIF]?.let { key ->
             actions += LogAction("Open notification") { if (!NotificationActions.open(getApplication(), key)) appFor(ctx)?.let { app -> io { processor.launch(app) } } }
             ctx.pkg?.let { pkg ->
-                actions += LogAction("Mute this app's notifications") { NotifPrefs.get(getApplication()).mute(pkg); logs.add(LogKind.INFO, "muted notifications from ${appFor(ctx)?.label ?: pkg}") }
+                actions += LogAction("Mute this app's notifications") { NotifPrefs.get(getApplication()).mute(pkg); logs.add(LogKind.INFO, "Muted notifications from ${appFor(ctx)?.label ?: pkg}") }
             }
             danger += LogAction("Dismiss notification", destructive = true) { NotificationActions.dismiss(key) }
         }
@@ -839,7 +839,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** One serial worker: commands and actions run in order, and failures are logged, never crash home. */
     private val serialIo = Dispatchers.IO.limitedParallelism(1)
     private val errors = CoroutineExceptionHandler { _, e ->
-        runCatching { logs.add(LogKind.ERROR, "error: ${e.message ?: e.javaClass.simpleName}") }
+        runCatching { logs.add(LogKind.ERROR, "Error: ${e.message ?: e.javaClass.simpleName}") }
     }
 
     private fun io(block: suspend () -> Unit) {
@@ -896,7 +896,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     private fun startActivity(intent: Intent) {
         runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-            .onFailure { io { logs.add(LogKind.ERROR, "can't open: ${it.message}") } }
+            .onFailure { io { logs.add(LogKind.ERROR, "Can't open: ${it.message}") } }
     }
 
     // ---- script editor --------------------------------------------------------------------
@@ -913,7 +913,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         io {
             scripts.saveCode(script.id, code)
             scripts.byId(script.id)?.let { ScriptScheduler.runNow(context, it) }
-            logs.add(LogKind.INFO, "running ${script.name}…", ctx = LogContext.of(LogContext.SCRIPT to script.name))
+            logs.add(LogKind.INFO, "Running ${script.name}…", ctx = LogContext.of(LogContext.SCRIPT to script.name))
         }
     }
 
@@ -965,7 +965,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             io {
                 logs.add(
                     LogKind.INFO,
-                    "tap to pause the ${profile.kind.label} profile",
+                    "Tap to pause the ${profile.kind.label} profile",
                     ctx = LogContext.of(LogContext.RUN to "$cmd off"),
                 )
             }
@@ -987,7 +987,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         io {
             scripts.byName(name)?.let {
                 ScriptScheduler.runNow(context, it)
-                logs.add(LogKind.INFO, "running $name…", ctx = LogContext.of(LogContext.SCRIPT to name))
+                logs.add(LogKind.INFO, "Running $name…", ctx = LogContext.of(LogContext.SCRIPT to name))
             }
         }
     }
@@ -1102,7 +1102,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     fun runScriptNow(s: Script) = io {
         ScriptScheduler.runNow(context, s)
-        notice("running ${s.name}…")
+        notice("Running ${s.name}…")
     }
 
     fun deleteScript(s: Script) = io {
@@ -1110,7 +1110,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         scripts.delete(s.id)
         KvStore(context, HostApi.STATUS_SCOPE).set(s.name, null)
         scriptCache.value = scripts.all()
-        notice("deleted ${s.name}")
+        notice("Deleted ${s.name}")
     }
 
     fun newScript(name: String, lang: ScriptLang, asCommand: Boolean) {
@@ -1120,7 +1120,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             return
         }
         io {
-            if (scripts.byName(clean) != null) return@io notice("script '$clean' already exists", error = true)
+            if (scripts.byName(clean) != null) return@io notice("Script '$clean' already exists", error = true)
             val code = if (asCommand) ScriptTemplates.command(lang, clean) else ScriptTemplates.forLang(lang, clean)
             val s = scripts.create(clean, lang, code)
             scriptCache.value = scripts.all()
@@ -1166,13 +1166,13 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         fileOp("export") {
             val s = scripts.byId(id) ?: throw IllegalStateException("script was deleted")
             ScriptFiles(context).export(s, uri)
-            notice("exported ${s.name}.${s.lang.ext}")
+            notice("Exported ${s.name}.${s.lang.ext}")
         }
     }
 
     fun exportBackup(uri: Uri?) {
         if (uri == null) return
-        fileOp("backup") { notice("backup saved: everything — settings, apps, ${Backup(context).export(uri)} scripts, todos, notes, reminders, feeds and the log") }
+        fileOp("backup") { notice("Backup saved: everything — settings, apps, ${Backup(context).export(uri)} scripts, todos, notes, reminders, feeds and the log") }
     }
 
     fun importBackup(uri: Uri?) {
@@ -1207,7 +1207,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         fileOp("install") {
             val s = library.install(entry)
             refreshScriptCaches()
-            notice("installed ${s.name}.${s.lang.ext}" + if (entry.command) " — run it as '${s.name}'" else "")
+            notice("Installed ${s.name}.${s.lang.ext}" + if (entry.command) " — run it as '${s.name}'" else "")
         }
     }
 
@@ -1232,7 +1232,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     fun onContactsPermission(granted: Boolean) {
         if (granted) io.github.rscipher001.launcher.contacts.ContactsRepository.get(context).refresh()
-        io { logs.add(if (granted) LogKind.INFO else LogKind.ERROR, if (granted) "contacts allowed" else "contacts permission denied") }
+        io { logs.add(if (granted) LogKind.INFO else LogKind.ERROR, if (granted) "Contacts allowed" else "Contacts permission denied") }
     }
 
     override fun pickScriptFolder() {
@@ -1297,7 +1297,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                 TermFonts.revision++
                 config.set(Keys.FONT, TermFonts.CUSTOM)
             }
-            notice("font = custom (${name ?: "imported font"})")
+            notice("Font = custom (${name ?: "imported font"})")
         }
     }
 
@@ -1310,7 +1310,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         io {
             logs.add(
                 LogKind.ERROR,
-                "font '$font' could not be loaded — using the system monospace · tap to import one",
+                "Font '$font' could not be loaded — using the system monospace · tap to import one",
                 ctx = LogContext.of(LogContext.RUN to "font import"),
             )
         }
@@ -1320,7 +1320,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         if (uri == null) return
         io {
             ScriptFolder(context).setFolder(uri)
-            logs.add(LogKind.INFO, "script folder set — 'script export' / 'script import' to sync")
+            logs.add(LogKind.INFO, "Script folder set — 'script export' / 'script import' to sync")
         }
     }
 
@@ -1329,7 +1329,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         io {
             logs.add(
                 if (granted) LogKind.INFO else LogKind.ERROR,
-                if (granted) "notifications allowed" else "notifications denied — tap to open notification settings",
+                if (granted) "Notifications allowed" else "Notifications denied — tap to open notification settings",
                 ctx = if (granted) LogContext.EMPTY else LogContext.of(LogContext.RUN to "notifications settings"),
             )
         }
@@ -1434,9 +1434,9 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         refreshSetup()
         io {
             if (granted) {
-                logs.add(LogKind.INFO, "calendar allowed — tap to see your agenda", ctx = LogContext.of(LogContext.RUN to "agenda"))
+                logs.add(LogKind.INFO, "Calendar allowed — tap to see your agenda", ctx = LogContext.of(LogContext.RUN to "agenda"))
             } else {
-                logs.add(LogKind.ERROR, "calendar permission denied — tap to open app settings", ctx = LogContext.of(LogContext.RUN to "agenda --settings"))
+                logs.add(LogKind.ERROR, "Calendar permission denied — tap to open app settings", ctx = LogContext.of(LogContext.RUN to "agenda --settings"))
             }
         }
     }

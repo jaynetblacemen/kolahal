@@ -101,7 +101,7 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         if (lines.isEmpty()) return
         val time = io.github.rscipher001.launcher.data.Config.get(applicationContext).shortTime(ts)
         val header = LogRepository.Pending(
-            LogKind.INFO, "── feeds · $time ──", "feeds", LogContext.of(LogContext.RUN_HEADER to "1"), ts,
+            LogKind.INFO, "── Feeds · $time ──", "feeds", LogContext.of(LogContext.RUN_HEADER to "1"), ts,
         )
         val logs = LogRepository.get(ctx)
         logs.addAll(listOf(header) + lines)

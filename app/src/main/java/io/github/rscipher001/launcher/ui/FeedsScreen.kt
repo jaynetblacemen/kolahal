@@ -152,13 +152,13 @@ fun FeedsScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
             val added = repo.importOpml(Files.readText(context, uri))
             FeedScheduler.sync(context)
             if (added > 0) FeedScheduler.fetchNow(context)
-            if (added == 0) "no new feeds in that file" else "imported $added new feeds — fetching…"
+            if (added == 0) "No new feeds in that file" else "Imported $added new feeds — fetching…"
         }
     }
     val exportOpml = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/x-opml")) { uri ->
         if (uri != null) io("export") {
             Files.writeText(context, uri, repo.exportOpml())
-            "exported ${repo.feeds().size} feeds"
+            "Exported ${repo.feeds().size} feeds"
         }
     }
 

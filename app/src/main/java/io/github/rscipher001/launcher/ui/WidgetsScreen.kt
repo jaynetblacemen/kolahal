@@ -248,7 +248,7 @@ fun WidgetPanel(vm: TerminalViewModel) {
         }
         if (panel.isEmpty()) {
             Text(
-                "no widgets here yet · tap + add, or long-press a widget on home and move it to this page",
+                "No widgets here yet · tap + add, or long-press a widget on home and move it to this page",
                 style = Term.mono.copy(color = Term.dim),
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp),
             )

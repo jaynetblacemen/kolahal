@@ -185,7 +185,7 @@ class LuaEngine : ScriptEngine {
             local MEMORY_LIMIT_KB = 64 * 1024
             local function hook()
               check()
-              if gc("count") > MEMORY_LIMIT_KB then error("memory limit exceeded (64 MB)", 0) end
+              if gc("count") > MEMORY_LIMIT_KB then error("Memory limit exceeded (64 MB)", 0) end
             end
             sethook(hook, "", HOOK_EVERY)
 

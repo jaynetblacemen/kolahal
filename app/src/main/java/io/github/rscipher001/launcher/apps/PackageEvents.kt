@@ -175,7 +175,7 @@ class PackageEvents private constructor(private val context: Context) {
             val ctx = if (kind == "uninstalled") LogContext.of(LogContext.COPY to pkg)
             else LogContext.of(LogContext.PKG to pkg, LogContext.USER to key.substringAfter('#'), LogContext.COPY to pkg)
             // Detail lines (dimmed by the log view): the package, then the version.
-            LogRepository.Pending(LogKind.INFO, "$glyph $kind $tag${p.label}\n$pkg$ver", "apps", ctx, System.currentTimeMillis())
+            LogRepository.Pending(LogKind.INFO, "$glyph ${kind.replaceFirstChar { it.uppercase() }} $tag${p.label}\n$pkg$ver", "apps", ctx, System.currentTimeMillis())
         }
         logs.addAll(pending)
         // Short history for the `installs` command.

@@ -114,15 +114,15 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "alias" -> alias(rest)
                 "unalias" -> unalias(args)
                 "hide" -> withApp(args) { setHidden(it, true) }
-                "pin", "fav" -> if (args.isEmpty()) listPinned() else withApp(args) { app -> prefs.setPinned(app.key, true); info("pinned ${app.label} — it leads the suggestions on an empty prompt") }
-                "unpin", "unfav" -> withApp(args) { app -> prefs.setPinned(app.key, false); info("unpinned ${app.label}") }
+                "pin", "fav" -> if (args.isEmpty()) listPinned() else withApp(args) { app -> prefs.setPinned(app.key, true); info("Pinned ${app.label} — it leads the suggestions on an empty prompt") }
+                "unpin", "unfav" -> withApp(args) { app -> prefs.setPinned(app.key, false); info("Unpinned ${app.label}") }
                 "pins", "favs" -> listPinned()
                 "unhide" -> withApp(args, includeHidden = true) { setHidden(it, false) }
                 "rename" -> rename(args)
                 "help", "?" -> help()
                 "apps", "ls" -> listApps(args)
                 "open", "launch" -> open(args)
-                "info" -> withApp(args) { apps.openAppInfo(it); info("app info: ${it.label}") }
+                "info" -> withApp(args) { apps.openAppInfo(it); info("App info: ${it.label}") }
                 "uninstall" -> withApp(args) { apps.uninstall(it) }
                 "work" -> profileToggle(ProfileKind.WORK, args)
                 "private" -> profileToggle(ProfileKind.PRIVATE, args)
@@ -161,7 +161,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "system" -> startSettings(Settings.ACTION_SETTINGS)
                 "home" -> startSettings(Settings.ACTION_HOME_SETTINGS)
                 "lock" -> if (!io.github.rscipher001.launcher.gesture.LockService.lock()) {
-                    logs.add(LogKind.ERROR, "locking needs the Kolahal screen lock accessibility service — tap to enable it", ctx = LogContext.of(LogContext.RUN to "accessibility"))
+                    logs.add(LogKind.ERROR, "Locking needs the Kolahal screen lock accessibility service — tap to enable it", ctx = LogContext.of(LogContext.RUN to "accessibility"))
                 }
                 "accessibility" -> startActivity(io.github.rscipher001.launcher.gesture.LockService.settingsIntent())
                 "shade" -> io.github.rscipher001.launcher.gesture.Gestures.expandShade(context)
@@ -195,28 +195,28 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private fun alias(rest: String) {
         if (rest.isBlank()) {
             val all = prefs.aliases()
-            if (all.isEmpty()) info("no aliases — e.g. alias m = open maps")
+            if (all.isEmpty()) info("No aliases — e.g. alias m = open maps")
             all.forEach { (k, v) -> out("$k = $v", LogContext.of(LogContext.COMMAND to k)) }
             return
         }
         val name = rest.substringBefore('=').trim().substringBefore(' ')
         val expansion = rest.substringAfter('=', "").trim().removeSurrounding("\"").removeSurrounding("'")
         when {
-            !rest.contains('=') -> prefs.alias(name)?.let { out("$name = $it") } ?: error("no alias '$name'")
-            name.isEmpty() || expansion.isEmpty() -> error("usage: alias <name> = <command>")
+            !rest.contains('=') -> prefs.alias(name)?.let { out("$name = $it") } ?: error("No alias '$name'")
+            name.isEmpty() || expansion.isEmpty() -> error("Usage: alias <name> = <command>")
             name in COMMANDS.map { it.name } -> error("'$name' is a built-in command and can't be an alias")
             else -> {
                 prefs.setAlias(name, expansion)
-                info("alias $name = $expansion")
+                info("Alias $name = $expansion")
             }
         }
     }
 
     private fun unalias(args: List<String>) {
-        val name = args.firstOrNull() ?: return error("usage: unalias <name>")
-        if (prefs.alias(name) == null) return error("no alias '$name'")
+        val name = args.firstOrNull() ?: return error("Usage: unalias <name>")
+        if (prefs.alias(name) == null) return error("No alias '$name'")
         prefs.setAlias(name, null)
-        info("removed alias $name")
+        info("Removed alias $name")
     }
 
     // ---- hide / rename --------------------------------------------------------------------
@@ -224,16 +224,16 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private fun installs(args: List<String>) {
         val n = args.firstOrNull()?.toIntOrNull()?.coerceIn(1, 200) ?: 20
         val list = io.github.rscipher001.launcher.apps.PackageEvents.get(context).history().take(n)
-        if (list.isEmpty()) return info("no app installs, updates or uninstalls recorded yet")
+        if (list.isEmpty()) return info("No app installs, updates or uninstalls recorded yet")
         val fmt = java.text.SimpleDateFormat("EEE d MMM HH:mm", java.util.Locale.getDefault())
         list.forEach { (t, text) -> out(text, LogContext.of(LogContext.DESC to fmt.format(Date(t)))) }
-        if (!conf[Keys.LOG_PACKAGES]) info("live logging is off: config set log.packages on")
+        if (!conf[Keys.LOG_PACKAGES]) info("Live logging is off: config set log.packages on")
     }
 
     private fun listPinned() {
         val byKey = apps.apps.value.associateBy { it.key }
         val pinned = prefs.pinned().mapNotNull { byKey[it] }
-        if (pinned.isEmpty()) return info("no pinned apps — pin <app>, or long-press an app → Pin")
+        if (pinned.isEmpty()) return info("No pinned apps — pin <app>, or long-press an app → Pin")
         appGrid(pinned)
         info("${pinned.size} pinned · unpin <app> to remove")
     }
@@ -241,13 +241,13 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private fun setHidden(app: AppEntry, hidden: Boolean) {
         prefs.setHidden(app.key, hidden)
         apps.refresh()
-        info("${if (hidden) "hidden" else "unhidden"} ${appLine(app)}", appCtx(app))
+        info("${if (hidden) "Hidden" else "Unhidden"} ${appLine(app)}", appCtx(app))
     }
 
     /** `rename <app> = <new label>`, or `rename <app> =` to restore the original. */
     private fun rename(args: List<String>) {
         val eq = args.indexOf("=")
-        if (eq <= 0) return error("usage: rename <app> [-w] = <new name>")
+        if (eq <= 0) return error("Usage: rename <app> [-w] = <new name>")
         withApp(args.subList(0, eq), includeHidden = true) { app ->
             val label = args.drop(eq + 1).joinToString(" ").ifBlank { null }
             prefs.setLabel(app.key, label)
@@ -308,7 +308,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             (kind == null || it.profile.kind == kind) && (if ("hidden" in args) it.hidden else showHidden || !it.hidden)
         }
         if (list.isEmpty()) {
-            info("no apps" + (kind?.let { " in ${it.label} profile" } ?: ""))
+            info("No apps" + (kind?.let { " in ${it.label} profile" } ?: ""))
             return
         }
         val kinds = list.map { it.profile.kind }.distinct().sortedBy { it.ordinal }
@@ -330,7 +330,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private inline fun withApp(args: List<String>, includeHidden: Boolean = false, action: (AppEntry) -> Unit) {
         val matches = resolveApp(args, includeHidden)
         when {
-            matches.isEmpty() -> error("no app matches '${stripFlags(args)}'")
+            matches.isEmpty() -> error("No app matches '${stripFlags(args)}'")
             else -> action(matches.first())
         }
     }
@@ -340,7 +340,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val joined = stripFlags(args)
         if (joined.contains(':')) {
             val app = apps.search(joined.substringBefore(':'), profileFlag(args)).firstOrNull()
-                ?: return error("no app matches '${joined.substringBefore(':')}'")
+                ?: return error("No app matches '${joined.substringBefore(':')}'")
             val wanted = joined.substringAfter(':').trim().lowercase()
             val shortcut = apps.shortcuts(app).minByOrNull { s ->
                 val label = (s.shortLabel ?: s.longLabel ?: "").toString().lowercase()
@@ -357,7 +357,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         }
         val matches = resolveApp(args)
         if (matches.isEmpty()) {
-            error("no app matches '${stripFlags(args)}'")
+            error("No app matches '${stripFlags(args)}'")
             return
         }
         val app = matches.first()
@@ -375,17 +375,17 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             return
         }
         runCatching { apps.launch(app) }
-            .onSuccess { logs.addReplacing(LogKind.INFO, "launched ${appLine(app)}", appCtx(app)) }
-            .onFailure { error("can't launch ${app.label}: ${it.message ?: it.javaClass.simpleName}") }
+            .onSuccess { logs.addReplacing(LogKind.INFO, "Launched ${appLine(app)}", appCtx(app)) }
+            .onFailure { error("Can't launch ${app.label}: ${it.message ?: it.javaClass.simpleName}") }
     }
 
     /** Turns the paused profile back on, waits until it is available, then opens [app]. */
     private fun resumeAndLaunch(app: AppEntry) {
         if (!apps.setQuietMode(app.profile, false)) {
-            error("couldn't resume the ${app.profile.kind.label} profile (is Kolahal the default launcher? run 'home')")
+            error("Couldn't resume the ${app.profile.kind.label} profile (is Kolahal the default launcher? run 'home')")
             return
         }
-        info("resuming ${app.profile.kind.label} profile…")
+        info("Resuming ${app.profile.kind.label} profile…")
         background("resume") {
             val deadline = System.currentTimeMillis() + 20_000
             while (System.currentTimeMillis() < deadline) {
@@ -430,12 +430,12 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             .filter { (c, d) -> d <= (if (c.length <= 4) 1 else 2) }
             .minByOrNull { it.second }?.first
         if (best == null) {
-            error("command not found: $text  (try 'help')")
+            error("Command not found: $text  (try 'help')")
         } else {
             val corrected = (best + " " + rest).trim()
             logs.add(
                 LogKind.ERROR,
-                "command not found: $head — did you mean '$corrected'? (tap to put it in the prompt)",
+                "Command not found: $head — did you mean '$corrected'? (tap to put it in the prompt)",
                 ctx = LogContext.of(LogContext.COMMAND to corrected),
             )
         }
@@ -453,7 +453,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private fun profileToggle(kind: ProfileKind, args: List<String>) {
         val profile = apps.profiles.value.firstOrNull { it.kind == kind }
         if (profile == null) {
-            info("no ${kind.label} profile on this device")
+            info("No ${kind.label} profile on this device")
             return
         }
         when (args.firstOrNull()) {
@@ -461,14 +461,14 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "on", "off" -> {
                 val quiet = args[0] == "off"
                 if (Build.VERSION.SDK_INT < 29) {
-                    error("toggling profiles needs Android 10+")
+                    error("Toggling profiles needs Android 10+")
                 } else if (apps.setQuietMode(profile, quiet)) {
                     info("${kind.label} profile turning ${args[0]}…")
                 } else {
-                    error("couldn't change ${kind.label} profile (is Kolahal the default launcher? run 'home')")
+                    error("Couldn't change ${kind.label} profile (is Kolahal the default launcher? run 'home')")
                 }
             }
-            else -> error("usage: ${kind.name.lowercase()} [on|off|status]")
+            else -> error("Usage: ${kind.name.lowercase()} [on|off|status]")
         }
     }
 
@@ -477,8 +477,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private fun unlocks(args: List<String>) {
         val days = args.firstOrNull()?.toIntOrNull()?.coerceIn(1, 30) ?: 1
         if (!unlocks.hasUsageAccess()) {
-            info("counting via unlock receiver (misses unlocks while launcher isn't running)")
-            info("tap here to grant Usage Access for accurate counts", LogContext.of(LogContext.RUN to "usage-access"))
+            info("Counting via unlock receiver (misses unlocks while launcher isn't running)")
+            info("Tap here to grant Usage Access for accurate counts", LogContext.of(LogContext.RUN to "usage-access"))
         }
         unlocks.history(days).forEach { (day, count) -> out("$day  ${"█".repeat(minOf(count, 40))} $count") }
     }
@@ -486,20 +486,20 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private fun history() {
         val cmds = logs.commandHistory(30).reversed()
         cmds.forEach { out(it, LogContext.of(LogContext.COMMAND to it)) }
-        if (cmds.isEmpty()) info("history is empty")
+        if (cmds.isEmpty()) info("History is empty")
     }
 
     private fun eval(lang: ScriptLang, code: String) {
         if (code.isBlank()) {
-            error("usage: ${lang.ext} <code>")
+            error("Usage: ${lang.ext} <code>")
             return
         }
-        if (!ScriptScheduler.eval(context, lang, code)) error("snippet too long — use 'script new'")
+        if (!ScriptScheduler.eval(context, lang, code)) error("Snippet too long — use 'script new'")
     }
 
     private fun rss(url: String) {
         if (url.isBlank()) {
-            error("usage: rss <feed url>")
+            error("Usage: rss <feed url>")
             return
         }
         val quoted = url.replace("\\", "\\\\").replace("\"", "\\\"")
@@ -518,14 +518,14 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     }
 
     private fun openUrl(raw: String) {
-        if (raw.isBlank()) return error("usage: url <address>")
+        if (raw.isBlank()) return error("Usage: url <address>")
         val url = if (raw.contains("://")) raw else "https://$raw"
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-        info("opened $url", LogContext.of(LogContext.URL to url))
+        info("Opened $url", LogContext.of(LogContext.URL to url))
     }
 
     private fun search(query: String, engine: String? = null) {
-        if (query.isBlank()) return error("usage: search <query>")
+        if (query.isBlank()) return error("Usage: search <query>")
         val template = when (engine ?: conf[Keys.SEARCH_ENGINE]) {
             "google" -> "https://www.google.com/search?q=%s"
             "bing" -> "https://www.bing.com/search?q=%s"
@@ -539,7 +539,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         }
         val url = template.replace("%s", Uri.encode(query))
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-        info("search: $query", LogContext.of(LogContext.URL to url))
+        info("Search: $query", LogContext.of(LogContext.URL to url))
     }
 
     /** Opens [uri] in whatever app handles it (maps, store, ...). */
@@ -587,7 +587,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         if (list.isEmpty()) {
             return info(
                 if (io.github.rscipher001.launcher.terminal.SetupChecks.isDefaultLauncher(context)) "${app.label} has no shortcuts"
-                else "shortcuts need Kolahal as the default launcher — run 'home'"
+                else "Shortcuts need Kolahal as the default launcher — run 'home'"
             )
         }
         list.forEach { s ->
@@ -607,14 +607,14 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             null -> ui.openScreen(Screen.WIDGETS)
             "ls", "list" -> {
                 val lines = host.listing(context)
-                if (lines.isEmpty()) return info("no widgets yet — widget add (or widget add home) opens the picker", LogContext.of(LogContext.RUN to "widget add"))
+                if (lines.isEmpty()) return info("No widgets yet — widget add (or widget add home) opens the picker", LogContext.of(LogContext.RUN to "widget add"))
                 lines.forEach { (text, desc) -> out(text, LogContext.of(LogContext.RUN to "widgets", LogContext.DESC to desc)) }
             }
             "add" -> {
                 host.addLocation = io.github.rscipher001.launcher.widgets.WidgetLocation.of(args.getOrNull(1))
                 ui.openScreen(Screen.WIDGET_PICKER)
             }
-            else -> error("usage: widgets [ls] · widget add [home]")
+            else -> error("Usage: widgets [ls] · widget add [home]")
         }
     }
 
@@ -628,7 +628,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         when (args.firstOrNull()) {
             null, "ls", "list" -> {
                 val all = repo.all()
-                if (all.isEmpty()) return info("no feeds yet — feed add <url> (or 'feeds' for the manager and OPML import)")
+                if (all.isEmpty()) return info("No feeds yet — feed add <url> (or 'feeds' for the manager and OPML import)")
                 all.forEach { f ->
                     val flags = listOfNotNull(
                         "${f.unread}/${f.total} unread", "every ${formatInterval(f.intervalMin)}",
@@ -639,29 +639,29 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                         LogContext.of(LogContext.COMMAND to "feed read ${f.id}", LogContext.COPY to f.url, LogContext.DESC to flags),
                     )
                 }
-                info("tap a feed to read it · feed read = all unread · feed fetch = refresh now")
+                info("Tap a feed to read it · feed read = all unread · feed fetch = refresh now")
             }
             "add" -> {
-                val url = args.getOrNull(1) ?: return error("usage: feed add <url>")
+                val url = args.getOrNull(1) ?: return error("Usage: feed add <url>")
                 val feed = runCatching { repo.add(url) }.getOrElse { return error(it.message ?: "bad url") }
                 scheduler.sync(context)
                 scheduler.fetchNow(context, feed.id)
-                info("subscribed #${feed.id} ${feed.url} — fetching…", LogContext.of(LogContext.URL to feed.url))
+                info("Subscribed #${feed.id} ${feed.url} — fetching…", LogContext.of(LogContext.URL to feed.url))
             }
             "rm", "remove" -> {
-                id ?: return error("usage: feed rm <id>")
+                id ?: return error("Usage: feed rm <id>")
                 repo.remove(id)
                 scheduler.sync(context)
-                info("removed feed #$id")
+                info("Removed feed #$id")
             }
             "fetch", "refresh" -> {
                 scheduler.fetchNow(context, id)
-                info("fetching ${id?.let { "feed #$it" } ?: "all feeds"}…")
+                info("Fetching ${id?.let { "feed #$it" } ?: "all feeds"}…")
             }
             "read", "all" -> {
                 val unreadOnly = args[0] == "read"
                 val items = repo.items(feedId = id, unreadOnly = unreadOnly, limit = 40)
-                if (items.isEmpty()) return info(if (unreadOnly) "nothing unread" else "no items")
+                if (items.isEmpty()) return info(if (unreadOnly) "Nothing unread" else "No items")
                 val names = repo.feeds().associate { it.id to it.shortName }
                 items.forEach {
                     logs.add(LogKind.SCRIPT, it.title, names[it.feedId] ?: "feed", LogContext.of(LogContext.URL to it.link, LogContext.COPY to it.title, io.github.rscipher001.launcher.feeds.FeedWorker.CTX_ITEM to it.id.toString()))
@@ -675,7 +675,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 // Opens the newest unread items (with links) in the browser; only those are marked read.
                 val items = repo.items(feedId = id, unreadOnly = true, limit = 40)
                     .filter { it.link != null }.take(MAX_FEED_OPEN)
-                if (items.isEmpty()) return info("nothing unread")
+                if (items.isEmpty()) return info("Nothing unread")
                 val opened = items.filter { item ->
                     runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(item.link))) }.isSuccess
                 }
@@ -683,29 +683,29 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 val left = repo.unreadCount(id)
                 val failed = items.size - opened.size
                 info(
-                    "opened ${opened.size} item${if (opened.size == 1) "" else "s"}" +
+                    "Opened ${opened.size} item${if (opened.size == 1) "" else "s"}" +
                         (if (failed > 0) " ($failed couldn't be opened)" else "") +
                         (if (left > 0) " · $left still unread" else ""),
                 )
             }
             "notify" -> {
-                id ?: return error("usage: feed notify <id> on|off")
+                id ?: return error("Usage: feed notify <id> on|off")
                 repo.setNotify(id, args.getOrNull(2) != "off")
-                info("feed #$id notifications ${args.getOrNull(2) ?: "on"}")
+                info("Feed #$id notifications ${args.getOrNull(2) ?: "on"}")
             }
             "every" -> {
                 val minutes = parseInterval(args.getOrNull(2))
-                if (id == null || minutes == null || minutes <= 0) return error("usage: feed every <id> <30m|2h|…>")
+                if (id == null || minutes == null || minutes <= 0) return error("Usage: feed every <id> <30m|2h|…>")
                 repo.setInterval(id, minutes)
-                info("feed #$id every ${formatInterval(minutes.coerceAtLeast(15))}")
+                info("Feed #$id every ${formatInterval(minutes.coerceAtLeast(15))}")
             }
             "on", "off" -> {
-                id ?: return error("usage: feed ${args[0]} <id>")
+                id ?: return error("Usage: feed ${args[0]} <id>")
                 repo.setEnabled(id, args[0] == "on")
                 scheduler.sync(context)
-                info("feed #$id ${args[0]}")
+                info("Feed #$id ${args[0]}")
             }
-            else -> error("usage: feed [ls|add <url>|rm|fetch|read|all|open|notify|every|on|off] [id]")
+            else -> error("Usage: feed [ls|add <url>|rm|fetch|read|all|open|notify|every|on|off] [id]")
         }
     }
 
@@ -716,13 +716,13 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val store = io.github.rscipher001.launcher.notifications.NotificationStore
         val prefs = io.github.rscipher001.launcher.notifications.NotifPrefs.get(context)
         if (!actions.isEnabled(context) && args.firstOrNull() != "enable") {
-            logs.add(LogKind.ERROR, "notification access is off — tap to enable it", ctx = LogContext.of(LogContext.RUN to "notifs enable"))
+            logs.add(LogKind.ERROR, "Notification access is off — tap to enable it", ctx = LogContext.of(LogContext.RUN to "notifs enable"))
             return
         }
         when (args.firstOrNull()) {
             null, "all" -> {
                 val list = if (args.firstOrNull() == "all") store.items.value.take(40) else store.active().take(40)
-                if (list.isEmpty()) return info("no notifications")
+                if (list.isEmpty()) return info("No notifications")
                 list.forEach { n ->
                     logs.add(
                         LogKind.SCRIPT, n.line, n.app,
@@ -740,21 +740,21 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             }
             "muted" -> {
                 val muted = prefs.muted.value
-                if (muted.isEmpty()) info("no muted apps")
+                if (muted.isEmpty()) info("No muted apps")
                 muted.forEach { pkg -> out(apps.apps.value.firstOrNull { it.pkg == pkg }?.label ?: pkg, LogContext.of(LogContext.COMMAND to "notifs unmute $pkg")) }
             }
             "log" -> {
                 prefs.logToTerminal = args.getOrNull(1) != "off"
-                info("notifications ${if (prefs.logToTerminal) "appear" else "no longer appear"} in the log")
+                info("Notifications ${if (prefs.logToTerminal) "appear" else "no longer appear"} in the log")
             }
             "clear" -> {
                 actions.dismissAll()
                 store.clear()
                 // Also drop the snapshot scripts read, so cleared notifications don't linger on disk.
                 io.github.rscipher001.launcher.notifications.KolahalNotificationListener.clearMirror(context)
-                info("notifications cleared")
+                info("Notifications cleared")
             }
-            else -> error("usage: notifs [all|enable|mute <app>|unmute <app>|muted|log on|off|clear]")
+            else -> error("Usage: notifs [all|enable|mute <app>|unmute <app>|muted|log on|off|clear]")
         }
     }
 
@@ -765,12 +765,12 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     /** Resolves a name to one contact; null (with a message) when permission is missing or ambiguous. */
     private fun resolveContact(query: String): io.github.rscipher001.launcher.contacts.Contact? {
         if (!contacts.hasPermission()) {
-            logs.add(LogKind.ERROR, "contacts permission needed — tap to allow", ctx = LogContext.of(LogContext.RUN to "contacts --allow"))
+            logs.add(LogKind.ERROR, "Contacts permission needed — tap to allow", ctx = LogContext.of(LogContext.RUN to "contacts --allow"))
             ui.requestContactsPermission()
             return null
         }
         val matches = contacts.search(query)
-        if (matches.isEmpty()) { error("no contact matches '$query'"); return null }
+        if (matches.isEmpty()) { error("No contact matches '$query'"); return null }
         if (matches.size > 1 && !matches[0].name.equals(query, ignoreCase = true)) {
             matches.take(8).forEach(::contactLine)
             info("${matches.size} contacts match — tap one to call, long-press for more")
@@ -785,28 +785,28 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     )
 
     private fun call(rest: String) {
-        if (rest.isBlank()) return error("usage: call <name|number>")
+        if (rest.isBlank()) return error("Usage: call <name|number>")
         val number = if (io.github.rscipher001.launcher.contacts.ContactsRepository.looksLikeNumber(rest)) rest else resolveContact(rest)?.number ?: return
         startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", number, null)))
-        info("dialing $number", LogContext.of(LogContext.PHONE to number))
+        info("Dialing $number", LogContext.of(LogContext.PHONE to number))
     }
 
     private fun sms(args: List<String>) {
-        val who = args.firstOrNull() ?: return error("usage: sms <name|number> [message]")
+        val who = args.firstOrNull() ?: return error("Usage: sms <name|number> [message]")
         val number = if (io.github.rscipher001.launcher.contacts.ContactsRepository.looksLikeNumber(who)) who else resolveContact(who)?.number ?: return
         val body = args.drop(1).joinToString(" ")
         startActivity(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", number, null)).putExtra("sms_body", body))
-        info("message to $number", LogContext.of(LogContext.PHONE to number))
+        info("Message to $number", LogContext.of(LogContext.PHONE to number))
     }
 
     private fun listContacts(query: String) {
         if (query == "--allow" || !contacts.hasPermission()) {
-            if (contacts.hasPermission()) return info("contacts are allowed")
+            if (contacts.hasPermission()) return info("Contacts are allowed")
             ui.requestContactsPermission()
             return
         }
         val list = if (query.isBlank()) contacts.contacts.value.filter { it.starred }.ifEmpty { contacts.contacts.value.take(20) } else contacts.search(query, 20)
-        if (list.isEmpty()) return info(if (query.isBlank()) "no contacts" else "no contact matches '$query'")
+        if (list.isEmpty()) return info(if (query.isBlank()) "No contacts" else "No contact matches '$query'")
         list.forEach(::contactLine)
     }
 
@@ -815,7 +815,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     /** `usage [days]`: foreground time per app from UsageStats (needs Usage Access). */
     private fun usage(args: List<String>) {
         if (!unlocks.hasUsageAccess()) {
-            logs.add(LogKind.ERROR, "usage needs Usage Access — tap to grant it", ctx = LogContext.of(LogContext.RUN to "usage-access"))
+            logs.add(LogKind.ERROR, "Usage needs Usage Access — tap to grant it", ctx = LogContext.of(LogContext.RUN to "usage-access"))
             return
         }
         val days = args.firstOrNull()?.toIntOrNull()?.coerceIn(1, 30) ?: 1
@@ -826,9 +826,9 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             .mapValues { it.value.totalTimeInForeground }
             .filter { it.value >= 60_000 && it.key != context.packageName }
             .entries.sortedByDescending { it.value }
-        if (totals.isEmpty()) return info("no app usage recorded ${if (days == 1) "today" else "in $days days"}")
+        if (totals.isEmpty()) return info("No app usage recorded ${if (days == 1) "today" else "in $days days"}")
         val sum = totals.sumOf { it.value }
-        info("screen time ${if (days == 1) "today" else "last $days days"}: ${duration(sum)}")
+        info("Screen time ${if (days == 1) "today" else "last $days days"}: ${duration(sum)}")
         val max = totals.first().value
         totals.take(12).forEach { (pkg, ms) ->
             val app = apps.apps.value.firstOrNull { it.pkg == pkg && it.profile.kind == ProfileKind.PERSONAL }
@@ -859,7 +859,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                         .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                 )
             permissionMissing -> ui.requestNotificationPermission()
-            else -> info("notifications are allowed")
+            else -> info("Notifications are allowed")
         }
     }
 
@@ -869,16 +869,16 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val all = store.all()
         when (args.firstOrNull()) {
             null, "ls" -> {
-                if (all.isEmpty()) info("no status lines — scripts set them with status(text)")
+                if (all.isEmpty()) info("No status lines — scripts set them with status(text)")
                 all.forEach { (name, text) -> out("$name ▸ $text", LogContext.of(LogContext.SCRIPT to name)) }
             }
             "clear" -> {
                 val target = args.getOrNull(1) ?: "all"
                 (if (target == "all") all.keys else listOf(target)).forEach { store.set(it, null) }
                 logs.onStatusChanged()
-                info("cleared status: $target")
+                info("Cleared status: $target")
             }
-            else -> error("usage: status [clear <name|all>]")
+            else -> error("Usage: status [clear <name|all>]")
         }
     }
 
@@ -888,10 +888,10 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             null, "screen" -> ui.clearScreen()
             "history" -> {
                 logs.clearHistory()
-                info("command history cleared")
+                info("Command history cleared")
             }
             "all", "log" -> logs.clearAll()
-            else -> error("usage: clear [screen|history|all]")
+            else -> error("Usage: clear [screen|history|all]")
         }
     }
 
@@ -899,7 +899,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private fun restart(args: List<String>) {
         when (args.firstOrNull()) {
             null, "launcher" -> {
-                info("restarting…")
+                info("Restarting…")
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                     context.startActivity(
                         Intent(context, io.github.rscipher001.launcher.MainActivity::class.java)
@@ -912,20 +912,20 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 val am = context.getSystemService(android.app.ActivityManager::class.java)
                 val scriptProcess = am.runningAppProcesses.orEmpty().firstOrNull { it.processName.endsWith(":script") }
                 if (scriptProcess == null) {
-                    info("script process isn't running")
+                    info("Script process isn't running")
                 } else {
                     android.os.Process.killProcess(scriptProcess.pid)
-                    info("script process stopped; scheduled scripts will start it again")
+                    info("Script process stopped; scheduled scripts will start it again")
                 }
             }
-            else -> error("usage: restart [scripts]")
+            else -> error("Usage: restart [scripts]")
         }
     }
 
     /** First-run checklist; each unchecked line runs its fix when tapped. */
     /** Text form of the setup checklist (`setup text`); unchecked lines run their fix when tapped. */
     fun setupText() {
-        info("setup — tap an unchecked item to fix it, run 'setup text' again to re-check")
+        info("Setup — tap an unchecked item to fix it, run 'setup text' again to re-check")
         SetupChecks.run(context).forEach { c ->
             val mark = when {
                 c.ok -> "[x]"
@@ -956,13 +956,13 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             out(spec.usage, LogContext.of(LogContext.COMMAND to spec.name + " ", LogContext.DESC to spec.help))
         }
         val commandScripts = scripts.all().filter { ScriptMeta.isCommand(it.code) }
-        if (commandScripts.isNotEmpty()) info("your script commands")
+        if (commandScripts.isNotEmpty()) info("Your script commands")
         commandScripts.forEach { s ->
             val desc = ScriptMeta.description(s.code) ?: "${s.lang.ext} script"
             out(s.name, LogContext.of(LogContext.COMMAND to s.name + " ", LogContext.SCRIPT to s.name, LogContext.DESC to desc))
         }
-        info("anything else is matched against app names · tap a line to act · long-press for more")
-        info("pipes: help | grep feed · history | tail 5 · contacts | count  (grep [-v], head, tail, sort, uniq, count)")
+        info("Anything else is matched against app names · tap a line to act · long-press for more")
+        info("Pipes: help | grep feed · history | tail 5 · contacts | count  (grep [-v], head, tail, sort, uniq, count)")
     }
 
     // ---- config ---------------------------------------------------------------------------
@@ -979,13 +979,13 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                         LogContext.of(LogContext.COMMAND to "config set ${k.key} ", LogContext.DESC to k.help),
                     )
                 }
-                info("tap a line to edit it · * = changed from default · 'config reset <key|all>'")
+                info("Tap a line to edit it · * = changed from default · 'config reset <key|all>'")
             }
             sub == "get" -> withKey(args.getOrNull(1)) { out("${it.key} = ${conf.display(it)}") }
             sub == "reset" -> {
                 if (args.getOrNull(1) == "all") {
                     Keys.ALL.forEach(conf::reset)
-                    info("all settings reset")
+                    info("All settings reset")
                 } else withKey(args.getOrNull(1)) {
                     conf.reset(it)
                     info("${it.key} = ${conf.display(it)} (default)")
@@ -993,7 +993,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             }
             sub == "set" -> setKey(args.getOrNull(1), args.drop(2).joinToString(" "), raw)
             Keys.byName(sub) != null -> setKey(sub, args.drop(1).joinToString(" "), raw)
-            else -> error("usage: config [ls|get|set|reset] <key> [value]")
+            else -> error("Usage: config [ls|get|set|reset] <key> [value]")
         }
     }
 
@@ -1009,25 +1009,25 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                     val mark = if (name == current) "*" else " "
                     out("$mark ${name.padEnd(16)} ${TermFonts.label(name)}", LogContext.of(LogContext.RUN to "font $name"))
                 }
-                info("tap a font to use it · 'font import' adds your own .ttf/.otf · size: config font.size")
+                info("Tap a font to use it · 'font import' adds your own .ttf/.otf · size: config font.size")
             }
             sub == "import" -> ui.requestFontImport()
             sub == TermFonts.CUSTOM && !hasCustom ->
-                logs.add(LogKind.ERROR, "no custom font yet — tap to import a .ttf/.otf", ctx = LogContext.of(LogContext.RUN to "font import"))
+                logs.add(LogKind.ERROR, "No custom font yet — tap to import a .ttf/.otf", ctx = LogContext.of(LogContext.RUN to "font import"))
             else -> setKey(Keys.FONT.key, sub, "")
         }
     }
 
     private inline fun withKey(name: String?, action: (ConfigKey<*>) -> Unit) {
         val key = name?.let(Keys::byName)
-        if (key == null) error("unknown setting '${name.orEmpty()}' — run 'config'") else action(key)
+        if (key == null) error("Unknown setting '${name.orEmpty()}' — run 'config'") else action(key)
     }
 
     private fun setKey(name: String?, parsed: String, raw: String) = withKey(name) { key ->
         val value = if (key is ConfigKey.Text && raw.contains(key.key)) raw.substringAfter(key.key).trim() else parsed
         if (value.isBlank()) return error("${key.key} = ${conf.display(key)}  (${hint(key)})")
         if (conf.set(key, value)) info("${key.key} = ${conf.display(key)}")
-        else error("invalid value for ${key.key}: ${hint(key)}")
+        else error("Invalid value for ${key.key}: ${hint(key)}")
     }
 
     private fun hint(key: ConfigKey<*>) = when (key) {
@@ -1046,14 +1046,14 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "ls", "list" -> listScripts()
             "triggers", "events" -> listTriggers()
             "dir", "folder" -> {
-                folder.uri?.let { info("script folder: ${it.lastPathSegment}") }
+                folder.uri?.let { info("Script folder: ${it.lastPathSegment}") }
                 ui.pickScriptFolder()
             }
             // Folder sync can be slow on SAF providers; run it off the serial command queue.
             "lib", "library" -> {
                 val lib = ScriptLibrary(context)
                 val installed = scripts.all()
-                info("script library — 'script install <name>', or browse it in 'scripts'")
+                info("Script library — 'script install <name>', or browse it in 'scripts'")
                 lib.entries.forEach { e ->
                     val state = when (lib.state(e, installed)) {
                         ScriptLibrary.State.NOT_INSTALLED -> ""
@@ -1067,36 +1067,36 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "install" -> {
                 val lib = ScriptLibrary(context)
                 val entry = lib.entries.firstOrNull { it.name == target?.lowercase()?.substringBefore('.') }
-                    ?: return error("no library script '${target.orEmpty()}' — 'script lib' lists them")
+                    ?: return error("No library script '${target.orEmpty()}' — 'script lib' lists them")
                 val s = lib.install(entry)
-                info("installed ${s.name}.${s.lang.ext}" + (if (entry.command) " — run it as '${s.name}'" else "") +
+                info("Installed ${s.name}.${s.lang.ext}" + (if (entry.command) " — run it as '${s.name}'" else "") +
                     (if (s.intervalMin > 0) " · every ${formatInterval(s.intervalMin)}" else ""), scriptCtx(s))
             }
-            "export" -> background("export") { info("exported ${folder.export()} scripts + kolahal.json") }
+            "export" -> background("export") { info("Exported ${folder.export()} scripts + kolahal.json") }
             "import" -> background("import") {
                 val r = folder.import()
-                info("imported: ${r.created} new, ${r.updated} updated" + if (r.skipped.isNotEmpty()) ", skipped ${r.skipped.joinToString()}" else "")
+                info("Imported: ${r.created} new, ${r.updated} updated" + if (r.skipped.isNotEmpty()) ", skipped ${r.skipped.joinToString()}" else "")
             }
             "new" -> {
-                val (name, lang) = parseName(target ?: return error("usage: script new <name>[.lua|.js] [lua|js] [--cmd]"))
-                if (!Regex("^[a-z0-9_-]{1,40}$").matches(name)) return error("script names: lowercase letters, digits, - and _ only")
+                val (name, lang) = parseName(target ?: return error("Usage: script new <name>[.lua|.js] [lua|js] [--cmd]"))
+                if (!Regex("^[a-z0-9_-]{1,40}$").matches(name)) return error("Script names: lowercase letters, digits, - and _ only")
                 if (name in COMMANDS.map { it.name }) return error("'$name' is a built-in command, pick another name")
                 val asCommand = "--cmd" in args || "cmd" in args
                 val chosen = args.drop(2).firstNotNullOfOrNull(ScriptLang::of) ?: lang ?: ScriptLang.LUA
-                if (scripts.byName(name) != null) return error("script '$name' exists — 'script edit $name'")
+                if (scripts.byName(name) != null) return error("Script '$name' exists — 'script edit $name'")
                 val template = if (asCommand) ScriptTemplates.command(chosen, name) else ScriptTemplates.forLang(chosen, name)
                 val script = scripts.create(name, chosen, template)
-                info("created ${script.name}.${script.lang.ext}", scriptCtx(script))
+                info("Created ${script.name}.${script.lang.ext}", scriptCtx(script))
                 ui.openEditor(script)
             }
             "edit" -> withScript(target) { ui.openEditor(it) }
             "run" -> withScript(target) {
                 ScriptScheduler.runNow(context, it)
-                info("running ${it.name}…", scriptCtx(it))
+                info("Running ${it.name}…", scriptCtx(it))
             }
             "every" -> withScript(target) { s ->
                 val minutes = parseInterval(args.getOrNull(2))
-                    ?: return error("usage: script every <name> <15m|30m|2h|1d|off>")
+                    ?: return error("Usage: script every <name> <15m|30m|2h|1d|off>")
                 val effective = if (minutes > 0) minutes.coerceAtLeast(ScriptScheduler.MIN_INTERVAL_MIN) else 0
                 scripts.setInterval(s.id, effective)
                 if (effective > 0 && !s.enabled) scripts.setEnabled(s.id, true)
@@ -1108,8 +1108,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 )
             }
             "at" -> withScript(target) { s ->
-                val spec = args.getOrNull(2) ?: return error("usage: script at <name> <HH:mm[,HH:mm…]|off>")
-                val times = if (spec == "off") emptyList() else spec.split(',').map { parseClock(it) ?: return error("bad time '$it' — use HH:mm") }
+                val spec = args.getOrNull(2) ?: return error("Usage: script at <name> <HH:mm[,HH:mm…]|off>")
+                val times = if (spec == "off") emptyList() else spec.split(',').map { parseClock(it) ?: return error("Bad time '$it' — use HH:mm") }
                 scripts.setAtTimes(s.id, times.distinct().sorted())
                 if (times.isNotEmpty() && !s.enabled) scripts.setEnabled(s.id, true)
                 scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
@@ -1119,7 +1119,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 val on = when (args.getOrNull(2)) {
                     "on" -> true
                     "off" -> false
-                    else -> return error("usage: script notify <name> on|off")
+                    else -> return error("Usage: script notify <name> on|off")
                 }
                 scripts.setNotify(s.id, on)
                 info("${s.name}: notifications ${if (on) "on" else "off"}", scriptCtx(s))
@@ -1136,19 +1136,19 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 scripts.delete(s.id)
                 KvStore(context, HostApi.STATUS_SCOPE).set(s.name, null)
                 logs.onStatusChanged()
-                info("deleted ${s.name}")
+                info("Deleted ${s.name}")
             }
             "cat", "show" -> withScript(target) { s ->
                 s.code.lines().forEachIndexed { i, l -> out("${(i + 1).toString().padStart(3)}  $l", LogContext.of(LogContext.COPY to s.code)) }
             }
-            else -> error("usage: script [ls|new|edit|run|every|at|notify|on|off|triggers|rm|cat] <name>")
+            else -> error("Usage: script [ls|new|edit|run|every|at|notify|on|off|triggers|rm|cat] <name>")
         }
     }
 
     private fun listScripts() {
         val all = scripts.all()
         if (all.isEmpty()) {
-            info("no scripts yet — try 'script new hn' or 'script new feed.js'")
+            info("No scripts yet — try 'script new hn' or 'script new feed.js'")
             return
         }
         val df = DateFormat.getTimeInstance(DateFormat.SHORT)
@@ -1178,7 +1178,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             if (events.isEmpty() && unknown.isEmpty()) null else Triple(s, events, unknown)
         }
         if (subscribed.isEmpty()) {
-            info("no script has an @on line — add '-- @on unlock' (Lua) or '// @on charger' (JS)")
+            info("No script has an @on line — add '-- @on unlock' (Lua) or '// @on charger' (JS)")
         }
         subscribed.forEach { (s, events, unknown) ->
             val parts = buildList {
@@ -1188,13 +1188,13 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             }
             out("${s.name}.${s.lang.ext}", scriptCtx(s) + mapOf(LogContext.DESC to parts.joinToString(" · ")))
         }
-        info("events: ${ScriptMeta.EVENTS.joinToString(" ")}")
+        info("Events: ${ScriptMeta.EVENTS.joinToString(" ")}")
     }
 
     private inline fun withScript(name: String?, action: (Script) -> Unit) {
-        if (name == null) return error("script name required")
+        if (name == null) return error("Script name required")
         val script = scripts.byName(parseName(name).first)
-        if (script == null) error("no script named '$name' — 'script ls'") else action(script)
+        if (script == null) error("No script named '$name' — 'script ls'") else action(script)
     }
 
     private fun scriptCtx(s: Script) = LogContext.of(LogContext.SCRIPT to s.name)
@@ -1210,74 +1210,74 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         const val MAX_FEED_OPEN = 5
 
         val COMMANDS = listOf(
-            CommandSpec("help", "help", "show this list"),
+            CommandSpec("help", "help", "Show this list"),
             *io.github.rscipher001.launcher.control.ControlCommands.SPECS.toTypedArray(),
-            CommandSpec("apps", "apps [work|personal|private|hidden] [-l]", "app grid (-l: one per line)"),
-            CommandSpec("open", "open <app>[:shortcut] [-w|-p|-s]", "launch an app or one of its shortcuts"),
-            CommandSpec("shortcuts", "shortcuts <app>", "an app's launcher shortcuts"),
-            CommandSpec("info", "info <app> [-w]", "open app info"),
-            CommandSpec("uninstall", "uninstall <app> [-w]", "uninstall an app"),
-            CommandSpec("work", "work [on|off|status]", "pause / resume the work profile"),
-            CommandSpec("private", "private [on|off|status]", "lock / unlock private space"),
-            CommandSpec("unlocks", "unlocks [days]", "unlock counts"),
-            CommandSpec("script", "script <sub> <name>", "ls lib install new edit run every at notify on off triggers rm cat dir export import"),
-            CommandSpec("=", "= <expr>", "calculator · = 5 km in mi · = 72 f to c · = 100 usd in eur"),
-            CommandSpec("lua", "lua <code>", "evaluate Lua 5.4"),
-            CommandSpec("js", "js <code>", "evaluate JavaScript (QuickJS)"),
-            CommandSpec("rss", "rss <url>", "fetch a feed into the log once"),
+            CommandSpec("apps", "apps [work|personal|private|hidden] [-l]", "App grid (-l: one per line)"),
+            CommandSpec("open", "open <app>[:shortcut] [-w|-p|-s]", "Launch an app or one of its shortcuts"),
+            CommandSpec("shortcuts", "shortcuts <app>", "An app's launcher shortcuts"),
+            CommandSpec("info", "info <app> [-w]", "Open app info"),
+            CommandSpec("uninstall", "uninstall <app> [-w]", "Uninstall an app"),
+            CommandSpec("work", "work [on|off|status]", "Pause / resume the work profile"),
+            CommandSpec("private", "private [on|off|status]", "Lock / unlock private space"),
+            CommandSpec("unlocks", "unlocks [days]", "Unlock counts"),
+            CommandSpec("script", "script <sub> <name>", "Subcommands: ls lib install new edit run every at notify on off triggers rm cat dir export import"),
+            CommandSpec("=", "= <expr>", "Calculator · = 5 km in mi · = 72 f to c · = 100 usd in eur"),
+            CommandSpec("lua", "lua <code>", "Evaluate Lua 5.4"),
+            CommandSpec("js", "js <code>", "Evaluate JavaScript (QuickJS)"),
+            CommandSpec("rss", "rss <url>", "Fetch a feed into the log once"),
             CommandSpec("feed", "feed [add <url>|rm|fetch|read|open|notify|every] [id]", "RSS/Atom subscriptions with unread counts (no args: text list)"),
-            CommandSpec("feeds", "feeds", "feed manager screen (add, intervals, notifications, OPML)"),
-            CommandSpec("widgets", "widgets [ls]", "home-screen widgets page (ls: text list)"),
-            CommandSpec("widget", "widget add [home]", "pick a widget to add (home: show it under the header)"),
-            CommandSpec("notifs", "notifs [all|enable|mute <app>|muted|clear]", "your notifications in the terminal"),
-            CommandSpec("search", "search <query>", "web search (engine: config search.engine)"),
-            CommandSpec("yt", "yt <query>", "search YouTube"),
-            CommandSpec("wiki", "wiki <query>", "search Wikipedia"),
-            CommandSpec("maps", "maps <place>", "find a place in your maps app"),
-            CommandSpec("play", "play <query>", "search the Play Store"),
-            CommandSpec("usage", "usage [days]", "screen time per app"),
-            CommandSpec("installs", "installs [n]", "recent app installs, updates and uninstalls"),
-            CommandSpec("call", "call <name|number>", "dial a contact or number"),
-            CommandSpec("sms", "sms <name|number> [text]", "start a text message"),
-            CommandSpec("contacts", "contacts [query]", "find contacts (favourites when empty)"),
-            CommandSpec("url", "url <address>", "open a link"),
-            CommandSpec("history", "history", "recent commands (tap to reuse)"),
-            CommandSpec("clear", "clear [history|all]", "clear the screen, the ↑ history, or both"),
-            CommandSpec("restart", "restart [scripts]", "restart the launcher, or stop running scripts"),
-            CommandSpec("status", "status [clear <name|all>]", "header lines pinned by scripts"),
-            CommandSpec("setup", "setup [text]", "setup checklist page (text: print it in the log)"),
-            CommandSpec("notifications", "notifications", "allow script notifications"),
-            CommandSpec("usage-access", "usage-access", "grant usage access (unlock count)"),
-            CommandSpec("battery", "battery", "battery optimization settings"),
-            CommandSpec("home", "home", "choose the default launcher"),
-            CommandSpec("lock", "lock", "lock the screen (needs the accessibility service)"),
-            CommandSpec("shade", "shade", "pull down the notification shade"),
-            CommandSpec("accessibility", "accessibility", "enable the screen-lock service for double-tap"),
+            CommandSpec("feeds", "feeds", "Feed manager screen (add, intervals, notifications, OPML)"),
+            CommandSpec("widgets", "widgets [ls]", "Home-screen widgets page (ls: text list)"),
+            CommandSpec("widget", "widget add [home]", "Pick a widget to add (home: show it under the header)"),
+            CommandSpec("notifs", "notifs [all|enable|mute <app>|muted|clear]", "Your notifications in the terminal"),
+            CommandSpec("search", "search <query>", "Web search (engine: config search.engine)"),
+            CommandSpec("yt", "yt <query>", "Search YouTube"),
+            CommandSpec("wiki", "wiki <query>", "Search Wikipedia"),
+            CommandSpec("maps", "maps <place>", "Find a place in your maps app"),
+            CommandSpec("play", "play <query>", "Search the Play Store"),
+            CommandSpec("usage", "usage [days]", "Screen time per app"),
+            CommandSpec("installs", "installs [n]", "Recent app installs, updates and uninstalls"),
+            CommandSpec("call", "call <name|number>", "Dial a contact or number"),
+            CommandSpec("sms", "sms <name|number> [text]", "Start a text message"),
+            CommandSpec("contacts", "contacts [query]", "Find contacts (favourites when empty)"),
+            CommandSpec("url", "url <address>", "Open a link"),
+            CommandSpec("history", "history", "Recent commands (tap to reuse)"),
+            CommandSpec("clear", "clear [history|all]", "Clear the screen, the ↑ history, or both"),
+            CommandSpec("restart", "restart [scripts]", "Restart the launcher, or stop running scripts"),
+            CommandSpec("status", "status [clear <name|all>]", "Header lines pinned by scripts"),
+            CommandSpec("setup", "setup [text]", "Setup checklist page (text: print it in the log)"),
+            CommandSpec("notifications", "notifications", "Allow script notifications"),
+            CommandSpec("usage-access", "usage-access", "Grant usage access (unlock count)"),
+            CommandSpec("battery", "battery", "Battery optimization settings"),
+            CommandSpec("home", "home", "Choose the default launcher"),
+            CommandSpec("lock", "lock", "Lock the screen (needs the accessibility service)"),
+            CommandSpec("shade", "shade", "Pull down the notification shade"),
+            CommandSpec("accessibility", "accessibility", "Enable the screen-lock service for double-tap"),
             CommandSpec("settings", "settings", "Kolahal settings screen (+ backup import/export)"),
-            CommandSpec("scripts", "scripts", "script manager screen (import files, timers)"),
+            CommandSpec("scripts", "scripts", "Script manager screen (import files, timers)"),
             CommandSpec("system", "system", "Android system settings"),
-            CommandSpec("config", "config [ls|set|get|reset] <key> <v>", "settings (no args opens the settings page)"),
-            CommandSpec("theme", "theme <name>", "green amber mono dracula solarized gruvbox gruvbox-material"),
-            CommandSpec("font", "font [<name>|import]", "terminal font: system jetbrains-mono fira-code ibm-plex-mono source-code-pro custom (no args: list)"),
-            CommandSpec("date", "date", "current date and time"),
-            CommandSpec("echo", "echo <text>", "print text"),
-            CommandSpec("alias", "alias [name = command]", "list or define aliases"),
-            CommandSpec("unalias", "unalias <name>", "remove an alias"),
-            CommandSpec("pin", "pin <app>", "favourite: first in the empty-prompt strip (pins lists them)"),
-            CommandSpec("unpin", "unpin <app>", "remove a favourite"),
-            CommandSpec("hide", "hide <app> [-w]", "hide an app from lists and search"),
-            CommandSpec("unhide", "unhide <app>", "show a hidden app again ('apps hidden')"),
-            CommandSpec("rename", "rename <app> = <name>", "custom label (empty restores)"),
-            CommandSpec("todo", "todo [<text>|add|done|undo|edit|rm <n>|all|clear]", "todo list (tap an item to tick it)"),
-            CommandSpec("note", "note <text>", "save a quick note"),
-            CommandSpec("notes", "notes [grep <text>|rm <n>]", "your notes, newest first (tap copies)"),
-            CommandSpec("remind", "remind <when> <text>", "notify later · 10m · 1h30m · 18:30 · tomorrow 9:00 · fri 8am · rm <n>"),
-            CommandSpec("reminders", "reminders", "pending reminders"),
-            CommandSpec("timer", "timer <5m|1h30m> [label]", "start a timer in the clock app (no args: show timers)"),
-            CommandSpec("alarm", "alarm <HH:MM> [label]", "set an alarm in the clock app"),
-            CommandSpec("alarms", "alarms", "show the clock app's alarms"),
-            CommandSpec("stopwatch", "stopwatch", "open the clock app"),
-            CommandSpec("agenda", "agenda [days]", "upcoming calendar events (tap opens one)"),
+            CommandSpec("config", "config [ls|set|get|reset] <key> <v>", "Settings (no args opens the settings page)"),
+            CommandSpec("theme", "theme <name>", "Themes: green amber mono dracula solarized gruvbox gruvbox-material"),
+            CommandSpec("font", "font [<name>|import]", "Terminal font: system jetbrains-mono fira-code ibm-plex-mono source-code-pro custom (no args: list)"),
+            CommandSpec("date", "date", "Current date and time"),
+            CommandSpec("echo", "echo <text>", "Print text"),
+            CommandSpec("alias", "alias [name = command]", "List or define aliases"),
+            CommandSpec("unalias", "unalias <name>", "Remove an alias"),
+            CommandSpec("pin", "pin <app>", "Favourite: first in the empty-prompt strip (pins lists them)"),
+            CommandSpec("unpin", "unpin <app>", "Remove a favourite"),
+            CommandSpec("hide", "hide <app> [-w]", "Hide an app from lists and search"),
+            CommandSpec("unhide", "unhide <app>", "Show a hidden app again ('apps hidden')"),
+            CommandSpec("rename", "rename <app> = <name>", "Custom label (empty restores)"),
+            CommandSpec("todo", "todo [<text>|add|done|undo|edit|rm <n>|all|clear]", "Todo list (tap an item to tick it)"),
+            CommandSpec("note", "note <text>", "Save a quick note"),
+            CommandSpec("notes", "notes [grep <text>|rm <n>]", "Your notes, newest first (tap copies)"),
+            CommandSpec("remind", "remind <when> <text>", "Notify later · 10m · 1h30m · 18:30 · tomorrow 9:00 · fri 8am · rm <n>"),
+            CommandSpec("reminders", "reminders", "Pending reminders"),
+            CommandSpec("timer", "timer <5m|1h30m> [label]", "Start a timer in the clock app (no args: show timers)"),
+            CommandSpec("alarm", "alarm <HH:MM> [label]", "Set an alarm in the clock app"),
+            CommandSpec("alarms", "alarms", "Show the clock app's alarms"),
+            CommandSpec("stopwatch", "stopwatch", "Open the clock app"),
+            CommandSpec("agenda", "agenda [days]", "Upcoming calendar events (tap opens one)"),
         )
 
         /** Commands handled by [ProductivityCommands]. */
