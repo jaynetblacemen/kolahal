@@ -317,7 +317,10 @@ private fun renderLine(entry: LogEntry, charWidth: TextUnit, unread: Boolean) = 
             LogKind.INFO -> {
                 val header = entry.ctx.values.containsKey(LogContext.RUN_HEADER)
                 val color = if (header) scriptColor(entry.source) else Term.info
-                withStyle(SpanStyle(color = color, fontWeight = if (header) FontWeight.Bold else null)) { append(entry.text) }
+                // Lines after the first are details (e.g. a package name under an app event): dimmed.
+                val first = entry.text.substringBefore('\n')
+                withStyle(SpanStyle(color = color, fontWeight = if (header) FontWeight.Bold else null)) { append(first) }
+                if (first.length < entry.text.length) withStyle(SpanStyle(color = Term.dim)) { append(detailLines(entry.text.substring(first.length + 1), prefixLen)) }
             }
             LogKind.SCRIPT -> {
                 if (unread) withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("• ") }
@@ -330,7 +333,9 @@ private fun renderLine(entry: LogEntry, charWidth: TextUnit, unread: Boolean) = 
                     withStyle(SpanStyle(color = Term.profileColor(kind), fontWeight = FontWeight.Bold)) { append(profile.value) }
                     append(entry.text.substring(profile.value.length))
                 } else {
-                    withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.fg)) { append(entry.text) }
+                    val first = entry.text.substringBefore('\n')
+                    withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.fg)) { append(first) }
+                    if (first.length < entry.text.length) withStyle(SpanStyle(color = Term.dim)) { append(detailLines(entry.text.substring(first.length + 1), prefixLen)) }
                 }
             }
         }
@@ -378,4 +383,10 @@ fun ActionSheet(menu: ActionMenu, onDismiss: () -> Unit) {
             }
         }
     }
+}
+
+/** Detail lines under a line's first one, indented to line up with its text after the prefix. */
+private fun detailLines(rest: String, indent: Int): String {
+    val pad = " ".repeat(indent)
+    return rest.lines().joinToString("") { "\n$pad$it" }
 }
