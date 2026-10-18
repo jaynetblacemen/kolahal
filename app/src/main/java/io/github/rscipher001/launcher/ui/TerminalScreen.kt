@@ -129,6 +129,8 @@ import java.util.Locale
 fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, onPickFolder: () -> Unit) {
     val entries by vm.entries.collectAsStateWithLifecycle()
     val apps by vm.apps.collectAsStateWithLifecycle()
+    // An install or update may change icons: suggestions.icons loads them again.
+    LaunchedEffect(apps) { AppIcons.clear() }
     val profiles by vm.profiles.collectAsStateWithLifecycle()
     val unlocks by vm.unlocksToday.collectAsStateWithLifecycle()
     val status by vm.status.collectAsStateWithLifecycle()
@@ -433,14 +435,16 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         }
         // [selector] suggestions.style: list (default, bottom-anchored above the prompt) or chips.
         val suggestionsStyle = remember(configVersion) { config[Keys.SUGGESTIONS_STYLE] }
+        val showIcons = remember(configVersion) { config[Keys.SUGGEST_ICONS] }
         if (!suggestionsAuto || typing || vm.input.text.isNotEmpty()) {
             if (suggestionsStyle == "chips") {
-                SuggestionStrip(suggestions, rows = remember(configVersion) { config[Keys.SUGGESTION_ROWS] }, onPick = vm::onSuggestion)
+                SuggestionStrip(suggestions, rows = remember(configVersion) { config[Keys.SUGGESTION_ROWS] }, onPick = vm::onSuggestion, icons = showIcons)
             } else {
                 SuggestionList(
                     suggestions,
                     onPick = vm::onSuggestion,
                     onAppLongPress = { app -> menu = ActionMenu(app.label, vm.appActions(app), null) },
+                    icons = showIcons,
                 )
             }
         }
@@ -741,7 +745,7 @@ private fun Header(
 }
 
 @Composable
-private fun SuggestionStrip(items: List<Suggestion>, rows: Int, onPick: (Suggestion) -> Unit) {
+private fun SuggestionStrip(items: List<Suggestion>, rows: Int, onPick: (Suggestion) -> Unit, icons: Boolean = false) {
     if (items.isEmpty()) return
     val key = { _: Int, s: Suggestion -> s.key }
     // Keep the first chip (what Enter / TAB take) in view when the matches change.
@@ -762,7 +766,7 @@ private fun SuggestionStrip(items: List<Suggestion>, rows: Int, onPick: (Suggest
             horizontalItemSpacing = 8.dp,
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            items(items.size, key = { key(it, items[it]) }) { index -> SuggestionChip(index, items[index], onPick) }
+            items(items.size, key = { key(it, items[it]) }) { index -> SuggestionChip(index, items[index], onPick, icons) }
         }
         return
     }
@@ -777,12 +781,12 @@ private fun SuggestionStrip(items: List<Suggestion>, rows: Int, onPick: (Suggest
         contentPadding = PaddingValues(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        itemsIndexed(items, key = key) { index, s -> SuggestionChip(index, s, onPick) }
+        itemsIndexed(items, key = key) { index, s -> SuggestionChip(index, s, onPick, icons) }
     }
 }
 
 @Composable
-private fun SuggestionChip(index: Int, s: Suggestion, onPick: (Suggestion) -> Unit) {
+private fun SuggestionChip(index: Int, s: Suggestion, onPick: (Suggestion) -> Unit, icons: Boolean = false) {
         run {
             val (color, tag) = when (s) {
                 is Suggestion.App -> Term.profileColor(s.app.profile.kind) to s.app.profile.kind.tag
@@ -799,6 +803,11 @@ private fun SuggestionChip(index: Int, s: Suggestion, onPick: (Suggestion) -> Un
                     .clickable { onPick(s) }
                     .padding(horizontal = 12.dp, vertical = (if (Term.chipHeight < 40) 2 else 8).dp),
             ) {
+                // suggestions.icons: the app's icon first (its badge marks work / private apps).
+                if (icons && s is Suggestion.App) {
+                    AppIcon(s.app, minOf(Term.fontSize + 6, Term.chipHeight - 4).dp)
+                    Spacer(Modifier.width(6.dp))
+                }
                 if (tag != null && tag != ProfileKind.PERSONAL.tag) {
                     Text(tag, style = Term.mono.copy(color = color, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp))
                     Spacer(Modifier.width(6.dp))

@@ -44,7 +44,7 @@ internal fun completionHelp(label: String, replacement: String): String? {
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppLongPress: (AppEntry) -> Unit) {
+fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppLongPress: (AppEntry) -> Unit, icons: Boolean = false) {
     if (items.isEmpty()) return
     val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.4f).dp
     // A lazy list keeps its first visible item in place when the data changes; the best match
@@ -82,6 +82,11 @@ fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppL
                 Spacer(Modifier.width(9.dp))
                 when (s) {
                     is Suggestion.App -> {
+                        // suggestions.icons: the app's icon first (its badge marks work / private apps).
+                        if (icons) {
+                            AppIcon(s.app, minOf(Term.fontSize + 10, minOf(44, Term.chipHeight) - 8).dp)
+                            Spacer(Modifier.width(8.dp))
+                        }
                         val kind = s.app.profile.kind
                         if (kind != ProfileKind.PERSONAL) {
                             Text(

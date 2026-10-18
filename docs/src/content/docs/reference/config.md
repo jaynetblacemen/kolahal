@@ -68,6 +68,7 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 | `launch.instant` | choice: `off` `apps` `all` | `all` | run without Enter once the input can only mean one thing: apps, or apps and commands (sensitive commands always need Enter) |
 | `launch.instant.min` | number 1–6 | `2` | letters to type before an instant launch |
 | `suggestions.idle` | bool | `off` | show most-used apps when the prompt is empty |
+| `suggestions.icons` | bool | `off` | show app icons next to app suggestions, in the list and on chips |
 | `suggestions.auto` | bool | `on` | show suggestions only while typing (keyboard up or text in the prompt) |
 | `suggestions.style` | choice: `list` `chips` | `list` | while typing: a list above the prompt (best match at the bottom, nearest the thumb, with command descriptions) or a strip of chips |
 | `suggestions.rows` | number 1–2 | `2` | rows of suggestion chips while typing (`suggestions.style chips`) |

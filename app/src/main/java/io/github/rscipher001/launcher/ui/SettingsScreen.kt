@@ -101,6 +101,7 @@ private val TITLES = mapOf(
     "suggestions.idle" to "Favourites & most-used on empty prompt",
     "suggestions" to "How many",
     "suggestions.style" to "Style while typing",
+    "suggestions.icons" to "Show app icons",
     "selector.rail" to "Show the app selector",
     "selector.handle" to "Show the A–Z handle",
     "selector.height" to "App selector height (dp)",
@@ -190,7 +191,7 @@ private val CATEGORIES = listOf(
     Category(
         "typing", "Typing", "Suggestions, key bar, prompt, keyboard", R.drawable.ic_keyboard,
         listOf(
-            "Suggestions" to listOf(Keys.SUGGESTIONS_STYLE, Keys.SUGGESTIONS_AUTO, Keys.SUGGESTION_ROWS, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS, Keys.CHIP_HEIGHT),
+            "Suggestions" to listOf(Keys.SUGGESTIONS_STYLE, Keys.SUGGEST_ICONS, Keys.SUGGESTIONS_AUTO, Keys.SUGGESTION_ROWS, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS, Keys.CHIP_HEIGHT),
             "App selector (right edge)" to listOf(Keys.SELECTOR_RAIL, Keys.SELECTOR_HANDLE, Keys.SELECTOR_HEIGHT),
             "Key bar" to listOf(Keys.KEYBAR_SHOW, Keys.KEYBAR_AUTO, Keys.KEYBAR_HEIGHT, Keys.KEYBAR, Keys.KEYBAR2),
             "Prompt & keyboard" to listOf(Keys.PROMPT_HEIGHT_TYPING, Keys.IME_SUGGESTIONS, Keys.FOCUS_ON_HOME),
