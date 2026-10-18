@@ -87,7 +87,8 @@ object Keys {
     val SELECTOR_HEIGHT = ConfigKey.Num("selector.height", 380, 200..900, "height (dp) of the app selector band, low on the right edge: shorter means less thumb travel")
     val SHOW_TIMESTAMPS = ConfigKey.Choice("log.time", "commands", listOf("off", "commands", "all"), "right-aligned times on log lines")
     val LOG_DIM = ConfigKey.Bool("log.dim", true, "dim output older than the latest command")
-    val LOG_SPACING = ConfigKey.Num("log.spacing", 12, 0..40, "gap (dp) above each command and its output")
+    val LOG_SPACING = ConfigKey.Num("log.spacing", 12, 0..40, "gap (dp) above each output group: a command and its output, or a background batch (feeds, scripts)")
+    val LOG_GUTTER = ConfigKey.Bool("log.gutter", true, "thin colour bar at the left of each log line: green for commands, script colour for background output, red for errors")
     val LOG_LINE_HEIGHT = ConfigKey.Num("log.lineheight", 30, 16..56, "minimum height (dp) of a log line; tappable lines get a little more")
     val CHIP_HEIGHT = ConfigKey.Num("chips.height", 48, 28..64, "height (dp) of suggestion and app-grid chips")
     val LOG_KEEP_DAYS = ConfigKey.Num("log.keepdays", 60, 1..365, "delete log lines older than this many days")
@@ -124,7 +125,7 @@ object Keys {
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
         HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, GUI_COLORS, STATUS_BAR, FONT, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_HEIGHT, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
-        SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_LINE_HEIGHT, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_FRESH, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
+        SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_GUTTER, LOG_LINE_HEIGHT, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_FRESH, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP_ON, GESTURE_SWIPE_UP, LOG_PACKAGES,
         FEEDS_LOG, FEEDS_LOG_LINES, FEEDS_READ_SHOWN, FEEDS_BACKLOG_READ, FEEDS_INTERVAL, FEEDS_NOTIFY, FEEDS_WIFI,
         HEADER_TODO, WIDGETS_HOME, WIDGETS_PAGE, WIDGETS_HEIGHT,

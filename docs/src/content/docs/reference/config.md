@@ -44,7 +44,8 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 | --- | --- | --- | --- |
 | `log.time` | choice: `off` `commands` `all` | `commands` | right-aligned times on log lines |
 | `log.dim` | bool | `on` | dim output older than the latest command |
-| `log.spacing` | number 0–40 | `12` | gap (dp) above each command and its output |
+| `log.spacing` | number 0–40 | `12` | gap (dp) above each output group: a command and its output, or a background batch (feeds, scripts) |
+| `log.gutter` | bool | `on` | thin colour bar at the left of each log line: green for commands, script colour for background output, red for errors |
 | `log.lineheight` | number 16–56 | `30` | minimum height (dp) of a log line; tappable lines get +10, two-column rows +14 |
 | `chips.height` | number 28–64 | `48` | height (dp) of suggestion and app-grid chips |
 | `log.keepdays` | number 1–365 | `60` | delete log lines older than this many days |

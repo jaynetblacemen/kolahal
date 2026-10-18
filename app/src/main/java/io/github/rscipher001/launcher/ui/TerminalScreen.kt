@@ -208,6 +208,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     }
     menu?.let { ActionSheet(it, onDismiss = { menu = null }) }
     val commandGap = remember(configVersion) { config[Keys.LOG_SPACING].dp }
+    val showGutter = remember(configVersion) { config[Keys.LOG_GUTTER] }
     // Monospace advance, used to indent wrapped lines past their prefix.
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
@@ -336,6 +337,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                         timeFormat = lineTimeFormat,
                         dim = dimOld,
                         topGap = if (row.blockStart) commandGap else 0.dp,
+                        gutter = showGutter,
                         charWidth = charWidth,
                         highlighted = menu?.entryId == row.entry.id,
                         apps = vm::appsOf,

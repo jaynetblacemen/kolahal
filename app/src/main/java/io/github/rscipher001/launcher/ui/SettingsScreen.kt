@@ -92,7 +92,8 @@ private val TITLES = mapOf(
     "widgets.height" to "Widget area height (dp)",
     "log.time" to "Times",
     "log.dim" to "Dim older output",
-    "log.spacing" to "Space between commands (dp)",
+    "log.spacing" to "Space between output groups (dp)",
+    "log.gutter" to "Colour bar beside lines",
     "log.lineheight" to "Line height (dp)",
     "log.keepdays" to "Keep log for (days)",
     "log.fresh" to "Fresh screen after (minutes away)",
@@ -170,7 +171,7 @@ private val CATEGORIES = listOf(
     Category(
         "log", "Log", "Times, spacing, line height, history", R.drawable.ic_stat_terminal,
         listOf(
-            "Display" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_SPACING, Keys.LOG_LINE_HEIGHT),
+            "Display" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_GUTTER, Keys.LOG_SPACING, Keys.LOG_LINE_HEIGHT),
             "Events" to listOf(Keys.LOG_PACKAGES),
             "History" to listOf(Keys.LOG_FRESH, Keys.LOG_KEEP_DAYS),
         ),

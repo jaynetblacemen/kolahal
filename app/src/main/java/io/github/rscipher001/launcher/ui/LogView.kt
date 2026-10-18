@@ -118,6 +118,7 @@ fun LogLine(
     timeFormat: SimpleDateFormat,
     dim: Boolean,
     topGap: Dp,
+    gutter: Boolean = true,
     charWidth: TextUnit,
     highlighted: Boolean,
     apps: (LogEntry) -> List<AppEntry>,
@@ -196,9 +197,9 @@ fun LogLine(
             .heightIn(min = minHeight)
             .then(if (dim && row.dimmed) Modifier.alpha(0.62f) else Modifier)
             .background(if (highlighted) Term.surface else Color.Transparent)
-            .drawBehind {
+            .then(if (!gutter) Modifier else Modifier.drawBehind {
                 drawRect(gutterColor, topLeft = Offset.Zero, size = Size(2.dp.toPx(), size.height))
-            }
+            })
             .combinedClickable(
                 onLongClickLabel = "actions",
                 onClick = { onTap(entry) },
