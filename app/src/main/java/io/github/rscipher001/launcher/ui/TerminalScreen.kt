@@ -506,7 +506,7 @@ private fun CompactHeader(status: Status, statusCount: Int, config: Config, vers
                     onDragEnd = { if (total > 24.dp.toPx()) onExpand() },
                 ) { _, dy -> total += dy }
             }
-            .heightIn(min = 48.dp)
+            .heightIn(min = HEADER_ROW)
             .padding(horizontal = 12.dp),
     ) {
         Text(timeFmt.format(now), style = small.copy(color = Term.fg, fontWeight = FontWeight.Bold))
@@ -531,8 +531,11 @@ private fun CompactHeader(status: Status, statusCount: Int, config: Config, vers
     }
 }
 
+/** Height of a header row: a fair touch target that keeps the header tight. */
+private val HEADER_ROW = 40.dp
+
 /**
- * Clock line plus a row of status items that wrap as whole items. Items are tappable
+ * Clock, date and the status items in one flowing line that wraps as whole items. Items are tappable
  * (alarms, unlock history, battery, network, profile toggle); swipe down opens notifications.
  */
 @OptIn(ExperimentalLayoutApi::class)
@@ -581,10 +584,10 @@ private fun Header(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier
-                // 48dp touch target even for short items like ⚙.
+                // Comfortable touch target even for short items like ⚙, without spreading the header out.
                 .clickable(onClickLabel = label.ifEmpty { null }, onClick = onClick)
-                .heightIn(min = 48.dp)
-                .widthIn(min = 48.dp)
+                .heightIn(min = HEADER_ROW)
+                .widthIn(min = 44.dp)
                 .padding(horizontal = 6.dp),
         ) {
             if (useIcons && icon != null) {
@@ -623,39 +626,29 @@ private fun Header(
                     onDragEnd = { if (total > 48.dp.toPx()) onSwipeDown() },
                 ) { _, dy -> total += dy }
             }
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(horizontal = 12.dp, vertical = 2.dp)
     ) {
+        // One flowing line: clock and date, then the status items beside them. Items wrap as whole
+        // items onto a second line only when they don't fit.
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            itemVerticalAlignment = Alignment.CenterVertically,
+        ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.clickable { onTarget(HeaderTarget.CLOCK) }.heightIn(min = 48.dp),
+            modifier = Modifier.clickable { onTarget(HeaderTarget.CLOCK) }.heightIn(min = HEADER_ROW).padding(end = 6.dp),
         ) {
             Text(
                 timeFmt.format(now),
-                style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize + 8).sp),
+                style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize + 6).sp),
             )
             if (config[Keys.HEADER_DATE]) {
                 Text(
                     "  " + dateFmt.format(now),
-                    style = Term.mono.copy(color = Term.dim),
-                    modifier = Modifier.padding(bottom = 3.dp),
-                )
-            }
-            if (config[Keys.HEADER_DEVICE]) {
-                Spacer(Modifier.weight(1f))
-                Text(
-                    buildAnnotatedString {
-                        withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("kolahal") }
-                        withStyle(SpanStyle(color = Term.dim)) { append("@" + Build.MODEL.lowercase().replace(' ', '-')) }
-                    },
-                    style = small,
-                    maxLines = 1,
-                    modifier = Modifier.padding(bottom = 3.dp),
+                    style = small.copy(color = Term.dim),
                 )
             }
         }
-        // `now` ticks each minute, so a paused session drops out after 30 minutes.
-        if (nowPlaying != null && nowPlaying.showInHeader(now.time)) NowPlayingLine(nowPlaying, onMediaToggle, onMediaNext)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             if (config[Keys.HEADER_UNLOCKS]) {
                 Item("unlocks", unlocks.toString(), icon = { Glyph(R.drawable.ic_lock_open) }) { onTarget(HeaderTarget.UNLOCKS) }
             }
@@ -701,7 +694,20 @@ private fun Header(
                     }
                 }
             }
+            if (config[Keys.HEADER_DEVICE]) {
+                Text(
+                    buildAnnotatedString {
+                        withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("kolahal") }
+                        withStyle(SpanStyle(color = Term.dim)) { append("@" + Build.MODEL.lowercase().replace(' ', '-')) }
+                    },
+                    style = small,
+                    maxLines = 1,
+                    modifier = Modifier.padding(horizontal = 6.dp),
+                )
+            }
         }
+        // `now` ticks each minute, so a paused session drops out after 30 minutes.
+        if (nowPlaying != null && nowPlaying.showInHeader(now.time)) NowPlayingLine(nowPlaying, onMediaToggle, onMediaNext)
         if (config[Keys.HEADER_STATUS]) {
             statuses.forEach { (name, text) ->
                 Text(
