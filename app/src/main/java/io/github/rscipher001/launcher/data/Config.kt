@@ -40,7 +40,7 @@ object Keys {
     val HEADER_DATE = ConfigKey.Bool("header.date", true, "show the date next to the clock")
     val HEADER_UNLOCKS = ConfigKey.Bool("header.unlocks", true, "show today's unlock count")
     val HEADER_BATTERY = ConfigKey.Bool("header.battery", true, "show battery level")
-    val HEADER_NETWORK = ConfigKey.Bool("header.network", true, "show network type")
+    val HEADER_NETWORK = ConfigKey.Bool("header.network", false, "show network type")
     val HEADER_ALARM = ConfigKey.Bool("header.alarm", true, "show the next alarm")
     val HEADER_PROFILES = ConfigKey.Bool("header.profiles", true, "show work/private profile state")
     val HEADER_STATUS = ConfigKey.Bool("header.status", true, "show status lines pinned by scripts")
@@ -48,25 +48,25 @@ object Keys {
     val HEADER_TODO = ConfigKey.Bool("header.todo", true, "show the open todo count (tap runs todo)")
     val HEADER_AUTOHIDE = ConfigKey.Bool("header.autohide", true, "scrolling back hides the header, scrolling forward or a command shows it as one line; Home or a tap restores it")
     val HEADER_ICONS = ConfigKey.Bool("header.icons", true, "icons for battery, network, unlocks, alarm and profiles in the header (off: text labels)")
-    val CLOCK_24H = ConfigKey.Bool("clock.24h", true, "use 24-hour time in the header and log")
+    val CLOCK_24H = ConfigKey.Bool("clock.24h", false, "use 24-hour time in the header and log")
     val KEYBAR = ConfigKey.Text(
         "keybar", DEFAULT_KEYBAR,
         "touch keys, comma separated: ESC TAB UP DOWN LEFT RIGHT HOME END BKSP ENTER SPACE KBD or literal text",
     )
     val KEYBAR2 = ConfigKey.Text("keybar2", DEFAULT_KEYBAR2, "second key bar row (same syntax; empty for one row)")
-    val KEYBAR_SHOW = ConfigKey.Bool("keybar.show", true, "show the touch key bar")
+    val KEYBAR_SHOW = ConfigKey.Bool("keybar.show", false, "show the touch key bar")
     val KEYBAR_AUTO = ConfigKey.Bool("keybar.auto", true, "show the key bar only while the on-screen keyboard is up for the prompt (off: always)")
-    val KEYBAR_HEIGHT = ConfigKey.Num("keybar.height", 48, 28..64, "key bar row height (dp); smaller leaves more room for the log")
-    val PROMPT_HEIGHT_TYPING = ConfigKey.Num("prompt.height", 52, 32..72, "prompt line height (dp) while the keyboard is up")
+    val KEYBAR_HEIGHT = ConfigKey.Num("keybar.height", 40, 28..64, "key bar row height (dp); smaller leaves more room for the log")
+    val PROMPT_HEIGHT_TYPING = ConfigKey.Num("prompt.height", 40, 32..72, "prompt line height (dp) while the keyboard is up")
     val THEME = ConfigKey.Choice(
         "theme", "green",
         listOf("green", "amber", "mono", "dracula", "solarized", "gruvbox", "gruvbox-material"),
         "colour theme",
     )
     val GUI_COLORS = ConfigKey.Choice("gui.colors", "theme", listOf("theme", "system"), "settings screens follow the terminal theme or the system (Material You) colours")
-    val STATUS_BAR = ConfigKey.Choice("statusbar", "show", listOf("show", "hide", "immersive"), "full screen: hide the status bar, or both system bars (immersive); swipe from the edge to peek")
+    val STATUS_BAR = ConfigKey.Choice("statusbar", "immersive", listOf("show", "hide", "immersive"), "full screen: hide the status bar, or both system bars (immersive); swipe from the edge to peek")
     val FONT = ConfigKey.Choice(
-        "font", "system",
+        "font", "jetbrains-mono",
         listOf("system", "jetbrains-mono", "fira-code", "ibm-plex-mono", "source-code-pro", "custom"),
         "terminal font (custom: a .ttf/.otf imported with 'font import')",
     )
@@ -74,22 +74,23 @@ object Keys {
     val SUGGESTIONS = ConfigKey.Num("suggestions", 12, 0..30, "max suggestions shown while typing")
     val AUTO_LAUNCH = ConfigKey.Bool("launch.single", true, "launch automatically when only one app matches")
     val LAUNCH_INSTANT = ConfigKey.Choice(
-        "launch.instant", "apps", listOf("off", "apps", "all"),
+        "launch.instant", "all", listOf("off", "apps", "all"),
         "run without Enter once the input can only mean one thing: apps, or apps and commands (calls, uninstall and other sensitive commands always need Enter)",
     )
     val LAUNCH_INSTANT_MIN = ConfigKey.Num("launch.instant.min", 2, 1..6, "letters to type before an instant launch")
     val LAUNCH_TOP = ConfigKey.Bool("launch.top", true, "Enter launches the best match when it starts with what you typed")
-    val SUGGEST_IDLE = ConfigKey.Bool("suggestions.idle", true, "show most-used apps when the prompt is empty")
+    val SUGGEST_IDLE = ConfigKey.Bool("suggestions.idle", false, "show most-used apps when the prompt is empty")
     val SUGGESTIONS_AUTO = ConfigKey.Bool("suggestions.auto", true, "show suggestions only while typing (keyboard up or text in the prompt)")
     val SUGGESTION_ROWS = ConfigKey.Num("suggestions.rows", 2, 1..2, "rows of suggestion chips while typing (suggestions.style chips)")
     val SUGGESTIONS_STYLE = ConfigKey.Choice("suggestions.style", "list", listOf("list", "chips"), "while typing: a list above the prompt (best match at the bottom, nearest the thumb) or a strip of chips")
     val SELECTOR_RAIL = ConfigKey.Bool("selector.rail", true, "slide along the right edge to glide through all your apps; let go on one to launch")
-    val SELECTOR_HEIGHT = ConfigKey.Num("selector.height", 380, 200..900, "height (dp) of the app selector band, low on the right edge: shorter means less thumb travel")
-    val SHOW_TIMESTAMPS = ConfigKey.Choice("log.time", "commands", listOf("off", "commands", "all"), "right-aligned times on log lines")
+    val SELECTOR_HANDLE = ConfigKey.Bool("selector.handle", true, "show the slim A–Z handle on the right edge; off hides it while the selector keeps working")
+    val SELECTOR_HEIGHT = ConfigKey.Num("selector.height", 350, 200..900, "height (dp) of the app selector band, low on the right edge: shorter means less thumb travel")
+    val SHOW_TIMESTAMPS = ConfigKey.Choice("log.time", "all", listOf("off", "commands", "all"), "right-aligned times on log lines")
     val LOG_DIM = ConfigKey.Bool("log.dim", true, "dim output older than the latest command")
-    val LOG_SPACING = ConfigKey.Num("log.spacing", 12, 0..40, "gap (dp) above each output group: a command and its output, or a background batch (feeds, scripts)")
+    val LOG_SPACING = ConfigKey.Num("log.spacing", 10, 0..40, "gap (dp) above each output group: a command and its output, or a background batch (feeds, scripts)")
     val LOG_GUTTER = ConfigKey.Bool("log.gutter", true, "thin colour bar at the left of each log line: green for commands, script colour for background output, red for errors")
-    val LOG_LINE_HEIGHT = ConfigKey.Num("log.lineheight", 30, 16..56, "minimum height (dp) of a log line; tappable lines get a little more")
+    val LOG_LINE_HEIGHT = ConfigKey.Num("log.lineheight", 25, 16..56, "minimum height (dp) of a log line; tappable lines get a little more")
     val CHIP_HEIGHT = ConfigKey.Num("chips.height", 48, 28..64, "height (dp) of suggestion and app-grid chips")
     val LOG_KEEP_DAYS = ConfigKey.Num("log.keepdays", 60, 1..365, "delete log lines older than this many days")
     val LOG_FRESH = ConfigKey.Num("log.fresh", 10, 0..240, "start home with a clean screen after this many minutes away (0: never); earlier output is one tap away")
@@ -113,7 +114,7 @@ object Keys {
         "prompt keyboard suggestions (off uses a password-type field: no autocorrect, but Latin-only on some keyboards)",
     )
 
-    val WIDGETS_HOME = ConfigKey.Bool("widgets.home", true, "show widgets placed on home under the header (they hide with it while the log is in use)")
+    val WIDGETS_HOME = ConfigKey.Bool("widgets.home", false, "show widgets placed on home under the header (they hide with it while the log is in use)")
     val WIDGETS_PAGE = ConfigKey.Choice("widgets.page", "left", listOf("left", "right", "off"), "a widgets page beside the terminal: swipe sideways on home to reach it")
     val WIDGETS_HEIGHT = ConfigKey.Num("widgets.height", 180, 60..480, "max height (dp) of the home widget area; it scrolls when widgets need more")
 
@@ -124,7 +125,7 @@ object Keys {
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
-        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, GUI_COLORS, STATUS_BAR, FONT, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_HEIGHT, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
+        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, GUI_COLORS, STATUS_BAR, FONT, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_HANDLE, SELECTOR_HEIGHT, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_GUTTER, LOG_LINE_HEIGHT, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_FRESH, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP_ON, GESTURE_SWIPE_UP, LOG_PACKAGES,
         FEEDS_LOG, FEEDS_LOG_LINES, FEEDS_READ_SHOWN, FEEDS_BACKLOG_READ, FEEDS_INTERVAL, FEEDS_NOTIFY, FEEDS_WIFI,

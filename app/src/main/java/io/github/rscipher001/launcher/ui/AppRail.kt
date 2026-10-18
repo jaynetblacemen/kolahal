@@ -257,7 +257,9 @@ fun AppSelector(
     pinned: Set<String>,
     onLaunch: (AppEntry) -> Unit,
     onLongPress: (AppEntry) -> Unit,
-    heightDp: Int = 380,
+    heightDp: Int = 350,
+    /** selector.handle: draw the A–Z handle when idle (it still shows under the finger). */
+    showHandle: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val entries = remember(apps, pinned) {
@@ -532,6 +534,7 @@ fun AppSelector(
         ) {
             // The handle: a slim bar hugging the edge, following the finger while touched.
             val touching = state.mode == Mode.SCRUB || state.mode == Mode.SELECT
+            if (showHandle || touching) {
             val handleH = 64.dp
             val handleHPx = with(density) { handleH.toPx() }
             Column(
@@ -556,6 +559,7 @@ fun AppSelector(
                         .background(if (touching) Term.prompt else Term.dim.copy(alpha = 0.55f), RoundedCornerShape(2.dp))
                 )
                 if (!touching) Text("Z", style = small)
+            }
             }
         }
     }

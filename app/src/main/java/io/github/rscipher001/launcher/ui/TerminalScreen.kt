@@ -396,6 +396,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 onLaunch = vm::launchApp,
                 onLongPress = { app -> menu = ActionMenu(app.label, vm.appActions(app), null) },
                 heightDp = remember(configVersion) { config[Keys.SELECTOR_HEIGHT] },
+                showHandle = remember(configVersion) { config[Keys.SELECTOR_HANDLE] },
             )
         }
         // [/selector]
