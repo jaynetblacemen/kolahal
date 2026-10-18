@@ -375,7 +375,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             return
         }
         runCatching { apps.launch(app) }
-            .onSuccess { info("launched ${appLine(app)}", appCtx(app)) }
+            .onSuccess { logs.addReplacing(LogKind.INFO, "launched ${appLine(app)}", appCtx(app)) }
             .onFailure { error("can't launch ${app.label}: ${it.message ?: it.javaClass.simpleName}") }
     }
 

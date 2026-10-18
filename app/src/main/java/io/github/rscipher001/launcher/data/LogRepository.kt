@@ -41,6 +41,16 @@ class LogRepository private constructor(private val context: Context) {
         return id
     }
 
+    /**
+     * Like [add], but first removes earlier lines with the same kind and text, so a repeated
+     * event (launching the same app again) keeps a single line, moved to the bottom.
+     */
+    fun addReplacing(kind: LogKind, text: String, ctx: LogContext = LogContext.EMPTY): Long {
+        if (capture.get() != null) return add(kind, text, ctx = ctx)
+        db.writableDatabase.delete("logs", "kind = ? AND text = ?", arrayOf(kind.key, text))
+        return add(kind, text, ctx = ctx)
+    }
+
     data class Pending(val kind: LogKind, val text: String, val source: String?, val ctx: LogContext, val ts: Long)
 
     /** Per-thread output buffer for pipes; lines added on other threads are written as usual. */
