@@ -64,7 +64,7 @@ fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppL
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 44.dp)
+                    .heightIn(min = minOf(44, Term.chipHeight).dp)
                     .alpha(if (s is Suggestion.App && s.app.profile.quiet) 0.45f else 1f)
                     .background(if (first) color.copy(alpha = 0.16f) else Color.Transparent)
                     .combinedClickable(
@@ -73,7 +73,7 @@ fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppL
                     ),
             ) {
                 // A bar marks the row Enter / TAB act on.
-                Box(Modifier.width(3.dp).heightIn(min = 44.dp).background(if (first) color else Color.Transparent))
+                Box(Modifier.width(3.dp).heightIn(min = minOf(44, Term.chipHeight).dp).background(if (first) color else Color.Transparent))
                 Spacer(Modifier.width(9.dp))
                 when (s) {
                     is Suggestion.App -> {

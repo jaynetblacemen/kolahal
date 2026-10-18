@@ -56,8 +56,8 @@ object Keys {
     val KEYBAR2 = ConfigKey.Text("keybar2", DEFAULT_KEYBAR2, "Second key bar row (same syntax; empty for one row)")
     val KEYBAR_SHOW = ConfigKey.Bool("keybar.show", false, "Show the touch key bar")
     val KEYBAR_AUTO = ConfigKey.Bool("keybar.auto", true, "Show the key bar only while the on-screen keyboard is up for the prompt (off: always)")
-    val KEYBAR_HEIGHT = ConfigKey.Num("keybar.height", 40, 28..64, "Key bar row height (dp); smaller leaves more room for the log")
-    val PROMPT_HEIGHT_TYPING = ConfigKey.Num("prompt.height", 40, 32..72, "Prompt line height (dp) while the keyboard is up")
+    val KEYBAR_HEIGHT = ConfigKey.Num("keybar.height", 40, 20..64, "Key bar row height (dp); smaller leaves more room for the log")
+    val PROMPT_HEIGHT_TYPING = ConfigKey.Num("prompt.height", 40, 24..72, "Prompt line height (dp) while the keyboard is up; with the keyboard down it stays at least 40 for an easy tap")
     val THEME = ConfigKey.Choice(
         "theme", "green",
         listOf("green", "amber", "mono", "dracula", "solarized", "gruvbox", "gruvbox-material"),
@@ -90,8 +90,8 @@ object Keys {
     val LOG_DIM = ConfigKey.Bool("log.dim", true, "Dim output older than the latest command")
     val LOG_SPACING = ConfigKey.Num("log.spacing", 10, 0..40, "Gap (dp) above each output group: a command and its output, or a background batch (feeds, scripts)")
     val LOG_GUTTER = ConfigKey.Bool("log.gutter", true, "Thin colour bar at the left of each log line: green for commands, script colour for background output, red for errors")
-    val LOG_LINE_HEIGHT = ConfigKey.Num("log.lineheight", 25, 16..56, "Minimum height (dp) of a log line; tappable lines get a little more")
-    val CHIP_HEIGHT = ConfigKey.Num("chips.height", 48, 28..64, "Height (dp) of suggestion and app-grid chips")
+    val LOG_LINE_HEIGHT = ConfigKey.Num("log.lineheight", 25, 12..56, "Minimum height (dp) of a log line; tappable lines get a little more")
+    val CHIP_HEIGHT = ConfigKey.Num("chips.height", 48, 20..64, "Height (dp) of suggestion chips and app-grid chips; list-style suggestion rows shrink with it below 44")
     val LOG_KEEP_DAYS = ConfigKey.Num("log.keepdays", 60, 1..365, "Delete log lines older than this many days")
     val LOG_FRESH = ConfigKey.Num("log.fresh", 10, 0..240, "Start home with a clean screen after this many minutes away (0: never); earlier output is one tap away")
     val LOG_PACKAGES = ConfigKey.Bool("log.packages", true, "Log app installs, updates and uninstalls (an update is one line, not uninstall + install)")

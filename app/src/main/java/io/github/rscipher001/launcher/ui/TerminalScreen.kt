@@ -458,8 +458,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             focus = focus,
             imeSuggestions = remember(configVersion) { config[Keys.IME_SUGGESTIONS] },
             onFocus = { promptFocused = it },
-            // prompt.height applies while typing; idle keeps the roomy default.
-            height = if (typing) promptTypingHeight else 52.dp,
+            // prompt.height applies while typing; idle keeps at least 40dp so it stays an easy tap.
+            height = if (typing) promptTypingHeight else maxOf(promptTypingHeight, 40.dp),
             keyBarOn = keyBarOn,
             onQuick = { vm.openQuick() },
             onToggleKeyBar = {
@@ -956,7 +956,7 @@ private fun Prompt(
             modifier = Modifier
                 .testTag("prompt-quick")
                 .clickable(onClickLabel = "quick actions", onClick = onQuick)
-                .heightIn(min = 32.dp)
+                .heightIn(min = 24.dp)
                 .padding(end = 2.dp)
                 .wrapContentHeight(),
         )
@@ -1002,7 +1002,7 @@ private fun Prompt(
                 modifier = Modifier
                     .testTag("prompt-clear")
                     .widthIn(min = 44.dp)
-                    .heightIn(min = 32.dp)
+                    .heightIn(min = 24.dp)
                     .clickable(onClickLabel = "clear the prompt") { vm.escape() },
             ) {
                 Text("✕", style = promptStyle.copy(color = Term.dim))
@@ -1015,7 +1015,7 @@ private fun Prompt(
             modifier = Modifier
                 .testTag("keybar-toggle")
                 .widthIn(min = 44.dp)
-                .heightIn(min = 32.dp)
+                .heightIn(min = 24.dp)
                 .clickable(onClickLabel = "toggle key bar", onClick = onToggleKeyBar),
         ) {
             Text("⌨", style = promptStyle.copy(color = if (keyBarOn) Term.prompt else Term.dim))
