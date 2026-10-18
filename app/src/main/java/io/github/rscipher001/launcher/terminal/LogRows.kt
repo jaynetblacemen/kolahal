@@ -40,6 +40,9 @@ sealed interface LogRow {
     }
 }
 
+/** Lines further apart than this belong to different groups (unless a command or header joins them). */
+const val GROUP_GAP_MS = 3_000L
+
 /**
  * Output older than the most recent command is dimmed, so the latest result stands out;
  * timer-script lines that arrived after it stay bright. A separator marks each new day, and
@@ -59,6 +62,7 @@ fun buildRows(
     val rows = ArrayList<LogRow>(entries.size + 4)
     var previousDay: LocalDate? = null
     var unreadShown = false
+    var previous: LogEntry? = null
     for (e in entries) {
         val day = Instant.ofEpochMilli(e.ts).atZone(zone).toLocalDate()
         if (day != previousDay && (previousDay != null || day != today)) rows += LogRow.Day(day)
@@ -78,8 +82,13 @@ fun buildRows(
                 else -> Gutter.COMMAND
             },
             unread = unread && e.kind == LogKind.SCRIPT,
-            blockStart = e.kind == LogKind.COMMAND || header,
+            // A group is one action's lines: a typed command and its output, a background run
+            // under its header, or lines that arrived together. A line that comes on its own later
+            // (a tap launch, an app event, a notification) starts a group of its own.
+            blockStart = e.kind == LogKind.COMMAND || header ||
+                (previous != null && e.ts - previous.ts > GROUP_GAP_MS),
         )
+        previous = e
     }
     return rows
 }
