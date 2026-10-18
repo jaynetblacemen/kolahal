@@ -32,8 +32,27 @@ feed fetch           # refresh every feed now (feed fetch 2 for one)
 ```
 
 Item lines are tappable links; long-press to share or copy. When a fetch finds new items they
-appear in the log under a `── feeds · 10:30 ──` header, at most 10 per feed with a "+N more"
-line (tapping it puts `feeds read <id>` in the prompt).
+appear in the log under a `── feeds · 10:30 ──` header, at most `feeds.log.lines` (default 10) per
+feed, with a "+N more" line (tapping it puts `feed read <id>` in the prompt).
+
+## Read and unread
+
+Every item starts **unread** when it is first fetched. It becomes **read** when you:
+
+- open it: tap its line in the log, use "Open link" from the long-press menu, or tap it on the
+  Feeds screen;
+- list it with `feed read`. Only the items that were printed count; anything beyond the 40 shown
+  stays unread;
+- open it with `feed open`;
+- use "Mark all read" on the Feeds screen.
+
+Seeing a line scroll by in the log does not mark it read, unless you turn on
+`feeds.read.shown`. `feed all` lists items without changing them. The unread count is simply the
+number of stored items still unread (up to 300 per feed are kept, unread ones first).
+
+When you subscribe, everything the feed already contains is unread too. A busy feed can start at
+20 or more unread items. Turn on `feeds.backlog.read` to count those as read, so only posts that
+appear after you subscribed are unread.
 
 ### Feeds screen
 
@@ -41,6 +60,11 @@ line (tapping it puts `feeds read <id>` in the prompt).
 and notifications, without typing ids. Tap a feed for its items (tap one to open it and mark it read).
 The top bar refreshes everything and imports or exports **OPML**, so you can move subscriptions from
 or to another feed reader. The `feed …` subcommands keep working as before.
+
+Feed behaviour is under **Settings → Feeds**: whether new items go to the log and how many, the
+read / unread options above, refreshing on Wi-Fi only (`feeds.wifi`), and the interval and
+notification setting new subscriptions start with (`feeds.interval`, `feeds.notify`). The page also
+leads to the Feeds screen.
 
 ## Per-feed settings
 
@@ -53,8 +77,8 @@ feed rm 2                # unsubscribe and delete its items
 
 ## How fetching works
 
-- One background job runs every 30 minutes (when there is a network) and fetches the feeds that are
-  due by their own interval.
+- One background job runs every 15 minutes (when there is a network, or only on Wi-Fi with
+  `feeds.wifi on`) and fetches the feeds that are due by their own interval.
 - Requests are conditional (ETag / Last-Modified), so an unchanged feed costs a `304` and no parsing.
 - Up to 300 items are kept per feed (unread first, then newest).
 - A failed scheduled fetch is only recorded in the feed's status (shown by `feed`). A fetch you

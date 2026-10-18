@@ -689,7 +689,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             }
             ctx.values[LogContext.PHONE] != null -> startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", ctx.values.getValue(LogContext.PHONE), null)))
             ctx.pkg != null -> appFor(ctx)?.let { app -> io { processor.launch(app) } }
-            ctx.url != null -> openUrl(ctx.url!!)
+            ctx.url != null -> openLink(ctx)
         }
     }
 
@@ -730,7 +730,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             actions += LogAction("Copy number") { copy(number) }
         }
         ctx.url?.let { url ->
-            actions += LogAction("Open link") { openUrl(url) }
+            actions += LogAction("Open link") { openLink(ctx) }
             actions += LogAction("Share link") { share(entry.text, url) }
             actions += LogAction("Copy link") { copy(url) }
         }
@@ -846,6 +846,14 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     }
 
     private fun openUrl(url: String) = startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+
+    /** Opens a line's link; a feed item counts as read once you have opened it. */
+    private fun openLink(ctx: LogContext) {
+        openUrl(ctx.url ?: return)
+        ctx.values[io.github.rscipher001.launcher.feeds.FeedWorker.CTX_ITEM]?.toLongOrNull()?.let { id ->
+            io { io.github.rscipher001.launcher.feeds.FeedRepository.get(context).markRead(id) }
+        }
+    }
 
     private fun share(title: String, url: String) {
         val send = Intent(Intent.ACTION_SEND).setType("text/plain")
@@ -1437,7 +1445,11 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** Bumps on every Home press while already home; the widgets pager returns to the terminal. */
     val homePresses: StateFlow<Int> = _homePresses.asStateFlow()
 
+    /** The open Settings category page; kept while a manager screen opened from it is on top. */
+    val settingsCategory = mutableStateOf<String?>(null)
+
     fun onHomePressed() {
+        settingsCategory.value = null
         _homePresses.value++
         _editing.value?.let { return }
         expandHeader()

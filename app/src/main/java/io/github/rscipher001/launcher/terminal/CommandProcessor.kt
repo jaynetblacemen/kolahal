@@ -664,7 +664,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 if (items.isEmpty()) return info(if (unreadOnly) "nothing unread" else "no items")
                 val names = repo.feeds().associate { it.id to it.shortName }
                 items.forEach {
-                    logs.add(LogKind.SCRIPT, it.title, names[it.feedId] ?: "feed", LogContext.of(LogContext.URL to it.link, LogContext.COPY to it.title))
+                    logs.add(LogKind.SCRIPT, it.title, names[it.feedId] ?: "feed", LogContext.of(LogContext.URL to it.link, LogContext.COPY to it.title, io.github.rscipher001.launcher.feeds.FeedWorker.CTX_ITEM to it.id.toString()))
                 }
                 // Only what was shown: older unread items beyond the limit stay unread.
                 if (unreadOnly) repo.markRead(items.map { it.id })

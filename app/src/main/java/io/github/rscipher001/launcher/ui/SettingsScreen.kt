@@ -123,6 +123,13 @@ private val TITLES = mapOf(
     "gesture.swipeup.on" to "Swipe up on the prompt",
     "gesture.swipeup" to "Swipe up action",
     "log.packages" to "App installs, updates & uninstalls",
+    "feeds.log" to "Show new items in the log",
+    "feeds.log.lines" to "Items per feed per refresh",
+    "feeds.read.shown" to "Items shown in the log count as read",
+    "feeds.backlog.read" to "Mark existing posts read when subscribing",
+    "feeds.interval" to "Refresh interval for new feeds (min)",
+    "feeds.notify" to "Notify for new feeds",
+    "feeds.wifi" to "Refresh on Wi-Fi only",
 )
 
 /** A settings page: grouped keys (a null group title means no sub-header). */
@@ -132,6 +139,8 @@ private class Category(
     val subtitle: String,
     val icon: Int,
     val groups: List<Pair<String?, List<ConfigKey<*>>>>,
+    /** A manager screen this page leads to (shown first): title, subtitle, screen. */
+    val manage: Triple<String, String, Screen>? = null,
 ) {
     val keys get() = groups.flatMap { it.second }
 }
@@ -156,6 +165,7 @@ private val CATEGORIES = listOf(
             "Behaviour" to listOf(Keys.HEADER_AUTOHIDE),
             "Widgets" to listOf(Keys.WIDGETS_PAGE, Keys.WIDGETS_HOME, Keys.WIDGETS_HEIGHT),
         ),
+        manage = Triple("Arrange widgets", "Add, resize and reorder widgets", Screen.WIDGETS),
     ),
     Category(
         "log", "Log", "Times, spacing, line height, history", R.drawable.ic_stat_terminal,
@@ -164,6 +174,16 @@ private val CATEGORIES = listOf(
             "Events" to listOf(Keys.LOG_PACKAGES),
             "History" to listOf(Keys.LOG_FRESH, Keys.LOG_KEEP_DAYS),
         ),
+    ),
+    Category(
+        "feeds", "Feeds", "Refresh, log, read / unread, notifications", R.drawable.ic_rss,
+        listOf(
+            "In the log" to listOf(Keys.FEEDS_LOG, Keys.FEEDS_LOG_LINES),
+            "Read / unread" to listOf(Keys.FEEDS_READ_SHOWN, Keys.FEEDS_BACKLOG_READ),
+            "Refreshing" to listOf(Keys.FEEDS_WIFI),
+            "New subscriptions" to listOf(Keys.FEEDS_INTERVAL, Keys.FEEDS_NOTIFY),
+        ),
+        manage = Triple("Manage feeds", "Subscriptions, unread counts, refresh, OPML import / export", Screen.FEEDS),
     ),
     Category(
         "typing", "Typing", "Suggestions, key bar, prompt, keyboard", R.drawable.ic_keyboard,
@@ -215,7 +235,8 @@ fun SettingsScreen(
     val version = vm.config.version.collectAsStateWithLifecycle()
     val useSystemColors by remember { derivedStateOf { version.value; config[Keys.GUI_COLORS] == "system" } }
     val notice by vm.notice.collectAsStateWithLifecycle()
-    var openId by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
+    // Held by the view model, so returning from a manager screen (Feeds, Widgets) reopens this page.
+    var openId by vm.settingsCategory
     var query by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
     val open = allCategories().firstOrNull { it.id == openId }
     // Back closes a category page first, then the search, then Settings.
@@ -253,6 +274,12 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 if (open != null) {
+                    open.manage?.let { (title, subtitle, screen) ->
+                        item(key = "manage:${open.id}") {
+                            Spacer(Modifier.height(8.dp))
+                            ActionGroup(listOf(Action(open.icon, title, subtitle, chevron = true) { vm.openScreen(screen) }))
+                        }
+                    }
                     for ((title, keys) in open.groups) {
                         if (keys.isEmpty()) continue
                         item(key = "h:${open.id}:$title") { if (title != null) GroupHeader(title) else Spacer(Modifier.height(8.dp)) }

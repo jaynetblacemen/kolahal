@@ -297,6 +297,7 @@ class HostApi(
             LogContext.NOTE, LogContext.REMINDER, LogContext.EVENT,
             io.github.rscipher001.launcher.notifications.KolahalNotificationListener.CTX_KEY,
             io.github.rscipher001.launcher.feeds.FeedWorker.CTX_FEED,
+            io.github.rscipher001.launcher.feeds.FeedWorker.CTX_ITEM,
         )
         private val METHODS_REQUIRING_BODY = setOf("POST", "PUT", "PATCH", "PROPPATCH", "REPORT")
 

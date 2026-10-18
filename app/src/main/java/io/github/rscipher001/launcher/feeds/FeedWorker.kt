@@ -3,6 +3,8 @@ package io.github.rscipher001.launcher.feeds
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import io.github.rscipher001.launcher.data.Config
+import io.github.rscipher001.launcher.data.Keys
 import io.github.rscipher001.launcher.data.LogContext
 import io.github.rscipher001.launcher.data.LogKind
 import io.github.rscipher001.launcher.data.LogRepository
@@ -22,6 +24,11 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val force = inputData.getBoolean(KEY_FORCE, false)
         val feedId = inputData.getLong(KEY_FEED_ID, -1L)
 
+        // feeds.wifi: scheduled runs wait for an unmetered network; a fetch you asked for always runs.
+        if (!force && Config.get(ctx)[Keys.FEEDS_WIFI] &&
+            ctx.getSystemService(android.net.ConnectivityManager::class.java)?.isActiveNetworkMetered != false
+        ) return Result.success()
+
         val now = System.currentTimeMillis()
         val targets = when {
             feedId >= 0 -> listOfNotNull(repo.byId(feedId))
@@ -35,13 +42,18 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         return Result.success()
     }
 
-    /** One header for the whole run, then up to [MAX_LINES_PER_FEED] lines per feed. */
+    /** One header for the whole run, then up to `feeds.log.lines` lines per feed. */
     private fun report(ctx: Context, results: List<FeedFetcher.Result>, explicit: Boolean) {
+        val config = Config.get(ctx)
+        val repo = FeedRepository.get(ctx)
+        val toLog = config[Keys.FEEDS_LOG]
+        val maxLines = config[Keys.FEEDS_LOG_LINES]
+        val shownRead = config[Keys.FEEDS_READ_SHOWN]
         val lines = ArrayList<LogRepository.Pending>()
         val ts = System.currentTimeMillis()
         for (r in results) {
             // Re-read so a title learned during this fetch is used.
-            val feed = FeedRepository.get(ctx).byId(r.feed.id) ?: r.feed
+            val feed = repo.byId(r.feed.id) ?: r.feed
             val source = feed.shortName
             val feedCtx = mapOf(CTX_FEED to feed.id.toString())
             if (r.error != null) {
@@ -54,21 +66,34 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                 continue
             }
             if (r.newItems.isEmpty()) continue
-            for (item in r.newItems.take(MAX_LINES_PER_FEED)) {
-                lines += LogRepository.Pending(
-                    LogKind.SCRIPT,
-                    item.title,
-                    source,
-                    LogContext.of(LogContext.URL to item.link, LogContext.COPY to item.title) + feedCtx,
-                    ts,
+            // feeds.backlog.read: what a feed already had when you subscribed is not "new" to you.
+            if (r.feed.lastFetch == null && config[Keys.FEEDS_BACKLOG_READ]) {
+                repo.markRead(r.newItems.map { it.id })
+                if (toLog) lines += LogRepository.Pending(
+                    LogKind.INFO, "$source: subscribed · ${r.newItems.size} earlier posts marked read", source,
+                    LogContext.of(LogContext.COMMAND to "feed all ${feed.id}") + feedCtx, ts,
                 )
+                continue
             }
-            val more = r.newItems.size - MAX_LINES_PER_FEED
-            if (more > 0) {
-                lines += LogRepository.Pending(
-                    LogKind.SCRIPT, "+$more more", source,
-                    LogContext.of(LogContext.COMMAND to "feeds read ${feed.id}") + feedCtx, ts,
-                )
+            if (toLog) {
+                val shown = r.newItems.take(maxLines)
+                for (item in shown) {
+                    lines += LogRepository.Pending(
+                        LogKind.SCRIPT,
+                        item.title,
+                        source,
+                        LogContext.of(LogContext.URL to item.link, LogContext.COPY to item.title, CTX_ITEM to item.id.toString()) + feedCtx,
+                        ts,
+                    )
+                }
+                if (shownRead) repo.markRead(shown.map { it.id })
+                val more = r.newItems.size - shown.size
+                if (more > 0) {
+                    lines += LogRepository.Pending(
+                        LogKind.SCRIPT, "+$more more", source,
+                        LogContext.of(LogContext.COMMAND to "feed read ${feed.id}") + feedCtx, ts,
+                    )
+                }
             }
             // A notification problem (bad link, system refusal) must not lose the log lines.
             if (feed.notify) runCatching { notify(ctx, feed, r.newItems) }
@@ -97,7 +122,9 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
         /** Log context key carrying the feed id on feed lines. */
         const val CTX_FEED = "feed"
-        const val MAX_LINES_PER_FEED = 10
+
+        /** Log context key carrying the item id: opening the line marks that item read. */
+        const val CTX_ITEM = "feed_item"
 
         /** Notification id for [feedId]; stable across runs so each feed has at most one. */
         internal fun notificationId(feedId: Long): Int = ("feed:$feedId").hashCode()

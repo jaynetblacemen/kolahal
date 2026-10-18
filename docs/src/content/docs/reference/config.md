@@ -50,6 +50,13 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 | `log.keepdays` | number 1–365 | `60` | delete log lines older than this many days |
 | `log.fresh` | number 0–240 | `10` | start home with a clean screen after this many minutes away (0: never); earlier output is one tap away |
 | `log.packages` | bool | `on` | log app installs, updates and uninstalls (an update or a quick reinstall is one line) |
+| `feeds.log` | bool | `on` | post new feed items in the log |
+| `feeds.log.lines` | 1–50 | `10` | new items per feed and refresh shown in the log; the rest is one "+N more" line |
+| `feeds.read.shown` | bool | `off` | items posted in the log count as read (otherwise only opened or listed ones do) |
+| `feeds.backlog.read` | bool | `off` | when you subscribe, the posts already in the feed count as read |
+| `feeds.interval` | 15–1440 | `60` | refresh interval (minutes) for newly added feeds |
+| `feeds.notify` | bool | `off` | newly added feeds notify about new items |
+| `feeds.wifi` | bool | `off` | scheduled refreshes only on Wi-Fi (unmetered); `feed fetch` always runs |
 
 ## Launching and suggestions
 

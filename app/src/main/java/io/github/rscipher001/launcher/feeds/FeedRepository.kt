@@ -54,7 +54,7 @@ data class FeedItem(
 )
 
 /** Subscriptions and items. Every write bumps [version] so screens can re-query. */
-class FeedRepository private constructor(context: Context) {
+class FeedRepository private constructor(private val context: Context) {
     private val db = FeedDb.get(context)
 
     private val _version = MutableStateFlow(0)
@@ -73,6 +73,10 @@ class FeedRepository private constructor(context: Context) {
             put("url", normalized)
             put("title", title?.trim()?.takeIf { it.isNotEmpty() })
             put("added_at", System.currentTimeMillis())
+            // New subscriptions start from the Feeds settings (feeds.interval, feeds.notify).
+            val config = io.github.rscipher001.launcher.data.Config.get(context)
+            put("interval_min", config[io.github.rscipher001.launcher.data.Keys.FEEDS_INTERVAL].coerceAtLeast(FeedScheduler.MIN_INTERVAL_MIN))
+            put("notify", if (config[io.github.rscipher001.launcher.data.Keys.FEEDS_NOTIFY]) 1 else 0)
         }, SQLiteDatabase.CONFLICT_IGNORE)
         changed()
         return byUrl(normalized) ?: error("feed insert failed")

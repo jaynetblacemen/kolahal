@@ -93,6 +93,13 @@ object Keys {
     val LOG_KEEP_DAYS = ConfigKey.Num("log.keepdays", 60, 1..365, "delete log lines older than this many days")
     val LOG_FRESH = ConfigKey.Num("log.fresh", 10, 0..240, "start home with a clean screen after this many minutes away (0: never); earlier output is one tap away")
     val LOG_PACKAGES = ConfigKey.Bool("log.packages", true, "log app installs, updates and uninstalls (an update is one line, not uninstall + install)")
+    val FEEDS_LOG = ConfigKey.Bool("feeds.log", true, "post new feed items in the log")
+    val FEEDS_LOG_LINES = ConfigKey.Num("feeds.log.lines", 10, 1..50, "new items per feed and refresh shown in the log; the rest is one '+N more' line")
+    val FEEDS_READ_SHOWN = ConfigKey.Bool("feeds.read.shown", false, "items posted in the log count as read (otherwise only opened or listed ones do)")
+    val FEEDS_BACKLOG_READ = ConfigKey.Bool("feeds.backlog.read", false, "when you subscribe, the posts already in the feed count as read; only newer ones are unread")
+    val FEEDS_INTERVAL = ConfigKey.Num("feeds.interval", 60, 15..1440, "refresh interval for newly added feeds (minutes)")
+    val FEEDS_NOTIFY = ConfigKey.Bool("feeds.notify", false, "newly added feeds notify about new items")
+    val FEEDS_WIFI = ConfigKey.Bool("feeds.wifi", false, "scheduled refreshes only on Wi-Fi (unmetered networks); 'feed fetch' always runs")
     val SEARCH_ENGINE = ConfigKey.Choice(
         "search.engine", "duckduckgo",
         listOf("duckduckgo", "google", "bing", "brave", "startpage", "kagi", "custom"),
@@ -119,6 +126,7 @@ object Keys {
         HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, GUI_COLORS, STATUS_BAR, FONT, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_HEIGHT, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_LINE_HEIGHT, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_FRESH, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP_ON, GESTURE_SWIPE_UP, LOG_PACKAGES,
+        FEEDS_LOG, FEEDS_LOG_LINES, FEEDS_READ_SHOWN, FEEDS_BACKLOG_READ, FEEDS_INTERVAL, FEEDS_NOTIFY, FEEDS_WIFI,
         HEADER_TODO, WIDGETS_HOME, WIDGETS_PAGE, WIDGETS_HEIGHT,
     )
 
