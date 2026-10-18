@@ -6,7 +6,7 @@ description: Lua 5.4 and JavaScript scripts in Kolahal, timers, notifications, s
 Scripts are small programs that live inside the launcher. They can fetch things from the web,
 print lines into the log, post notifications, pin a status line in the header, or become new
 terminal commands. Write them in **Lua 5.4** or **JavaScript** (QuickJS). Both languages get the
-same [API](../api/).
+same [API](/scripting/api/).
 
 ## Your first script
 
@@ -23,7 +23,7 @@ script run hn              # run it now
 script every hn 30m        # and every 30 minutes
 ```
 
-The fastest start is the [script library](../library/): `script lib` lists 15 ready-made
+The fastest start is the [script library](/scripting/library/): `script lib` lists 15 ready-made
 scripts and `script install weather` installs one with sensible timers.
 
 ## Lua or JavaScript?
@@ -79,7 +79,7 @@ script notify hn on
 
 With notifications off, `notify` does nothing visible, but the script's log lines still show the
 content. If Android blocks Kolahal's notifications, a "tap to allow" line appears (once a day). See
-[Notifications](../../guides/notifications/#notifications-from-scripts-and-feeds).
+[Notifications](/guides/notifications/#notifications-from-scripts-and-feeds).
 
 ## Status lines
 
@@ -111,7 +111,7 @@ weather paris
 ```
 
 In JavaScript use `// @command` and `// @desc …`. Arguments arrive in `args` and `argline`. A
-command script run from the prompt may also call [`launcher.run`](../api/#launcherruncommand). When
+command script run from the prompt may also call [`launcher.run`](/scripting/api/#launcherruncommand). When
 the same script runs on a timer, it gets no arguments, which is how most library scripts tell the
 two cases apart.
 
@@ -146,12 +146,12 @@ Scripts run in a separate `:script` process, so a crashing engine can't take dow
   remain), and only text chunks can be loaded. The timeout and memory cap are enforced by an
   instruction-count hook that also covers coroutines, and `pcall`, `xpcall` and `coroutine.resume`
   can't swallow them. A watchdog kills the script process if a C function outlives the deadline.
-- **JavaScript**: QuickJS with only the bindings in the [API](../api/), a 64 MB memory limit and an
+- **JavaScript**: QuickJS with only the bindings in the [API](/scripting/api/), a 64 MB memory limit and an
   evaluation timeout. There is no file, process or network access besides the API.
 - `sleep(ms)` is capped at 5000 ms per call.
 - `restart scripts` stops the script process if something is stuck. Scheduled scripts start it again.
 
 ## Moving scripts
 
-Scripts are part of the [backup file](../../guides/backup/), and can be imported and exported as
+Scripts are part of the [backup file](/guides/backup/), and can be imported and exported as
 single `.lua` / `.js` files or synced with a folder (`script dir`, `script export`, `script import`).

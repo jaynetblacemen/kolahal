@@ -49,4 +49,4 @@ Toggling profiles needs **Android 10+** and Kolahal set as the **default home ap
 
 On Android 15+, the default launcher can see the private space profile (Kolahal declares
 `ACCESS_HIDDEN_PROFILES` for this). Its apps are tagged `[S]`, and `private on|off|status` unlocks,
-locks or reports it. The [setup checklist](../../getting-started/setup/) lists the profiles it found.
+locks or reports it. The [setup checklist](/getting-started/setup/) lists the profiles it found.

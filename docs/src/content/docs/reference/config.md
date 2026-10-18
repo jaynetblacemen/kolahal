@@ -3,7 +3,7 @@ title: Configuration keys
 description: Every Kolahal setting with its type, default and meaning.
 ---
 
-Change settings on the [settings screen](../../guides/themes-and-settings/#settings-screen) or with
+Change settings on the [settings screen](/guides/themes-and-settings/#settings-screen) or with
 `config set <key> <value>`. `config ls` lists every key with its current value; `*` marks keys
 changed from the default, and `config reset <key|all>` restores defaults.
 
@@ -22,7 +22,7 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 | `header.alarm` | bool | `on` | show the next alarm |
 | `header.profiles` | bool | `on` | show work/private profile state |
 | `header.status` | bool | `on` | show status lines pinned by scripts |
-| `header.media` | bool | `on` | show what's playing under the clock: tap plays / pauses, long-press skips (needs notification access; see [Media](../../guides/media-and-controls/#in-the-header)) |
+| `header.media` | bool | `on` | show what's playing under the clock: tap plays / pauses, long-press skips (needs notification access; see [Media](/guides/media-and-controls/#in-the-header)) |
 | `header.todo` | bool | `on` | show the open todo count (tap runs `todo`) |
 | `header.autohide` | bool | `on` | scrolling back through older output hides the header; scrolling toward the newest shows it as one line (also after a command); Home or a tap brings the full header back |
 | `header.icons` | bool | `on` | icons for battery, network, unlocks, alarm and profiles in the header (off: text labels) |
@@ -71,7 +71,7 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 
 ## Gestures
 
-Each takes a command, `lock`, `shade` or `none`. See [Gestures](../../guides/gestures/).
+Each takes a command, `lock`, `shade` or `none`. See [Gestures](/guides/gestures/).
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -82,7 +82,7 @@ Each takes a command, `lock`, `shade` or `none`. See [Gestures](../../guides/ges
 
 ## Widgets
 
-See [Widgets](../../guides/widgets/).
+See [Widgets](/guides/widgets/).
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |

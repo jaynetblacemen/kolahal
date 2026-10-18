@@ -43,7 +43,7 @@ Widgets are told their real width and height, so they lay out for the space they
 Widgets placed on home show in a strip directly under the header, above the log. The strip:
 
 - is capped at `widgets.height` (180dp by default) and scrolls when your widgets need more,
-- folds away together with the header when [header auto-hide](../../getting-started/basics/)
+- folds away together with the header when [header auto-hide](/getting-started/basics/)
   shrinks it while you scroll or run commands, and comes back with it (Home or a tap on the header),
 - shows nothing at all when no widget is placed on home.
 
@@ -62,7 +62,7 @@ from the page and from home automatically.
 
 ## Backups
 
-A [backup](../backup/) records which widgets you placed, their height, order and whether they were
+A [backup](/guides/backup/) records which widgets you placed, their height, order and whether they were
 on home. Widgets themselves can't be moved between installs, so after an import they show under
 **Restored from backup** on the Widgets page; tap **Add again** on each to bind it (and run its setup
 if it has one). It keeps its height and place.
@@ -75,8 +75,8 @@ widgets ls     # list placed widgets (tap a line to open the page)
 widget add     # open the picker
 ```
 
-See also the [command reference](../../reference/commands/#widgets) and
-[configuration keys](../../reference/config/#widgets).
+See also the [command reference](/reference/commands/#widgets) and
+[configuration keys](/reference/config/#widgets).
 
 ## Widgets page
 

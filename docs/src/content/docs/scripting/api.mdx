@@ -329,7 +329,7 @@ return `${work.length} apps outside the personal profile`;
 
 The most recent notifications, newest first: `[{ pkg, app, title, text, time }]` (`time` in
 milliseconds since the epoch). `n` defaults to 20, at most 50. Needs
-[notification access](../../guides/notifications/); returns an empty list without it.
+[notification access](/guides/notifications/); returns an empty list without it.
 
 ```lua
 for _, n in ipairs(notifications.recent(5)) do
@@ -369,7 +369,7 @@ return `hello, ${argline || "world"} (${args.length} args)`;
 
 ### event
 
-<span class="k-new">new</span> In a run started by an [`@on` trigger](../overview/#event-triggers), `event` describes what
+<span class="k-new">new</span> In a run started by an [`@on` trigger](/scripting/overview/#event-triggers), `event` describes what
 happened. It always carries the event's type (one of `unlock`, `charger`, `unplug`, `wifi`,
 `offline`, `notification`, `boot`, `headset`); events such as `notification` add details about the
 notification. Outside event runs, don't rely on it being set. The editor's inline docs list the

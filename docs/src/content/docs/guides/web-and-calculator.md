@@ -79,4 +79,4 @@ Three-letter codes that aren't units are treated as currencies:
 
 Rates come from [open.er-api.com](https://open.er-api.com) and are cached on the device for six
 hours per base currency. This is the only network request the calculator makes. For a
-richer converter, see the [`exchange` script](../../scripting/library/#exchange).
+richer converter, see the [`exchange` script](/scripting/library/#exchange).

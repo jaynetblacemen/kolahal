@@ -61,4 +61,4 @@ Press Home and pick Kolahal, or run `home` at the prompt to open Android's defau
 setting. Being the default launcher matters: Android only lets the default launcher pause or resume
 the work profile, list app shortcuts and see the private space.
 
-Then run [`setup`](../setup/) and work through the checklist.
+Then run [`setup`](/getting-started/setup/) and work through the checklist.

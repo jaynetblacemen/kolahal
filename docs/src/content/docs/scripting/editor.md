@@ -38,13 +38,13 @@ Above the keyboard there's a row of keys that soft keyboards hide:
 
 ## Autocomplete and inline docs
 
-<span class="k-new">new</span> As you type, the editor suggests [API](../api/) names such as `http.get`, `rss.fresh`,
+<span class="k-new">new</span> As you type, the editor suggests [API](/scripting/api/) names such as `http.get`, `rss.fresh`,
 `store.set` and `device.battery`, and shows a short description with the signature of the call
-under the cursor. It's a quick reminder; the [API reference](../api/) has the full details and
+under the cursor. It's a quick reminder; the [API reference](/scripting/api/) has the full details and
 examples.
 
 ## Editing elsewhere
 
 For longer scripts you may prefer a computer: export a script as a file, sync a folder
-(`script dir`, `script export`, `script import`) or edit the [backup file](../../guides/backup/)
+(`script dir`, `script export`, `script import`) or edit the [backup file](/guides/backup/)
 directly.

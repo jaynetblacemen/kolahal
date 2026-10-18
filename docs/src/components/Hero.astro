@@ -8,6 +8,9 @@ import TerminalDemo from './TerminalDemo.astro';
 
 const { data } = Astro.locals.starlightRoute.entry;
 const { title = data.title, tagline, actions = [] } = data.hero || {};
+// Action links are written site-absolute (`/reference/commands/`), like the Markdown links.
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const withBase = (href: string) => (href.startsWith('/') && !href.startsWith('//') ? base + href : href);
 ---
 
 <div class="hero">
@@ -22,7 +25,7 @@ const { title = data.title, tagline, actions = [] } = data.hero || {};
 			actions.length > 0 && (
 				<div class="actions">
 					{actions.map(({ attrs: { class: className, ...attrs } = {}, icon, link: href, text, variant }) => (
-						<LinkButton {href} {variant} icon={icon?.name} class:list={[className]} {...attrs}>
+						<LinkButton href={withBase(href)} {variant} icon={icon?.name} class:list={[className]} {...attrs}>
 							{text}
 						</LinkButton>
 					))}

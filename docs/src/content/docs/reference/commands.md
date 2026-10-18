@@ -4,12 +4,12 @@ description: Every built-in Kolahal command with its usage, aliases and subcomma
 ---
 
 This is the full list from `help`, in the same groups. Anything that isn't a command, an
-[alias](../../guides/apps/#aliases) or a [script command](../../scripting/overview/#command-scripts)
+[alias](/guides/apps/#aliases) or a [script command](/scripting/overview/#command-scripts)
 is matched against app names. Arguments in `<angle brackets>` are required, `[square brackets]`
 optional, and `a|b` means one of.
 
 Profile flags for app commands: `-w` work, `-p` personal, `-s` private space, `-c` clone. See
-[Profiles](../../guides/profiles/).
+[Profiles](/guides/profiles/).
 
 ## apps
 
@@ -71,7 +71,7 @@ Profile flags for app commands: `-w` work, `-p` personal, `-s` private space, `-
 | `feed every <id> <30m\|2h\|…>` | check interval (minimum 15m) |
 | `feed on\|off <id>` | enable or pause a feed |
 
-<span class="k-new">new</span> `feeds` with no arguments opens the [Feeds screen](../../guides/feeds/#feeds-screen).
+<span class="k-new">new</span> `feeds` with no arguments opens the [Feeds screen](/guides/feeds/#feeds-screen).
 
 `notifs` subcommands: `notifs` (active), `notifs all` (including dismissed), `notifs enable`
 (notification access settings), `notifs mute <app>`, `notifs unmute <app>`, `notifs muted`,
@@ -79,7 +79,7 @@ Profile flags for app commands: `-w` work, `-p` personal, `-s` private space, `-
 
 ## control
 
-See [Media and device controls](../../guides/media-and-controls/).
+See [Media and device controls](/guides/media-and-controls/).
 
 | Usage | Aliases | Description |
 | --- | --- | --- |
@@ -102,7 +102,7 @@ See [Media and device controls](../../guides/media-and-controls/).
 
 ## productivity
 
-See [Productivity](../../guides/productivity/). `<n>` is the number shown in the list.
+See [Productivity](/guides/productivity/). `<n>` is the number shown in the list.
 
 | Usage | Aliases | Description |
 | --- | --- | --- |
@@ -142,7 +142,7 @@ See [Productivity](../../guides/productivity/). `<n>` is the number shown in the
 | Subcommand | Does |
 | --- | --- |
 | `script ls` | list scripts with timers, flags and last result (also plain `script`) |
-| `script lib` | the bundled [library](../../scripting/library/) |
+| `script lib` | the bundled [library](/scripting/library/) |
 | `script install <name>` | install or update a library script |
 | `script new <name>[.lua\|.js] [lua\|js] [--cmd]` | create from a template and open the editor |
 | `script edit <name>` | open the editor |
@@ -177,7 +177,7 @@ Script names use lowercase letters, digits, `-` and `_` (up to 40), and can't be
 
 ## widgets
 
-See [Widgets](../../guides/widgets/).
+See [Widgets](/guides/widgets/).
 
 | Usage | Aliases | Description |
 | --- | --- | --- |

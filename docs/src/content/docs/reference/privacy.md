@@ -12,7 +12,7 @@ settings, scripts, feeds and notifications are stored in the app's private stora
 Kolahal itself makes network requests in exactly three cases:
 
 1. **Scripts** you write or install, through `http.*` and `rss.*`. They talk only to the URLs in
-   their code. The [library scripts](../../scripting/library/) use wttr.in, Open-Meteo,
+   their code. The [library scripts](/scripting/library/) use wttr.in, Open-Meteo,
    CoinGecko, open.er-api.com, api.ipify.org, Wikipedia, xkcd.com, ZenQuotes, Reddit, GitHub
    and the feeds they list. Requests carry a `User-Agent` of `Kolahal-Launcher/0.1` unless the
    script sets its own.
@@ -28,7 +28,7 @@ Plain `http://` is allowed, because many feeds are still served without TLS.
 :::note[Android's own backup]
 The app allows Android's system backup. If device backup is on in your Android settings, Android
 may include Kolahal's data in it, as it does for other apps. Kolahal's own
-[backup file](../../guides/backup/) is separate and is only written where you choose.
+[backup file](/guides/backup/) is separate and is only written where you choose.
 :::
 
 ## Permissions
@@ -60,7 +60,7 @@ activities). That's needed to show your apps at all.
 
 ## Special access you can grant
 
-These are off until you enable them, usually from the [setup checklist](../../getting-started/setup/):
+These are off until you enable them, usually from the [setup checklist](/getting-started/setup/):
 
 | Access | Why | Without it |
 | --- | --- | --- |

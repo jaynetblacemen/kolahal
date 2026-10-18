@@ -5,7 +5,7 @@ description: Todos, quick notes, reminders, timers, alarms and your calendar age
 
 Everything here is stored on the device, in Kolahal's own database. Nothing is synced or uploaded.
 Commands that change something (`todo`, `note`, `notes`, `remind`, `timer`, `alarm`) always need
-Enter, even with [instant launch](../apps/) set to `all`.
+Enter, even with [instant launch](/guides/apps/) set to `all`.
 
 ## Todos
 
@@ -93,5 +93,5 @@ tomorrow · Sun 18 Oct
 - All-day events come first. Events that already ended today are left out.
 - Tap an event to open it in your calendar app.
 - The first time, `agenda` prints a line to tap that asks for the **Calendar** permission. You can
-  also grant it from the [setup checklist](../../getting-started/setup/) (**Calendar (agenda)**).
+  also grant it from the [setup checklist](/getting-started/setup/) (**Calendar (agenda)**).
   Declined events and hidden calendars are skipped.

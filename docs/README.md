@@ -26,8 +26,11 @@ docs/
     └── styles/terminal.css colours (app "green" palette in dark mode, gruvbox light) and fonts
 ```
 
-Links between pages are relative (`../../reference/commands/`), so the site works under any base
-path. `pnpm build` fails if one is broken.
+Links between pages start at the site root without the base (`/reference/commands/#widgets`);
+a small plugin in `astro.config.mjs` adds the base, so the site works under any base path and from
+URLs with or without the trailing slash. Do not write relative links (`../commands/`): they break
+when a page is opened without its slash, and `pnpm build` fails on them, as it does on any broken
+link or anchor.
 
 ## Hosting somewhere else
 

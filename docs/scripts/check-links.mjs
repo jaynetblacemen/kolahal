@@ -1,6 +1,7 @@
 // Post-build check: every internal href/src in dist/ must point at a file that exists, and every
 // #fragment on an internal page must match an id on that page. Exits 1 on any broken link.
-// Links are written relative in the Markdown so the site works under any `base`.
+// Links must be absolute (`/kolahal/...`): a relative link breaks when a page is opened without its
+// trailing slash. Markdown links are written `/reference/...` and astro.config.mjs adds the base.
 import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -45,6 +46,11 @@ for (const page of pages) {
 	for (const m of html.matchAll(/\s(?:href|src)="([^"]+)"/g)) {
 		const raw = m[1].replace(/&amp;/g, '&');
 		if (/^(https?:|mailto:|tel:|data:|javascript:|\/\/)/.test(raw)) continue;
+		if (!raw.startsWith('/') && !raw.startsWith('#')) {
+			console.error(`relative link: ${pageUrl} -> ${raw} (write it as /path/ from the site root)`);
+			broken++;
+			continue;
+		}
 		const url = new URL(raw, pageDir);
 		if (url.host !== 'x') continue;
 		const file = targetFile(url.pathname);

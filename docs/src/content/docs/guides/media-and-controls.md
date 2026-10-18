@@ -56,7 +56,7 @@ the line opens the page to grant it instead.
 
 ### Granting access
 
-Both kinds of access are optional, and the [setup checklist](../../getting-started/setup/) has a
+Both kinds of access are optional, and the [setup checklist](/getting-started/setup/) has a
 row for each:
 
 - **Do Not Disturb access** (`dnd access`): used by `dnd` and `ring silent`.
@@ -66,4 +66,4 @@ row for each:
 When a command needs one of them and it isn't granted, the command prints a tappable line that
 opens the right page.
 
-These commands change device state, so [instant launch](../../getting-started/basics/) never runs them without Enter.
+These commands change device state, so [instant launch](/getting-started/basics/) never runs them without Enter.

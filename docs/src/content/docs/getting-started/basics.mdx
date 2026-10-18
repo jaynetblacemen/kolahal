@@ -15,9 +15,9 @@ The home screen has four parts, from top to bottom: the **header**, the **log**,
 
 Type a command, or any part of an app name, and press Enter.
 
-- **Commands** come first: `help` lists them all, grouped. See the [command reference](../../reference/commands/).
+- **Commands** come first: `help` lists them all, grouped. See the [command reference](/reference/commands/).
 - **Aliases** you defined with `alias m = open maps` expand before anything else.
-- **Script commands** are scripts marked [`@command`](../../scripting/overview/#command-scripts). They run by name with arguments.
+- **Script commands** are scripts marked [`@command`](/scripting/overview/#command-scripts). They run by name with arguments.
 - **Anything else is an app name.** Enter launches the best match, which is the highlighted first
   suggestion chip. More precisely:
   - an exact label match launches;
@@ -34,7 +34,7 @@ Type a command, or any part of an app name, and press Enter.
   Calls always open the dialer, so you confirm there. `launch.instant.min` (default 2) is how many
   letters to type first; `launch.instant off` turns it off.
 - A mistyped command gets a tappable **"did you mean"** that puts the corrected command in the prompt.
-- `= <expression>` is a [calculator and unit converter](../../guides/web-and-calculator/).
+- `= <expression>` is a [calculator and unit converter](/guides/web-and-calculator/).
 
 ### Suggestions
 
@@ -43,7 +43,7 @@ up, or there is text in the prompt); `suggestions.auto off` keeps it always visi
 
 The strip above the key bar changes as you type:
 
-- **Empty prompt**: your [pinned favourites](../../guides/apps/#favourites) first, then your most-used apps, ranked
+- **Empty prompt**: your [pinned favourites](/guides/apps/#favourites) first, then your most-used apps, ranked
   by frecency (how often and how recently you opened them).
   Turn this off with `config set suggestions.idle off`.
 - **First word**: up to three matching commands, aliases or script commands, plus matching apps.
@@ -169,7 +169,7 @@ text labels (`bat`, `net`, …). Every item is tappable:
 | `bat` | battery usage | `header.battery` |
 | `net` | network settings | `header.network` |
 | `work` / `private` | resumes a paused profile; pausing asks for a second tap | `header.profiles` |
-| ⚙ | the [settings screen](../../guides/themes-and-settings/) | |
+| ⚙ | the [settings screen](/guides/themes-and-settings/) | |
 | Script status lines | runs that script | `header.status` |
 
 <span class="k-new">new</span> **Auto-hide** (`header.autohide`, on by default): while you scroll back through older output the header
@@ -178,7 +178,7 @@ line with the time, battery and the number of hidden status lines. Tap it or swi
 also brings it back.
 
 `header.device` adds a `kolahal@device` line. Swipe down on the header to pull down the
-notification shade (a [gesture](../../guides/gestures/) you can change).
+notification shade (a [gesture](/guides/gestures/) you can change).
 
 ## The key bar
 
@@ -214,7 +214,7 @@ config reset keybar      # back to the default row
 
 - Tap empty log space to bring up the keyboard (`keyboard.onhome on` opens it every time Home is shown).
 - Pinch the log to resize the text (`font.size`, 10–24).
-- Double-tap empty log space to lock the screen, and swipe up on the prompt for the app grid. See [Gestures](../../guides/gestures/).
+- Double-tap empty log space to lock the screen, and swipe up on the prompt for the app grid. See [Gestures](/guides/gestures/).
 
 ## Hardware keyboard
 
@@ -227,4 +227,4 @@ config reset keybar      # back to the default row
 | `Ctrl+L` | clear the screen |
 | `Ctrl+A` / `Ctrl+E` | start / end of line |
 
-The script editor has its own shortcuts; see [Editor](../../scripting/editor/).
+The script editor has its own shortcuts; see [Editor](/scripting/editor/).

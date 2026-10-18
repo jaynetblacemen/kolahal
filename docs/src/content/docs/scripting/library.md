@@ -46,7 +46,7 @@ line to drop the points filter.
 
 **RSS feeds.** Reads several feeds (Lobsters, LWN and Ars Technica by default; edit the `FEEDS`
 list at the top) and logs new items prefixed by feed name, at most 5 per feed, with a
-`Feeds: N new` status line. The built-in [feed reader](../../guides/feeds/) does a similar job
+`Feeds: N new` status line. The built-in [feed reader](/guides/feeds/) does a similar job
 without code.
 
 ## releases
@@ -101,7 +101,7 @@ crypto bitcoin --vs eur
 ## exchange
 
 **Currency converter** with daily rates from open.er-api.com. On a timer it pins USD rates. The
-built-in [`= 100 usd in eur`](../../guides/web-and-calculator/#currency) covers simple cases.
+built-in [`= 100 usd in eur`](/guides/web-and-calculator/#currency) covers simple cases.
 
 ```sh
 exchange 100 usd inr eur

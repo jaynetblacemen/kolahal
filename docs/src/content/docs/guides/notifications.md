@@ -31,18 +31,18 @@ notifs log off         # stop logging notifications at all; notifs log on to res
 notifs clear           # dismiss everything and clear the list
 ```
 
-Swipe down on the header to open the system shade (see [Gestures](../gestures/)).
+Swipe down on the header to open the system shade (see [Gestures](/guides/gestures/)).
 
 Scripts can read recent notifications with
-[`notifications.recent(n)`](../../scripting/api/#notificationsrecentn) while access is granted.
+[`notifications.recent(n)`](/scripting/api/#notificationsrecentn) while access is granted.
 
 ## Notifications from scripts and feeds
 
 Allow posting with `notifications` (on Android 13+ this asks for the permission; otherwise it
 opens Kolahal's notification settings; `notifications settings` always opens them).
 
-- A script posts with [`notify(title, body, ctx)`](../../scripting/api/#notifytitle-body-ctx), but
+- A script posts with [`notify(title, body, ctx)`](/scripting/api/#notifytitle-body-ctx), but
   only if notifications are on for that script: `script notify <name> on`, or the switch in the
   script manager.
 - A feed with notifications on (`feed notify <id> on`) posts one notification per fetch that found
-  new items. See [Feeds](../feeds/).
+  new items. See [Feeds](/guides/feeds/).
