@@ -149,6 +149,16 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     val currentKeyboard by rememberUpdatedState(keyboard)
     val currentHasHardwareKeyboard by rememberUpdatedState(hasHardwareKeyboard)
     LaunchedEffect(Unit) {
+        // Home pressed on another page: scroll and focus now that the terminal is here.
+        vm.consumeArrival()?.let { a ->
+            pinned = true
+            runCatching { listState.scrollToItem(0) }
+            if (a.focus) {
+                androidx.compose.runtime.withFrameNanos { } // the prompt's focus target is attached after the first frame
+                runCatching { focus.requestFocus() }
+                if (!currentHasHardwareKeyboard) currentKeyboard?.show()
+            }
+        }
         vm.events.collect { e ->
             when (e) {
                 UiEvent.ScrollToBottom -> { pinned = true; listState.scrollToItem(0) }
@@ -213,7 +223,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     // Monospace advance, used to indent wrapped lines past their prefix.
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val charWidth = remember(Term.fontSize, density) {
+    val charWidth = remember(Term.fontSize, Term.fontFamily, density) {
         with(density) { (measurer.measure("0000000000", Term.mono).size.width / 10f).toSp() }
     }
     val lineTimeFormat = remember(configVersion) {
@@ -734,9 +744,14 @@ private fun Header(
 private fun SuggestionStrip(items: List<Suggestion>, rows: Int, onPick: (Suggestion) -> Unit) {
     if (items.isEmpty()) return
     val key = { _: Int, s: Suggestion -> s.key }
+    // Keep the first chip (what Enter / TAB take) in view when the matches change.
+    val first = items.first().key
     // suggestions.rows 2: twice as many chips in reach before any sideways scrolling.
     if (rows >= 2 && items.size > 3) {
+        val gridState = androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState()
+        LaunchedEffect(first) { gridState.scrollToItem(0) }
         androidx.compose.foundation.lazy.staggeredgrid.LazyHorizontalStaggeredGrid(
+            state = gridState,
             rows = androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells.Fixed(2),
             modifier = Modifier
                 .fillMaxWidth()
@@ -751,7 +766,10 @@ private fun SuggestionStrip(items: List<Suggestion>, rows: Int, onPick: (Suggest
         }
         return
     }
+    val rowState = androidx.compose.foundation.lazy.rememberLazyListState()
+    LaunchedEffect(first) { rowState.scrollToItem(0) }
     LazyRow(
+        state = rowState,
         modifier = Modifier
             .fillMaxWidth()
             .testTag("suggestions")

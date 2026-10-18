@@ -230,7 +230,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
             ?: return error("Usage: remind <10m|2h|1h30m|18:30|tomorrow 9:00|fri 8am> <text>")
         val text = w.drop(parsed.consumed).joinToString(" ")
         if (text.isBlank()) return error("What should I remind you of? remind ${w.take(parsed.consumed).joinToString(" ")} <text>")
-        val at = parsed.at.atZone(zone).toInstant().toEpochMilli()
+        val at = TimeSpec.relativeSeconds(w)?.let { System.currentTimeMillis() + it * 1000 } ?: parsed.at.atZone(zone).toInstant().toEpochMilli()
         val r = reminders.add(at, text)
         ReminderScheduler.schedule(context, r)
         info(

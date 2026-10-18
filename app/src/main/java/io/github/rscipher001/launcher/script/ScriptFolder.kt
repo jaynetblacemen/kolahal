@@ -92,14 +92,17 @@ class ScriptFolder(private val context: Context) {
             val lang = ScriptLang.of(fileName.substringAfterLast('.', "")) ?: continue
             if (file.isDirectory) continue
             val name = fileName.substringBeforeLast('.').lowercase()
-            if (!NAME.matches(name)) {
+            // Same rules as a backup: no names of built-in commands.
+            if (!NAME.matches(name) || name in io.github.rscipher001.launcher.terminal.CommandProcessor.COMMANDS.map { it.name }) {
                 skipped += fileName
                 continue
             }
             val code = readText(file.uri) ?: continue
             val existing = scripts.byName(name)
+            var isNew = false
             val script = if (existing == null) {
                 created++
+                isNew = true
                 scripts.create(name, lang, code)
             } else {
                 if (existing.lang != lang) {
@@ -111,13 +114,19 @@ class ScriptFolder(private val context: Context) {
                 existing
             }
             settings[name]?.let { m ->
-                (m["every"] as? Number)?.let { scripts.setInterval(script.id, it.toInt()) }
+                (m["every"] as? Number)?.toLong()?.let { every ->
+                    val minutes = every.coerceIn(0, 7L * 24 * 60).toInt()
+                    scripts.setInterval(script.id, if (minutes in 1 until ScriptScheduler.MIN_INTERVAL_MIN) ScriptScheduler.MIN_INTERVAL_MIN else minutes)
+                }
                 (m["at"] as? List<*>)?.let { at ->
                     scripts.setAtTimes(script.id, at.mapNotNull { ScriptScheduler.normalizeTime(it.toString()) }.distinct().sorted())
                 }
                 (m["notify"] as? Boolean)?.let { scripts.setNotify(script.id, it) }
-                (m["enabled"] as? Boolean)?.let { scripts.setEnabled(script.id, it) }
+                if (!isNew) (m["enabled"] as? Boolean)?.let { scripts.setEnabled(script.id, it) }
             }
+            // New scripts from a folder arrive switched off, like from a backup: review them before
+            // they run on a timer.
+            if (isNew) scripts.setEnabled(script.id, false)
             runCatching { scripts.byId(script.id)?.let { ScriptScheduler.sync(context, it) } }
         }
         return ImportResult(created, updated, skipped)
@@ -129,7 +138,7 @@ class ScriptFolder(private val context: Context) {
             .orEmpty().filterIsInstance<Map<*, *>>().associateBy { it["name"]?.toString()?.lowercase() }
 
     private fun readText(uri: Uri): String? =
-        context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+        runCatching { Files.readText(context, uri) }.getOrNull() // size-capped, like single-file import
 
     private companion object {
         const val KEY_URI = "uri"

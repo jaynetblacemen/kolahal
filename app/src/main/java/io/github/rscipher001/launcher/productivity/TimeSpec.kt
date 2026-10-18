@@ -47,6 +47,16 @@ object TimeSpec {
     /** A point in time and how many leading tokens described it (the rest is the reminder text). */
     data class Parsed(val at: LocalDateTime, val consumed: Int)
 
+    /**
+     * The duration in seconds when [tokens] start with one (`2h`, `in 10m`), else null. Callers add
+     * it to the real clock: across a DST change, wall-clock arithmetic on [Parsed.at] is an hour off.
+     */
+    fun relativeSeconds(tokens: List<String>): Long? {
+        val first = tokens.getOrNull(0)?.lowercase() ?: return null
+        if (first == "at") return null
+        return parseDuration((if (first == "in") tokens.getOrNull(1) else first)?.lowercase() ?: return null)
+    }
+
     /** "fri", "friday" (three letters at least). */
     private fun weekday(token: String): DayOfWeek? {
         val t = token.lowercase()

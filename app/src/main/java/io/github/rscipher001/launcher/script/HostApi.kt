@@ -149,7 +149,9 @@ class HostApi(
         val seen = pendingSeen[key] ?: readSeen(key)
         val seenSet = seen.toHashSet()
         val fresh = feed.items.filter { it.id !in seenSet }
-        pendingSeen[key] = (fresh.map { it.id } + seen).take(MAX_SEEN)
+        // Never forget an id the feed still lists: a feed longer than MAX_SEEN would otherwise
+        // push its own old items out and report them as new on the next run.
+        pendingSeen[key] = (fresh.map { it.id } + seen).take(maxOf(MAX_SEEN, feed.items.size + 100))
         return feed.copy(items = fresh).toMap()
     }
 
@@ -241,6 +243,11 @@ class HostApi(
     /** Recent notifications (needs notification access): [{pkg, app, title, text, time}], newest first. */
     fun notificationsRecent(limit: Int): List<Any?> {
         val L = io.github.rscipher001.launcher.notifications.KolahalNotificationListener
+        // Access revoked while the listener wasn't bound leaves the copy behind: drop it, share nothing.
+        if (!io.github.rscipher001.launcher.notifications.NotificationActions.isEnabled(context)) {
+            runCatching { L.clearMirror(context) }
+            return emptyList()
+        }
         val raw = KvStore(context, L.MIRROR_SCOPE).get(L.MIRROR_KEY) ?: return emptyList()
         return (runCatching { Json.parse(raw) as? List<*> }.getOrNull() ?: emptyList<Any?>()).take(limit.coerceIn(0, 50))
     }
@@ -252,7 +259,8 @@ class HostApi(
             return false
         }
         // State-changing commands (clear, uninstall, notifs clear, config, …) stay with the user.
-        if (io.github.rscipher001.launcher.terminal.InstantRun.isSensitive(command)) {
+        val aliases = runCatching { io.github.rscipher001.launcher.apps.AppPrefs.get(context).aliases() }.getOrDefault(emptyMap())
+        if (io.github.rscipher001.launcher.terminal.InstantRun.isSensitive(command, aliases)) {
             logError("launcher.run refused '${command.substringBefore(' ')}': sensitive commands must be typed")
             return false
         }
@@ -272,7 +280,11 @@ class HostApi(
             return mapOf("status" to 200, "ok" to true, "body" to cached["body"], "headers" to emptyMap<String, String>(), "cached" to true)
         }
         val resp = httpGet(url)
-        if (resp["ok"] == true) store.set(key, Json.stringify(mapOf("at" to System.currentTimeMillis(), "body" to resp["body"])))
+        // A body near the store's value cap isn't cached; it would be refused anyway.
+        val body = resp["body"] as? String
+        if (resp["ok"] == true && (body?.length ?: 0) < KvStore.MAX_VALUE / 2) {
+            runCatching { store.set(key, Json.stringify(mapOf("at" to System.currentTimeMillis(), "body" to body))) }
+        }
         return resp + ("cached" to false)
     }
 

@@ -1317,17 +1317,22 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             return out
         }
 
+        /** Longest timer or feed interval: a week, like backup import allows. */
+        const val MAX_INTERVAL_MIN = 7L * 24 * 60
+
         /** "30m", "2h", "1d", "45" (minutes), "off" -> minutes (0 = off). */
         fun parseInterval(s: String?): Int? {
             if (s == null) return null
             if (s == "off" || s == "0" || s == "manual") return 0
             val m = Regex("^(\\d+)([mhd]?)$").find(s.lowercase()) ?: return null
-            val n = m.groupValues[1].toInt()
-            return when (m.groupValues[2]) {
+            // Long, then capped: `1500000d` must be rejected, not wrap to a negative "timer off".
+            val n = m.groupValues[1].toLongOrNull() ?: return null
+            val minutes = when (m.groupValues[2]) {
                 "h" -> n * 60
                 "d" -> n * 60 * 24
                 else -> n
             }
+            return minutes.takeIf { it <= MAX_INTERVAL_MIN }?.toInt()
         }
 
         /** "8:00", "08:00", "18:30" -> "HH:mm"; null if invalid. */

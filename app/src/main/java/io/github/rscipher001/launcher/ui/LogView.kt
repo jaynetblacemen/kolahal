@@ -213,7 +213,8 @@ fun LogLine(
     ) {
         Box(Modifier.weight(1f)) {
             when {
-                isGrid -> AppGrid(apps(entry), onAppTap, onAppLongPress)
+                // Parsed once per entry: it decodes JSON and looks up every app.
+                isGrid -> AppGrid(remember(entry.id, entry.ctx) { apps(entry) }, onAppTap, onAppLongPress)
                 desc != null -> TwoColumns(entry, desc)
                 else -> {
                     val text = remember(entry, Term.palette, charWidth, row.unread) { renderLine(entry, charWidth, row.unread) }

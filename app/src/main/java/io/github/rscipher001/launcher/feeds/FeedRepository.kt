@@ -204,6 +204,11 @@ class FeedRepository private constructor(private val context: Context) {
         if (n > 0) changed()
     }
 
+    /** Stored items of [feedId], read or not. 0 means no fetch has succeeded yet. */
+    fun itemCount(feedId: Long): Int = db.readableDatabase.rawQuery(
+        "SELECT COUNT(*) FROM items WHERE feed_id = ?", arrayOf(feedId.toString()),
+    ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+
     /** Unread items across enabled feeds. */
     fun unreadCount(): Int = db.readableDatabase.rawQuery(
         "SELECT COUNT(*) FROM items i JOIN feeds f ON f.id = i.feed_id WHERE i.read = 0 AND f.enabled = 1",

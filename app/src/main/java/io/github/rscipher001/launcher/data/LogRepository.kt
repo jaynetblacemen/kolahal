@@ -34,8 +34,8 @@ class LogRepository private constructor(private val context: Context) {
             put("ts", System.currentTimeMillis())
             put("kind", kind.key)
             put("source", source)
-            put("text", text)
-            put("ctx", ctx.toJson())
+            put("text", clip(text))
+            put("ctx", clip(ctx).toJson())
         })
         changed()
         return id
@@ -83,8 +83,8 @@ class LogRepository private constructor(private val context: Context) {
                     put("ts", p.ts)
                     put("kind", p.kind.key)
                     put("source", p.source)
-                    put("text", p.text)
-                    put("ctx", p.ctx.toJson())
+                    put("text", clip(p.text))
+                    put("ctx", clip(p.ctx).toJson())
                 })
             }
             w.setTransactionSuccessful()
@@ -97,7 +97,9 @@ class LogRepository private constructor(private val context: Context) {
     fun recent(limit: Int = 400): List<LogEntry> {
         val out = ArrayList<LogEntry>()
         db.readableDatabase.rawQuery(
-            "SELECT id, ts, kind, source, text, ctx FROM logs WHERE id > ? ORDER BY id DESC LIMIT ?",
+            // substr: a row over the 2 MB cursor window (written before lines were capped) can't be
+            // read at all, and would break loading the log for good.
+            "SELECT id, ts, kind, source, substr(text, 1, $MAX_FIELD), substr(ctx, 1, $MAX_FIELD) FROM logs WHERE id > ? ORDER BY id DESC LIMIT ?",
             arrayOf(visibleAfter().toString(), limit.toString()),
         ).use { c ->
             while (c.moveToNext()) {
@@ -137,8 +139,8 @@ class LogRepository private constructor(private val context: Context) {
             put("ts", e.ts)
             put("kind", e.kind.key)
             put("source", e.source)
-            put("text", e.text)
-            put("ctx", e.ctx.toJson())
+            put("text", clip(e.text))
+            put("ctx", clip(e.ctx).toJson())
         }, android.database.sqlite.SQLiteDatabase.CONFLICT_IGNORE)
         changed()
     }
@@ -235,7 +237,16 @@ class LogRepository private constructor(private val context: Context) {
         context.sendBroadcast(Intent(ACTION_LOGS_CHANGED).setPackage(context.packageName))
     }
 
+    /** Caps a line's text: one huge value (an HTTP body, a script's log(bigString)) must stay readable. */
+    private fun clip(s: String) = if (s.length <= MAX_FIELD) s else s.take(MAX_FIELD - 1) + "…"
+
+    private fun clip(ctx: LogContext): LogContext =
+        if (ctx.values.values.none { it.length > MAX_FIELD / 4 }) ctx
+        else LogContext(ctx.values.mapValues { (_, v) -> if (v.length > MAX_FIELD / 4) v.take(MAX_FIELD / 4 - 1) + "…" else v })
+
     companion object {
+        /** Characters kept per stored field; far below the 2 MB SQLite cursor window. */
+        const val MAX_FIELD = 64 * 1024
         private const val KEY_CLEARED_UP_TO = "cleared_up_to"
         private const val KEY_HIDDEN_UP_TO = "hidden_up_to"
         private const val KEY_SEEN_UP_TO = "seen_up_to"

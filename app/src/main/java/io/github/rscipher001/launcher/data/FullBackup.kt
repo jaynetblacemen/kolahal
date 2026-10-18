@@ -38,6 +38,8 @@ object FullBackup {
     private const val SCRIPT_SCOPE = "script:"
 
     fun export(context: Context): Map<String, Any?> {
+        // Rows too big for a cursor would make the whole export fail.
+        runCatching { KvStore.repairOversized(context) }
         val scriptNames = ScriptRepository.get(context).all().associate { ScriptRepository.scopeOf(it.id) to it.name }
         val tables = LinkedHashMap<String, Any?>()
         val scriptKv = LinkedHashMap<String, MutableMap<String, String?>>()
@@ -94,7 +96,8 @@ object FullBackup {
         stores.forEach { (name, entries) ->
             val script = repo.byName(name.toString()) ?: return@forEach
             val kv = KvStore(context, ScriptRepository.scopeOf(script.id))
-            (entries as? Map<*, *>)?.forEach { (k, v) -> if (k != null) kv.set(k.toString(), v?.toString()) }
+            // runCatching: an oversized value (e.g. an old cached HTTP body) is skipped, not fatal.
+            (entries as? Map<*, *>)?.forEach { (k, v) -> if (k != null) runCatching { kv.set(k.toString(), v?.toString()) } }
         }
     }
 

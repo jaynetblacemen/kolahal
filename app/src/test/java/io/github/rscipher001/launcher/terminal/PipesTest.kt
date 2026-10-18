@@ -40,4 +40,11 @@ class PipesTest {
     @Test fun unknownStageFails() {
         assertTrue(Pipes.apply(lines("a"), listOf("grepx")).isFailure)
     }
+
+    @Test fun headAndTailAcceptDashN() {
+        val t = (1..12).map { "l$it" }.toTypedArray()
+        assertEquals(listOf("l1", "l2", "l3"), run("head -n 3", *t))
+        assertEquals(listOf("l11", "l12"), run("tail -n 2", *t))
+        assertEquals(listOf("l1", "l2"), run("head -2", *t))
+    }
 }

@@ -246,7 +246,17 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         )
         viewModelScope.launch {
             // Bursts of changes (a script logging many lines, another process) collapse into one reload.
-            combine(logs.version, reloadRequests) { a, b -> a to b }.debounce(40).collectLatest { reload() }
+            combine(logs.version, reloadRequests) { a, b -> a to b }.debounce(40).collectLatest {
+                // A failed reload keeps the previous rows instead of crashing home. Not logged:
+                // writing to the log would trigger the next reload.
+                try {
+                    reload()
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    android.util.Log.w("Kolahal", "log reload failed", e)
+                }
+            }
         }
         viewModelScope.launch(Dispatchers.IO) {
             // A persistent flag, so `clear all` doesn't look like a first run.
@@ -302,7 +312,15 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         pausedAt = System.currentTimeMillis()
     }
 
+    /** Exact-alarm permission at the last resume; null before the first. */
+    @Volatile private var exactAlarms: Boolean? = null
+
     fun onResume() {
+        // Allowing exact alarms (`remind exact`) doesn't restart us: re-arm the pending reminders
+        // so they stop firing late in Doze.
+        val exact = io.github.rscipher001.launcher.productivity.ReminderScheduler.canBeExact(context)
+        if (exact && exactAlarms == false) io { io.github.rscipher001.launcher.productivity.ReminderScheduler.rescheduleAll(context) }
+        exactAlarms = exact
         // Coming back from an app is a fresh look at home: show the full header again.
         expandHeader()
         seenUpTo = logs.seenUpTo
@@ -1454,9 +1472,23 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         _homePresses.value++
         _editing.value?.let { return }
         expandHeader()
+        val fromOtherScreen = _screen.value != Screen.TERMINAL
         openScreen(Screen.TERMINAL) // Home always lands on the terminal and forgets the page stack
         escape()
-        _events.tryEmit(UiEvent.ScrollToBottom)
-        if (config[Keys.FOCUS_ON_HOME]) _events.tryEmit(UiEvent.FocusPrompt)
+        if (fromOtherScreen) {
+            // The terminal isn't composed yet, so an event now would have no collector: it picks
+            // these up when it appears (consumeArrival).
+            arrival = Arrival(focus = config[Keys.FOCUS_ON_HOME])
+        } else {
+            _events.tryEmit(UiEvent.ScrollToBottom)
+            if (config[Keys.FOCUS_ON_HOME]) _events.tryEmit(UiEvent.FocusPrompt)
+        }
     }
+
+    /** What the terminal should do once it is on screen again after Home from another page. */
+    data class Arrival(val focus: Boolean)
+
+    @Volatile private var arrival: Arrival? = null
+
+    fun consumeArrival(): Arrival? = arrival.also { arrival = null }
 }

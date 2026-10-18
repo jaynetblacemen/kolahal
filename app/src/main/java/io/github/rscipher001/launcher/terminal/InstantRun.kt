@@ -15,6 +15,8 @@ object InstantRun {
         "call", "sms", "uninstall", "work", "private", "clear", "restart", "lock", "script", "alias", "unalias",
         "config", "hide", "unhide", "rename", "feed", "feeds", "notifs", "lua", "js", "=", "url", "echo",
         "todo", "note", "notes", "remind", "timer", "alarm", "widget",
+        // `scripts rm|off|import …` reaches the same handler as `script`; `status clear` wipes lines.
+        "scripts", "status",
     ) + io.github.rscipher001.launcher.control.ControlCommands.SENSITIVE
 
     /** Other names the dispatcher accepts for a command; checks always use the canonical name. */
@@ -30,6 +32,21 @@ object InstantRun {
 
     /** True when the first word of [line], after synonyms, is a sensitive command. */
     fun isSensitive(line: String): Boolean = canonical(line.trim().substringBefore(' ')) in SENSITIVE
+
+    /**
+     * Like [isSensitive], but follows [aliases] the way the dispatcher expands them (up to 5
+     * levels), so an alias such as `c = clear` can't carry a sensitive command past the check.
+     */
+    fun isSensitive(line: String, aliases: Map<String, String>): Boolean {
+        var current = line.trim()
+        repeat(6) {
+            if (isSensitive(current)) return true
+            val head = current.substringBefore(' ')
+            val body = aliases[head] ?: aliases[head.lowercase()] ?: return false
+            current = (body + " " + current.substringAfter(' ', "")).trim()
+        }
+        return true // deeper than the dispatcher expands: refuse rather than guess
+    }
 
     sealed interface Target<out A> {
         data class App<A>(val app: A) : Target<A>

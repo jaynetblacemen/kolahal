@@ -43,6 +43,19 @@ class LogRowsTest {
     }
 
     @Test
+    fun timestampsGoingBackNeverRepeatADayDivider() {
+        // id order with days running D-2, D-1, D-2, D-1 (clock set back, or a buffered script line
+        // written just after midnight): each day divider must appear once, or the list key repeats.
+        val day = 86_400_000L
+        val rows = buildRows(
+            listOf(line(1, -2 * day), line(2, -day), line(3, -2 * day + 1), line(4, -day + 1)),
+        )
+        val keys = rows.filterIsInstance<LogRow.Day>().map { it.key }
+        assertEquals(keys.distinct(), keys)
+        assertEquals(rows.map { it.key }.distinct().size, rows.size)
+    }
+
+    @Test
     fun runHeaderStartsAGroupEvenRightAfterOtherLines() {
         val header = LogContext.of(LogContext.RUN_HEADER to "1")
         assertEquals(

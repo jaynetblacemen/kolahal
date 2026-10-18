@@ -8,7 +8,10 @@ object Files {
     /** Large enough for any script or backup; guards against picking a huge file by mistake. */
     const val MAX_BYTES = 2 * 1024 * 1024
 
-    fun readText(context: Context, uri: Uri): String {
+    /** What a full backup may weigh: the log, feed items, script stores and an imported font. */
+    const val MAX_BACKUP_BYTES = 64 * 1024 * 1024
+
+    fun readText(context: Context, uri: Uri, maxBytes: Int = MAX_BYTES): String {
         val stream = context.contentResolver.openInputStream(uri) ?: throw IllegalStateException("can't open the file")
         stream.use { input ->
             // Manual loop: InputStream.readNBytes needs API 33.
@@ -18,7 +21,7 @@ object Files {
                 val n = input.read(buffer)
                 if (n < 0) break
                 out.write(buffer, 0, n)
-                if (out.size() > MAX_BYTES) throw IllegalStateException("file is larger than 2 MB")
+                if (out.size() > maxBytes) throw IllegalStateException("File is larger than ${maxBytes / (1024 * 1024)} MB")
             }
             return out.toString(Charsets.UTF_8.name())
         }

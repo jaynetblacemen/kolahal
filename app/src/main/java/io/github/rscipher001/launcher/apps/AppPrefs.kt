@@ -59,8 +59,11 @@ class AppPrefs private constructor(context: Context) {
 
     /** Records a launch: count plus last-used time, stored as "count:epochMillis". */
     fun recordLaunch(key: String) {
-        val (count, _) = launchStats(key)
-        apps.edit().putString("launch:$key", "${count + 1}:${System.currentTimeMillis()}").apply()
+        // Read-modify-write: two launches recorded at once must both count.
+        synchronized(this) {
+            val (count, _) = launchStats(key)
+            apps.edit().putString("launch:$key", "${count + 1}:${System.currentTimeMillis()}").apply()
+        }
         _version.update { it + 1 } // refreshes the "most used" suggestions
     }
 

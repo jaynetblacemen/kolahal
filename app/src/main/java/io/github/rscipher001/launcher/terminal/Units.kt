@@ -77,10 +77,21 @@ object Units {
 
     private val pattern = Regex("""^\s*(-?[\d.,]+)\s*([^\s\d][^\s]*)\s+(?:in|to|as|->)\s+([^\s]+)\s*$""", RegexOption.IGNORE_CASE)
 
+    /**
+     * `1,000` and `1,000.5` are thousands; `1,5` (a comma not followed by exactly three digits,
+     * and no dot) is a decimal comma. Anything else ambiguous is rejected rather than misread.
+     */
+    internal fun number(s: String): Double? = when {
+        ',' !in s -> s.toDoubleOrNull()
+        Regex("""^-?\d{1,3}(,\d{3})+(\.\d+)?$""").matches(s) -> s.replace(",", "").toDoubleOrNull()
+        Regex("""^-?\d+,\d+$""").matches(s) -> s.replace(',', '.').toDoubleOrNull()
+        else -> null
+    }
+
     /** Parsed `amount from to` if [text] looks like a conversion (units may be unknown, e.g. currencies). */
     fun parse(text: String): Triple<Double, String, String>? {
         val m = pattern.find(text) ?: return null
-        val amount = m.groupValues[1].replace(",", "").toDoubleOrNull() ?: return null
+        val amount = number(m.groupValues[1]) ?: return null
         return Triple(amount, m.groupValues[2].lowercase(), m.groupValues[3].lowercase())
     }
 

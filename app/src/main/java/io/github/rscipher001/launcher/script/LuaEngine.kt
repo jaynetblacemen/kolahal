@@ -68,8 +68,13 @@ class LuaEngine : ScriptEngine {
             lua.pCall(1, 1)
             lua.toString(-1)
         } finally {
-            watchdog.interrupt()
-            lua.close()
+            // Close while the watchdog still runs: lua_close runs pending __gc finalizers, where the
+            // instruction hook is off, so a looping finalizer is only stopped by the watchdog.
+            try {
+                lua.close()
+            } finally {
+                watchdog.interrupt()
+            }
         }
     }
 
@@ -191,8 +196,9 @@ class LuaEngine : ScriptEngine {
 
             -- Timeouts and the memory cap must not be swallowed by pcall / xpcall / resume.
             local function fatal(e)
-              return type(e) == "string" and
-                (e:find("script timed out", 1, true) or e:find("memory limit exceeded", 1, true)) ~= nil
+              -- Lowercased: the hook raises "Memory limit exceeded (64 MB)".
+              local s = type(e) == "string" and e:lower()
+              return s and (s:find("script timed out", 1, true) or s:find("memory limit exceeded", 1, true)) ~= nil
             end
             local function rethrow(res)
               if not res[1] and fatal(res[2]) then error(res[2], 0) end

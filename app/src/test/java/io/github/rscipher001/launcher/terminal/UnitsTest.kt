@@ -18,4 +18,11 @@ class UnitsTest {
         assertNull(conv("100 usd in inr"))
     }
     @Test fun notAConversion() = assertNull(Units.parse("2^10 / 4"))
+    @Test fun decimalCommaAndThousands() {
+        assertEquals(1.5, Units.number("1,5")!!, 1e-9)
+        assertEquals(1000.0, Units.number("1,000")!!, 1e-9)
+        assertEquals(1234567.5, Units.number("1,234,567.5")!!, 1e-9)
+        assertNull(Units.number("1,5,3"))
+        assertEquals(1.5, Units.parse("1,5 kg in lb")!!.first, 1e-9)
+    }
 }

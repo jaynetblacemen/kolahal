@@ -80,4 +80,19 @@ class InstantRunTest {
         assertFalse(InstantRun.canRun("work off", commands, emptyMap(), emptyList()))
         assertFalse(InstantRun.canRun("weather london", commands, emptyMap(), listOf("weather")))
     }
+
+    @Test fun scriptsAndStatusAreSensitive() {
+        assertTrue(InstantRun.isSensitive("scripts rm hn"))
+        assertTrue(InstantRun.isSensitive("status clear all"))
+    }
+
+    @Test fun aliasesCantCarrySensitiveCommandsPastTheCheck() {
+        val aliases = mapOf("c" to "clear", "x" to "c all", "w" to "weather")
+        assertTrue(InstantRun.isSensitive("c", aliases))
+        assertTrue(InstantRun.isSensitive("x", aliases))
+        assertFalse(InstantRun.isSensitive("w london", aliases))
+        assertFalse(InstantRun.isSensitive("help", aliases))
+        // A cycle deeper than the dispatcher expands is refused.
+        assertTrue(InstantRun.isSensitive("a", mapOf("a" to "b", "b" to "a")))
+    }
 }

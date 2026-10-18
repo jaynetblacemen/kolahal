@@ -25,7 +25,8 @@ class FeedFetcher(context: Context) {
     private val repo = FeedRepository.get(context)
 
     /** Outcome of one feed in [fetchAll]; [error] is null on success (including 304). */
-    data class Result(val feed: Feed, val newItems: List<FeedItem>, val error: String?)
+    /** [first]: this was the feed's first successful fetch, so [newItems] is its backlog, not news. */
+    data class Result(val feed: Feed, val newItems: List<FeedItem>, val error: String?, val first: Boolean = false)
 
     /**
      * Fetches [feed] and stores unseen items. Returns them newest first (empty on 304).
@@ -45,7 +46,10 @@ class FeedFetcher(context: Context) {
     /** Fetches each feed in turn; one failing feed never stops the rest, and this never throws (bar cancellation). */
     suspend fun fetchAll(feeds: List<Feed>): List<Result> = feeds.map { feed ->
         try {
-            Result(feed, fetch(feed), null)
+            // Not `lastFetch == null`: a failed attempt sets last_fetch too, and must not turn the
+            // backlog into "new" items on the next success.
+            val first = repo.itemCount(feed.id) == 0
+            Result(feed, fetch(feed), null, first)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
@@ -82,8 +86,10 @@ class FeedFetcher(context: Context) {
                 summary = it.summary,
             )
         })
+        // Everything stored arrived just now (pruning may have dropped some): the first successful fetch.
+        val first = repo.itemCount(feed.id) <= fresh.size
         val newTitle = parsed.title?.takeIf { feed.title.isNullOrBlank() && it.isNotBlank() }
-        val status = if (feed.lastFetch == null) "ok · ${parsed.items.size} items" else "ok · ${fresh.size} new"
+        val status = if (first) "ok · ${parsed.items.size} items" else "ok · ${fresh.size} new"
         repo.recordFetch(feed.id, status, etag, lastModified, newTitle)
         return fresh
     }

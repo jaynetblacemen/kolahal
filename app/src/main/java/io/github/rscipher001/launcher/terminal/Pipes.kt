@@ -54,6 +54,9 @@ object Pipes {
     /** Text plus the right-hand description of two-column rows (help, config, script ls). */
     private fun searchable(p: Pending): String = p.ctx.values[LogContext.DESC]?.let { "${p.text} $it" } ?: p.text
 
-    private fun count(args: List<String>): Int =
-        args.firstOrNull()?.removePrefix("-")?.removePrefix("n")?.toIntOrNull()?.coerceIn(0, 10_000) ?: 10
+    /** `head 5`, `head -5`, `head -n5` and `head -n 5`. */
+    private fun count(args: List<String>): Int {
+        val raw = if (args.firstOrNull() == "-n") args.getOrNull(1) else args.firstOrNull()?.removePrefix("-")?.removePrefix("n")
+        return raw?.toIntOrNull()?.coerceIn(0, 10_000) ?: 10
+    }
 }

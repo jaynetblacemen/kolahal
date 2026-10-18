@@ -60,7 +60,7 @@ class Backup(private val context: Context) {
     )
 
     fun import(uri: Uri): Result {
-        val text = Files.readText(context, uri)
+        val text = Files.readText(context, uri, Files.MAX_BACKUP_BYTES)
         val root = Json.parse(text) as? Map<*, *> ?: throw IllegalStateException("not a Kolahal backup")
         if (root["kolahal"] == null) throw IllegalStateException("not a Kolahal backup (missing \"kolahal\")")
         val skipped = ArrayList<String>()

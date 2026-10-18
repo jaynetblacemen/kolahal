@@ -65,4 +65,11 @@ class TimeSpecTest {
         assertNull(pickRef("4", list) { it })
         assertNull(pickRef("x", list) { it })
     }
+
+    @Test fun relativeSecondsOnlyForDurations() {
+        assertEquals(7200L, TimeSpec.relativeSeconds(listOf("2h", "call")))
+        assertEquals(600L, TimeSpec.relativeSeconds(listOf("in", "10m", "x")))
+        assertNull(TimeSpec.relativeSeconds(listOf("18:30", "x")))
+        assertNull(TimeSpec.relativeSeconds(listOf("at", "6pm")))
+    }
 }

@@ -65,8 +65,11 @@ fun buildRows(
     var previous: LogEntry? = null
     for (e in entries) {
         val day = Instant.ofEpochMilli(e.ts).atZone(zone).toLocalDate()
-        if (day != previousDay && (previousDay != null || day != today)) rows += LogRow.Day(day)
-        previousDay = day
+        // Only forward: lines are in id order, and a clock set back (or a script line buffered across
+        // midnight) would otherwise emit the same day twice, which is a duplicate list key.
+        val last = previousDay
+        if (if (last == null) day != today else day > last) rows += LogRow.Day(day)
+        if (last == null || day > last) previousDay = day
         val unread = isUnread(e) && isScriptLine(e)
         if (unread && !unreadShown && unreadCount > 0) {
             rows += LogRow.Unread(unreadCount)

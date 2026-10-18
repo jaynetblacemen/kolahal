@@ -44,6 +44,7 @@ class LauncherApp : Application(), Configuration.Provider {
             runCatching { io.github.rscipher001.launcher.feeds.FeedScheduler.sync(this) }
             runCatching { io.github.rscipher001.launcher.productivity.ReminderScheduler.rescheduleAll(this) }
             runCatching { LogRepository.get(this).trim(maxAgeDays = Config.get(this)[Keys.LOG_KEEP_DAYS]) }
+            runCatching { io.github.rscipher001.launcher.data.KvStore.repairOversized(this) }
         }.start()
 
         val logs = LogRepository.get(this)

@@ -67,7 +67,7 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             }
             if (r.newItems.isEmpty()) continue
             // feeds.backlog.read: what a feed already had when you subscribed is not "new" to you.
-            if (r.feed.lastFetch == null && config[Keys.FEEDS_BACKLOG_READ]) {
+            if (r.first && config[Keys.FEEDS_BACKLOG_READ]) {
                 repo.markRead(r.newItems.map { it.id })
                 if (toLog) lines += LogRepository.Pending(
                     LogKind.INFO, "$source: subscribed · ${r.newItems.size} earlier posts marked read", source,

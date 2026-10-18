@@ -131,11 +131,18 @@ class KvStore(context: Context, private val scope: String) {
         return out
     }
 
-    fun get(key: String): String? = db.readableDatabase.rawQuery(
-        "SELECT v FROM kv WHERE scope = ? AND k = ?", arrayOf(scope, key),
-    ).use { c -> if (c.moveToFirst()) c.getString(0) else null }
+    fun get(key: String): String? = try {
+        db.readableDatabase.rawQuery(
+            "SELECT v FROM kv WHERE scope = ? AND k = ?", arrayOf(scope, key),
+        ).use { c -> if (c.moveToFirst()) c.getString(0) else null }
+    } catch (_: android.database.sqlite.SQLiteBlobTooBigException) {
+        // Written before values were capped and too big to read back: drop it so the key works again.
+        set(key, null)
+        null
+    }
 
     fun set(key: String, value: String?) {
+        require(value == null || value.length <= MAX_VALUE) { "value too large (over ${MAX_VALUE / 1024} KB)" }
         if (value == null) {
             db.writableDatabase.delete("kv", "scope = ? AND k = ?", arrayOf(scope, key))
         } else {
@@ -144,6 +151,22 @@ class KvStore(context: Context, private val scope: String) {
                 put("k", key)
                 put("v", value)
             }, android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE)
+        }
+    }
+
+    companion object {
+        /** Largest value a key may hold (characters); keeps every row readable through a cursor. */
+        const val MAX_VALUE = 1024 * 1024
+
+        /**
+         * Trims or drops rows too big to read back (the 2 MB cursor window), left over from before
+         * values were capped. Otherwise one such row breaks the log, a script key, or backup export.
+         */
+        fun repairOversized(context: Context) {
+            val w = Db.get(context).writableDatabase
+            w.execSQL("DELETE FROM kv WHERE length(v) > ?", arrayOf<Any>(MAX_VALUE))
+            w.execSQL("UPDATE logs SET text = substr(text, 1, ?) WHERE length(text) > ?", arrayOf<Any>(LogRepository.MAX_FIELD, LogRepository.MAX_FIELD))
+            w.execSQL("UPDATE logs SET ctx = NULL WHERE length(ctx) > ?", arrayOf<Any>(LogRepository.MAX_FIELD))
         }
     }
 }

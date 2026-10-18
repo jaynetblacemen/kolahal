@@ -47,7 +47,12 @@ internal fun completionHelp(label: String, replacement: String): String? {
 fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppLongPress: (AppEntry) -> Unit) {
     if (items.isEmpty()) return
     val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.4f).dp
+    // A lazy list keeps its first visible item in place when the data changes; the best match
+    // (what Enter acts on) must always be in view, so jump back to it when it changes.
+    val state = androidx.compose.foundation.lazy.rememberLazyListState()
+    androidx.compose.runtime.LaunchedEffect(items.first().key) { state.scrollToItem(0) }
     LazyColumn(
+        state = state,
         reverseLayout = true,
         modifier = Modifier
             .fillMaxWidth()
