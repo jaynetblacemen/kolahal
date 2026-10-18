@@ -46,7 +46,7 @@ object Pipes {
             "uniq" -> data.distinctBy { it.text }
             "count", "wc" -> listOf(data.firstOrNull()?.copy(kind = LogKind.OUTPUT, text = "${data.size}", ctx = LogContext.EMPTY)
                 ?: Pending(LogKind.OUTPUT, "0", null, LogContext.EMPTY, System.currentTimeMillis()))
-            else -> throw IllegalArgumentException("unknown filter '$name' (${FILTERS.joinToString()})")
+            else -> throw IllegalArgumentException("Unknown filter '$name' (${FILTERS.joinToString()})")
         }
         return keep + result
     }

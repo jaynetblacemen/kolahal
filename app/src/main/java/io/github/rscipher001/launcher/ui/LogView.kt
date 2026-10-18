@@ -295,18 +295,30 @@ private fun AppGrid(apps: List<AppEntry>, onTap: (AppEntry) -> Unit, onLongPress
     }
 }
 
-private val profileTag = Regex("^\\[([PWSC])] ")
+/** A profile tag at the end of a line's first row (`Launched Maps [W]`, `Updated Maps [W] ↻`). */
+private val profileTag = Regex(" \\[([PWSC])](?= \\S*$|$)")
+
+/** Appends [text] in [color], with a trailing profile tag in its profile colour. */
+private fun androidx.compose.ui.text.AnnotatedString.Builder.appendTagged(text: String, color: Color, weight: FontWeight? = null) {
+    val tag = profileTag.find(text)
+    if (tag == null) {
+        withStyle(SpanStyle(color = color, fontWeight = weight)) { append(text) }
+        return
+    }
+    val kind = ProfileKind.entries.first { it.tag == tag.groupValues[1] }
+    withStyle(SpanStyle(color = color, fontWeight = weight)) { append(text.substring(0, tag.range.first)) }
+    withStyle(SpanStyle(color = Term.profileColor(kind), fontWeight = FontWeight.Bold)) { append(tag.value) }
+    withStyle(SpanStyle(color = color, fontWeight = weight)) { append(text.substring(tag.range.last + 1)) }
+}
 
 /**
- * Styles one log line. Wrapped continuation lines are indented past the prefix (`$ `, `[hn] `,
- * `[W] `) so each item reads as one block; [charWidth] is the monospace advance.
+ * Styles one log line. Wrapped continuation lines are indented past the prefix (`$ `, `[hn] `) so
+ * each item reads as one block; [charWidth] is the monospace advance.
  */
 private fun renderLine(entry: LogEntry, charWidth: TextUnit, unread: Boolean) = buildAnnotatedString {
-    val profile = if (entry.kind == LogKind.OUTPUT) profileTag.find(entry.text) else null
     val prefixLen = when (entry.kind) {
         LogKind.COMMAND -> 2
         LogKind.SCRIPT -> (entry.source?.let { it.length + 3 } ?: 0) + (if (unread) 2 else 0)
-        LogKind.OUTPUT -> profile?.value?.length ?: 2
         else -> 2
     }
     withStyle(ParagraphStyle(textIndent = TextIndent(restLine = charWidth * prefixLen))) {
@@ -321,7 +333,7 @@ private fun renderLine(entry: LogEntry, charWidth: TextUnit, unread: Boolean) = 
                 val color = if (header) scriptColor(entry.source) else Term.info
                 // Lines after the first are details (e.g. a package name under an app event): dimmed.
                 val first = entry.text.substringBefore('\n')
-                withStyle(SpanStyle(color = color, fontWeight = if (header) FontWeight.Bold else null)) { append(first) }
+                appendTagged(first, color, if (header) FontWeight.Bold else null)
                 if (first.length < entry.text.length) withStyle(SpanStyle(color = Term.dim)) { append(detailLines(entry.text.substring(first.length + 1), prefixLen)) }
             }
             LogKind.SCRIPT -> {
@@ -330,15 +342,9 @@ private fun renderLine(entry: LogEntry, charWidth: TextUnit, unread: Boolean) = 
                 withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.script)) { append(entry.text) }
             }
             LogKind.OUTPUT -> {
-                if (profile != null) {
-                    val kind = ProfileKind.entries.first { it.tag == profile.groupValues[1] }
-                    withStyle(SpanStyle(color = Term.profileColor(kind), fontWeight = FontWeight.Bold)) { append(profile.value) }
-                    append(entry.text.substring(profile.value.length))
-                } else {
-                    val first = entry.text.substringBefore('\n')
-                    withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.fg)) { append(first) }
-                    if (first.length < entry.text.length) withStyle(SpanStyle(color = Term.dim)) { append(detailLines(entry.text.substring(first.length + 1), prefixLen)) }
-                }
+                val first = entry.text.substringBefore('\n')
+                appendTagged(first, if (entry.ctx.url != null) Term.link else Term.fg)
+                if (first.length < entry.text.length) withStyle(SpanStyle(color = Term.dim)) { append(detailLines(entry.text.substring(first.length + 1), prefixLen)) }
             }
         }
     }

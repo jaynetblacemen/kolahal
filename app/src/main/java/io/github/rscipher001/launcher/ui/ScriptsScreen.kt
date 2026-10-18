@@ -211,7 +211,7 @@ private fun ScriptCard(vm: TerminalViewModel, s: Script, onExport: (Script) -> U
                 Text("Runs on", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     // Set by `@on` lines in the code; edit the script to change them.
-                    events.forEach { e -> SuggestionChip(onClick = {}, enabled = s.enabled, label = { Text("on $e") }) }
+                    events.forEach { e -> SuggestionChip(onClick = {}, enabled = s.enabled, label = { Text("On $e") }) }
                 }
             }
 
@@ -341,7 +341,7 @@ private fun NewScriptDialog(onDismiss: () -> Unit, onCreate: (String, ScriptLang
                     placeholder = { Text("hn, weather, feeds…") },
                     singleLine = true,
                     isError = name.isNotEmpty() && !valid,
-                    supportingText = { Text("lowercase letters, digits, - and _") },
+                    supportingText = { Text("Lowercase letters, digits, - and _") },
                     keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, capitalization = KeyboardCapitalization.None),
                     modifier = Modifier.fillMaxWidth(),
                 )

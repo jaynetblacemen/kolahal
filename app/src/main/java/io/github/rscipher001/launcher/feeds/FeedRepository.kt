@@ -67,7 +67,7 @@ class FeedRepository private constructor(private val context: Context) {
      * @throws IllegalArgumentException when the address isn't an http(s) URL.
      */
     fun add(url: String, title: String? = null): Feed {
-        val normalized = FeedUrl.normalize(url) ?: throw IllegalArgumentException("not an http(s) url: $url")
+        val normalized = FeedUrl.normalize(url) ?: throw IllegalArgumentException("Not an http(s) URL: $url")
         byUrl(normalized)?.let { return it }
         db.writableDatabase.insertWithOnConflict("feeds", null, ContentValues().apply {
             put("url", normalized)

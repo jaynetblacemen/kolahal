@@ -412,9 +412,9 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth().background(Term.surface).heightIn(min = 44.dp).padding(start = 12.dp),
             ) {
-                Text("line deleted", style = Term.mono.copy(color = Term.dim), modifier = Modifier.weight(1f))
+                Text("Line deleted", style = Term.mono.copy(color = Term.dim), modifier = Modifier.weight(1f))
                 Text(
-                    "UNDO",
+                    "Undo",
                     style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold),
                     modifier = Modifier.clickable(onClick = vm::undoSwipeDelete).heightIn(min = 44.dp).wrapContentHeight().padding(horizontal = 16.dp),
                 )

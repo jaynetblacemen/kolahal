@@ -171,7 +171,7 @@ fun FeedsScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
                 version = repoVersion,
                 snackbar = snackbar,
                 onBack = { openFeedId = null },
-                onRefresh = { io("refresh") { FeedScheduler.fetchNow(context, open.id); "fetching ${open.displayTitle()}…" } },
+                onRefresh = { io("refresh") { FeedScheduler.fetchNow(context, open.id); "Fetching ${open.displayTitle()}…" } },
                 onMarkAllRead = { io("mark read") { repo.markAllRead(open.id); null } },
                 onOpenItem = { item -> openItem(context, scope, repo, item, snackbar) },
             )
@@ -181,7 +181,7 @@ fun FeedsScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
                 snackbar = snackbar,
                 onBack = vm::closeScreen,
                 onAdd = { adding = true },
-                onRefreshAll = { io("refresh") { FeedScheduler.fetchNow(context); "refreshing all feeds…" } },
+                onRefreshAll = { io("refresh") { FeedScheduler.fetchNow(context); "Refreshing all feeds…" } },
                 onImport = { importOpml.launch(arrayOf("*/*")) },
                 onExport = { exportOpml.launch("kolahal-feeds.opml") },
                 onOpenFeed = { openFeedId = it.id },
@@ -194,7 +194,7 @@ fun FeedsScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
             FeedSheet(
                 feed = sheetFeed,
                 onDismiss = { sheetFeedId = null },
-                onRefresh = { io("refresh") { FeedScheduler.fetchNow(context, sheetFeed.id); "fetching ${sheetFeed.displayTitle()}…" } },
+                onRefresh = { io("refresh") { FeedScheduler.fetchNow(context, sheetFeed.id); "Fetching ${sheetFeed.displayTitle()}…" } },
                 onNotify = { on ->
                     if (on) onRequestNotifications()
                     io("notifications") { repo.setNotify(sheetFeed.id, on); null }
@@ -203,11 +203,11 @@ fun FeedsScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
                     io("update") { repo.setEnabled(sheetFeed.id, on); FeedScheduler.sync(context); null }
                 },
                 onInterval = { minutes -> io("update") { repo.setInterval(sheetFeed.id, minutes); null } },
-                onMarkAllRead = { io("mark read") { repo.markAllRead(sheetFeed.id); "marked ${sheetFeed.displayTitle()} read" } },
+                onMarkAllRead = { io("mark read") { repo.markAllRead(sheetFeed.id); "Marked ${sheetFeed.displayTitle()} read" } },
                 onRemove = {
                     sheetFeedId = null
                     if (openFeedId == sheetFeed.id) openFeedId = null
-                    io("remove") { repo.remove(sheetFeed.id); FeedScheduler.sync(context); "removed ${sheetFeed.displayTitle()}" }
+                    io("remove") { repo.remove(sheetFeed.id); FeedScheduler.sync(context); "Removed ${sheetFeed.displayTitle()}" }
                 },
             )
         }

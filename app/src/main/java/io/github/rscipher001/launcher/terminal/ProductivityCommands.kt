@@ -131,7 +131,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
         val doneCount = all.count { it.done }
         if (shown.isEmpty()) {
             return info(
-                if (all.isEmpty()) "no todos — 'todo <text>' adds one"
+                if (all.isEmpty()) "No todos — 'todo <text>' adds one"
                 else "Nothing open · $doneCount done ('todo all' shows them, 'todo clear' removes them)"
             )
         }
@@ -197,7 +197,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
             )
         }
         info(
-            if (query != null && shown == 0) "no note contains '$query'"
+            if (query != null && shown == 0) "No note contains '$query'"
             else "$shown note${if (shown == 1) "" else "s"} — tap copies · 'notes rm <n>'"
         )
     }
@@ -339,13 +339,13 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
         val width = grouped.flatMap { it.second }.filter { !it.allDay }.maxOfOrNull { span(it).length } ?: 0
         grouped.forEach { (day, events) ->
             val label = when (day) {
-                today -> "today · "
-                today.plusDays(1) -> "tomorrow · "
+                today -> "Today · "
+                today.plusDays(1) -> "Tomorrow · "
                 else -> ""
             } + dayFmt.format(day)
             info(label)
             events.forEach { e ->
-                val time = if (e.allDay) "all day" else span(e)
+                val time = if (e.allDay) "All day" else span(e)
                 out(
                     time.padEnd(maxOf(width, 7)) + "  " + e.title,
                     LogContext.of(

@@ -164,7 +164,7 @@ class PackageEvents private constructor(private val context: Context) {
         if (!enabled || events.isEmpty()) return
         val pending = events.map { (kind, key, p) ->
             val old = before[key]
-            val tag = if (p.profile.isNotEmpty()) "[${p.profile}] " else ""
+            val tag = if (p.profile.isNotEmpty()) " [${p.profile}]" else ""
             val ver = when {
                 kind == "updated" && old != null && old.version.isNotEmpty() && old.version != p.version -> "\n${old.version} → ${p.version}"
                 kind != "uninstalled" && p.version.isNotEmpty() -> "\n${p.version}"
@@ -175,7 +175,7 @@ class PackageEvents private constructor(private val context: Context) {
             val ctx = if (kind == "uninstalled") LogContext.of(LogContext.COPY to pkg)
             else LogContext.of(LogContext.PKG to pkg, LogContext.USER to key.substringAfter('#'), LogContext.COPY to pkg)
             // Detail lines (dimmed by the log view): the package, then the version.
-            LogRepository.Pending(LogKind.INFO, "$glyph ${kind.replaceFirstChar { it.uppercase() }} $tag${p.label}\n$pkg$ver", "apps", ctx, System.currentTimeMillis())
+            LogRepository.Pending(LogKind.INFO, "${kind.replaceFirstChar { it.uppercase() }} ${p.label}$tag $glyph\n$pkg$ver", "apps", ctx, System.currentTimeMillis())
         }
         logs.addAll(pending)
         // Short history for the `installs` command.

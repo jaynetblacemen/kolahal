@@ -1148,7 +1148,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                     if (r.created.isNotEmpty()) add("added ${r.created.joinToString()}")
                     if (r.updated.isNotEmpty()) add("updated ${r.updated.joinToString()}")
                     if (r.skipped.isNotEmpty()) add("skipped ${r.skipped.joinToString()}")
-                }.joinToString(" · ").ifEmpty { "nothing imported" },
+                }.joinToString(" · ").ifEmpty { "nothing imported" }.replaceFirstChar { it.uppercase() },
                 error = r.created.isEmpty() && r.updated.isEmpty(),
             )
         }

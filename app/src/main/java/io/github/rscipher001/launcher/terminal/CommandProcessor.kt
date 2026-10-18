@@ -95,7 +95,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             val (_, captured) = logs.capture { execute(stages[0], expand = false) }
             Pipes.apply(captured, stages.drop(1)).fold(
                 onSuccess = { logs.addAll(it) },
-                onFailure = { logs.addAll(captured); error(it.message ?: "bad pipe") },
+                onFailure = { logs.addAll(captured); error(it.message ?: "Bad pipe") },
             )
             return
         }
@@ -277,11 +277,11 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         LogContext.USER to app.profile.serial.toString(),
     )
 
-    /** `[W] Maps`; personal apps are only tagged when the same app also exists in another profile. */
+    /** `Maps [W]`; personal apps are only tagged when the same app also exists in another profile. */
     private fun appLine(app: AppEntry): String {
         val twin = app.profile.kind == ProfileKind.PERSONAL &&
             apps.apps.value.any { it.pkg == app.pkg && it.profile.serial != app.profile.serial }
-        return if (app.profile.kind != ProfileKind.PERSONAL || twin) "[${app.profile.kind.tag}] ${app.label}" else app.label
+        return if (app.profile.kind != ProfileKind.PERSONAL || twin) "${app.label} [${app.profile.kind.tag}]" else app.label
     }
 
     // ---- apps -----------------------------------------------------------------------------
@@ -321,7 +321,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             }
             else -> appGrid(list)
         }
-        info("${list.size} apps · " + kinds.joinToString("  ") { "[${it.tag}] ${it.label}" })
+        info("${list.size} apps · " + kinds.joinToString("  ") { "${it.label} [${it.tag}]" })
     }
 
     private fun resolveApp(args: List<String>, includeHidden: Boolean = false): List<AppEntry> =
@@ -643,7 +643,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             }
             "add" -> {
                 val url = args.getOrNull(1) ?: return error("Usage: feed add <url>")
-                val feed = runCatching { repo.add(url) }.getOrElse { return error(it.message ?: "bad url") }
+                val feed = runCatching { repo.add(url) }.getOrElse { return error(it.message ?: "Bad URL") }
                 scheduler.sync(context)
                 scheduler.fetchNow(context, feed.id)
                 info("Subscribed #${feed.id} ${feed.url} — fetching…", LogContext.of(LogContext.URL to feed.url))
@@ -780,7 +780,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     }
 
     private fun contactLine(c: io.github.rscipher001.launcher.contacts.Contact) = out(
-        (if (c.starred) "★ " else "") + c.name,
+        c.name + if (c.starred) " ★" else "",
         LogContext.of(LogContext.PHONE to c.number, LogContext.CONTACT to c.lookupUri.toString(), LogContext.DESC to "${c.number} · ${c.label}"),
     )
 
