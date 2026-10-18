@@ -101,6 +101,7 @@ private val TITLES = mapOf(
     "suggestions" to "How many",
     "suggestions.style" to "Style while typing",
     "selector.rail" to "App selector (right edge)",
+    "selector.height" to "App selector height (dp)",
     "suggestions.rows" to "Chip rows",
     "chips.height" to "Chip height (dp)",
     "keybar.show" to "Show the key bar",
@@ -119,7 +120,9 @@ private val TITLES = mapOf(
     "search.url" to "Custom search URL",
     "gesture.doubletap" to "Double-tap empty space",
     "gesture.swipedown" to "Swipe down on the header",
-    "gesture.swipeup" to "Swipe up on the prompt",
+    "gesture.swipeup.on" to "Swipe up on the prompt",
+    "gesture.swipeup" to "Swipe up action",
+    "log.packages" to "App installs, updates & uninstalls",
 )
 
 /** A settings page: grouped keys (a null group title means no sub-header). */
@@ -158,13 +161,14 @@ private val CATEGORIES = listOf(
         "log", "Log", "Times, spacing, line height, history", R.drawable.ic_stat_terminal,
         listOf(
             "Display" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_SPACING, Keys.LOG_LINE_HEIGHT),
+            "Events" to listOf(Keys.LOG_PACKAGES),
             "History" to listOf(Keys.LOG_FRESH, Keys.LOG_KEEP_DAYS),
         ),
     ),
     Category(
         "typing", "Typing", "Suggestions, key bar, prompt, keyboard", R.drawable.ic_keyboard,
         listOf(
-            "Suggestions" to listOf(Keys.SUGGESTIONS_STYLE, Keys.SELECTOR_RAIL, Keys.SUGGESTIONS_AUTO, Keys.SUGGESTION_ROWS, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS, Keys.CHIP_HEIGHT),
+            "Suggestions" to listOf(Keys.SUGGESTIONS_STYLE, Keys.SELECTOR_RAIL, Keys.SELECTOR_HEIGHT, Keys.SUGGESTIONS_AUTO, Keys.SUGGESTION_ROWS, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS, Keys.CHIP_HEIGHT),
             "Key bar" to listOf(Keys.KEYBAR_SHOW, Keys.KEYBAR_AUTO, Keys.KEYBAR_HEIGHT, Keys.KEYBAR, Keys.KEYBAR2),
             "Prompt & keyboard" to listOf(Keys.PROMPT_HEIGHT_TYPING, Keys.IME_SUGGESTIONS, Keys.FOCUS_ON_HOME),
         ),
@@ -178,7 +182,7 @@ private val CATEGORIES = listOf(
     ),
     Category(
         "gestures", "Gestures", "Double-tap and swipes", R.drawable.ic_touch,
-        listOf(null to listOf(Keys.GESTURE_DOUBLE_TAP, Keys.GESTURE_SWIPE_DOWN, Keys.GESTURE_SWIPE_UP)),
+        listOf(null to listOf(Keys.GESTURE_DOUBLE_TAP, Keys.GESTURE_SWIPE_DOWN, Keys.GESTURE_SWIPE_UP_ON, Keys.GESTURE_SWIPE_UP)),
     ),
 )
 

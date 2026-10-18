@@ -27,6 +27,7 @@ Profile flags for app commands: `-w` work, `-p` personal, `-s` private space, `-
 | `pins` | `favs` | grid of pinned apps |
 | `rename <app> = <name>` | | custom label; `rename <app> =` restores the original |
 | `usage [days]` | `screentime` | screen time per app (1–30 days; needs Usage Access) |
+| `installs [n]` | `updates` | recent app installs, updates and uninstalls |
 
 ## people
 

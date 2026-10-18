@@ -49,6 +49,7 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 | `chips.height` | number 28–64 | `48` | height (dp) of suggestion and app-grid chips |
 | `log.keepdays` | number 1–365 | `60` | delete log lines older than this many days |
 | `log.fresh` | number 0–240 | `10` | start home with a clean screen after this many minutes away (0: never); earlier output is one tap away |
+| `log.packages` | bool | `on` | log app installs, updates and uninstalls (an update or a quick reinstall is one line) |
 
 ## Launching and suggestions
 
@@ -63,6 +64,7 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 | `suggestions.style` | choice: `list` `chips` | `list` | while typing: a list above the prompt (best match at the bottom, nearest the thumb, with command descriptions) or a strip of chips |
 | `suggestions.rows` | number 1–2 | `2` | rows of suggestion chips while typing (`suggestions.style chips`) |
 | `selector.rail` | bool | `on` | App selector on the right edge while the keyboard is down: slide along the right edge to glide through all your apps; let go on one to launch, hold for its actions |
+| `selector.height` | number 200–900 | `380` | height (dp) of the app selector band, low on the right edge: shorter means less thumb travel |
 | `suggestions` | number 0–30 | `12` | max suggestions shown while typing |
 | `search.engine` | choice: `duckduckgo` `google` `bing` `brave` `startpage` `kagi` `custom` | `duckduckgo` | web search engine for `search` / `g` |
 | `search.url` | text | `https://duckduckgo.com/?q=%s` | custom search URL (`%s` = query), used when `search.engine` = `custom` |
@@ -75,6 +77,7 @@ Each takes a command, `lock`, `shade` or `none`. See [Gestures](../../guides/ges
 | --- | --- | --- | --- |
 | `gesture.doubletap` | text | `lock` | double-tap empty log space |
 | `gesture.swipedown` | text | `shade` | swipe down on the header |
+| `gesture.swipeup.on` | bool | `off` | turn the swipe-up-on-prompt gesture on (off by default: it fires by accident easily) |
 | `gesture.swipeup` | text | `apps` | swipe up on the prompt |
 
 ## Widgets

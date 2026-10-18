@@ -223,7 +223,7 @@ private class SelectorState {
     }
 }
 
-private val ROW_H = 42.dp
+private val ROW_H = 38.dp
 private val STRIP_W = 36.dp
 private val TOP_GAP = 8.dp
 /** Leaves the "jump to latest" button in the log's bottom-right corner reachable. */
@@ -257,6 +257,7 @@ fun AppSelector(
     pinned: Set<String>,
     onLaunch: (AppEntry) -> Unit,
     onLongPress: (AppEntry) -> Unit,
+    heightDp: Int = 380,
     modifier: Modifier = Modifier,
 ) {
     val entries = remember(apps, pinned) {
@@ -290,14 +291,18 @@ fun AppSelector(
     BoxWithConstraints(modifier.fillMaxSize()) {
         val containerW = constraints.maxWidth.toFloat()
         val containerH = constraints.maxHeight.toFloat()
-        val stripTopPx = with(density) { TOP_GAP.toPx() }
-        val stripHPx = containerH - stripTopPx - with(density) { BOTTOM_GAP.toPx() }
+        // selector.height: a short band low on the screen, in the thumb's reach, instead of the
+        // whole log height; the full list still maps onto it (top of the band = first app).
+        val bottomPx = containerH - with(density) { BOTTOM_GAP.toPx() }
+        val stripHPx = min(bottomPx - with(density) { TOP_GAP.toPx() }, with(density) { heightDp.dp.toPx() })
+        val stripTopPx = bottomPx - stripHPx
         if (stripHPx < with(density) { 160.dp.toPx() }) return@BoxWithConstraints
         val count = entries.size
         val rowPx = with(density) { ROW_H.roundToPx() }
-        // The panel spans the strip; a short list is centred on it instead.
+        // The panel spans the strip.
         val panelHPx = min(stripHPx, (count * rowPx).toFloat()).coerceAtLeast(rowPx.toFloat())
-        val panelTopPx = stripTopPx + (stripHPx - panelHPx) / 2
+        // A short list sits at the bottom of the band, nearest the thumb.
+        val panelTopPx = stripTopPx + stripHPx - panelHPx
         val panelW = with(density) { (containerW * 0.75f).toDp() }.coerceAtLeast(220.dp).coerceAtMost(maxWidth - 24.dp)
         val panelWPx = with(density) { panelW.toPx() }
         val stripWPx = with(density) { STRIP_W.toPx() }

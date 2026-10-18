@@ -36,6 +36,7 @@ class LauncherApp : Application(), Configuration.Provider {
         io.github.rscipher001.launcher.script.TriggerDispatcher.get(this).start()
         DeviceStatus.get(this).start()
         io.github.rscipher001.launcher.contacts.ContactsRepository.get(this).refresh()
+        io.github.rscipher001.launcher.apps.PackageEvents.get(this).start()
 
         // Re-anchor daily script times (periodic work drifts), restore schedules after updates, trim old log.
         Thread {

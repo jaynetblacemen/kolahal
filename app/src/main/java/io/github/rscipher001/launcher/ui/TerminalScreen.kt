@@ -392,6 +392,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 pinned = pinnedKeys,
                 onLaunch = vm::launchApp,
                 onLongPress = { app -> menu = ActionMenu(app.label, vm.appActions(app), null) },
+                heightDp = remember(configVersion) { config[Keys.SELECTOR_HEIGHT] },
             )
         }
         // [/selector]
@@ -920,20 +921,25 @@ private fun Prompt(
     onToggleKeyBar: () -> Unit,
     onTapPrompt: () -> Unit,
 ) {
+    val configVersion by vm.config.version.collectAsStateWithLifecycle()
+    val swipeUpOn = remember(configVersion) { vm.config[Keys.GESTURE_SWIPE_UP_ON] }
     val promptStyle = Term.mono.copy(fontSize = (Term.fontSize + 2).sp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = height)
-            // Swipe up on the prompt line: gesture.swipeup (the app grid by default).
-            .pointerInput(Unit) {
-                var total = 0f
-                detectVerticalDragGestures(
-                    onDragStart = { total = 0f },
-                    onDragEnd = { if (total < -48.dp.toPx()) vm.onGesture(Keys.GESTURE_SWIPE_UP) },
-                ) { _, dy -> total += dy }
-            }
+            // Swipe up on the prompt line: gesture.swipeup, only while gesture.swipeup.on (off by
+            // default). When off the detector isn't installed at all, so it can't misfire.
+            .then(
+                if (!swipeUpOn) Modifier else Modifier.pointerInput(Unit) {
+                    var total = 0f
+                    detectVerticalDragGestures(
+                        onDragStart = { total = 0f },
+                        onDragEnd = { if (total < -48.dp.toPx()) vm.onGesture(Keys.GESTURE_SWIPE_UP) },
+                    ) { _, dy -> total += dy }
+                },
+            )
             .clickable(onClick = onTapPrompt)
             // Vertical room comes from [height] (centred), so small values really shrink the line.
             .padding(horizontal = 12.dp, vertical = 2.dp),

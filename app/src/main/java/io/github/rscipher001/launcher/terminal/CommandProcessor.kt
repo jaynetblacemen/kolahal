@@ -147,6 +147,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "maps", "map" -> if (rest.isBlank()) fallbackLaunch(trimmed) else openUri("geo:0,0?q=" + Uri.encode(rest), "maps: $rest")
                 "play", "store" -> if (rest.isBlank()) fallbackLaunch(trimmed) else openUri("market://search?q=" + Uri.encode(rest), "play store: $rest")
                 "usage", "screentime" -> usage(args)
+                "installs", "updates" -> installs(args)
                 "shortcuts" -> withApp(args) { app -> listShortcuts(app) }
                 "call", "dial" -> call(rest)
                 "sms", "text" -> sms(args)
@@ -219,6 +220,15 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     }
 
     // ---- hide / rename --------------------------------------------------------------------
+
+    private fun installs(args: List<String>) {
+        val n = args.firstOrNull()?.toIntOrNull()?.coerceIn(1, 200) ?: 20
+        val list = io.github.rscipher001.launcher.apps.PackageEvents.get(context).history().take(n)
+        if (list.isEmpty()) return info("no app installs, updates or uninstalls recorded yet")
+        val fmt = java.text.SimpleDateFormat("EEE d MMM HH:mm", java.util.Locale.getDefault())
+        list.forEach { (t, text) -> out(text, LogContext.of(LogContext.DESC to fmt.format(Date(t)))) }
+        if (!conf[Keys.LOG_PACKAGES]) info("live logging is off: config set log.packages on")
+    }
 
     private fun listPinned() {
         val byKey = apps.apps.value.associateBy { it.key }
@@ -1226,6 +1236,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("maps", "maps <place>", "find a place in your maps app"),
             CommandSpec("play", "play <query>", "search the Play Store"),
             CommandSpec("usage", "usage [days]", "screen time per app"),
+            CommandSpec("installs", "installs [n]", "recent app installs, updates and uninstalls"),
             CommandSpec("call", "call <name|number>", "dial a contact or number"),
             CommandSpec("sms", "sms <name|number> [text]", "start a text message"),
             CommandSpec("contacts", "contacts [query]", "find contacts (favourites when empty)"),
@@ -1274,7 +1285,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
 
         /** `help` groups; commands not listed here are shown after the groups. */
         val HELP_SECTIONS = linkedMapOf(
-            "apps" to listOf("open", "shortcuts", "apps", "pin", "unpin", "info", "uninstall", "hide", "unhide", "rename", "usage"),
+            "apps" to listOf("open", "shortcuts", "apps", "pin", "unpin", "info", "uninstall", "hide", "unhide", "rename", "usage", "installs"),
             "people" to listOf("call", "sms", "contacts"),
             "web" to listOf("search", "yt", "wiki", "maps", "play", "url"),
             "feeds" to listOf("feeds", "feed", "rss", "notifs"),
