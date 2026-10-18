@@ -95,7 +95,8 @@ sealed interface Suggestion {
 /** One entry of a log line's long-press menu. */
 private const val NOTIF = io.github.rscipher001.launcher.notifications.KolahalNotificationListener.CTX_KEY
 
-data class LogAction(val label: String, val destructive: Boolean = false, val run: () -> Unit)
+/** [icon]: a short symbol drawn in a fixed-width column, so labels line up whatever its width. */
+data class LogAction(val label: String, val destructive: Boolean = false, val icon: String? = null, val run: () -> Unit)
 
 /** Usage line per command name, for option completion. */
 private val USAGES: Map<String, String> by lazy { CommandProcessor.COMMANDS.associate { it.name to it.usage } }
@@ -777,7 +778,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         add(LogAction("Launch ${app.label} [${app.profile.kind.tag}]") { io { processor.launch(app) } })
         // The app's own shortcuts (e.g. "New message"), when Kolahal is the default launcher.
         appsRepo.shortcuts(app).take(5).forEach { s ->
-            add(LogAction("› ${s.shortLabel}") { io { runCatching { appsRepo.startShortcut(app, s.id) } } })
+            add(LogAction("${s.shortLabel}", icon = "›") { io { runCatching { appsRepo.startShortcut(app, s.id) } } })
         }
         apps.value.firstOrNull { it.pkg == app.pkg && it.profile.serial != app.profile.serial }?.let { twin ->
             add(LogAction("Launch in ${twin.profile.kind.label} profile") { io { processor.launch(twin) } })
@@ -935,25 +936,25 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun openQuick() { _events.tryEmit(UiEvent.ShowQuick) }
 
     fun quickActions(): List<LogAction> = buildList {
-        add(LogAction("⚙  Settings") { openScreen(Screen.SETTINGS) })
-        add(LogAction("▾  Notifications") { expandNotifications() })
-        add(LogAction("◷  Alarms & clock") { onHeaderTap(HeaderTarget.ALARM) })
-        add(LogAction("▮  Battery") { onHeaderTap(HeaderTarget.BATTERY) })
-        add(LogAction("⇅  Network") { onHeaderTap(HeaderTarget.NETWORK) })
-        add(LogAction("#  Unlocks this week") { onHeaderTap(HeaderTarget.UNLOCKS) })
+        add(LogAction("Settings", icon = "⚙") { openScreen(Screen.SETTINGS) })
+        add(LogAction("Notifications", icon = "▾") { expandNotifications() })
+        add(LogAction("Alarms & clock", icon = "◷") { onHeaderTap(HeaderTarget.ALARM) })
+        add(LogAction("Battery", icon = "▮") { onHeaderTap(HeaderTarget.BATTERY) })
+        add(LogAction("Network", icon = "⇅") { onHeaderTap(HeaderTarget.NETWORK) })
+        add(LogAction("Unlocks this week", icon = "#") { onHeaderTap(HeaderTarget.UNLOCKS) })
         profiles.value.filter { it.kind == ProfileKind.WORK || it.kind == ProfileKind.PRIVATE }.forEach { p ->
             val cmd = if (p.kind == ProfileKind.PRIVATE) "private" else "work"
             add(
-                LogAction(if (p.quiet) "▸  Resume ${p.kind.label} profile" else "‖  Pause ${p.kind.label} profile") {
+                LogAction(if (p.quiet) "Resume ${p.kind.label} profile" else "Pause ${p.kind.label} profile", icon = if (p.quiet) "▸" else "‖") {
                     runCommand("$cmd ${if (p.quiet) "on" else "off"}")
                 },
             )
         }
-        add(LogAction("☰  Apps") { runCommand("apps") })
-        add(LogAction("◫  Widgets") { openScreen(Screen.WIDGETS) })
-        add(LogAction("≋  Feeds") { openScreen(Screen.FEEDS) })
-        add(LogAction("{}  Scripts") { openScreen(Screen.SCRIPTS) })
-        add(LogAction("⏻  Lock screen") { if (!io.github.rscipher001.launcher.gesture.LockService.lock()) runCommand("lock") })
+        add(LogAction("Apps", icon = "☰") { runCommand("apps") })
+        add(LogAction("Widgets", icon = "◫") { openScreen(Screen.WIDGETS) })
+        add(LogAction("Feeds", icon = "≋") { openScreen(Screen.FEEDS) })
+        add(LogAction("Scripts", icon = "{}") { openScreen(Screen.SCRIPTS) })
+        add(LogAction("Lock screen", icon = "⏻") { if (!io.github.rscipher001.launcher.gesture.LockService.lock()) runCommand("lock") })
     }
 
     fun onProfileTap(profile: Profile) {

@@ -365,14 +365,16 @@ fun ActionSheet(menu: ActionMenu, onDismiss: () -> Unit) {
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
             var dividerShown = false
+            // Symbols come from fallback fonts with their own widths: a fixed column keeps labels aligned.
+            val iconColumn = menu.actions.any { it.icon != null }
             menu.actions.forEach { action ->
                 if (action.destructive && !dividerShown) {
                     HorizontalDivider(color = Term.dim.copy(alpha = 0.3f), modifier = Modifier.padding(vertical = 4.dp))
                     dividerShown = true
                 }
-                Text(
-                    action.label,
-                    style = Term.mono.copy(color = if (action.destructive) Term.error else Term.fg),
+                val color = if (action.destructive) Term.error else Term.fg
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 48.dp)
@@ -381,7 +383,14 @@ fun ActionSheet(menu: ActionMenu, onDismiss: () -> Unit) {
                             action.run()
                         }
                         .padding(horizontal = 16.dp, vertical = 14.dp),
-                )
+                ) {
+                    if (iconColumn) {
+                        Box(Modifier.width(32.dp), contentAlignment = Alignment.CenterStart) {
+                            action.icon?.let { Text(it, style = Term.mono.copy(color = Term.prompt), maxLines = 1) }
+                        }
+                    }
+                    Text(action.label, style = Term.mono.copy(color = color))
+                }
             }
         }
     }
