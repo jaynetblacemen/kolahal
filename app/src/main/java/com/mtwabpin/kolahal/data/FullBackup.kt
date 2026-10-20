@@ -20,7 +20,7 @@ import com.mtwabpin.kolahal.notifications.KolahalNotificationListener
 object FullBackup {
     /** SharedPreferences files that hold user data. */
     private val PREFS = listOf(
-        "config", "aliases", "apps", "notif_prefs", "script_library", "unlocks", "triggers", "launcher", "logs",
+        "config", "aliases", "apps", "app_usage", "notif_prefs", "script_library", "unlocks", "triggers", "launcher", "logs",
     )
 
     private class Table(val db: (Context) -> SQLiteDatabase, val name: String)

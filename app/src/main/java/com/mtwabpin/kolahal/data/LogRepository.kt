@@ -205,6 +205,17 @@ class LogRepository private constructor(private val context: Context) {
 
     /** Keeps the newest [keep] lines and drops anything older than [maxAgeDays]. */
     /** [maxAgeDays] only from the UI process (the :script process has a stale settings copy). */
+    /**
+     * `log.keepdays` for a launcher that stays running for weeks: the age trim, at most every 12
+     * hours, so notification and call lines don't outlive the setting.
+     */
+    fun trimIfDue(maxAgeDays: Int) {
+        val now = System.currentTimeMillis()
+        if (now - prefs.getLong(KEY_TRIMMED_AT, 0L) < 12 * 3_600_000L) return
+        prefs.edit().putLong(KEY_TRIMMED_AT, now).apply()
+        trim(maxAgeDays = maxAgeDays)
+    }
+
     fun trim(keep: Int = 5000, maxAgeDays: Int? = null) {
         db.writableDatabase.execSQL(
             "DELETE FROM logs WHERE id <= (SELECT id FROM logs ORDER BY id DESC LIMIT 1 OFFSET ?)",
@@ -249,6 +260,7 @@ class LogRepository private constructor(private val context: Context) {
         const val MAX_FIELD = 64 * 1024
         private const val KEY_CLEARED_UP_TO = "cleared_up_to"
         private const val KEY_HIDDEN_UP_TO = "hidden_up_to"
+        private const val KEY_TRIMMED_AT = "trimmed_at"
         private const val KEY_SEEN_UP_TO = "seen_up_to"
         private const val KEY_HISTORY_FROM = "history_from"
         const val ACTION_LOGS_CHANGED = "com.mtwabpin.kolahal.LOGS_CHANGED"

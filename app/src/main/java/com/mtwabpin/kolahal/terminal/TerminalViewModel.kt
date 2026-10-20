@@ -60,6 +60,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -114,6 +117,10 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** Reload requests from anywhere (log changes, paging, resume) funnel into one latest-wins pipeline. */
     private val reloadRequests = MutableStateFlow(0L)
     private fun requestReload() = reloadRequests.update { it + 1 }
+
+    /** Serials of private spaces that are locked. */
+    private fun lockedPrivate(profiles: List<Profile>): Set<Long> =
+        profiles.filter { it.kind == ProfileKind.PRIVATE && it.quiet }.mapTo(HashSet()) { it.serial }
     private val logs = LogRepository.get(app)
     private val appsRepo = AppRepository.get(app)
     private val scripts = ScriptRepository.get(app)
@@ -234,6 +241,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         )
         viewModelScope.launch {
             // Bursts of changes (a script logging many lines, another process) collapse into one reload.
+            // Locking or unlocking the private space shows or hides its lines.
+            launch { appsRepo.profiles.map(::lockedPrivate).distinctUntilChanged().drop(1).collect { requestReload() } }
             combine(logs.version, reloadRequests) { a, b -> a to b }.debounce(40).collectLatest {
                 // A failed reload keeps the previous rows instead of crashing home. Not logged:
                 // writing to the log would trigger the next reload.
@@ -269,13 +278,16 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     }
 
     private suspend fun reload() {
-        val (list, hist, scriptList) = withContext(Dispatchers.IO) {
+        val (all, hist, scriptList) = withContext(Dispatchers.IO) {
             Triple(logs.recent(pageLimit), logs.commandHistory(), scripts.all())
         }
         scriptCache.value = scriptList
         _statuses.value = withContext(Dispatchers.IO) { KvStore(context, HostApi.STATUS_SCOPE).all() }
         withContext(Dispatchers.Default) { setCommandScripts(scriptList) }
         _hiddenLines.value = withContext(Dispatchers.IO) { logs.hiddenCount() }
+        // A locked private space hides its apps; its lines (launches, notifications) hide with it.
+        val locked = lockedPrivate(appsRepo.profiles.value)
+        val list = if (locked.isEmpty()) all else all.filterNot { it.ctx.userSerial in locked }
         _entries.value = list
         refreshProductivity()
         _rows.value = withContext(Dispatchers.Default) { buildRows(list, seenUpTo, unreadUntil) }
@@ -307,6 +319,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         val exact = com.mtwabpin.kolahal.productivity.ReminderScheduler.canBeExact(context)
         if (exact && exactAlarms == false) io { com.mtwabpin.kolahal.productivity.ReminderScheduler.rescheduleAll(context) }
         exactAlarms = exact
+        io { logs.trimIfDue(config[Keys.LOG_KEEP_DAYS]) }
         // Coming back from an app is a fresh look at home: show the full header again.
         expandHeader()
         seenUpTo = logs.seenUpTo
@@ -786,7 +799,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                 io { ids.forEach(logs::delete) }
             }
         }
-        actions += LogAction("Copy text") { copy(ctx.copy ?: entry.text) }
+        actions += LogAction("Copy text") { copy(ctx.copy ?: entry.text, sensitive(entry)) }
         danger += LogAction("Delete line", destructive = true) { io { logs.delete(entry.id) } }
         return actions + danger
     }
@@ -905,11 +918,19 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     }
 
     /** Swipe right on a log line. */
-    fun swipeCopy(entry: LogEntry) = copy(entry.text)
+    fun swipeCopy(entry: LogEntry) = copy(entry.text, sensitive(entry))
 
-    private fun copy(text: String) {
-        context.getSystemService(ClipboardManager::class.java)
-            .setPrimaryClip(ClipData.newPlainText("kolahal", text))
+    /** Notification and call lines: other people's messages, codes and numbers. */
+    private fun sensitive(entry: LogEntry) =
+        entry.ctx.values.containsKey(NOTIF) || entry.source == com.mtwabpin.kolahal.calls.CallEvents.SOURCE
+
+    /** [sensitive] text is marked so the keyboard's clipboard preview and history hide it. */
+    private fun copy(text: String, sensitive: Boolean = false) {
+        val clip = ClipData.newPlainText("kolahal", text)
+        if (sensitive) clip.description.extras = android.os.PersistableBundle().apply {
+            putBoolean("android.content.extra.IS_SENSITIVE", true)
+        }
+        context.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
     }
 
     private fun startActivity(intent: Intent) {

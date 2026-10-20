@@ -44,7 +44,7 @@ class LauncherApp : Application(), Configuration.Provider {
             runCatching { ScriptScheduler.syncAll(this) }
             runCatching { com.mtwabpin.kolahal.feeds.FeedScheduler.sync(this) }
             runCatching { com.mtwabpin.kolahal.productivity.ReminderScheduler.rescheduleAll(this) }
-            runCatching { LogRepository.get(this).trim(maxAgeDays = Config.get(this)[Keys.LOG_KEEP_DAYS]) }
+            runCatching { LogRepository.get(this).trimIfDue(Config.get(this)[Keys.LOG_KEEP_DAYS]) }
             runCatching { com.mtwabpin.kolahal.data.KvStore.repairOversized(this) }
         }.start()
 

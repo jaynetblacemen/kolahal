@@ -99,6 +99,8 @@ class KolahalNotificationListener : NotificationListenerService() {
 
     private fun accept(sbn: StatusBarNotification, map: RankingMap?): Boolean {
         if (sbn.packageName == packageName || sbn.isOngoing) return false
+        // What the app marks secret stays out of the log, the store and scripts.
+        if (sbn.notification.visibility == Notification.VISIBILITY_SECRET) return false
         val flags = sbn.notification.flags
         if (flags and (Notification.FLAG_FOREGROUND_SERVICE or Notification.FLAG_GROUP_SUMMARY) != 0) return false
         // Silent/minimized channels (weather, "syncing", promos) would only add noise.

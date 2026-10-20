@@ -10,4 +10,6 @@
     <exclude domain="database" path="feeds.db-wal" />
     <exclude domain="database" path="feeds.db-shm" />
     <exclude domain="sharedpref" path="logs.xml" />
+    <exclude domain="sharedpref" path="app_usage.xml" />
+    <exclude domain="sharedpref" path="unlocks.xml" />
 </full-backup-content>

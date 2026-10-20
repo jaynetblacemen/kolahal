@@ -15,6 +15,17 @@ import kotlin.math.exp
 class AppPrefs private constructor(context: Context) {
     private val apps = context.getSharedPreferences("apps", Context.MODE_PRIVATE)
     private val aliasPrefs = context.getSharedPreferences("aliases", Context.MODE_PRIVATE)
+    /**
+     * Launch counts and times. A file of their own, so Android's cloud backup can leave them out
+     * (data_extraction_rules.xml) while pins, labels and hidden apps still go. Moved out of "apps" once.
+     */
+    private val usage = context.getSharedPreferences(USAGE_FILE, Context.MODE_PRIVATE).also { u ->
+        val old = apps.all.filterKeys { it.startsWith("launch:") }
+        if (old.isNotEmpty()) {
+            u.edit().apply { old.forEach { (k, v) -> putString(k, v as? String) } }.apply()
+            apps.edit().apply { old.keys.forEach(::remove) }.apply()
+        }
+    }
 
     private val _version = MutableStateFlow(0)
     val version: StateFlow<Int> = _version.asStateFlow()
@@ -62,13 +73,13 @@ class AppPrefs private constructor(context: Context) {
         // Read-modify-write: two launches recorded at once must both count.
         synchronized(this) {
             val (count, _) = launchStats(key)
-            apps.edit().putString("launch:$key", "${count + 1}:${System.currentTimeMillis()}").apply()
+            usage.edit().putString("launch:$key", "${count + 1}:${System.currentTimeMillis()}").apply()
         }
         _version.update { it + 1 } // refreshes the "most used" suggestions
     }
 
     private fun launchStats(key: String): Pair<Int, Long> {
-        val raw = apps.getString("launch:$key", null) ?: return 0 to 0L
+        val raw = usage.getString("launch:$key", null) ?: return 0 to 0L
         val count = raw.substringBefore(':').toIntOrNull() ?: 0
         val ts = raw.substringAfter(':', "").toLongOrNull() ?: 0L
         return count to ts
@@ -104,6 +115,7 @@ class AppPrefs private constructor(context: Context) {
     }
 
     companion object {
+        const val USAGE_FILE = "app_usage"
         private const val LN2 = 0.6931471805599453
         private const val HALF_LIFE_DAYS = 7.0
 
