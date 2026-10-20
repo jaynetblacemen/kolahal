@@ -506,7 +506,16 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             info("Counting via unlock receiver (misses unlocks while launcher isn't running)")
             info("Tap here to grant Usage Access for accurate counts", LogContext.of(LogContext.RUN to "usage-access"))
         }
-        unlocks.history(days).forEach { (day, count) -> out("$day  ${"█".repeat(minOf(count, 40))} $count") }
+        val today = java.time.LocalDate.now()
+        val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE d MMM", java.util.Locale.getDefault())
+        unlocks.history(days).forEach { (day, count) ->
+            val label = when (day) {
+                today -> "Today"
+                today.minusDays(1) -> "Yesterday"
+                else -> day.format(fmt)
+            }
+            out("$label · $count ${if (count == 1) "unlock" else "unlocks"}")
+        }
     }
 
     private fun history() {
