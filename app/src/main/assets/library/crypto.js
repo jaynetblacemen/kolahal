@@ -1,6 +1,7 @@
 // crypto.js — cryptocurrency prices from CoinGecko (free public API, no key).
 // @command
 // @desc coin prices: crypto [ids…] [--vs eur] (default: bitcoin ethereum, usd)
+// @usage [<ids…>] [--vs <currency>]
 //
 // Usage:
 //   crypto                       bitcoin and ethereum in USD

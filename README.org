@@ -68,7 +68,8 @@ cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
 - Scripts ::
   - Timers by interval (=every 30m=) and/or daily times (=at 08:00,18:30=), with optional
     notifications.
-  - Scripts marked =@command= become terminal commands that take arguments.
+  - Scripts marked =@command= become terminal commands that take arguments. An =@usage= line lists
+    them, so they are suggested as you type; one without arguments runs as soon as it is typed (=launch.instant all=).
   - Event triggers: =@on unlock=, =@on charger= … run a script when something happens on the device.
   - Each run gets a =── hn · 22:40 ──= header and a stable per-script colour; lines that arrived
     while you were away are marked =•= under a "N new since you left" divider.
@@ -215,6 +216,7 @@ fails, tapping the error opens the editor at the failing line.
 -- weather.lua  (script new weather --cmd)
 -- @command
 -- @desc current weather: weather [city]
+-- @usage [<city>]
 local city = argline ~= "" and argline or "London"
 return (http.get("https://wttr.in/" .. city .. "?format=3").body:gsub("%s+$", ""))
 #+end_src

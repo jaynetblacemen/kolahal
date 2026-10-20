@@ -1,6 +1,7 @@
 -- todo.lua — a minimal todo list kept in the script's store. No network.
 -- @command
 -- @desc todo list: todo | todo add <text> | todo done N | todo clear
+-- @usage [add <text>|done <n>|clear]
 --
 -- Usage:
 --   todo                 list open items

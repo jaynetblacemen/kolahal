@@ -1,6 +1,7 @@
 -- releases.lua — watch GitHub repositories for new releases (Atom feeds, no API key).
 -- @command
 -- @desc GitHub release watcher: releases [add|rm owner/repo | list]
+-- @usage [add <owner/repo>|rm <owner/repo>|list]
 --
 -- Usage:
 --   releases                    check every watched repo now

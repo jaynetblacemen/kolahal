@@ -81,6 +81,18 @@ class InstantRunTest {
         assertFalse(InstantRun.canRun("weather london", commands, emptyMap(), listOf("weather")))
     }
 
+    @Test fun scriptCommandsWithAKnownUsage() {
+        // Script usages sit under the built-ins in the map the view model passes.
+        val withScripts = mapOf("quote" to "quote", "xkcd" to "xkcd [random|<number>]") + commands
+        val scripts = listOf("quote", "xkcd", "weather")
+        fun target(text: String) = InstantRun.target(text, InstantRun.ALL, 2, ::ranked, { it }, withScripts, emptyMap(), scripts)
+        assertEquals("no arguments: runs as typed", Target.Command("quote"), target("quo"))
+        assertNull("optional arguments wait for Enter", target("xkcd"))
+        assertNull("unknown usage waits for Enter", target("weat"))
+        assertTrue(InstantRun.canRun("xkcd random", withScripts, emptyMap(), scripts))
+        assertFalse(InstantRun.canRun("weather london", withScripts, emptyMap(), scripts) { true })
+    }
+
     @Test fun scriptsAndStatusAreSensitive() {
         assertTrue(InstantRun.isSensitive("scripts rm hn"))
         assertTrue(InstantRun.isSensitive("status clear all"))

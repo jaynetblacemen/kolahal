@@ -1,6 +1,7 @@
 // exchange.js — currency conversion with daily rates from open.er-api.com (no key).
 // @command
 // @desc convert currency: exchange [amount] <from> [to…] (e.g. exchange 100 usd inr eur)
+// @usage [<amount>] <from> [<to…>]
 //
 // Usage:
 //   exchange 100 usd inr       100 US dollars in Indian rupees

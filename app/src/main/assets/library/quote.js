@@ -1,6 +1,7 @@
 // quote.js — a random quote from ZenQuotes (free, no key; ~5 requests / 30 s).
 // @command
 // @desc a random quote; long-press to copy it
+// @usage
 //
 // On a timer (e.g. every morning) it also sends the quote as a notification.
 

@@ -958,7 +958,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         if (commandScripts.isNotEmpty()) info("Your script commands")
         commandScripts.forEach { s ->
             val desc = ScriptMeta.description(s.code) ?: "${s.lang.ext} script"
-            out(s.name, LogContext.of(LogContext.COMMAND to s.name + " ", LogContext.SCRIPT to s.name, LogContext.DESC to desc))
+            out(ScriptMeta.usage(s.code, s.name) ?: s.name, LogContext.of(LogContext.COMMAND to s.name + " ", LogContext.SCRIPT to s.name, LogContext.DESC to desc))
         }
         info("Anything else is matched against app names · tap a line to act · long-press for more")
         info("Pipes: help | grep feed · history | tail 5 · contacts | count  (grep [-v], head, tail, sort, uniq, count)")

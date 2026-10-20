@@ -97,11 +97,15 @@ Tapping a status line runs its script again. `header.status off` hides them all.
 
 Add `@command` in a comment and the script becomes a terminal command named after the script.
 `@desc` gives it a one-line description in `help` and in suggestions.
+<span class="k-new">new</span> `@usage` lists its arguments, written like the usage lines in `help`: `[a|b]` is a
+choice, `<city>` a value you type. The words in it are suggested as you type (`xkcd` offers
+`xkcd random`), and `help` shows the line.
 
 ```lua
 -- weather.lua
 -- @command
 -- @desc current weather: weather [city]
+-- @usage [<city>]
 local city = argline ~= "" and argline or "London"
 return (http.get("https://wttr.in/" .. city .. "?format=3").body:gsub("%s+$", ""))
 ```
@@ -114,6 +118,10 @@ In JavaScript use `// @command` and `// @desc …`. Arguments arrive in `args` a
 command script run from the prompt may also call [`launcher.run`](/scripting/api/#launcherruncommand). When
 the same script runs on a timer, it gets no arguments, which is how most library scripts tell the
 two cases apart.
+
+A command that takes no arguments runs as soon as you have typed enough of its name, like the built-in
+ones, when `launch.instant` is `all`. That's a script with an empty `@usage` line, or one that never
+reads `args` or `argline`. A script that reads them but has no `@usage` line always waits for Enter.
 
 ## Event triggers
 

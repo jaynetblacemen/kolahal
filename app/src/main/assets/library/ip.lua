@@ -1,6 +1,7 @@
 -- ip.lua — your public IP address (api.ipify.org, no API key).
 -- @command
 -- @desc public IP address; long-press the line to copy it
+-- @usage
 --
 -- As a command it prints your IP. On a timer it notifies when the IP changes
 -- (handy for spotting VPN drops) and pins it as a status line.

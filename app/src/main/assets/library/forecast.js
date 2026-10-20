@@ -1,6 +1,7 @@
 // forecast.js — 3-day forecast from Open-Meteo (free, no API key).
 // @command
 // @desc 3-day forecast: forecast [city] | forecast --default <city>
+// @usage [<city>|--default <city>]
 //
 // Usage:
 //   forecast                  forecast for the saved default city (London if none)

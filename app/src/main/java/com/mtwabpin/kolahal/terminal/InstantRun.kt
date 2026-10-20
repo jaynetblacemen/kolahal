@@ -116,8 +116,8 @@ object InstantRun {
         val parts = current.split(Regex("\\s+"))
         val head = canonical(parts.firstOrNull() ?: return false)
         if (head.isEmpty() || head in SENSITIVE) return false
-        if (head in scriptCommands) return false
-        val usage = commands[head] ?: return isApp(current)
+        // Script commands are in [commands] only when their usage is known (ScriptMeta.usage).
+        val usage = commands[head] ?: return head !in scriptCommands && isApp(current)
         // Only commands that take no arguments at all: `contacts` must still accept `contacts bob`.
         return parts.size > 1 || usage.trim() == head
     }

@@ -1,6 +1,7 @@
 // reddit.js — today's top posts of a subreddit (public JSON/RSS, no API key).
 // @command
 // @desc top posts today: reddit [subreddit] (default: android)
+// @usage [<subreddit>]
 //
 // Usage:
 //   reddit             top 5 posts of r/android today

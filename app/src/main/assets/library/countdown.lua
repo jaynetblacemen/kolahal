@@ -1,6 +1,7 @@
 -- countdown.lua — days until (or since) dates. No network.
 -- @command
 -- @desc days until a date: countdown YYYY-MM-DD | add YYYY-MM-DD label | rm N
+-- @usage [<YYYY-MM-DD>|add <YYYY-MM-DD> <label>|rm <n>]
 --
 -- Usage:
 --   countdown 2026-12-25               days until a date

@@ -1,6 +1,7 @@
 // sun.js — today's sunrise, sunset and day length (Open-Meteo, no key).
 // @command
 // @desc sunrise/sunset: sun | sun <city> | sun <lat> <lng> (city/coords are saved)
+// @usage [<city>|<lat> <lng>]
 //
 // Usage:
 //   sun                  use the saved location

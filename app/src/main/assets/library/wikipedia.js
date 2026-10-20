@@ -1,6 +1,7 @@
 // wikipedia.js — summary of a Wikipedia article (REST API, no key).
 // @command
 // @desc Wikipedia summary: wikipedia <topic> (no topic: a random article)
+// @usage [<topic>]
 //
 // Usage:
 //   wikipedia Alan Turing

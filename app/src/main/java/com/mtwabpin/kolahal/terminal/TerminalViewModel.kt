@@ -102,8 +102,8 @@ data class LogAction(val label: String, val destructive: Boolean = false, val ic
 /** Usage line per command name, for option completion. */
 private val USAGES: Map<String, String> by lazy { CommandProcessor.COMMANDS.associate { it.name to it.usage } }
 
-/** A completable literal in a usage line: `work`, `ls`, `-l`; not `<app>`, `0-100` or `30s`. */
-private val OPTION = Regex("-?[a-z][a-z-]*")
+/** A completable literal in a usage line: `work`, `ls`, `-l`, `--vs`; not `<app>`, `0-100` or `30s`. */
+private val OPTION = Regex("-{0,2}[a-z][a-z-]*")
 
 /** `feed [add <url>|rm] [id]` → `feed`, `[add <url>|rm]`, `[id]`: splits on spaces outside brackets. */
 private fun usageTokens(usage: String): List<String> = splitTopLevel(usage, ' ').filter { it.isNotBlank() }
@@ -149,6 +149,15 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     private val _commandNames = MutableStateFlow<List<String>>(emptyList())
     /** Names of `@command` scripts; part of the suggestion inputs. */
     val commandNames: StateFlow<List<String>> = _commandNames.asStateFlow()
+
+    /** Usage lines of the command scripts that have a known one (see [ScriptMeta.usage]), set with [commandNames]. */
+    @Volatile private var scriptUsages: Map<String, String> = emptyMap()
+
+    private fun setCommandScripts(list: List<Script>) {
+        val commands = list.filter { ScriptMeta.isCommand(it.code) }
+        scriptUsages = commands.mapNotNull { s -> ScriptMeta.usage(s.code, s.name)?.let { s.name to it } }.toMap()
+        _commandNames.value = commands.map { it.name }
+    }
 
     /** Bumps when aliases, hidden apps or labels change. */
     val appPrefsVersion: StateFlow<Int> get() = appPrefs.version
@@ -287,9 +296,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         }
         scriptCache.value = scriptList
         _statuses.value = withContext(Dispatchers.IO) { KvStore(context, HostApi.STATUS_SCOPE).all() }
-        _commandNames.value = withContext(Dispatchers.Default) {
-            scriptList.filter { ScriptMeta.isCommand(it.code) }.map { it.name }
-        }
+        withContext(Dispatchers.Default) { setCommandScripts(scriptList) }
         _hiddenLines.value = withContext(Dispatchers.IO) { logs.hiddenCount() }
         _entries.value = list
         refreshProductivity()
@@ -364,7 +371,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         val target = InstantRun.target(
             text, config[Keys.LAUNCH_INSTANT], config[Keys.LAUNCH_INSTANT_MIN],
             rankedApps = { appsRepo.searchRanked(it) }, appLabel = { it.label },
-            commands = commandUsages, aliases = appPrefs.aliases(), scriptCommands = _commandNames.value,
+            commands = scriptUsages + commandUsages, aliases = appPrefs.aliases(), scriptCommands = _commandNames.value,
         ) ?: return
         setText("")
         collapseHeader()
@@ -379,7 +386,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     private fun runsOnTap(line: String) = config[Keys.LAUNCH_INSTANT] == InstantRun.ALL &&
         // A trailing space marks a prefill ("apps " from help): it is waiting for an argument.
         !line.endsWith(' ') &&
-        InstantRun.canRun(line, commandUsages, appPrefs.aliases(), _commandNames.value) { name ->
+        InstantRun.canRun(line, scriptUsages + commandUsages, appPrefs.aliases(), _commandNames.value) { name ->
             appsRepo.searchRanked(name).firstOrNull()?.second == 0
         }
 
@@ -493,7 +500,9 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             val enterLaunches = config[Keys.LAUNCH_TOP] && ranked.firstOrNull()?.second?.let { it <= 2 } == true &&
                 names.none { it == head }
             val apps = ranked.map { Suggestion.App(it.first) }
-            return (if (enterLaunches) listOf(apps.first()) + cmds.take(3) + apps.drop(1) else cmds.take(3) + apps).distinctBy { it.key }
+            // A whole command name already: its first options too, so `xkcd` offers `xkcd random`.
+            val options = if (head in names) usageOptions(head, listOf(head, "")).map { it.copy(label = "$head ${it.label}") } else emptyList()
+            return (if (enterLaunches) listOf(apps.first()) + cmds.take(3) + apps.drop(1) else cmds.take(3) + options + apps).distinctBy { it.key }
         }
         val specific = argSuggestions(head, parts, scriptList)
         // Commands without their own completer still get the options their usage line lists.
@@ -515,8 +524,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     }
 
     /** Literal options at this argument position in the command's usage line (`apps [work|personal|…]`). */
-    private fun usageOptions(head: String, parts: List<String>): List<Suggestion> {
-        val usage = USAGES[head] ?: return emptyList()
+    private fun usageOptions(head: String, parts: List<String>): List<Suggestion.Completion> {
+        val usage = USAGES[head] ?: scriptUsages[head] ?: return emptyList()
         val token = usageTokens(usage).drop(1).getOrNull(parts.size - 2) ?: return emptyList()
         if (token.startsWith("<")) return emptyList() // a placeholder: <app>, <query>, …
         val inner = token.removeSurrounding("[", "]")
@@ -1235,7 +1244,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     private suspend fun refreshScriptCaches() {
         val list = withContext(Dispatchers.IO) { scripts.all() }
         scriptCache.value = list
-        _commandNames.value = list.filter { ScriptMeta.isCommand(it.code) }.map { it.name }
+        setCommandScripts(list)
     }
 
     fun setConfig(key: ConfigKey<*>, raw: String): Boolean = config.set(key, raw)

@@ -5,11 +5,15 @@ package com.mtwabpin.kolahal.script
  *
  *   -- @command            (or `// @command` in JS) — the script can be run from the prompt by name
  *   -- @desc <text>        — one-line description shown in `help` and suggestions
+ *   -- @usage [args]       — the arguments, written like a built-in usage line (`[random|<number>]`);
+ *                            empty when there are none. Drives suggestions and `launch.instant`
  *   -- @on <event>[, ...]  — run when a device event happens (see [EVENTS]); the payload is `event`
  */
 object ScriptMeta {
     private val command = Regex("""^\s*(--|//)\s*@command\b""", RegexOption.MULTILINE)
     private val desc = Regex("""^\s*(--|//)\s*@desc\s+(.+)$""", RegexOption.MULTILINE)
+    private val usageLine = Regex("""^\s*(--|//)\s*@usage\b[ \t]*(.*)$""", RegexOption.MULTILINE)
+    private val argRef = Regex("""\b(args|argline)\b""")
     private val on = Regex("""^\s*(--|//)\s*@on\b(.*)$""", RegexOption.MULTILINE)
 
     /** Events a script can subscribe to with `@on`. */
@@ -18,6 +22,18 @@ object ScriptMeta {
     fun isCommand(code: String) = command.containsMatchIn(code)
 
     fun description(code: String): String? = desc.find(code)?.groupValues?.get(2)?.trim()
+
+    /**
+     * The command's usage line, `name args…`, like a built-in one: from `@usage` (the name in front
+     * is optional there), or just [name] when the code never reads `args` or `argline`, so it can't
+     * take any. Null when unknown: nothing is suggested after the name, and it never runs without Enter.
+     */
+    fun usage(code: String, name: String): String? {
+        val m = usageLine.find(code) ?: return if (argRef.containsMatchIn(code)) null else name
+        val rest = m.groupValues[2].trim()
+        val args = if (rest == name || rest.startsWith("$name ")) rest.removePrefix(name).trim() else rest
+        return if (args.isEmpty()) name else "$name $args"
+    }
 
     /** Known events from every `@on` line, in [EVENTS] order; unknown names are ignored. */
     fun events(code: String): List<String> {
