@@ -2,8 +2,9 @@ package com.mtwabpin.kolahal.terminal
 
 /**
  * `launch.instant`: run what the user is typing as soon as it can only mean one thing, without
- * Enter. `apps` limits this to app names; `all` also covers commands and aliases. Sensitive
- * commands (calls, messages, uninstall, profile switches, clearing, …) never run this way.
+ * Enter. `apps` limits this to app names; `all` also covers commands, aliases, and whole lines
+ * whose arguments leave nothing to choose (`torch on`). Sensitive commands (calls, messages,
+ * uninstall, profile switches, clearing, …) never run this way.
  */
 object InstantRun {
     const val OFF = "off"
@@ -71,7 +72,9 @@ object InstantRun {
     ): Target<A>? {
         if (mode == OFF) return null
         val q = text.trimStart().lowercase()
-        if (q.length < minLength || q.any { it.isWhitespace() }) return null
+        // With arguments: the whole line runs once there is nothing left to choose (`torch on`).
+        if (q.any { it.isWhitespace() }) return if (mode == ALL && wholeLine(q, commands, aliases)) Target.Command(q.trim()) else null
+        if (q.length < minLength) return null
         val names = commands.keys + aliases.keys + scriptCommands
         val nameMatches = names.filter { it.startsWith(q) }.distinct()
         // The same app in several profiles counts once: the copy ranked first (frecency) is what
@@ -91,6 +94,22 @@ object InstantRun {
             }
             else -> null
         }
+    }
+
+    /**
+     * Device and media state (`torch`, `dnd`, `media`, …) is sensitive: never run by a prefix, from
+     * a script or from the history. A typed line with nothing left to choose (`torch on`) does run.
+     */
+    private val WHOLE_LINE_OK = com.mtwabpin.kolahal.control.ControlCommands.SENSITIVE
+
+    /** A typed [line] with arguments that fills its command's usage line completely ([UsageLine.complete]). */
+    private fun wholeLine(line: String, commands: Map<String, String>, aliases: Map<String, String>): Boolean {
+        val word = line.trim().substringBefore(' ')
+        // An alias may stand for anything: it waits for Enter.
+        if (word in aliases) return false
+        val head = canonical(word)
+        if (head in SENSITIVE && head !in WHOLE_LINE_OK) return false
+        return commands[head]?.let { UsageLine.complete(line, it) } == true
     }
 
     /**

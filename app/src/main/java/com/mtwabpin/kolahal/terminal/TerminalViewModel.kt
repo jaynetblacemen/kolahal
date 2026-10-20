@@ -102,29 +102,6 @@ data class LogAction(val label: String, val destructive: Boolean = false, val ic
 /** Usage line per command name, for option completion. */
 private val USAGES: Map<String, String> by lazy { CommandProcessor.COMMANDS.associate { it.name to it.usage } }
 
-/** A completable literal in a usage line: `work`, `ls`, `-l`, `--vs`; not `<app>`, `0-100` or `30s`. */
-private val OPTION = Regex("-{0,2}[a-z][a-z-]*")
-
-/** `feed [add <url>|rm] [id]` → `feed`, `[add <url>|rm]`, `[id]`: splits on spaces outside brackets. */
-private fun usageTokens(usage: String): List<String> = splitTopLevel(usage, ' ').filter { it.isNotBlank() }
-
-/** Splits on [sep] where it is not inside `[]` or `<>`. */
-private fun splitTopLevel(s: String, sep: Char): List<String> {
-    val out = ArrayList<String>()
-    var depth = 0
-    val cur = StringBuilder()
-    for (ch in s) {
-        when {
-            ch == '[' || ch == '<' -> { depth++; cur.append(ch) }
-            ch == ']' || ch == '>' -> { depth--; cur.append(ch) }
-            ch == sep && depth == 0 -> { out += cur.toString(); cur.clear() }
-            else -> cur.append(ch)
-        }
-    }
-    out += cur.toString()
-    return out
-}
-
 private const val PAGE = 400
 private const val KEY_PENDING_EXPORT = "pending_export"
 private const val MAX_PAGE = 5000
@@ -526,16 +503,16 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** Literal options at this argument position in the command's usage line (`apps [work|personal|…]`). */
     private fun usageOptions(head: String, parts: List<String>): List<Suggestion.Completion> {
         val usage = USAGES[head] ?: scriptUsages[head] ?: return emptyList()
-        val token = usageTokens(usage).drop(1).getOrNull(parts.size - 2) ?: return emptyList()
+        val token = UsageLine.tokens(usage).drop(1).getOrNull(parts.size - 2) ?: return emptyList()
         if (token.startsWith("<")) return emptyList() // a placeholder: <app>, <query>, …
         val inner = token.removeSurrounding("[", "]")
         val last = parts.last()
         val before = parts.dropLast(1).joinToString(" ")
-        return splitTopLevel(inner, '|').mapNotNull { alt ->
+        return UsageLine.split(inner, '|').mapNotNull { alt ->
             val word = alt.trim().substringBefore(' ')
             val rest = alt.trim().substringAfter(' ', "")
             // `add <url>` and `mute <app>` take a value after them; `name = command` is not an option.
-            word.takeIf { it.matches(OPTION) && (rest.isEmpty() || rest.startsWith("<") || rest.startsWith("[")) }
+            word.takeIf { it.matches(UsageLine.OPTION) && (rest.isEmpty() || rest.startsWith("<") || rest.startsWith("[")) }
         }.filter { it.startsWith(last) && it != last }
             .map { Suggestion.Completion(it, "$before $it ") }
     }

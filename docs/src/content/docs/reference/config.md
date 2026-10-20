@@ -64,7 +64,7 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 | --- | --- | --- | --- |
 | `launch.top` | bool | `on` | Enter launches the best match when it starts with what you typed |
 | `launch.single` | bool | `on` | launch automatically when only one app matches |
-| `launch.instant` | choice: `off` `apps` `all` | `all` | run without Enter once the input can only mean one thing: apps, or apps and commands (sensitive commands always need Enter) |
+| `launch.instant` | choice: `off` `apps` `all` | `all` | run without Enter once the input can only mean one thing: apps, or apps and commands, including whole lines like `torch on` (sensitive commands always need Enter) |
 | `launch.instant.min` | number 1–6 | `2` | letters to type before an instant launch |
 | `suggestions.idle` | bool | `off` | show most-used apps when the prompt is empty |
 | `suggestions.icons` | bool | `off` | show app icons next to app suggestions, in the list and on chips |

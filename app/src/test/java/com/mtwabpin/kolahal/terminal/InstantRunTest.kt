@@ -93,6 +93,32 @@ class InstantRunTest {
         assertFalse(InstantRun.canRun("weather london", withScripts, emptyMap(), scripts) { true })
     }
 
+    @Test fun wholeLinesWithNothingLeftToChoose() {
+        val usages = mapOf(
+            "torch" to "torch [on|off]", "dnd" to "dnd [on|off|alarms|none|access]", "volume" to "volume [0-100|up|down|mute]",
+            "apps" to "apps [work|personal|private|hidden] [-l]", "work" to "work [on|off|status]",
+            "feed" to "feed [add <url>|rm|fetch] [id]", "media" to "media [play|pause|toggle|next|prev|stop]",
+            "xkcd" to "xkcd [random|<number>]", "ring" to "ring [normal|on|once]",
+        )
+        fun target(text: String, mode: String = InstantRun.ALL, aliases: Map<String, String> = emptyMap()) =
+            InstantRun.target(text, mode, 2, ::ranked, { it }, usages, aliases, listOf("xkcd"))
+        assertEquals(Target.Command("torch on"), target("torch on"))
+        assertEquals(Target.Command("dnd off"), target("dnd off"))
+        assertEquals(Target.Command("apps work -l"), target("apps work -l"))
+        assertEquals(Target.Command("media pause"), target("media pause"))
+        assertNull("not finished", target("torch o"))
+        assertNull("-l may follow", target("apps work"))
+        assertNull("a number could go there", target("volume up"))
+        assertNull("a number could go there", target("xkcd random"))
+        assertNull("rm needs no value but the id may follow", target("feed rm"))
+        assertNull("'once' starts with 'on'", target("ring on"))
+        assertEquals(Target.Command("ring once"), target("ring once"))
+        assertNull("profile switches stay sensitive", target("work off"))
+        assertNull("only in all mode", target("torch on", InstantRun.APPS))
+        assertNull("aliases wait for Enter", target("torch on", aliases = mapOf("torch" to "work")))
+        assertFalse("the history doesn't toggle the torch", InstantRun.canRun("torch on", usages, emptyMap(), emptyList()))
+    }
+
     @Test fun scriptsAndStatusAreSensitive() {
         assertTrue(InstantRun.isSensitive("scripts rm hn"))
         assertTrue(InstantRun.isSensitive("status clear all"))
