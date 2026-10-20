@@ -26,7 +26,9 @@ Type a command, or any part of an app name, and press Enter.
   - otherwise you get a grid of up to 12 matching apps to tap.
 - <span class="k-new">new</span> **Instant launch** (`launch.instant`, default `all`): as soon as what you typed
   can only mean one app, it opens without Enter. With apps *Groww* and *Grove*, `grov` opens Grove and
-  `grow` opens Groww. The same app in several profiles counts as one match (the copy you use most opens).
+  `grow` opens Groww. The same app in several profiles counts as one match (the copy you use most opens),
+  unless two of those profiles are on: with the work profile running, `gm` opens nothing and
+  suggests both Gmails (Gmail and Gmail [W]) for you to pick.
   `launch.instant all` also runs commands that take no arguments, and aliases, this way (`setti`
   opens settings; `contacts` waits for Enter so you can still type `contacts bob`), and makes a
   tapped history line run immediately. <span class="k-new">new</span> A line with arguments runs too once there is

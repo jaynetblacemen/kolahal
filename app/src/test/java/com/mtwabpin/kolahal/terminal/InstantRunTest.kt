@@ -121,6 +121,17 @@ class InstantRunTest {
         assertFalse(InstantRun.wholeLine("work off", usages, emptyMap()))
     }
 
+    @Test fun sameAppInTwoProfilesThatAreOn() {
+        data class App(val label: String, val on: Boolean)
+        val personal = App("Gmail", on = true)
+        fun target(work: App) = InstantRun.target(
+            "gm", InstantRun.ALL, 2, { q -> listOf(personal, work).filter { it.label.lowercase().startsWith(q) }.map { it to 1 } },
+            { it.label }, commands, emptyMap(), emptyList(), isOn = { it.on },
+        )
+        assertNull("work profile on: both Gmails are a choice", target(App("Gmail", on = true)))
+        assertEquals("work profile paused: launches as before", Target.App(personal), target(App("Gmail", on = false)))
+    }
+
     @Test fun scriptsAndStatusAreSensitive() {
         assertTrue(InstantRun.isSensitive("scripts rm hn"))
         assertTrue(InstantRun.isSensitive("status clear all"))

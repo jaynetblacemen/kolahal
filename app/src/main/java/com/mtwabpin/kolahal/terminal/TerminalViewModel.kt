@@ -354,6 +354,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             text, config[Keys.LAUNCH_INSTANT], config[Keys.LAUNCH_INSTANT_MIN],
             rankedApps = { appsRepo.searchRanked(it) }, appLabel = { it.label },
             commands = scriptUsages + commandUsages, aliases = appPrefs.aliases(), scriptCommands = _commandNames.value,
+            isOn = { !it.profile.quiet },
         ) ?: return
         setText("")
         collapseHeader()

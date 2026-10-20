@@ -58,7 +58,8 @@ object InstantRun {
      * What [text] uniquely refers to, or null. [rankedApps] is the app search (tier 0 exact,
      * 1 prefix, 2 word prefix, 3+ looser); only prefix tiers count, so "grov" picks Grove even
      * though looser matches exist. A command and an app with the same name resolve to the command
-     * in `all` mode (`system` opens Android settings).
+     * in `all` mode (`system` opens Android settings). [isOn]: the app's profile is on (personal
+     * always is; a paused work profile or private space isn't).
      */
     fun <A> target(
         text: String,
@@ -69,6 +70,7 @@ object InstantRun {
         commands: Map<String, String>,
         aliases: Map<String, String>,
         scriptCommands: Collection<String>,
+        isOn: (A) -> Boolean = { false },
     ): Target<A>? {
         if (mode == OFF) return null
         val q = text.trimStart().lowercase()
@@ -77,9 +79,12 @@ object InstantRun {
         if (q.length < minLength) return null
         val names = commands.keys + aliases.keys + scriptCommands
         val nameMatches = names.filter { it.startsWith(q) }.distinct()
-        // The same app in several profiles counts once: the copy ranked first (frecency) is what
-        // Enter would launch too.
-        val apps = rankedApps(q).filter { it.second <= 2 }.map { it.first }.distinctBy { appLabel(it).lowercase() }
+        // The same app in several profiles counts once, the copy ranked first (frecency), as Enter
+        // would launch it. But copies in two profiles that are on (personal and a running work
+        // profile) are a choice: nothing launches, and the suggestions show both.
+        val apps = rankedApps(q).filter { it.second <= 2 }.map { it.first }
+            .groupBy { appLabel(it).lowercase() }.values
+            .flatMap { copies -> copies.filter(isOn).takeIf { it.size > 1 } ?: listOf(copies.first()) }
         if (mode == APPS) {
             // Typing a command must never launch an app that happens to share its prefix.
             if (nameMatches.isNotEmpty()) return null
