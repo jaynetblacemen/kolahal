@@ -24,6 +24,8 @@ Every row is optional. Kolahal works without any of them, with the limits listed
 | **Double-tap to lock** | `accessibility` | An optional accessibility service whose only job is locking the screen, for the double-tap gesture and the `lock` command. It subscribes to no events and reads no window content. |
 | **Do Not Disturb access** | `dnd access` | Optional. Lets `dnd` and `ring silent` change Do Not Disturb. See [Media and device controls](/guides/media-and-controls/). |
 | **Modify system settings** | `brightness access` | Optional. Lets `brightness`, `rotate` and `screen-timeout` change system settings. |
+| **Contacts** | `contacts --allow` | Optional. `call`, `sms` and `contacts` find people by name, with your contacts as suggestions. See [People](/guides/people/). |
+| **Calendar** | `agenda --allow` | Optional. Upcoming events with `agenda`. See [Productivity](/guides/productivity/). |
 | **Call log** | `calls --allow` | Optional. Your incoming, outgoing and missed calls appear in the log, and `calls` lists them. See [People](/guides/people/#calls-in-the-log). |
 | **Battery unrestricted** | `battery` | Timer scripts and feeds run on schedule instead of being deferred by battery optimisation. |
 | **Work / private profiles** | (none) | Information only: lists the work, private space and clone profiles found and whether each is on or paused. |

@@ -68,6 +68,12 @@ object SetupChecks {
                 "brightness access",
             ),
             SetupCheck(
+                "Contacts (call, sms, contacts)",
+                "Optional: call and text people by name, with contact suggestions",
+                com.mtwabpin.kolahal.contacts.ContactsRepository.get(context).hasPermission(),
+                "contacts --allow",
+            ),
+            SetupCheck(
                 "Calendar (agenda)",
                 "Optional: upcoming events with the agenda command",
                 com.mtwabpin.kolahal.productivity.Agenda.hasPermission(context),

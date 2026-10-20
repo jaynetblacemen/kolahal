@@ -1248,6 +1248,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     }
 
     fun onContactsPermission(granted: Boolean) {
+        refreshSetup()
         if (granted) com.mtwabpin.kolahal.contacts.ContactsRepository.get(context).refresh()
         io { logs.add(if (granted) LogKind.INFO else LogKind.ERROR, if (granted) "Contacts allowed" else "Contacts permission denied") }
     }
