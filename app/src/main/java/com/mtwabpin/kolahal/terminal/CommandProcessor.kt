@@ -508,13 +508,19 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         }
         val today = java.time.LocalDate.now()
         val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE d MMM", java.util.Locale.getDefault())
-        unlocks.history(days).forEach { (day, count) ->
+        val rows = unlocks.history(days).map { (day, count) ->
             val label = when (day) {
                 today -> "Today"
                 today.minusDays(1) -> "Yesterday"
                 else -> day.format(fmt)
             }
-            out("$label · $count ${if (count == 1) "unlock" else "unlocks"}")
+            label to count
+        }
+        // Padded so the counts line up (the log is monospaced).
+        val labelWidth = rows.maxOf { it.first.length }
+        val countWidth = rows.maxOf { it.second.toString().length }
+        rows.forEach { (label, count) ->
+            out("${label.padEnd(labelWidth)}  ${count.toString().padStart(countWidth)} ${if (count == 1) "unlock" else "unlocks"}")
         }
     }
 
