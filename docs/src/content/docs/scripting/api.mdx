@@ -41,7 +41,8 @@ means a table with those keys in Lua and an object with those properties in JS.
 
 ### log(text, ctx?)
 
-Appends a line to the log, in the script's colour, under the run's `── name · time ──` header.
+Appends a line to the log under the run's `── name · time ──` header, with the script's name at
+the end, muted (`… · weather`).
 `ctx` is an optional table / object of strings that decides what tapping and long-pressing do:
 
 | Key | Effect |

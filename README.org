@@ -71,7 +71,8 @@ cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
   - Scripts marked =@command= become terminal commands that take arguments. An =@usage= line lists
     them, so they are suggested as you type; one without arguments runs as soon as it is typed (=launch.instant all=).
   - Event triggers: =@on unlock=, =@on charger= … run a script when something happens on the device.
-  - Each run gets a =── hn · 22:40 ──= header and a stable per-script colour; lines that arrived
+  - Each run gets a =── hn · 22:40 ──= header and a stable per-script colour; each line names its
+    script at the end, muted (=… · weather=); lines that arrived
     while you were away are marked =•= under a "N new since you left" divider.
   - =status(text)= pins a line into the header.
 - GUI screens ::

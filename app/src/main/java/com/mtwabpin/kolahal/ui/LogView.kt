@@ -325,7 +325,7 @@ private fun androidx.compose.ui.text.AnnotatedString.Builder.appendTagged(text: 
 private fun renderLine(entry: LogEntry, charWidth: TextUnit, unread: Boolean) = buildAnnotatedString {
     val prefixLen = when (entry.kind) {
         LogKind.COMMAND -> 2
-        LogKind.SCRIPT -> (entry.source?.let { it.length + 3 } ?: 0) + (if (unread) 2 else 0)
+        LogKind.SCRIPT -> if (unread) 2 else 0
         else -> 2
     }
     withStyle(ParagraphStyle(textIndent = TextIndent(restLine = charWidth * prefixLen))) {
@@ -345,8 +345,10 @@ private fun renderLine(entry: LogEntry, charWidth: TextUnit, unread: Boolean) = 
             }
             LogKind.SCRIPT -> {
                 if (unread) withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("• ") }
-                entry.source?.let { withStyle(SpanStyle(color = scriptColor(it))) { append("[$it] ") } }
                 withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.script)) { append(entry.text) }
+                // The source goes at the end, muted, like other indicators (`… machine. · wikipedia`),
+                // so wrapped lines use the full width.
+                entry.source?.let { withStyle(SpanStyle(color = Term.dim)) { append(" · $it") } }
             }
             LogKind.OUTPUT -> {
                 val first = entry.text.substringBefore('\n')
