@@ -52,6 +52,9 @@ class MainActivity : ComponentActivity() {
     private val calendarPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { vm.onCalendarPermission(it) }
 
+    private val callLogPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { vm.onCallLogPermission(it) }
+
     private val pickFolder =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { vm.onScriptFolderPicked(it) }
 
@@ -115,6 +118,7 @@ class MainActivity : ComponentActivity() {
                     UiEvent.RequestNotificationPermission -> requestNotifications()
                     UiEvent.RequestContactsPermission -> contactsPermission.launch(Manifest.permission.READ_CONTACTS)
                     UiEvent.RequestCalendarPermission -> calendarPermission.launch(Manifest.permission.READ_CALENDAR)
+                    UiEvent.RequestCallLogPermission -> callLogPermission.launch(Manifest.permission.READ_CALL_LOG)
                     UiEvent.PickFont -> launchFontPicker()
                     else -> Unit
                 }
@@ -173,6 +177,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         vm.onResume()
         com.mtwabpin.kolahal.apps.PackageEvents.get(this).recheck()
+        com.mtwabpin.kolahal.calls.CallEvents.get(this).check()
     }
 
     override fun onPause() {

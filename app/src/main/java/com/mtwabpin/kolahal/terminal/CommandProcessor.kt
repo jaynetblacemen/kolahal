@@ -25,6 +25,7 @@ import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.ui.TermFonts
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
+import com.mtwabpin.kolahal.calls.CallEvents
 import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.data.ScriptLang
@@ -56,6 +57,8 @@ interface TerminalUi {
     fun clearScreen()
     /** READ_CALENDAR for `agenda`. */
     fun requestCalendarPermission() {}
+    /** READ_CALL_LOG for calls in the log and `calls`. */
+    fun requestCallLogPermission() {}
 }
 
 data class CommandSpec(val name: String, val usage: String, val help: String)
@@ -148,6 +151,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "play", "store" -> if (rest.isBlank()) fallbackLaunch(trimmed) else openUri("market://search?q=" + Uri.encode(rest), "play store: $rest")
                 "usage", "screentime" -> usage(args)
                 "installs", "updates" -> installs(args)
+                "calls" -> calls(args)
                 "shortcuts" -> withApp(args) { app -> listShortcuts(app) }
                 "call", "dial" -> call(rest)
                 "sms", "text" -> sms(args)
@@ -227,6 +231,22 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         if (list.isEmpty()) return info("No app installs, updates or uninstalls recorded yet")
         val fmt = java.text.SimpleDateFormat("EEE d MMM HH:mm", java.util.Locale.getDefault())
         list.forEach { (t, text) -> out(text, LogContext.of(LogContext.DESC to fmt.format(Date(t)))) }
+    }
+
+    /** `calls [n]`: the newest calls from Android's call log, in the same form as the live lines. */
+    private fun calls(args: List<String>) {
+        when (args.firstOrNull()) {
+            "--allow" -> return if (CallEvents.hasPermission(context)) info("Call log is allowed") else ui.requestCallLogPermission()
+            "--settings" -> return startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
+        }
+        if (!CallEvents.hasPermission(context)) {
+            logs.add(LogKind.ERROR, "Calls need call log access — tap to allow", ctx = LogContext.of(LogContext.RUN to "calls --allow"))
+            return
+        }
+        val n = args.firstOrNull()?.toIntOrNull()?.coerceIn(1, 200) ?: 20
+        val list = CallEvents.recent(context, n)
+        if (list.isEmpty()) return info("No calls in the call log")
+        list.reversed().forEach { out(CallEvents.line(it, conf, withDay = true), CallEvents.ctx(it)) }
     }
 
     private fun listPinned() {
@@ -1239,6 +1259,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("call", "call <name|number>", "Dial a contact or number"),
             CommandSpec("sms", "sms <name|number> [text]", "Start a text message"),
             CommandSpec("contacts", "contacts [query]", "Find contacts (favourites when empty)"),
+            CommandSpec("calls", "calls [n]", "Recent calls: incoming, outgoing and missed"),
             CommandSpec("url", "url <address>", "Open a link"),
             CommandSpec("history", "history", "Recent commands (tap to reuse)"),
             CommandSpec("clear", "clear [history|all]", "Clear the screen, the ↑ history, or both"),
@@ -1285,7 +1306,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         /** `help` groups; commands not listed here are shown after the groups. */
         val HELP_SECTIONS = linkedMapOf(
             "apps" to listOf("open", "shortcuts", "apps", "pin", "unpin", "info", "uninstall", "hide", "unhide", "rename", "usage", "installs"),
-            "people" to listOf("call", "sms", "contacts"),
+            "people" to listOf("call", "sms", "contacts", "calls"),
             "web" to listOf("search", "yt", "wiki", "maps", "play", "url"),
             "feeds" to listOf("feeds", "feed", "rss", "notifs"),
             "control" to com.mtwabpin.kolahal.control.ControlCommands.SPECS.map { it.name },

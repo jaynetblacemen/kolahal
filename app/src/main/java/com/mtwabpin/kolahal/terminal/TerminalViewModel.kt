@@ -71,6 +71,7 @@ sealed interface UiEvent {
     data object PickScriptFolder : UiEvent
     data object RequestContactsPermission : UiEvent
     data object RequestCalendarPermission : UiEvent
+    data object RequestCallLogPermission : UiEvent
     data object PickFont : UiEvent
     data object ShowQuick : UiEvent
 }
@@ -550,7 +551,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                 .take(12).map { Suggestion.Completion("#${it.id} ${it.title ?: it.url}", "feed ${parts[1]} ${it.id}") } else emptyList()
             "usage", "unlocks" -> if (parts.size == 2) listOf("1", "7", "14", "30")
                 .filter { it.startsWith(last) && it != last }.map { Suggestion.Completion(if (it == "1") "today" else "$it days", "$head $it") } else emptyList()
-            "installs", "updates" -> if (parts.size == 2) listOf("20", "50", "200")
+            "installs", "updates", "calls" -> if (parts.size == 2) listOf("20", "50", "200")
                 .filter { it.startsWith(last) && it != last }.map { Suggestion.Completion("last $it", "$head $it") } else emptyList()
             "script" -> {
                 if (parts.size == 2) {
@@ -1444,6 +1445,22 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     override fun requestCalendarPermission() {
         _events.tryEmit(UiEvent.RequestCalendarPermission)
+    }
+
+    override fun requestCallLogPermission() {
+        _events.tryEmit(UiEvent.RequestCallLogPermission)
+    }
+
+    fun onCallLogPermission(granted: Boolean) {
+        refreshSetup()
+        if (granted) com.mtwabpin.kolahal.calls.CallEvents.get(context).start()
+        io {
+            if (granted) {
+                logs.add(LogKind.INFO, "Call log allowed — new calls appear here; tap to list recent ones", ctx = LogContext.of(LogContext.RUN to "calls"))
+            } else {
+                logs.add(LogKind.ERROR, "Call log permission denied — tap to open app settings", ctx = LogContext.of(LogContext.RUN to "calls --settings"))
+            }
+        }
     }
 
     fun onCalendarPermission(granted: Boolean) {

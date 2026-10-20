@@ -74,6 +74,12 @@ object SetupChecks {
                 "agenda --allow",
             ),
             SetupCheck(
+                "Call log (calls in the log)",
+                "Optional: incoming, outgoing and missed calls appear in the log",
+                com.mtwabpin.kolahal.calls.CallEvents.hasPermission(context),
+                "calls --allow",
+            ),
+            SetupCheck(
                 "Battery unrestricted",
                 "Timer scripts run on schedule instead of being deferred",
                 power.isIgnoringBatteryOptimizations(context.packageName),

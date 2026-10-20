@@ -1,6 +1,6 @@
 ---
 title: People
-description: Call, text and find contacts from the prompt.
+description: Call, text and find contacts from the prompt, and see your calls in the log.
 ---
 
 ```sh
@@ -23,3 +23,25 @@ contacts sam              # search (alias: contact)
   opens your messaging app with the text pre-filled, ready for you to send.
 - Contact and number lines in the log stay tappable later: tap dials, long-press offers call,
   message, open contact and copy number.
+
+## Calls in the log
+
+<span class="k-new">new</span> With **call log** access, every call gets a line in the log as it ends, the way app installs do:
+
+```text
+Call from Sandhya ↙
+  +91 98765 43210
+  10:42 AM · 4m 12s
+Call to Sandhya ↗
+Missed call from +91 98765 43210 ✕
+```
+
+The arrow at the end is the direction (↙ incoming, ↗ outgoing); missed and declined calls end in
+✕, blocked ones in ⊘. The number, then the time and length (or "not answered"), are on dimmed lines
+below. Tap a line to dial back; long-press to call, message, copy the number or open the contact.
+
+- `calls` lists the last 20 calls from Android's call log, with the day; `calls 50` more.
+- Access is the switch: `calls --allow`, or **Call log** in the [setup checklist](/getting-started/setup/).
+  Calls from before you allowed it aren't added to the log. To stop, remove the permission in
+  Android's app settings (`calls --settings`).
+- Calls made while the launcher wasn't running appear when it next starts (at most the newest 30).

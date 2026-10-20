@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <!-- agenda command (optional; asked for on first use). -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- calls in the log and the calls command (optional; asked for on first use). -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <!-- timer / alarm commands hand off to the clock app. -->
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <!-- remind: on-time reminders (user-revocable on Android 12+; falls back to inexact) and re-arming after reboot. -->

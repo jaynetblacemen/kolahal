@@ -105,7 +105,8 @@ cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
   =widgets.height= 180dp). =widgets ls= lists them; =widget add [home]= opens the picker. Backups
   keep the layout; restored widgets get a one-tap "Add again".
 - People :: =call <name>= / =sms <name> [text]= with contact suggestions (favourites first);
-  =contacts [query]=. Numbers in the log are tappable.
+  =contacts [query]=. Numbers in the log are tappable. With call log access, every call gets a line
+  in the log as it ends (=Call from Sandhya ↙=, =Call to … ↗=, =Missed call from … ✕=); =calls [n]= lists them.
 - Favourites :: =pin <app>= (or long-press → Pin) puts an app first in the empty-prompt strip, in pin
   order, ahead of the most-used ones. =pins= lists them, =unpin <app>= removes one.
 - Productivity :: =todo buy milk= / =todo= (tap ticks an item; long-press edits or deletes;
@@ -353,6 +354,7 @@ kolahal/
 | =notify/=        | =Notifier=: the notifications Kolahal itself posts (script notify, reminders, feeds)                                                                                                                                                                                                                                                                       |                                               |
 | =control/=       | Device and media commands (=torch=, =volume=, =dnd=, =media=, =toggles= …), their argument parsing, and the media-session state                                                                                                                                                                                                                            | =ControlCommands.kt=                          |
 | =productivity/=  | Todo / note / reminder stores, reminder alarms, calendar agenda, and the time parser for =remind= / =timer= / =alarm=                                                                                                                                                                                                                                      | =Stores.kt=, =TimeSpec.kt=                    |
+| =calls/=         | Calls in the log, read from Android's call log once allowed, and the =calls= command (=CallEvents=)                                                                                                                                                                                                                                                         |                                               |
 | =contacts/=      | Contacts cache for =call= / =sms= / =contacts= and their suggestions                                                                                                                                                                                                                                                                                       |                                               |
 | =widgets/=       | App widget hosting: the host, the add / bind / configure flow, and pure layout bookkeeping (=WidgetModel=)                                                                                                                                                                                                                                                 | =WidgetHost.kt=                               |
 | =gesture/=       | Gesture actions (lock, shade, quick sheet, or any command) and the lock-screen accessibility service                                                                                                                                                                                                                                                       |                                               |
@@ -388,6 +390,7 @@ directly. Scripts do it from the =:script= process; a broadcast tells the UI pro
 | Feeds and their items                                | =feeds.db= (=feeds/FeedDb.kt=)                                                                |
 | App preferences, aliases, pins                       | SharedPreferences in =apps/AppPrefs.kt=                                                       |
 | Package snapshot and install history                 | =KvStore= scope =packages= (=apps/PackageEvents.kt=)                                          |
+| Newest call already logged                           | =KvStore= scope =calls= (=calls/CallEvents.kt=)                                               |
 | Widgets                                              | Bound AppWidget ids and their layout in SharedPreferences =widgets= (=widgets/WidgetHost.kt=) |
 | Imported font                                        | =filesDir/fonts/custom.ttf= (=ui/FontPicker.kt=)                                              |
 | Images on log lines (a cache, not backed up)         | =cacheDir/log-images/=, trimmed to 50 MB (=ui/LogImages.kt=)                                  |

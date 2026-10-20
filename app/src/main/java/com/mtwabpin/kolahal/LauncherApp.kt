@@ -37,6 +37,7 @@ class LauncherApp : Application(), Configuration.Provider {
         DeviceStatus.get(this).start()
         com.mtwabpin.kolahal.contacts.ContactsRepository.get(this).refresh()
         com.mtwabpin.kolahal.apps.PackageEvents.get(this).start()
+        com.mtwabpin.kolahal.calls.CallEvents.get(this).start()
 
         // Re-anchor daily script times (periodic work drifts), restore schedules after updates, trim old log.
         Thread {

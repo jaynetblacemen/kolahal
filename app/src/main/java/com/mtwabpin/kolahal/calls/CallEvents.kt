@@ -1,0 +1,167 @@
+package com.mtwabpin.kolahal.calls
+
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
+import android.provider.CallLog
+import com.mtwabpin.kolahal.data.Config
+import com.mtwabpin.kolahal.data.KvStore
+import com.mtwabpin.kolahal.data.LogContext
+import com.mtwabpin.kolahal.data.LogKind
+import com.mtwabpin.kolahal.data.LogRepository
+import com.mtwabpin.kolahal.data.shortTime
+import com.mtwabpin.kolahal.productivity.TimeSpec
+import java.util.concurrent.Executors
+
+/**
+ * Calls in the log, once the call-log permission is granted (that is the switch): one line per
+ * call as Android adds it to the call log, `Call from Sandhya ↙`, `Call to Sandhya ↗`,
+ * `Missed call from Sandhya ✕`, with the number, then the time and length, on dimmed lines below.
+ * Tapping one dials back. The newest call seen persists, so calls made while the launcher wasn't
+ * running show up on the next start, and none from before the permission was granted are logged.
+ */
+class CallEvents private constructor(private val context: Context) {
+    private val store = KvStore(context, "calls")
+    private val io = Executors.newSingleThreadExecutor()
+    private val main = Handler(Looper.getMainLooper())
+    @Volatile private var observing = false
+    private val scanSoon = Runnable { io.execute { runCatching { scan() } } }
+
+    /** The dialer writes a call in a few steps; one scan once they settle. */
+    private val observer = object : ContentObserver(main) {
+        override fun onChange(selfChange: Boolean) = check(delayMs = SETTLE_MS)
+    }
+
+    data class Call(
+        val id: Long,
+        val number: String,
+        val name: String?,
+        val type: Int,
+        val date: Long,
+        val durationSec: Long,
+        val presentation: Int,
+        val lookupUri: String?,
+    )
+
+    /** Starts watching, if allowed; call again once the permission is granted. */
+    fun start() {
+        if (!hasPermission(context)) return
+        if (!observing) {
+            observing = true
+            context.contentResolver.registerContentObserver(CallLog.Calls.CONTENT_URI, true, observer)
+        }
+        check()
+    }
+
+    /**
+     * Catches up, e.g. when home comes back on screen (the observer may have missed a call while
+     * frozen). Starts watching if the permission was granted in Android's settings meanwhile.
+     */
+    fun check(delayMs: Long = 0) {
+        if (!observing) return start()
+        main.removeCallbacks(scanSoon)
+        main.postDelayed(scanSoon, delayMs)
+    }
+
+    @Synchronized
+    private fun scan() {
+        if (!hasPermission(context)) return
+        val last = store.get(LAST)?.toLongOrNull()
+        if (last == null) {
+            // First run: start from the newest call, without logging the history.
+            store.set(LAST, (recent(context, 1).firstOrNull()?.id ?: 0L).toString())
+            return
+        }
+        val calls = recent(context, MAX_LINES, afterId = last)
+        if (calls.isEmpty()) return
+        val config = Config.get(context)
+        val now = System.currentTimeMillis()
+        LogRepository.get(context).addAll(calls.reversed().map { c ->
+            LogRepository.Pending(LogKind.INFO, line(c, config), SOURCE, ctx(c), now)
+        })
+        store.set(LAST, calls.first().id.toString())
+    }
+
+    companion object {
+        const val SOURCE = "calls"
+        private const val LAST = "last"
+        private const val SETTLE_MS = 1_500L
+        /** After a long time away, only the newest calls get a line each. */
+        private const val MAX_LINES = 30
+
+        fun hasPermission(context: Context) =
+            context.checkSelfPermission(Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED
+
+        /** Newest first, at most [limit], only those with an id above [afterId] when given. */
+        fun recent(context: Context, limit: Int, afterId: Long? = null): List<Call> {
+            if (!hasPermission(context)) return emptyList()
+            val uri = CallLog.Calls.CONTENT_URI.buildUpon()
+                .appendQueryParameter(CallLog.Calls.LIMIT_PARAM_KEY, limit.toString()).build()
+            val projection = arrayOf(
+                CallLog.Calls._ID, CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME, CallLog.Calls.TYPE,
+                CallLog.Calls.DATE, CallLog.Calls.DURATION, CallLog.Calls.NUMBER_PRESENTATION, CallLog.Calls.CACHED_LOOKUP_URI,
+            )
+            val selection = afterId?.let { "${CallLog.Calls._ID} > ?" }
+            val args = afterId?.let { arrayOf(it.toString()) }
+            return runCatching {
+                context.contentResolver.query(uri, projection, selection, args, "${CallLog.Calls._ID} DESC")?.use { c ->
+                    buildList {
+                        while (c.moveToNext() && size < limit) {
+                            add(Call(
+                                id = c.getLong(0),
+                                number = c.getString(1).orEmpty(),
+                                name = c.getString(2)?.takeIf { it.isNotBlank() },
+                                type = c.getInt(3),
+                                date = c.getLong(4),
+                                durationSec = c.getLong(5),
+                                presentation = c.getInt(6),
+                                lookupUri = c.getString(7),
+                            ))
+                        }
+                    }
+                }
+            }.getOrNull().orEmpty()
+        }
+
+        /** `Call from Sandhya ↙`, then the number and `10:42 · 4m 12s` on detail lines; [withDay] adds `Tue 20 Oct, `. */
+        fun line(c: Call, config: Config, withDay: Boolean = false): String {
+            val who = c.name ?: when (c.presentation) {
+                CallLog.Calls.PRESENTATION_RESTRICTED -> "a private number"
+                CallLog.Calls.PRESENTATION_PAYPHONE -> "a payphone"
+                CallLog.Calls.PRESENTATION_UNKNOWN -> "an unknown number"
+                else -> c.number.ifBlank { "an unknown number" }
+            }
+            val title = when (c.type) {
+                CallLog.Calls.OUTGOING_TYPE -> "Call to $who ↗"
+                CallLog.Calls.MISSED_TYPE -> "Missed call from $who ✕"
+                CallLog.Calls.REJECTED_TYPE -> "Declined call from $who ✕"
+                CallLog.Calls.BLOCKED_TYPE -> "Blocked call from $who ⊘"
+                CallLog.Calls.VOICEMAIL_TYPE -> "Voicemail from $who ↙"
+                else -> "Call from $who ↙"
+            }
+            val length = when {
+                c.durationSec > 0 -> TimeSpec.formatDuration(c.durationSec)
+                c.type == CallLog.Calls.OUTGOING_TYPE -> "not answered"
+                else -> null
+            }
+            val number = c.number.takeIf { c.name != null && it.isNotBlank() }
+            val time = (if (withDay) java.text.SimpleDateFormat("EEE d MMM, ", java.util.Locale.getDefault()).format(java.util.Date(c.date)) else "") + config.shortTime(c.date)
+            return listOfNotNull(title, number, listOfNotNull(time, length).joinToString(" · ")).joinToString("\n")
+        }
+
+        /** Tap dials back; long-press offers call, message, copy and the contact. */
+        fun ctx(c: Call): LogContext =
+            if (c.number.isBlank() || c.presentation != CallLog.Calls.PRESENTATION_ALLOWED) LogContext.EMPTY
+            else LogContext.of(LogContext.PHONE to c.number, LogContext.CONTACT to c.lookupUri, LogContext.COPY to c.number)
+
+        @Volatile
+        private var instance: CallEvents? = null
+
+        fun get(context: Context): CallEvents = instance ?: synchronized(this) {
+            instance ?: CallEvents(context.applicationContext).also { instance = it }
+        }
+    }
+}

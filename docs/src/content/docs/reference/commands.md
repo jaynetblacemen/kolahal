@@ -36,6 +36,7 @@ Profile flags for app commands: `-w` work, `-p` personal, `-s` private space, `-
 | `call <name\|number>` | `dial` | dial a contact or number |
 | `sms <name\|number> [text]` | `text` | start a text message |
 | `contacts [query]` | `contact` | find contacts (favourites when empty) |
+| `calls [n]` | | <span class="k-new">new</span> recent calls, incoming, outgoing and missed (20 by default; `calls --allow` asks for call log access) |
 
 ## web
 
