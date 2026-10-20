@@ -227,7 +227,6 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         if (list.isEmpty()) return info("No app installs, updates or uninstalls recorded yet")
         val fmt = java.text.SimpleDateFormat("EEE d MMM HH:mm", java.util.Locale.getDefault())
         list.forEach { (t, text) -> out(text, LogContext.of(LogContext.DESC to fmt.format(Date(t)))) }
-        if (!conf[Keys.LOG_PACKAGES]) info("Live logging is off: config set log.packages on")
     }
 
     private fun listPinned() {

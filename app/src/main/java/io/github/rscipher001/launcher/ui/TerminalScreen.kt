@@ -733,10 +733,11 @@ private fun Header(
                     style = small,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    // As tall as a log line (log.lineheight), so a few status lines stay compact.
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onStatusTap(name) }
-                        .heightIn(min = 44.dp)
+                        .heightIn(min = Term.lineHeight.dp)
                         .wrapContentHeight(),
                 )
             }

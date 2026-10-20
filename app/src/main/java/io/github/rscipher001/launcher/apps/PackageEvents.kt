@@ -6,8 +6,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.UserHandle
 import android.os.UserManager
-import io.github.rscipher001.launcher.data.Config
-import io.github.rscipher001.launcher.data.Keys
 import io.github.rscipher001.launcher.data.KvStore
 import io.github.rscipher001.launcher.data.LogContext
 import io.github.rscipher001.launcher.data.LogKind
@@ -16,7 +14,7 @@ import io.github.rscipher001.launcher.script.Json
 import java.util.concurrent.Executors
 
 /**
- * Install / update / uninstall log (`log.packages`).
+ * Install / update / uninstall log.
  *
  * Android reports an update in several ways (removed + added with "replacing", changed, or a real
  * uninstall followed by a reinstall), so events are never logged as they arrive. Instead every
@@ -132,7 +130,6 @@ class PackageEvents private constructor(private val context: Context) {
             save(now)
             return
         }
-        val enabled = Config.get(context)[Keys.LOG_PACKAGES]
         val logs = LogRepository.get(context)
         val events = ArrayList<Triple<String, String, Pkg>>() // kind, key, pkg
         val next = HashMap(now)
@@ -161,7 +158,7 @@ class PackageEvents private constructor(private val context: Context) {
         save(next)
         // Check again once the grace period is over, so a real uninstall is still logged.
         if (nextCheck != Long.MAX_VALUE) main.post { schedule(nextCheck + 500, keepSooner = true) }
-        if (!enabled || events.isEmpty()) return
+        if (events.isEmpty()) return
         val pending = events.map { (kind, key, p) ->
             val old = before[key]
             val tag = if (p.profile.isNotEmpty()) " [${p.profile}]" else ""

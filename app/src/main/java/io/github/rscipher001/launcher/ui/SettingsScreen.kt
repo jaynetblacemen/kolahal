@@ -125,7 +125,6 @@ private val TITLES = mapOf(
     "gesture.swipedown" to "Swipe down on the header",
     "gesture.swipeup.on" to "Swipe up on the prompt",
     "gesture.swipeup" to "Swipe up action",
-    "log.packages" to "App installs, updates & uninstalls",
     "feeds.log" to "Show new items in the log",
     "feeds.log.lines" to "Items per feed per refresh",
     "feeds.read.shown" to "Items shown in the log count as read",
@@ -174,7 +173,6 @@ private val CATEGORIES = listOf(
         "log", "Log", "Times, spacing, line height, history", R.drawable.ic_stat_terminal,
         listOf(
             "Display" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_GUTTER, Keys.LOG_SPACING, Keys.LOG_LINE_HEIGHT),
-            "Events" to listOf(Keys.LOG_PACKAGES),
             "History" to listOf(Keys.LOG_FRESH, Keys.LOG_KEEP_DAYS),
         ),
     ),
