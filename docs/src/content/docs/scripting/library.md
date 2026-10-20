@@ -116,7 +116,7 @@ IP changes (handy for noticing a dropped VPN) and pins it as a status line.
 
 ## wikipedia
 
-**Wikipedia summary** with a link to the full article: `wikipedia Alan Turing`. It tries the exact
+**Wikipedia summary** with the article's picture and a link to the full article: `wikipedia Alan Turing`. It tries the exact
 title, then the best search match. With no topic it shows a random article. Change `LANG` at the
 top for another language edition.
 

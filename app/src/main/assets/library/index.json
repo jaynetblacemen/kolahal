@@ -114,7 +114,7 @@
     "name": "wikipedia",
     "lang": "js",
     "title": "Wikipedia",
-    "description": "Summary of a Wikipedia article with a link to the full page: `wikipedia <topic>`, or a random article with no topic.",
+    "description": "Summary of a Wikipedia article with its picture and a link to the full page: `wikipedia <topic>`, or a random article with no topic.",
     "command": true,
     "suggestedEvery": 0,
     "suggestedAt": [],

@@ -8,7 +8,7 @@
 //   wikipedia             a random article
 //
 // Tries the exact title first, then falls back to a search for the best match.
-// Tap the title line to open the full article.
+// The article's picture shows under its title; tap the title to open the full article.
 
 const LANG = "en"; // change for another language edition, e.g. "de", "hi"
 const MAX_CHARS = 600;
@@ -30,6 +30,14 @@ async function search(query) {
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const titles = JSON.parse(r.body)[1] || [];
   return titles.length > 0 ? titles[0] : null;
+}
+
+// The article's picture, about as wide as the log: the original when it's small enough (and not an
+// SVG, which Android can't decode), otherwise Wikimedia's 960px thumbnail.
+function picture(p) {
+  const orig = p.originalimage;
+  if (orig && orig.source && orig.width <= 960 && !/\.svg(\?|$)/i.test(orig.source)) return orig.source;
+  return p.thumbnail && p.thumbnail.source ? p.thumbnail.source.replace(/\/\d+px-/, "/960px-") : null;
 }
 
 let page;
@@ -54,7 +62,10 @@ const link =
   (page.content_urls && page.content_urls.mobile && page.content_urls.mobile.page) ||
   `${base}/wiki/${encodeURIComponent(page.title.replace(/ /g, "_"))}`;
 
-log(page.title + (page.description ? ` — ${page.description}` : ""), { url: link, copy: link });
+const titleCtx = { url: link, copy: link };
+const img = picture(page);
+if (img) titleCtx.image = img;
+log(page.title + (page.description ? ` — ${page.description}` : ""), titleCtx);
 
 let extract = (page.extract || "").trim();
 if (extract.length > MAX_CHARS) extract = extract.slice(0, MAX_CHARS).replace(/\s+\S*$/, "") + "…";
