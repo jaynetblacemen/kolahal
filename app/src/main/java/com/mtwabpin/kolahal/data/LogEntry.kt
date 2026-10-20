@@ -50,6 +50,8 @@ data class LogContext(val values: Map<String, String> = emptyMap()) {
         const val SCRIPT = "script"
         const val COPY = "copy"
         const val COMMAND = "command"
+        /** A notification's saved status-bar icon ([com.mtwabpin.kolahal.notifications.NotifIcons] key), shown instead of the app name. */
+        const val ICON = "icon"
         /** An image URL a script attached: it shows under the line, as wide as the log. */
         const val IMAGE = "image"
         /** A command that runs immediately when the line is tapped (setup checklist, hints). */

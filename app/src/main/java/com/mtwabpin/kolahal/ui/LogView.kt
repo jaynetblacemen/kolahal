@@ -1,6 +1,19 @@
 package com.mtwabpin.kolahal.ui
 
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.unit.em
+import com.mtwabpin.kolahal.notifications.NotifIcons
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -144,6 +157,10 @@ fun LogLine(
     val desc = entry.ctx.values[LogContext.DESC]
     val isGrid = entry.ctx.values[LogContext.APPS] != null
     val image = entry.ctx.image
+    // A notification line's saved status-bar icon replaces its app name at the end.
+    val context = LocalContext.current
+    val iconKey = entry.ctx.values[LogContext.ICON]?.takeIf { entry.kind == LogKind.SCRIPT && NotifIcons.has(context, it) }
+    val inline = remember(iconKey) { iconKey?.let(::notifIconContent) ?: emptyMap() }
 
     // Lines that do something get a larger touch target than plain output.
     val actionable = entry.kind == LogKind.COMMAND || entry.ctx.values.keys.any { it in ACTIONABLE_KEYS }
@@ -218,10 +235,10 @@ fun LogLine(
                 isGrid -> AppGrid(remember(entry.id, entry.ctx) { apps(entry) }, onAppTap, onAppLongPress)
                 desc != null -> TwoColumns(entry, desc)
                 else -> {
-                    val text = remember(entry, Term.palette, charWidth, row.unread) { renderLine(entry, charWidth, row.unread) }
-                    if (image == null) Text(text, style = Term.mono)
+                    val text = remember(entry, Term.palette, charWidth, row.unread, iconKey) { renderLine(entry, charWidth, row.unread, iconKey != null) }
+                    if (image == null) Text(text, style = Term.mono, inlineContent = inline)
                     else Column {
-                        if (entry.text.isNotEmpty()) Text(text, style = Term.mono)
+                        if (entry.text.isNotEmpty()) Text(text, style = Term.mono, inlineContent = inline)
                         LogImage(image, Modifier.padding(vertical = 4.dp))
                     }
                 }
@@ -322,7 +339,24 @@ private fun androidx.compose.ui.text.AnnotatedString.Builder.appendTagged(text: 
  * Styles one log line. Wrapped continuation lines are indented past the prefix (`$ `, `[hn] `) so
  * each item reads as one block; [charWidth] is the monospace advance.
  */
-private fun renderLine(entry: LogEntry, charWidth: TextUnit, unread: Boolean) = buildAnnotatedString {
+private const val NOTIF_ICON = "notif-icon"
+
+/** The status-bar icon at the end of a notification line, tinted like the muted name it replaces. */
+private fun notifIconContent(key: String) = mapOf(
+    NOTIF_ICON to InlineTextContent(Placeholder(1.15.em, 1.15.em, PlaceholderVerticalAlign.TextCenter)) { NotifIcon(key) },
+)
+
+@Composable
+private fun NotifIcon(key: String) {
+    val context = LocalContext.current
+    val icon by produceState(NotifIcons.cached(key), key) {
+        if (value == null) value = withContext(Dispatchers.IO) { NotifIcons.load(context.applicationContext, key) }
+    }
+    icon?.let { Image(it, contentDescription = null, colorFilter = ColorFilter.tint(Term.dim), modifier = Modifier.fillMaxSize()) }
+}
+
+/** [icon]: end a script line with its notification icon instead of `· app`. */
+private fun renderLine(entry: LogEntry, charWidth: TextUnit, unread: Boolean, icon: Boolean = false) = buildAnnotatedString {
     val prefixLen = when (entry.kind) {
         LogKind.COMMAND -> 2
         LogKind.SCRIPT -> if (unread) 2 else 0
@@ -348,7 +382,17 @@ private fun renderLine(entry: LogEntry, charWidth: TextUnit, unread: Boolean) = 
                 withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.script)) { append(entry.text) }
                 // The source goes at the end, muted, like other indicators (`… machine. · wikipedia`),
                 // so wrapped lines use the full width. A no-break space keeps the dot with the name.
-                entry.source?.let { withStyle(SpanStyle(color = Term.dim)) { append(" ·\u00A0$it") } }
+                entry.source?.let { src ->
+                    withStyle(SpanStyle(color = Term.dim)) {
+                        // A notification's icon reads as the app's name to screen readers, and stays with the last word.
+                        if (icon) {
+                            append("\u00A0")
+                            appendInlineContent(NOTIF_ICON, src)
+                        } else {
+                            append(" ·\u00A0$src")
+                        }
+                    }
+                }
             }
             LogKind.OUTPUT -> {
                 val first = entry.text.substringBefore('\n')

@@ -301,7 +301,7 @@ class HostApi(
         const val ACTION_RUN_COMMAND = "com.mtwabpin.kolahal.RUN_COMMAND"
         const val EXTRA_COMMAND = "command"
         private val RESERVED_CTX = setOf(
-            LogContext.RUN, LogContext.COMMAND, LogContext.SCRIPT, LogContext.LINE, LogContext.APPS,
+            LogContext.ICON, LogContext.RUN, LogContext.COMMAND, LogContext.SCRIPT, LogContext.LINE, LogContext.APPS,
             LogContext.RUN_HEADER, LogContext.DESC, LogContext.PKG, LogContext.CLS, LogContext.USER,
             // Tap / long-press actions: a script must not be able to forge a dial, a live
             // notification's PendingIntent, a shortcut or delete buttons for the user's data.

@@ -19,6 +19,8 @@ data class Notif(
     val hasIntent: Boolean,
     /** Dismissed by the user or cancelled by the app; kept in the feed until it ages out. */
     val removed: Boolean = false,
+    /** Its status-bar icon's [NotifIcons] key (saved in the background), or null. */
+    val icon: String? = null,
 ) {
     val line: String get() = NotifFormat.line(title, text)
 }

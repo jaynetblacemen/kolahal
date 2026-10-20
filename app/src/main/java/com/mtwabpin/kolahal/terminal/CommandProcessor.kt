@@ -756,6 +756,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                         LogContext.of(
                             LogContext.PKG to n.pkg, LogContext.USER to n.userSerial.toString(), LogContext.COPY to n.line,
                             com.mtwabpin.kolahal.notifications.KolahalNotificationListener.CTX_KEY to n.key,
+                            LogContext.ICON to n.icon,
                         ),
                     )
                 }

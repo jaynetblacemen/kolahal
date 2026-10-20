@@ -32,7 +32,9 @@ class KolahalNotificationListener : NotificationListenerService() {
     override fun onListenerConnected() {
         instance = WeakReference(this)
         val active = runCatching { activeNotifications }.getOrNull().orEmpty()
-        NotificationStore.replaceAll(active.filter(::accept).map { toNotif(it) to it.notification.contentIntent })
+        val accepted = active.filter(::accept).map { it to toNotif(it) }
+        NotificationStore.replaceAll(accepted.map { (sbn, n) -> n to sbn.notification.contentIntent })
+        scope.launch { accepted.forEach { (sbn, n) -> saveIcon(n, sbn) } }
         mirror()
     }
 
@@ -80,7 +82,8 @@ class KolahalNotificationListener : NotificationListenerService() {
                 indeterminate = extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false),
             )
         ) return
-        maybeLog(n)
+        // The line is written once its icon is saved, so it never shows the app name first.
+        maybeLog(n, scope.launch { saveIcon(n, sbn) })
         com.mtwabpin.kolahal.script.TriggerDispatcher.get(this).fire(
             "notification",
             mapOf("app" to n.app, "pkg" to n.pkg, "title" to n.title, "text" to n.text, "time" to n.postTime),
@@ -120,7 +123,13 @@ class KolahalNotificationListener : NotificationListenerService() {
                 ?: extras.getCharSequence(Notification.EXTRA_TEXT))?.toString(),
             postTime = sbn.postTime,
             hasIntent = sbn.notification.contentIntent != null,
+            icon = NotifIcons.key(this, sbn.packageName, sbn.notification.smallIcon),
         )
+    }
+
+    private fun saveIcon(n: Notif, sbn: StatusBarNotification) {
+        val key = n.icon ?: return
+        runCatching { NotifIcons.save(this, key, sbn.notification.smallIcon) }
     }
 
     private fun labelOf(pkg: String, serial: Long): String =
@@ -130,7 +139,7 @@ class KolahalNotificationListener : NotificationListenerService() {
                 packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, PackageManager.GET_META_DATA)).toString()
             }.getOrDefault(pkg)
 
-    private fun maybeLog(n: Notif) {
+    private fun maybeLog(n: Notif, iconSaved: kotlinx.coroutines.Job) {
         if (!NotifPrefs.get(this).shouldLog(n.pkg)) return
         val line = n.line
         if (line.isEmpty()) return
@@ -146,9 +155,13 @@ class KolahalNotificationListener : NotificationListenerService() {
             LogContext.USER to n.userSerial.takeIf { it >= 0 }?.toString(),
             LogContext.COPY to line,
             CTX_KEY to n.key,
+            LogContext.ICON to n.icon,
         )
         val repo = LogRepository.get(this)
-        scope.launch { runCatching { repo.add(LogKind.SCRIPT, line, n.app, ctx) } }
+        scope.launch {
+            iconSaved.join()
+            runCatching { repo.add(LogKind.SCRIPT, line, n.app, ctx) }
+        }
     }
 
     companion object {
