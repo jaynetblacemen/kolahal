@@ -61,10 +61,10 @@ notifications kept for scripts, stay on the phone. The file can still contain pr
 
 ## Single script files
 
-In the script manager (`scripts`), **Import .lua / .js files** picks one or more files from the file
-manager. The file name becomes the script name, and importing the same name again updates it.
-Imported scripts arrive switched off; turn one on with `script on <name>` after a look at it.
-**Export** on a script saves it as a file.
+In the script manager (`scripts`), the import button at the top (↑) picks one or more files from
+the file manager. The file name becomes the script name, and importing the same name again updates
+it. Imported scripts arrive switched off; turn one on with its switch or `script on <name>` after a
+look at it. **Export** in a script's sheet (tap the script) saves it as a file.
 
 ## Folder sync
 

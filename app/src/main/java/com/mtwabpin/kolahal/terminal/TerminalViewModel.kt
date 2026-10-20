@@ -228,6 +228,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     val editLine: StateFlow<Int?> = _editLine.asStateFlow()
 
     fun openEditorAt(script: Script, line: Int?) {
+        // Otherwise the screen underneath shows its last message again when the editor closes.
+        _notice.value = null
         _editLine.value = line
         _editing.value = script
     }
@@ -1217,6 +1219,10 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         val clean = name.trim().lowercase()
         if (!Regex("^[a-z0-9_-]{1,40}$").matches(clean)) {
             _notice.value = "names: lowercase letters, digits, - and _"
+            return
+        }
+        if (clean in CommandProcessor.COMMANDS.map { it.name }) {
+            _notice.value = "'$clean' is a built-in command, pick another name"
             return
         }
         io {

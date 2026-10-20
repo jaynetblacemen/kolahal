@@ -52,7 +52,9 @@ Intervals have Android's 15-minute minimum. An interval and daily times can be c
 timer turns a disabled script back on; `script off <name>` disables it without losing the timers.
 
 `script ls` shows every script with its timers, whether it is a command, notification state and the
-last run's result. The script manager shows the same, with buttons.
+last run's result. The script manager shows the same: <span class="k-new">new</span> one line per script
+(how it runs and when it last ran, red if that failed) with its on/off switch; tap a script for
+**Run**, **Edit**, **Export**, notifications, timers and **Delete**.
 
 The script's **return value** is printed into the log (tables and objects as JSON). Each run gets a
 `── name · 22:40 ──` header and the script's own colour. When a script fails, the error line is

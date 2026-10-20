@@ -106,11 +106,17 @@ private fun hostOf(url: String): String =
 
 private fun FeedInfo.displayTitle(): String = title?.takeIf { it.isNotBlank() } ?: hostOf(url)
 
-private fun relative(time: Long): String =
-    if (System.currentTimeMillis() - time < DateUtils.MINUTE_IN_MILLIS) "just now" else relativeSpan(time)
+/** "5 minutes ago"; [short] gives "5 min. ago" for one-line rows. */
+internal fun relative(time: Long, short: Boolean = false): String =
+    if (System.currentTimeMillis() - time < DateUtils.MINUTE_IN_MILLIS) "just now" else relativeSpan(time, short)
 
-private fun relativeSpan(time: Long): String =
-    DateUtils.getRelativeTimeSpanString(time, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS).toString()
+private fun relativeSpan(time: Long, short: Boolean = false): String =
+    DateUtils.getRelativeTimeSpanString(
+        time, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS,
+        // The three-argument form's flags, plus the short form when asked.
+        DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_YEAR or DateUtils.FORMAT_ABBREV_MONTH or
+            (if (short) DateUtils.FORMAT_ABBREV_RELATIVE else 0),
+    ).toString()
 
 /**
  * Feed manager (Material 3 Expressive): subscriptions with unread counts, per-feed settings in a
@@ -513,7 +519,7 @@ private fun FeedSheet(
 
 /** Full-width row (≥ 56dp) whose whole surface toggles the switch. */
 @Composable
-private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+internal fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Surface(
         onClick = { onChange(!checked) },
         shape = MaterialTheme.shapes.large,
@@ -530,20 +536,20 @@ private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChang
     }
 }
 
-/** Connected button group of interval presets; narrow padding so seven fit on a phone. */
+/** Connected button group of interval presets; narrow padding so seven or eight fit on a phone. */
 @Composable
-private fun IntervalGroup(selected: Int, onPick: (Int) -> Unit) {
+internal fun IntervalGroup(selected: Int, onPick: (Int) -> Unit, choices: List<Pair<Int, String>> = FEED_INTERVALS) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        FEED_INTERVALS.forEachIndexed { i, (minutes, label) ->
+        choices.forEachIndexed { i, (minutes, label) ->
             ToggleButton(
                 checked = minutes == selected,
                 onCheckedChange = { onPick(minutes) },
                 shapes = when (i) {
                     0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                    FEED_INTERVALS.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    choices.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                     else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                 },
                 contentPadding = PaddingValues(horizontal = 2.dp),

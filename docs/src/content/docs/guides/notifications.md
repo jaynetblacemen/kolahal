@@ -46,7 +46,7 @@ Allow posting with `notifications` (on Android 13+ this asks for the permission;
 opens Kolahal's notification settings; `notifications settings` always opens them).
 
 - A script posts with [`notify(title, body, ctx)`](/scripting/api/#notifytitle-body-ctx), but
-  only if notifications are on for that script: `script notify <name> on`, or the switch in the
-  script manager.
+  only if notifications are on for that script: `script notify <name> on`, or the switch in its
+  sheet in the script manager.
 - A feed with notifications on (`feed notify <id> on`) posts one notification per fetch that found
   new items. See [Feeds](/guides/feeds/).

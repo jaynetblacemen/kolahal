@@ -1122,6 +1122,14 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 val lib = ScriptLibrary(context)
                 val entry = lib.entries.firstOrNull { it.name == target?.lowercase()?.substringBefore('.') }
                     ?: return error("No library script '${target.orEmpty()}' — 'script lib' lists them")
+                // Updating an unedited copy is safe; a copy with your changes (or your own script of
+                // that name) is only replaced when asked.
+                if ("--replace" !in args && lib.state(entry, scripts.all()) == ScriptLibrary.State.MODIFIED) {
+                    return error(
+                        "Your ${entry.name}.${entry.lang.ext} differs from the library's: " +
+                            "'script install ${entry.name} --replace' replaces it (export it first to keep a copy)"
+                    )
+                }
                 val s = lib.install(entry)
                 info("Installed ${s.name}.${s.lang.ext}" + (if (entry.command) " — run it as '${s.name}'" else "") +
                     (if (s.intervalMin > 0) " · every ${formatInterval(s.intervalMin)}" else ""), scriptCtx(s))

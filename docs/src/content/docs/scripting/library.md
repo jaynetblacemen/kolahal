@@ -4,7 +4,7 @@ description: The 15 ready-made Lua and JavaScript scripts bundled with Kolahal.
 ---
 
 Kolahal ships 15 scripts you can install with one tap in the script manager's **Library**
-section, or from the prompt:
+section (installed ones move up to your scripts), or from the prompt:
 
 ```sh
 script lib                 # list them, with ✓ for installed ones
@@ -14,7 +14,10 @@ script install weather     # install (or update) one
 Installing sets the script's suggested timers and notification flag. They are only suggestions:
 change them with `script every`, `script at` and `script notify`, or in the script manager. After
 an app update, `script lib` shows **(update available)** for scripts you haven't edited and
-**(edited)** for ones you have; installing again replaces your copy with the bundled one.
+**(edited)** for ones you have. Installing again updates a copy you haven't edited.
+<span class="k-new">new</span> A copy you edited, or your own script with the same name, is only replaced
+when you ask: `script install weather --replace`, or **Replace with library version** in its sheet
+in the script manager. Export it first to keep your version.
 
 None of the network scripts need an API key.
 
