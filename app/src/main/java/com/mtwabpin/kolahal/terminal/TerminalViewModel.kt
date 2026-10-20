@@ -335,8 +335,12 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         input = value
         // Only while typing forward at the end, so backspacing or editing mid-line never fires it.
         // One character at a time (or IME composition): a paste of a whole word is not "typing".
+        // A line with arguments may also end in a word the keyboard commits whole, space and all
+        // (`torch on `); only a line with nothing left to choose runs then.
         val typed = value.text.length - old.length == 1 || value.composition != null
-        if (typed && value.text.length > old.length && value.selection.collapsed && value.selection.end == value.text.length) {
+        if (value.text.length > old.length && value.selection.collapsed && value.selection.end == value.text.length &&
+            (typed || value.text.trim().contains(' '))
+        ) {
             instantRun(value.text)
         }
     }
@@ -438,9 +442,15 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun complete() {
         val first = suggestions(input.text).firstOrNull() ?: return
         when (first) {
-            is Suggestion.Completion -> setText(first.replacement)
+            is Suggestion.Completion -> pickCompletion(first.replacement)
             is Suggestion.App -> setText(first.app.label)
         }
+    }
+
+    /** A completion fills the prompt; in `launch.instant all` a line it leaves with nothing to choose runs (`torch on`). */
+    private fun pickCompletion(replacement: String) {
+        setText(replacement)
+        if (replacement.trim().contains(' ')) instantRun(replacement)
     }
 
     fun onSuggestion(s: Suggestion) {
@@ -449,7 +459,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                 setText("")
                 io { processor.launch(s.app) }
             }
-            is Suggestion.Completion -> setText(s.replacement)
+            is Suggestion.Completion -> pickCompletion(s.replacement)
         }
     }
 
