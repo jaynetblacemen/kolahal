@@ -75,9 +75,13 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
                 line?.let { put(LogContext.LINE, it.toString()) }
             }
             logs.add(LogKind.ERROR, "$name: $msg" + (line?.let { " (tap to edit line $it)" } ?: ""), name, errorCtx + extra)
-            "error: $msg"
+            "error: $msg" + (line?.let { " (line $it)" } ?: "")
         }
-        script?.let { scripts.recordRun(it.id, status) }
+        script?.let {
+            scripts.recordRun(it.id, status)
+            // The run's lines went out before its result was stored; without this, home could show the previous run.
+            logs.touch()
+        }
         if (host.notifyBlocked) reportBlockedNotifications(ctx, logs, name)
         logs.trim()
         return Result.success()

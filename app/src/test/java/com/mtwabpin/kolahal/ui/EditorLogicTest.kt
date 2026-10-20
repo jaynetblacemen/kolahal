@@ -164,4 +164,20 @@ class EditorLogicTest {
         assertEquals(5, EditorLogic.lineStart(t, 3))
         assertEquals(t.length, EditorLogic.lineStart(t, 9))
     }
+
+    @Test fun runResultReadsTheRecordedStatus() {
+        assertEquals(EditorLogic.RunResult("Ran in 812ms · its output is in the log", failed = false), EditorLogic.runResult("ok in 812ms", 60))
+        assertEquals(EditorLogic.RunResult("Stopped after 60s (the time limit)", failed = true), EditorLogic.runResult("timeout", 60))
+        assertEquals(
+            EditorLogic.RunResult("Line 7: attempt to call a nil value · tap to go there", failed = true, line = 7),
+            EditorLogic.runResult("error: attempt to call a nil value (line 7)", 60),
+        )
+        assertEquals(
+            EditorLogic.RunResult("Line 13: attempt to perform arithmetic on a nil value · tap to go there", failed = true, line = 13),
+            EditorLogic.runResult("error: etest:13: attempt to perform arithmetic on a nil value (line 13)", 60),
+        )
+        assertEquals(EditorLogic.RunResult("Error: boom", failed = true), EditorLogic.runResult("error: boom", 60))
+        // A status recorded before lines were kept, or one whose message mentions a line itself.
+        assertEquals(EditorLogic.RunResult("Error: x (line 2) y", failed = true), EditorLogic.runResult("error: x (line 2) y", 60))
+    }
 }

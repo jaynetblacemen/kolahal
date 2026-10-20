@@ -1001,11 +1001,17 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     // ---- script editor --------------------------------------------------------------------
 
-    fun saveScript(script: Script, code: String) {
+    /** Saves the editor's text; [onDone] gets null once it is written, or what went wrong. */
+    fun saveScript(script: Script, code: String, onDone: (Throwable?) -> Unit = {}) {
         _editing.value = script.copy(code = code)
-        io {
-            scripts.saveCode(script.id, code)
-            refreshScriptCaches()
+        viewModelScope.launch {
+            val failure = withContext(serialIo) {
+                runCatching {
+                    scripts.saveCode(script.id, code)
+                    refreshScriptCaches()
+                }.exceptionOrNull()
+            }
+            onDone(failure)
         }
     }
 
@@ -1120,9 +1126,16 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         }
     }
 
-    fun closeEditor() {
+    /** Closes the editor; [unsaved] (its text, when it had changes) is saved first and reported where you land. */
+    fun closeEditor(unsaved: String? = null) {
+        val script = _editing.value
         _editLine.value = null
         _editing.value = null
+        if (script != null && unsaved != null) io {
+            scripts.saveCode(script.id, unsaved)
+            refreshScriptCaches()
+            notice("Saved ${script.name}.${script.lang.ext}")
+        }
     }
 
     // ---- GUI screens (settings, script manager) ------------------------------------------

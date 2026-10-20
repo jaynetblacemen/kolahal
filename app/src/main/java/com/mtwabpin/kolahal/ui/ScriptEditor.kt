@@ -85,6 +85,7 @@ import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.script.ApiDoc
 import com.mtwabpin.kolahal.script.ApiDocs
+import com.mtwabpin.kolahal.script.ScriptWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -97,14 +98,19 @@ import kotlinx.coroutines.withContext
  * F3 / Shift+F3 next/previous match, Ctrl+G go to line, Tab accepts the first suggestion,
  * Esc closes the find bar, then saves and closes the editor (as does Back).
  * When opened from an error, [jumpToLine] is selected and briefly highlighted.
+ * A message line above the symbol bar says what the last button did: saved, the run's result
+ * (from [lastRun] / [lastStatus]; a failing line is a tap away), replacements made.
+ * [onSave] reports back with null or the failure; [onClose] gets the text when it had unsaved changes.
  */
 @Composable
 fun ScriptEditor(
     script: Script,
     jumpToLine: Int?,
-    onSave: (String) -> Unit,
+    lastRun: Long?,
+    lastStatus: String?,
+    onSave: (String, (Throwable?) -> Unit) -> Unit,
     onRun: (String) -> Unit,
-    onClose: () -> Unit,
+    onClose: (unsaved: String?) -> Unit,
 ) {
     var value by rememberSaveable(script.id, stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue(script.code, selectionAtLine(script.code, jumpToLine)))
@@ -129,6 +135,33 @@ fun ScriptEditor(
 
     var gotoOpen by remember { mutableStateOf(false) }
     var referenceOpen by remember { mutableStateOf(false) }
+
+    // What the last button did; a run waits for its recorded result.
+    var message by remember(script.id) { mutableStateOf<EditorMessage?>(null) }
+    var runSince by remember(script.id) { mutableStateOf<Long?>(null) }
+    LaunchedEffect(message) {
+        val m = message ?: return@LaunchedEffect
+        when (m.kind) {
+            // Errors stay until the next message: they're read while fixing the code.
+            EditorMessage.Kind.ERROR -> Unit
+            // A run that never reports (the worker didn't start) stops waiting after the time limit.
+            EditorMessage.Kind.BUSY -> {
+                delay(ScriptWorker.TIMEOUT_MS + 15_000)
+                if (message === m) { message = null; runSince = null }
+            }
+            else -> {
+                delay(3_000)
+                if (message === m) message = null
+            }
+        }
+    }
+    LaunchedEffect(lastRun, lastStatus) {
+        val since = runSince ?: return@LaunchedEffect
+        if (lastRun == null || lastRun < since) return@LaunchedEffect
+        runSince = null
+        val r = EditorLogic.runResult(lastStatus, ScriptWorker.TIMEOUT_MS / 1000)
+        message = EditorMessage(r.text, if (r.failed) EditorMessage.Kind.ERROR else EditorMessage.Kind.OK, r.line)
+    }
 
     // Scrolling to a match / line
     val scope = rememberCoroutineScope()
@@ -156,20 +189,33 @@ fun ScriptEditor(
         }
     }
 
-    fun save() {
-        if (!dirty) return
-        onSave(value.text)
-        saved = value.text
+    /** [quiet]: leaving the app saves without a message. */
+    fun save(quiet: Boolean = false) {
+        if (!dirty) {
+            if (!quiet) message = EditorMessage("No changes to save", EditorMessage.Kind.INFO)
+            return
+        }
+        val text = value.text
+        onSave(text) { failure ->
+            if (failure == null) {
+                saved = text
+                if (!quiet) message = EditorMessage("Saved", EditorMessage.Kind.OK)
+            } else {
+                message = EditorMessage("Couldn't save: ${failure.message ?: failure.javaClass.simpleName}", EditorMessage.Kind.ERROR)
+            }
+        }
     }
 
     fun run() {
+        // Running saves the text first.
         saved = value.text
+        runSince = System.currentTimeMillis()
+        message = EditorMessage("Saved · running…", EditorMessage.Kind.BUSY)
         onRun(value.text)
     }
 
     fun close() {
-        save()
-        onClose()
+        onClose(value.text.takeIf { dirty })
     }
 
     fun edit(new: TextFieldValue) {
@@ -256,10 +302,14 @@ fun ScriptEditor(
         val q = query.text
         if (q.isEmpty()) return
         val (newText, n) = EditorLogic.replaceAll(value.text, q, replacement.text, ignoreCase)
-        if (n == 0) return
+        if (n == 0) {
+            message = EditorMessage("No matches to replace", EditorMessage.Kind.INFO)
+            return
+        }
         history.checkpoint()
         edit(TextFieldValue(newText, TextRange(value.selection.min.coerceAtMost(newText.length))))
         history.checkpoint()
+        message = EditorMessage("Replaced $n", EditorMessage.Kind.OK)
     }
 
     // Matches are found off the main thread, debounced while typing.
@@ -323,7 +373,7 @@ fun ScriptEditor(
     BackHandler { close() }
     BackHandler(enabled = findOpen) { closeFind() }
     // Leaving the app (or the process being killed in the background) must not lose edits.
-    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { save() }
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { save(quiet = true) }
     LaunchedEffect(script.id) { runCatching { focus.requestFocus() } }
     LaunchedEffect(flashLine) {
         if (flashLine != null) {
@@ -482,7 +532,29 @@ fun ScriptEditor(
                 }
             }
         }
-        if (inlineDoc != null) {
+        val shown = message
+        if (shown != null) {
+            Text(
+                shown.text,
+                style = Term.mono.copy(
+                    color = when (shown.kind) {
+                        EditorMessage.Kind.OK -> Term.prompt
+                        EditorMessage.Kind.ERROR -> Term.error
+                        EditorMessage.Kind.BUSY -> Term.fg
+                        EditorMessage.Kind.INFO -> Term.dim
+                    },
+                ),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Term.surface)
+                    // A failing line: go there. Anything else: tap to dismiss.
+                    .clickable { if (shown.line != null) gotoLine(shown.line) else message = null }
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                    .testTag("message"),
+            )
+        } else if (inlineDoc != null) {
             Text(
                 "${inlineDoc.signature}  ${inlineDoc.doc}",
                 style = Term.mono.copy(color = Term.dim, fontSize = Term.mono.fontSize * 0.85f),
@@ -524,6 +596,9 @@ fun ScriptEditor(
             }
         }
         val symbols = listOf("↶", "↷", "  ", "(", ")", "{", "}", "[", "]", "\"", "'", "=", ".", ",", ":", ";", "#", "-", "~", "<", ">", "Ln")
+        // Read here, not inside the row's items, so a change re-dims the arrows.
+        val canUndo = history.canUndo
+        val canRedo = history.canRedo
         LazyRow(Modifier.fillMaxWidth().background(Term.surface)) {
             items(symbols) { s ->
                 Box(
@@ -541,7 +616,8 @@ fun ScriptEditor(
                         }
                         .padding(horizontal = 12.dp),
                 ) {
-                    Text(if (s == "  ") "⇥" else s, style = Term.mono.copy(fontWeight = FontWeight.Bold))
+                    val idle = (s == "↶" && !canUndo) || (s == "↷" && !canRedo)
+                    Text(if (s == "  ") "⇥" else s, style = Term.mono.copy(color = if (idle) Term.dim else Term.fg, fontWeight = FontWeight.Bold))
                 }
             }
         }
@@ -769,6 +845,11 @@ private fun ApiReferenceSheet(lang: ScriptLang, onDismiss: () -> Unit, onPick: (
 private fun selectionAtLine(text: String, line: Int?): TextRange =
     if (line == null || line < 1) TextRange(text.length) else TextRange(EditorLogic.lineStart(text, line))
 
+/** One line of feedback above the symbol bar; [line] makes it a jump to that line. */
+private class EditorMessage(val text: String, val kind: Kind, val line: Int? = null) {
+    enum class Kind { INFO, OK, BUSY, ERROR }
+}
+
 /** Snapshot-based undo: a new step after a pause in typing or at a newline. */
 private class UndoHistory(initial: String) {
     private val undo = ArrayDeque<String>().apply { addLast(initial) }
@@ -792,6 +873,9 @@ private class UndoHistory(initial: String) {
     fun checkpoint() {
         lastRecord = 0
     }
+
+    val canUndo get() = undo.size > 1
+    val canRedo get() = redo.isNotEmpty()
 
     fun undo(): String? {
         if (undo.size <= 1) return null

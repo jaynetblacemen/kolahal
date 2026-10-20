@@ -189,4 +189,23 @@ object EditorLogic {
         }
         return offset
     }
+
+    /** A finished run as the editor shows it: what happened, whether it failed, and the failing line. */
+    data class RunResult(val text: String, val failed: Boolean, val line: Int? = null)
+
+    private val LINE_SUFFIX = Regex(""" \(line (\d+)\)$""")
+
+    /** Reads a run's recorded status: `ok in 812ms`, `timeout`, or `error: <message> (line 7)`. */
+    fun runResult(status: String?, timeoutSeconds: Long): RunResult = when {
+        status == null -> RunResult("Ran · its output is in the log", failed = false)
+        status.startsWith("ok in ") -> RunResult("Ran in ${status.removePrefix("ok in ")} · its output is in the log", failed = false)
+        status == "timeout" -> RunResult("Stopped after ${timeoutSeconds}s (the time limit)", failed = true)
+        else -> {
+            val line = LINE_SUFFIX.find(status)?.groupValues?.get(1)?.toIntOrNull()
+            val message = status.removePrefix("error: ").replace(LINE_SUFFIX, "")
+            // Lua puts the place first (`etest:13: attempt to …`); the line is already said.
+            if (line != null) RunResult("Line $line: ${message.replace(Regex("""^\S+:$line:\s*"""), "")} · tap to go there", failed = true, line = line)
+            else RunResult("Error: $message", failed = true)
+        }
+    }
 }

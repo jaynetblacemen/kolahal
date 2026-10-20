@@ -267,6 +267,9 @@ class LogRepository private constructor(private val context: Context) {
     /** Another process changed more than the end of the log (a trim): reload the page. */
     fun onExternalRestructure() = restructured()
 
+    /** Has home look again without a new line: a script run's result was just recorded after its last line. */
+    fun touch() = changed()
+
     private fun changed(restructure: Boolean = false) {
         _version.value++
         // Other processes (scripts) tell home; home's own writes already bumped the version above.

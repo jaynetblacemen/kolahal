@@ -9,8 +9,13 @@ JavaScript, in the terminal theme.
 
 - The title shows `name.lua`, with `*` while there are unsaved changes.
 - **[save]**, **[run]** and **[close]** sit next to it. Run saves first.
+- <span class="k-new">new</span> A message line above the symbol bar says what a button did: **Saved** (or
+  **No changes to save**), **Saved · running…** and then the run's result (`Ran in 812ms · its
+  output is in the log`), how many **[all]** replaced. A failed run stays there, red, as
+  `Line 13: attempt to …`; tap it to go to that line. Tap any other message to dismiss it.
 - Opened from an error, the editor selects the failing line and highlights it for a few seconds.
 - Nothing is lost by leaving: closing, pressing Back and switching away from the app all save.
+  <span class="k-new">new</span> Closing with unsaved changes logs `Saved name.lua`.
 
 ## Symbol bar
 
@@ -20,7 +25,7 @@ Above the keyboard there's a row of keys that soft keyboards hide:
 ↶  ↷  ⇥  (  )  {  }  [  ]  "  '  =  .  ,  :  ;  #  -  ~  <  >
 ```
 
-`↶` / `↷` are undo and redo; `⇥` inserts two spaces.
+`↶` / `↷` are undo and redo, dimmed when there's nothing to undo or redo; `⇥` inserts two spaces.
 
 ## Keyboard shortcuts
 
