@@ -73,12 +73,17 @@ class PackageEvents private constructor(private val context: Context) {
         if (System.currentTimeMillis() >= settlingUntil) schedule(delayMs = 500, keepSooner = true)
     }
 
-    /** Installed apps, and the serials of paused profiles (whose apps are hidden, not gone). */
-    private fun current(): Pair<Map<String, Pkg>, Set<Long>> {
+    /**
+     * Installed apps, the serials of paused profiles (whose apps are hidden, not gone), and the
+     * serials of every profile the launcher can see, paused or not.
+     */
+    private fun current(): Triple<Map<String, Pkg>, Set<Long>, Set<Long>> {
         val out = HashMap<String, Pkg>()
         val paused = HashSet<Long>()
+        val present = HashSet<Long>()
         val me = android.os.Process.myUserHandle()
         for (user in launcherApps.profiles) {
+            present += userManager.getSerialNumberForUser(user)
             // Paused profiles report no apps; keep their last known state instead of "uninstalled".
             if (runCatching { userManager.isQuietModeEnabled(user) }.getOrDefault(false)) {
                 paused += userManager.getSerialNumberForUser(user)
@@ -107,7 +112,7 @@ class PackageEvents private constructor(private val context: Context) {
                 )
             }
         }
-        return out to paused
+        return Triple(out, paused, present)
     }
 
     private fun profileTag(user: UserHandle): String {
@@ -123,42 +128,26 @@ class PackageEvents private constructor(private val context: Context) {
 
     @Synchronized
     private fun diff() {
-        val (now, paused) = current()
+        val (now, paused, present) = current()
+        // Every profile, even the personal one, missing at once is a glitch, not a removal.
+        if (present.isEmpty()) return
         val before = load()
         if (before == null) {
             // First run: remember what is installed without logging every app as "installed".
             save(now)
+            saveSeen(serials(now.keys))
             return
         }
-        val logs = LogRepository.get(context)
-        val events = ArrayList<Triple<String, String, Pkg>>() // kind, key, pkg
-        val next = HashMap(now)
-        val t = System.currentTimeMillis()
-        for ((key, p) in now) {
-            val old = before[key]
-            when {
-                old == null -> events += Triple("installed", key, p)
-                // Gone a moment ago and back again: an uninstall + reinstall is one update.
-                old.removedAt > 0 -> events += Triple("updated", key, p)
-                old.code != p.code || old.version != p.version || old.updated != p.updated -> events += Triple("updated", key, p)
-            }
-        }
-        // Soonest moment a missing app has been gone for the whole grace period.
-        var nextCheck = Long.MAX_VALUE
-        for ((key, p) in before) {
-            if (key in now) continue
-            when {
-                // A paused / locked profile hides its apps: they are not uninstalled.
-                key.substringAfter('#').toLongOrNull() in paused -> next[key] = p
-                p.removedAt == 0L -> { next[key] = p.copy(removedAt = t); nextCheck = minOf(nextCheck, GRACE_MS) }
-                t - p.removedAt < GRACE_MS -> { next[key] = p; nextCheck = minOf(nextCheck, GRACE_MS - (t - p.removedAt)) }
-                else -> events += Triple("uninstalled", key, p)
-            }
-        }
-        save(next)
+        // Before profiles were tracked: the ones with apps in the snapshot.
+        val seen = loadSeen() ?: serials(before.keys)
+        val plan = plan(before, now, paused, present, seen, System.currentTimeMillis())
+        save(plan.next)
+        if (plan.seen != seen) saveSeen(plan.seen)
         // Check again once the grace period is over, so a real uninstall is still logged.
-        if (nextCheck != Long.MAX_VALUE) main.post { schedule(nextCheck + 500, keepSooner = true) }
+        plan.checkInMs?.let { main.post { schedule(it + 500, keepSooner = true) } }
+        val events = plan.events
         if (events.isEmpty()) return
+        val logs = LogRepository.get(context)
         val pending = events.map { (kind, key, p) ->
             val old = before[key]
             val tag = if (p.profile.isNotEmpty()) " [${p.profile}]" else ""
@@ -204,6 +193,11 @@ class PackageEvents private constructor(private val context: Context) {
         }.toMap()
     }
 
+    private fun loadSeen(): Set<Long>? =
+        (Json.parse(store.get(SEEN) ?: return null) as? List<*>)?.mapNotNull { (it as? Number)?.toLong() }?.toSet()
+
+    private fun saveSeen(serials: Set<Long>) = store.set(SEEN, Json.stringify(serials.sorted()))
+
     private fun save(map: Map<String, Pkg>) {
         store.set(SNAPSHOT, Json.stringify(map.mapValues { (_, p) ->
             mapOf("l" to p.label, "v" to p.version, "c" to p.code, "u" to p.updated, "p" to p.profile, "r" to p.removedAt)
@@ -217,7 +211,69 @@ class PackageEvents private constructor(private val context: Context) {
         private const val GRACE_MS = 20_000L
         private const val SNAPSHOT = "snapshot"
         private const val HISTORY = "history"
+        /** Serials of the profiles whose apps are in the snapshot. */
+        private const val SEEN = "profiles"
         private const val MAX_HISTORY = 200
+
+        private fun serial(key: String) = key.substringAfter('#').toLongOrNull()
+        private fun serials(keys: Collection<String>) = keys.mapNotNull(::serial).toSet()
+
+        /** What one comparison found: lines to log (kind, key, app), what to keep, and when to look again. */
+        internal data class Plan(
+            val events: List<Triple<String, String, Pkg>>,
+            val next: Map<String, Pkg>,
+            val seen: Set<Long>,
+            val checkInMs: Long?,
+        )
+
+        /**
+         * Compares the snapshot [before] with the apps installed [now]. [paused]: profiles that are
+         * off (their apps are hidden, not gone); [present]: every profile the launcher can see;
+         * [seen]: profiles already in the snapshot.
+         *
+         * A profile seen switched on for the first time (off when Kolahal first ran, a new work
+         * profile, a private space unlocked for the first time) goes into the snapshot without a
+         * line per app. A profile that is gone altogether (deleted, or a private space Kolahal can
+         * no longer see) is forgotten without uninstall lines, and is new again if it comes back.
+         */
+        internal fun plan(
+            before: Map<String, Pkg>,
+            now: Map<String, Pkg>,
+            paused: Set<Long>,
+            present: Set<Long>,
+            seen: Set<Long>,
+            t: Long,
+        ): Plan {
+            val fresh = serials(now.keys) - seen
+            val gone = serials(before.keys).filterTo(HashSet()) { it !in present }
+            val events = ArrayList<Triple<String, String, Pkg>>()
+            val next = HashMap(now)
+            for ((key, p) in now) {
+                val old = before[key]
+                when {
+                    old == null && serial(key) in fresh -> Unit
+                    old == null -> events += Triple("installed", key, p)
+                    // Gone a moment ago and back again: an uninstall + reinstall is one update.
+                    old.removedAt > 0 -> events += Triple("updated", key, p)
+                    old.code != p.code || old.version != p.version || old.updated != p.updated -> events += Triple("updated", key, p)
+                }
+            }
+            // Soonest moment a missing app has been gone for the whole grace period.
+            var nextCheck = Long.MAX_VALUE
+            for ((key, p) in before) {
+                if (key in now) continue
+                val s = serial(key)
+                when {
+                    s in gone -> Unit
+                    // A paused / locked profile hides its apps: they are not uninstalled.
+                    s in paused -> next[key] = p
+                    p.removedAt == 0L -> { next[key] = p.copy(removedAt = t); nextCheck = minOf(nextCheck, GRACE_MS) }
+                    t - p.removedAt < GRACE_MS -> { next[key] = p; nextCheck = minOf(nextCheck, GRACE_MS - (t - p.removedAt)) }
+                    else -> events += Triple("uninstalled", key, p)
+                }
+            }
+            return Plan(events, next, seen - gone + fresh, nextCheck.takeIf { it != Long.MAX_VALUE })
+        }
 
         @Volatile
         private var instance: PackageEvents? = null
