@@ -247,8 +247,13 @@ class FeedRepository private constructor(private val context: Context) {
         } finally {
             w.endTransaction()
         }
-        if (inserted.isNotEmpty()) changed()
-        return inserted.asReversed()
+        if (inserted.isEmpty()) return emptyList()
+        changed()
+        // Only what the prune kept counts as new: a "N new" line must not count dropped items.
+        val kept = w.rawQuery("SELECT id FROM items WHERE feed_id = ?", arrayOf(feedId.toString())).use { c ->
+            buildSet { while (c.moveToNext()) add(c.getLong(0)) }
+        }
+        return inserted.filter { it.id in kept }.asReversed()
     }
 
     internal data class NewItem(

@@ -65,7 +65,7 @@ class FeedUrlTest {
         assertEquals("https://example.com/", FeedUrl.normalize("example.com"))
         assertEquals("https://example.com/feed.xml", FeedUrl.normalize("  HTTPS://Example.COM:443/feed.xml#top "))
         assertEquals("http://example.com:8080/rss?x=1", FeedUrl.normalize("http://example.com:8080/rss?x=1"))
-        assertEquals("http://example.com/rss", FeedUrl.normalize("feed://example.com/rss"))
+        assertEquals("https://example.com/rss", FeedUrl.normalize("feed://example.com/rss"))
         assertEquals("https://example.com/rss", FeedUrl.normalize("feed:https://example.com/rss"))
         assertEquals("https://example.com/Path", FeedUrl.normalize("https://example.com/Path"))
     }

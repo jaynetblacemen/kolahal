@@ -13,7 +13,7 @@ object FeedUrl {
         var s = raw.trim()
         if (s.isEmpty() || s.any { it.isWhitespace() }) return null
         when {
-            s.startsWith("feed://", ignoreCase = true) -> s = "http://" + s.substring(7)
+            s.startsWith("feed://", ignoreCase = true) -> s = "https://" + s.substring(7)
             s.startsWith("feed:", ignoreCase = true) -> s = s.substring(5) // feed:https://...
         }
         if (!s.contains("://")) s = "https://$s"

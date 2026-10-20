@@ -7,6 +7,8 @@ import com.dokar.quickjs.binding.define
 import com.dokar.quickjs.binding.function
 import com.dokar.quickjs.binding.toJsObject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 
 /**
@@ -108,7 +110,10 @@ class JsEngine : ScriptEngine {
         }
     }
 
-    private suspend fun <T> io(block: () -> T): T = withContext(Dispatchers.IO) { block() }
+    /** Network calls in flight for this run: `Promise.all` over hundreds of requests waits its turn. */
+    private val httpSlots = Semaphore(4)
+
+    private suspend fun <T> io(block: () -> T): T = httpSlots.withPermit { withContext(Dispatchers.IO) { block() } }
 
     private fun Array<Any?>.str(i: Int): String? = getOrNull(i)?.let { if (it is String) it else render(it) }
 

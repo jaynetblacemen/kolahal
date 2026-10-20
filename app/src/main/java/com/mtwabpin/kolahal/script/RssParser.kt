@@ -27,6 +27,9 @@ object RssParser {
 
     private const val SUMMARY_MAX = 280
 
+    /** Items read from one feed; the rest of a huge feed isn't parsed (feeds list newest first). */
+    const val MAX_ITEMS = 300
+
     fun parse(xml: String): Feed {
         val parser = Xml.newPullParser().apply {
             setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
@@ -81,6 +84,7 @@ object RssParser {
                         date = date,
                         summary = summary,
                     )
+                    if (items.size >= MAX_ITEMS) break
                 }
             }
             event = parser.next()

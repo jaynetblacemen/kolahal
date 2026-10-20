@@ -31,11 +31,14 @@ object ReminderScheduler {
         val pi = pending(context, r.id) ?: return
         // A time that passed while the phone was off fires right away.
         val at = r.at.coerceAtLeast(System.currentTimeMillis() + 1_000)
-        if (canBeExact(context)) {
-            runCatching { am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi) }
-                .onFailure { am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi) }
-        } else {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
+        // Android refuses an app's 500th alarm: a failure here must not stop the others.
+        runCatching {
+            if (canBeExact(context)) {
+                runCatching { am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi) }
+                    .onFailure { am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi) }
+            } else {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
+            }
         }
     }
 
@@ -46,9 +49,13 @@ object ReminderScheduler {
     }
 
     /** App start and boot: alarms don't survive a reboot (or a force stop). */
+    /** Alarms for the earliest [MAX_ALARMS] reminders; each one fired makes room for the next. */
     fun rescheduleAll(context: Context) {
-        ReminderStore.get(context).all().forEach { schedule(context, it) }
+        ReminderStore.get(context).all().sortedBy { it.at }.take(MAX_ALARMS).forEach { schedule(context, it) }
     }
+
+    /** Well under Android's limit of 500 alarms per app. */
+    const val MAX_ALARMS = 400
 }
 
 /** Fires one reminder: notification plus a log line, then the reminder is gone. */
@@ -62,6 +69,8 @@ class ReminderReceiver : BroadcastReceiver() {
                 val store = ReminderStore.get(context)
                 val r = store.byId(id) ?: return@Thread // cancelled meanwhile
                 store.remove(id)
+                // More reminders than alarms: the next one waiting gets its alarm now.
+                if (store.all().size >= ReminderScheduler.MAX_ALARMS) ReminderScheduler.rescheduleAll(context)
                 Notifier.postReminder(context, id, r.text)
                 LogRepository.get(context).add(
                     LogKind.SCRIPT, "reminder: ${r.text}", "remind",

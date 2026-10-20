@@ -43,6 +43,13 @@ object LogImages {
     private const val DISK_BYTES = 50L * 1024 * 1024
     /** A very tall image (a long infographic) is decoded smaller rather than taking 100 MB. */
     private const val MAX_PIXELS = 4_000_000f
+    /** Larger sources (by their header) aren't decoded at all. */
+    private const val MAX_SOURCE_PIXELS = 50_000_000f
+    private val locks = java.util.concurrent.ConcurrentHashMap<String, Any>()
+
+    /** At most two pictures load at a time, so a page of them can't use every IO thread. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val loader = Dispatchers.IO.limitedParallelism(2)
 
     private val memory = object : LruCache<String, ImageBitmap>(24 * 1024 * 1024) {
         override fun sizeOf(key: String, value: ImageBitmap) = value.width * value.height * 4
@@ -53,11 +60,24 @@ object LogImages {
     /** [url]'s image at most [widthPx] wide (smaller ones aren't scaled up here), or null if it can't be had. */
     fun load(context: Context, url: String, widthPx: Int): ImageBitmap? {
         cached(url, widthPx)?.let { return it }
+        // Several lines showing the same picture: one download and one decode, the rest wait for it.
+        val key = "$url@$widthPx"
+        val lock = locks.getOrPut(key) { Any() }
+        try {
+            synchronized(lock) { return cached(url, widthPx) ?: decode(context, url, widthPx) }
+        } finally {
+            locks.remove(key)
+        }
+    }
+
+    private fun decode(context: Context, url: String, widthPx: Int): ImageBitmap? {
         val file = file(context, url) ?: return null
         val image = runCatching {
             ImageDecoder.decodeBitmap(ImageDecoder.createSource(file)) { decoder, info, _ ->
                 val w = info.size.width.toFloat()
                 val h = info.size.height.toFloat()
+                // A small file can claim enormous dimensions: not worth decoding at any scale.
+                if (w * h > MAX_SOURCE_PIXELS) throw java.io.IOException("image too large (${info.size.width}×${info.size.height})")
                 var scale = min(1f, widthPx / w)
                 if (w * h * scale * scale > MAX_PIXELS) scale = sqrt(MAX_PIXELS / (w * h))
                 decoder.setTargetSize((w * scale).roundToInt().coerceAtLeast(1), (h * scale).roundToInt().coerceAtLeast(1))
@@ -84,7 +104,8 @@ object LogImages {
         val httpUrl = url.toHttpUrlOrNull() ?: return null
         val tmp = File(dir, "$name.${System.nanoTime()}.part")
         val ok = runCatching {
-            val request = okhttp3.Request.Builder().url(httpUrl).header("User-Agent", Net.USER_AGENT).build()
+            // A picture a script names is drawn by home: never from this phone or the local network.
+            val request = Net.reach(okhttp3.Request.Builder(), Net.Reach.PUBLIC).url(httpUrl).header("User-Agent", Net.USER_AGENT).build()
             Net.client.newCall(request).execute().use { resp ->
                 resp.isSuccessful && resp.body.contentLength() <= MAX_BYTES &&
                     resp.body.byteStream().use { input -> tmp.outputStream().use { out -> copyLimited(input, out) } }
@@ -137,7 +158,7 @@ fun LogImage(url: String, modifier: Modifier = Modifier) {
         // null while loading; Result.failure once it can't be had.
         val state by produceState<Result<ImageBitmap>?>(LogImages.cached(url, widthPx)?.let { Result.success(it) }, url, widthPx) {
             if (value == null) {
-                value = withContext(Dispatchers.IO) { LogImages.load(context.applicationContext, url, widthPx) }
+                value = withContext(LogImages.loader) { LogImages.load(context.applicationContext, url, widthPx) }
                     ?.let { Result.success(it) } ?: Result.failure(IllegalStateException())
             }
         }

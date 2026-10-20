@@ -148,7 +148,10 @@ status((b.charging and "charging " or "on battery ") .. tostring(b.level) .. "%"
 
 Scripts run in a separate `:script` process, so a crashing engine can't take down the home screen.
 
-- **60 seconds** per run, and a **64 MB** memory cap.
+- **60 seconds** per run, and a **64 MB** memory cap. <span class="k-new">new</span> In Lua, `string.rep`
+  refuses results over 16 MB, and a run whose memory grows past 256 MB between checks is stopped
+  (the script process is restarted).
+- At most **500 log lines** per run; past that one line says the rest weren't logged.
 - **Lua**: a fresh state per run. `java`, `io`, `package`, `require`, `debug`, `dofile`, `loadfile`
   and process-level `os` functions are removed (`os.time`, `os.date`, `os.clock`, `os.difftime`
   remain), and only text chunks can be loaded. The timeout and memory cap are enforced by an

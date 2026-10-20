@@ -63,8 +63,17 @@ class HostApi(
     private val pending = ArrayList<LogRepository.Pending>()
     private var lastFlush = System.currentTimeMillis()
 
+    /** Lines this run has logged; past [MAX_LINES_PER_RUN] the rest are dropped with one note. */
+    private var lines = 0
+
     private fun buffer(kind: LogKind, text: String, ctx: LogContext) {
         synchronized(pending) {
+            if (++lines > MAX_LINES_PER_RUN) {
+                if (lines == MAX_LINES_PER_RUN + 1) {
+                    pending += LogRepository.Pending(LogKind.INFO, "More than $MAX_LINES_PER_RUN lines in one run: the rest aren't logged", scriptName, LogContext(baseCtx), System.currentTimeMillis())
+                }
+                return
+            }
             pending += LogRepository.Pending(kind, text, scriptName, ctx, System.currentTimeMillis())
             if (pending.size >= 50 || System.currentTimeMillis() - lastFlush > 300) flushLocked()
         }
@@ -149,7 +158,8 @@ class HostApi(
         val m = method.uppercase()
         val reqBody = body?.toRequestBody((contentType ?: "text/plain; charset=utf-8").toMediaTypeOrNull())
             ?: if (m in METHODS_REQUIRING_BODY) ByteArray(0).toRequestBody() else null
-        val request = Request.Builder()
+        // This phone and the local network only with `@uses lan` (or code typed at the prompt).
+        val request = Net.reach(Request.Builder(), if (allowsLan) Net.Reach.ANY else Net.Reach.PUBLIC)
             .url(url)
             .headers(h.toHeaders())
             .method(m, if (m != "GET" && m != "HEAD") reqBody else null)
@@ -350,5 +360,7 @@ class HostApi(
         private val METHODS_REQUIRING_BODY = setOf("POST", "PUT", "PATCH", "PROPPATCH", "REPORT")
 
         private val client get() = Net.client
+        /** Lines one run may log; a runaway loop stops filling the log here. */
+        const val MAX_LINES_PER_RUN = 500
     }
 }

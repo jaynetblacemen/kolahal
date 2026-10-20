@@ -1,6 +1,7 @@
 package com.mtwabpin.kolahal.script
 
 import android.app.Application
+import android.os.Debug
 import android.os.Process
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
@@ -32,14 +33,27 @@ class LuaEngine : ScriptEngine {
         val lua = Lua54()
         // The hook cannot interrupt long-running C functions (e.g. pathological string.find patterns), and
         // withContext cannot cancel blocking JNI. As a last resort, kill the isolated :script process.
+        // The hook's memory check runs every few thousand instructions, so a few huge allocations
+        // (`s = s .. s` in a loop) can pass it: the watchdog also stops a run whose native memory
+        // grows past NATIVE_LIMIT_MB.
+        val baseline = Debug.getNativeHeapAllocatedSize()
         val watchdog = thread(isDaemon = true, name = "lua-watchdog") {
+            val killAt = System.currentTimeMillis() + timeoutMs + HARD_KILL_GRACE_MS
             try {
-                Thread.sleep(timeoutMs + HARD_KILL_GRACE_MS)
+                while (true) {
+                    Thread.sleep(WATCH_EVERY_MS)
+                    val reason = when {
+                        Debug.getNativeHeapAllocatedSize() - baseline > NATIVE_LIMIT_MB * 1024L * 1024 -> "used over $NATIVE_LIMIT_MB MB"
+                        System.currentTimeMillis() > killAt -> "still running after timeout"
+                        else -> null
+                    } ?: continue
+                    runCatching { host.logError("${host.scriptName}: $reason, killed script process") }
+                    if (Application.getProcessName().endsWith(":script")) Process.killProcess(Process.myPid())
+                    return@thread
+                }
             } catch (_: InterruptedException) {
                 return@thread
             }
-            runCatching { host.logError("${host.scriptName}: still running after timeout, killed script process") }
-            if (Application.getProcessName().endsWith(":script")) Process.killProcess(Process.myPid())
         }
         try {
             lua.openLibraries()
@@ -181,6 +195,9 @@ class LuaEngine : ScriptEngine {
 
     private companion object {
         const val HARD_KILL_GRACE_MS = 5_000L
+        const val WATCH_EVERY_MS = 50L
+        /** Native memory a run may add before the watchdog stops it (the Lua cap is 64 MB). */
+        const val NATIVE_LIMIT_MB = 256
 
         val PRELUDE = """
             local check = __kolahal_check
@@ -228,6 +245,14 @@ class LuaEngine : ScriptEngine {
                 if not res[1] then error(res[2], fatal(res[2]) and 0 or 2) end
                 return table.unpack(res, 2, res.n)
               end
+            end
+
+            -- string.rep can ask for gigabytes in one call, before the hook gets to check memory.
+            local rawrep, tointeger = string.rep, math.tointeger
+            string.rep = function(s, n, sep)
+              local size = (#tostring(s) + (sep ~= nil and #tostring(sep) or 0)) * (tointeger(n) or 0)
+              if size > 16 * 1024 * 1024 then error("string.rep: result too large (over 16 MB)", 2) end
+              return rawrep(s, n, sep)
             end
 
             -- Sandbox

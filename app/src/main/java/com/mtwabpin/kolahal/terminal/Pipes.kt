@@ -38,7 +38,10 @@ object Pipes {
                 require(pattern.isNotEmpty()) { "usage: … | grep [-v] <pattern>" }
                 val regex = runCatching { Regex(pattern, RegexOption.IGNORE_CASE) }
                     .getOrElse { Regex(Regex.escape(pattern), RegexOption.IGNORE_CASE) }
-                data.filter { regex.containsMatchIn(searchable(it)) != invert }
+                // A pattern that backtracks without end (`(.*.*)*x`) stops after a second
+                // instead of holding up every command after it.
+                val until = System.nanoTime() + GREP_BUDGET_MS * 1_000_000
+                data.filter { regex.containsMatchIn(Budget(searchable(it), until)) != invert }
             }
             "head" -> data.take(count(args))
             "tail" -> data.takeLast(count(args))
@@ -59,4 +62,17 @@ object Pipes {
         val raw = if (args.firstOrNull() == "-n") args.getOrNull(1) else args.firstOrNull()?.removePrefix("-")?.removePrefix("n")
         return raw?.toIntOrNull()?.coerceIn(0, 10_000) ?: 10
     }
+}
+
+private const val GREP_BUDGET_MS = 1_000L
+
+/** Text that gives up being read after [until] (System.nanoTime), so a regex over it can't run for ever. */
+private class Budget(private val s: CharSequence, private val until: Long) : CharSequence {
+    override val length: Int get() = s.length
+    override fun get(index: Int): Char {
+        if (System.nanoTime() > until) throw IllegalArgumentException("grep: pattern too slow, try a simpler one")
+        return s[index]
+    }
+    override fun subSequence(startIndex: Int, endIndex: Int): CharSequence = Budget(s.subSequence(startIndex, endIndex), until)
+    override fun toString(): String = s.toString()
 }

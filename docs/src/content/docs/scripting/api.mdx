@@ -127,7 +127,9 @@ Responses are `{ status, ok, body, headers }`: the numeric status, `ok` for 2xx,
 (read up to 4 MB) and response headers with lowercase names. A `User-Agent` of
 `Kolahal-Launcher/0.1` is sent unless you set your own. Network errors raise an error (Lua) or
 reject the promise (JS). An HTTP error status does **not**, so check `ok`. Plain `http://` URLs are
-allowed.
+allowed. <span class="k-new">new</span> Requests to this phone or your local network (a router, a home
+server, a VPN address like Tailscale's 100.x) need `@uses lan`; without it they fail, even after a
+redirect. A JavaScript run makes at most 4 requests at a time; more wait their turn.
 
 ### http.get(url, headers?)
 
@@ -251,7 +253,8 @@ for (const item of feed.items.slice(0, 5)) log(item.title, { url: item.link });
 
 Persistent strings, private to each script. `store.get` returns `nil` / `null` for a missing key;
 `store.set(key, nil)` deletes it. Store anything structured as JSON. Deleting a script deletes its
-store; one-liners typed at the prompt share one scratch store.
+store; one-liners typed at the prompt share one scratch store. A value holds up to 1 MB, and a
+script's store up to 1,000 keys and 16 MB; past that `store.set` raises "store full".
 
 <Tabs syncKey="lang">
 <TabItem label="Lua">

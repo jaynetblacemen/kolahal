@@ -23,6 +23,13 @@ class PipesTest {
         assertEquals("bad regex falls back to a literal", listOf("a(b"), run("grep a(", "a(b", "ab"))
     }
 
+    @Test fun aRunawayGrepPatternGivesUp() {
+        val started = System.currentTimeMillis()
+        val result = Pipes.apply(lines("a".repeat(28) + "!"), Pipes.split("x | grep (.*a){12}x").drop(1))
+        assertTrue("fails instead of hanging", result.isFailure)
+        assertTrue("within a few seconds", System.currentTimeMillis() - started < 5_000)
+    }
+
     @Test fun headTailCountSortUniq() {
         assertEquals(listOf("1", "2"), run("head 2", "1", "2", "3"))
         assertEquals(listOf("3"), run("tail 1", "1", "2", "3"))

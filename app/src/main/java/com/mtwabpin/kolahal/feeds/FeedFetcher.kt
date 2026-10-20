@@ -58,7 +58,8 @@ class FeedFetcher(context: Context) {
     }
 
     private suspend fun fetchInternal(feed: Feed): List<FeedItem> {
-        val request = Request.Builder()
+        // A feed on a home server may stay home; a public feed can't redirect into the local network.
+        val request = Net.reach(Request.Builder(), Net.Reach.SAME_SIDE)
             .url(feed.url)
             .header("User-Agent", Net.USER_AGENT)
             .header("Accept", "application/rss+xml, application/atom+xml, application/rdf+xml, application/xml;q=0.9, text/xml;q=0.9, */*;q=0.5")
