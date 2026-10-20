@@ -754,6 +754,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             actions += LogAction("Share link") { share(entry.text, url) }
             actions += LogAction("Copy link") { copy(url) }
         }
+        ctx.image?.takeIf { it != ctx.url }?.let { image -> actions += LogAction("Open image") { openUrl(image) } }
         ctx.script?.let { name ->
             scriptCache.value.firstOrNull { it.name == name }?.let { s ->
                 actions += LogAction("Run $name now") { io { ScriptScheduler.runNow(context, s) } }

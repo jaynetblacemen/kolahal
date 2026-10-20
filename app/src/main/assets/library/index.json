@@ -125,7 +125,7 @@
     "name": "xkcd",
     "lang": "js",
     "title": "xkcd",
-    "description": "The latest xkcd comic with its alt text: `xkcd`, `xkcd <number>`, `xkcd random`. On a timer it notifies when a new comic is out.",
+    "description": "The latest xkcd comic, shown in the log with its alt text: `xkcd`, `xkcd <number>`, `xkcd random`. On a timer it notifies when a new comic is out.",
     "command": true,
     "suggestedEvery": 360,
     "suggestedAt": [],

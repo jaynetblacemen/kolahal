@@ -34,7 +34,7 @@ object ApiDocs {
     private val VALUE = ApiDoc.Kind.VALUE
 
     val all: List<ApiDoc> = listOf(
-        ApiDoc("log", "log(text, ctx?)", "Append a line to the terminal; ctx.url makes it a tappable link"),
+        ApiDoc("log", "log(text, ctx?)", "Append a line to the terminal; ctx.url makes it a tappable link, ctx.image shows an image under it"),
         ApiDoc("notify", "notify(title, body, ctx?) -> bool", "Post a notification if enabled for the script; ctx.url opens on tap"),
         ApiDoc("status", "status(text)", "Pin one header line for this script; status(nil) clears it"),
         ApiDoc("sleep", "sleep(ms)", "Pause up to 5000 ms", LUA),

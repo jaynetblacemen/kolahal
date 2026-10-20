@@ -3,7 +3,7 @@
 // @desc xkcd comic: xkcd | xkcd <number> | xkcd random
 //
 // On a timer (no arguments) it notifies only when a new comic is out.
-// Tap the title line to open the comic.
+// The comic shows in the log under its title; tap the title to open it on xkcd.com.
 
 const arg = (argline || "").trim().toLowerCase();
 
@@ -37,6 +37,7 @@ const link = `https://xkcd.com/${c.num}/`;
 log(`#${c.num} ${c.safe_title || c.title} (${c.year}-${String(c.month).padStart(2, "0")}-${String(c.day).padStart(2, "0")})`, {
   url: link,
   copy: link,
+  image: c.img,
 });
 if (c.alt) log(c.alt, { url: c.img });
 

@@ -188,7 +188,7 @@ same API:
 
 | Call                                                      | Result                                                                   |
 |-----------------------------------------------------------+--------------------------------------------------------------------------|
-| =log(text, ctx?)=                                         | Appends a line. =ctx.url= makes it a tappable link; other keys are kept. |
+| =log(text, ctx?)=                                         | Appends a line. =ctx.url= makes it a tappable link, =ctx.image= shows an image under it; other keys are kept. |
 | =notify(title, body, ctx?)=                               | Notification if enabled for the script; =ctx.url= opens on tap.          |
 | =status(text)=                                            | Pins one header line for this script; =status(nil)= clears it.           |
 | =http.get(url, headers?)=                                 | ={ status, ok, body, headers }=                                          |
@@ -387,6 +387,7 @@ directly. Scripts do it from the =:script= process; a broadcast tells the UI pro
 | Package snapshot and install history                 | =KvStore= scope =packages= (=apps/PackageEvents.kt=)                                          |
 | Widgets                                              | Bound AppWidget ids and their layout in SharedPreferences =widgets= (=widgets/WidgetHost.kt=) |
 | Imported font                                        | =filesDir/fonts/custom.ttf= (=ui/FontPicker.kt=)                                              |
+| Images on log lines (a cache, not backed up)         | =cacheDir/log-images/=, trimmed to 50 MB (=ui/LogImages.kt=)                                  |
 
 A backup (=Settings → Export everything=) bundles all of the above into one JSON file
 (=data/Backup.kt= and =data/FullBackup.kt=).

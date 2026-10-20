@@ -143,6 +143,7 @@ fun LogLine(
     val showTime = timeMode == TimeMode.ALL || (timeMode == TimeMode.COMMANDS && entry.kind == LogKind.COMMAND)
     val desc = entry.ctx.values[LogContext.DESC]
     val isGrid = entry.ctx.values[LogContext.APPS] != null
+    val image = entry.ctx.image
 
     // Lines that do something get a larger touch target than plain output.
     val actionable = entry.kind == LogKind.COMMAND || entry.ctx.values.keys.any { it in ACTIONABLE_KEYS }
@@ -218,7 +219,11 @@ fun LogLine(
                 desc != null -> TwoColumns(entry, desc)
                 else -> {
                     val text = remember(entry, Term.palette, charWidth, row.unread) { renderLine(entry, charWidth, row.unread) }
-                    Text(text, style = Term.mono)
+                    if (image == null) Text(text, style = Term.mono)
+                    else Column {
+                        if (entry.text.isNotEmpty()) Text(text, style = Term.mono)
+                        LogImage(image, Modifier.padding(vertical = 4.dp))
+                    }
                 }
             }
         }
@@ -227,7 +232,8 @@ fun LogLine(
             Text(
                 remember(entry.ts, timeFormat) { timeFormat.format(Date(entry.ts)) },
                 style = Term.mono.copy(color = Term.dim, fontSize = (Term.fontSize - 2).sp),
-                modifier = Modifier.padding(top = 2.dp),
+                // Beside the text line, not halfway down the image.
+                modifier = Modifier.then(if (image != null) Modifier.align(Alignment.Top) else Modifier).padding(top = 2.dp),
             )
         }
     }

@@ -122,7 +122,7 @@ top for another language edition.
 
 ## xkcd
 
-**xkcd** with its alt text: `xkcd`, `xkcd 327`, `xkcd random`. On a timer it notifies only when a
+**xkcd**, the comic itself in the log with its alt text below: `xkcd`, `xkcd 327`, `xkcd random`. On a timer it notifies only when a
 new comic is out.
 
 ## quote

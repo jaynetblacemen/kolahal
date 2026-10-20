@@ -34,6 +34,7 @@ data class LogContext(val values: Map<String, String> = emptyMap()) {
     val script: String? get() = values[SCRIPT]
     val copy: String? get() = values[COPY]
     val command: String? get() = values[COMMAND]
+    val image: String? get() = values[IMAGE]
 
     val isEmpty: Boolean get() = values.isEmpty()
 
@@ -49,6 +50,8 @@ data class LogContext(val values: Map<String, String> = emptyMap()) {
         const val SCRIPT = "script"
         const val COPY = "copy"
         const val COMMAND = "command"
+        /** An image URL a script attached: it shows under the line, as wide as the log. */
+        const val IMAGE = "image"
         /** A command that runs immediately when the line is tapped (setup checklist, hints). */
         const val RUN = "run"
         /** Phone number (tap dials) and contact lookup URI (long-press opens the contact). */
