@@ -971,7 +971,9 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         add(LogAction("Widgets", icon = "◫") { openScreen(Screen.WIDGETS) })
         add(LogAction("Feeds", icon = "≋") { openScreen(Screen.FEEDS) })
         add(LogAction("Scripts", icon = "{}") { openScreen(Screen.SCRIPTS) })
-        add(LogAction("Lock screen", icon = "⏻") { if (!com.mtwabpin.kolahal.gesture.LockService.lock()) runCommand("lock") })
+        if (com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE) {
+            add(LogAction("Lock screen", icon = "⏻") { if (!com.mtwabpin.kolahal.gesture.LockService.lock()) runCommand("lock") })
+        }
     }
 
     fun onProfileTap(profile: Profile) {

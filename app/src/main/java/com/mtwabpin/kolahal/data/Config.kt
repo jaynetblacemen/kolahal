@@ -118,7 +118,7 @@ object Keys {
     val WIDGETS_PAGE = ConfigKey.Choice("widgets.page", "left", listOf("left", "right", "off"), "A widgets page beside the terminal: swipe sideways on home to reach it")
     val WIDGETS_HEIGHT = ConfigKey.Num("widgets.height", 180, 60..480, "Max height (dp) of the home widget area; it scrolls when widgets need more")
 
-    val GESTURE_DOUBLE_TAP = ConfigKey.Text("gesture.doubletap", "lock", "Double-tap empty log space: a command, lock, shade, quick (the quick sheet) or none")
+    val GESTURE_DOUBLE_TAP = ConfigKey.Text("gesture.doubletap", if (com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE) "lock" else "none", "Double-tap empty log space: a command, lock, shade, quick (the quick sheet) or none")
     val GESTURE_SWIPE_DOWN = ConfigKey.Text("gesture.swipedown", "shade", "Swipe down on the header: a command, lock, shade, quick or none")
     val GESTURE_SWIPE_UP = ConfigKey.Text("gesture.swipeup", "apps", "Swipe up on the prompt: a command, lock, shade, quick or none")
     val GESTURE_SWIPE_UP_ON = ConfigKey.Bool("gesture.swipeup.on", false, "Turn the swipe-up-on-prompt gesture on (off by default: it fires by accident easily)")

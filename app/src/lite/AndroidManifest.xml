@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The lite build type: the same app without the two services that make Play Protect block a
+  sideloaded install (an accessibility service and a notification listener). No double-tap / `lock`,
+  no notifications in the log, no media controls.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <service
+            android:name=".gesture.LockService"
+            tools:node="remove" />
+        <service
+            android:name=".notifications.KolahalNotificationListener"
+            tools:node="remove" />
+    </application>
+</manifest>

@@ -164,10 +164,13 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "settings", "prefs" -> ui.openScreen(Screen.SETTINGS)
                 "system" -> startSettings(Settings.ACTION_SETTINGS)
                 "home" -> startSettings(Settings.ACTION_HOME_SETTINGS)
-                "lock" -> if (!com.mtwabpin.kolahal.gesture.LockService.lock()) {
+                "lock", "accessibility" -> if (!com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE) {
+                    error("The lite build has no accessibility service, so it can't lock the screen")
+                } else if (name == "accessibility") {
+                    startActivity(com.mtwabpin.kolahal.gesture.LockService.settingsIntent())
+                } else if (!com.mtwabpin.kolahal.gesture.LockService.lock()) {
                     logs.add(LogKind.ERROR, "Locking needs the Kolahal screen lock accessibility service — tap to enable it", ctx = LogContext.of(LogContext.RUN to "accessibility"))
                 }
-                "accessibility" -> startActivity(com.mtwabpin.kolahal.gesture.LockService.settingsIntent())
                 "shade" -> com.mtwabpin.kolahal.gesture.Gestures.expandShade(context)
                 "date", "time" -> out(DateFormat.getDateTimeInstance().format(Date()))
                 "echo" -> out(rest)
@@ -734,6 +737,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val actions = com.mtwabpin.kolahal.notifications.NotificationActions
         val store = com.mtwabpin.kolahal.notifications.NotificationStore
         val prefs = com.mtwabpin.kolahal.notifications.NotifPrefs.get(context)
+        if (!com.mtwabpin.kolahal.BuildConfig.NOTIFICATION_ACCESS) return error("The lite build has no notification access, so notifs isn't available")
         if (!actions.isEnabled(context) && args.firstOrNull() != "enable") {
             logs.add(LogKind.ERROR, "Notification access is off — tap to enable it", ctx = LogContext.of(LogContext.RUN to "notifs enable"))
             return

@@ -16,6 +16,7 @@ git clone https://github.com/mtwabpin/kolahal.git
 cd kolahal
 
 ./gradlew :app:assembleRelease            # R8-optimised; signed with keystore.properties or the debug key
+./gradlew :app:assembleLite               # release without accessibility and notification access (see below)
 ./gradlew :app:assembleDebug              # debug APK ("Kolahal debug", package suffix .debug)
 ./gradlew :app:testDebugUnitTest          # JVM tests
 ./gradlew :app:connectedDebugAndroidTest  # engines, sandbox, timeouts, :script process, commands
@@ -27,6 +28,20 @@ The APKs end up in `app/build/outputs/apk/<variant>/`.
 Debug Compose builds are noticeably slower to scroll. The debug build installs next to the release
 one (it has a `.debug` package suffix), so you can keep both.
 :::
+
+### The lite build
+
+Google Play Protect blocks sideloaded apps (installed from a browser, a messaging app or a file
+manager) that declare an accessibility service or notification access, in India and some other
+countries. The full build has both: the accessibility service only locks the screen, and
+notification access shows your notifications in the log. `assembleLite` builds the same app without
+them (version `0.1.0-lite`, same package, so it installs over the full build and the other way round).
+It has no `lock` or double-tap lock, no `notifs`, no media controls and now-playing line, and scripts
+get no `notifications.recent()` or `@on notification`. Everything else is the same.
+
+To install the full build where it is blocked, turn off **Play Store → profile → Play Protect →
+⚙ → Scan apps with Play Protect** while installing (and back on after), or install with
+`adb install`.
 
 ### Signing
 

@@ -22,6 +22,9 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // The accessibility service (double-tap / `lock`) and notification listener are in the manifest (see lite).
+        buildConfigField("boolean", "LOCK_SERVICE", "true")
+        buildConfigField("boolean", "NOTIFICATION_ACCESS", "true")
     }
 
     signingConfigs {
@@ -45,7 +48,20 @@ android {
         debug {
             applicationIdSuffix = ".debug"
         }
+        // The release build without the accessibility service and notification listener (src/lite
+        // removes them): Play Protect blocks sideloaded apps that declare either. No `lock` or
+        // double-tap lock, no notifications in the log, no media controls.
+        create("lite") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            versionNameSuffix = "-lite"
+            buildConfigField("boolean", "LOCK_SERVICE", "false")
+            buildConfigField("boolean", "NOTIFICATION_ACCESS", "false")
+        }
     }
+
+    // The same startup profile as release.
+    sourceSets.getByName("lite").baselineProfiles.srcDir("src/release/generated/baselineProfiles")
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -54,6 +70,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

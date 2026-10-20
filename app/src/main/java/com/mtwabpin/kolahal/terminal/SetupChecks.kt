@@ -24,7 +24,7 @@ object SetupChecks {
     fun run(context: Context): List<SetupCheck> {
         val power = context.getSystemService(PowerManager::class.java)
         val profiles = AppRepository.get(context).profiles.value.filter { it.kind != ProfileKind.PERSONAL }
-        return listOf(
+        return listOfNotNull(
             SetupCheck(
                 "Default home app",
                 "Kolahal opens on Home and can pause or resume the work profile",
@@ -43,13 +43,13 @@ object SetupChecks {
                 Notifier.canPost(context),
                 "notifications",
             ),
-            SetupCheck(
+            if (!com.mtwabpin.kolahal.BuildConfig.NOTIFICATION_ACCESS) null else SetupCheck(
                 "Notification access",
                 "Your notifications in the terminal (notifs) and for scripts",
                 com.mtwabpin.kolahal.notifications.NotificationActions.isEnabled(context),
                 "notifs enable",
             ),
-            SetupCheck(
+            if (!com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE) null else SetupCheck(
                 "Double-tap to lock",
                 "Optional accessibility service that only locks the screen",
                 com.mtwabpin.kolahal.gesture.LockService.isEnabled(context),

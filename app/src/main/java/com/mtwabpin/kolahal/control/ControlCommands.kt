@@ -68,6 +68,10 @@ class ControlCommands(private val context: Context) {
 
     private fun needMediaAccess(): Boolean {
         if (media.hasAccess()) return false
+        if (!com.mtwabpin.kolahal.BuildConfig.NOTIFICATION_ACCESS) {
+            logs.add(LogKind.ERROR, "The lite build has no notification access, so it can't control media")
+            return true
+        }
         fix("media control needs notification access — tap to enable it", "notifs enable")
         return true
     }
