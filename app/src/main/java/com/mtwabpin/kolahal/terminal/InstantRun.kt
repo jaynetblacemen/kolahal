@@ -97,14 +97,14 @@ object InstantRun {
     }
 
     /**
-     * Device and media state (`torch`, `dnd`, `media`, …) is sensitive: never run by a prefix, from
-     * a script or from the history. A typed line with nothing left to choose (`torch on`) does run.
+     * Device and media state (`torch`, `dnd`, `media`, …) is sensitive: never run by a prefix or from
+     * a script. A line with nothing left to choose (`torch on`), typed, picked or tapped in the log, does run.
      */
     private val WHOLE_LINE_OK = com.mtwabpin.kolahal.control.ControlCommands.SENSITIVE
 
-    /** A typed [line] with arguments that fills its command's usage line completely ([UsageLine.complete]). */
-    private fun wholeLine(line: String, commands: Map<String, String>, aliases: Map<String, String>): Boolean {
-        val word = line.trim().substringBefore(' ')
+    /** A [line] with arguments that fills its command's usage line completely ([UsageLine.complete]). */
+    fun wholeLine(line: String, commands: Map<String, String>, aliases: Map<String, String>): Boolean {
+        val word = line.trim().lowercase().substringBefore(' ')
         // An alias may stand for anything: it waits for Enter.
         if (word in aliases) return false
         val head = canonical(word)

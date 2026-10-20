@@ -116,7 +116,9 @@ class InstantRunTest {
         assertNull("profile switches stay sensitive", target("work off"))
         assertNull("only in all mode", target("torch on", InstantRun.APPS))
         assertNull("aliases wait for Enter", target("torch on", aliases = mapOf("torch" to "work")))
-        assertFalse("the history doesn't toggle the torch", InstantRun.canRun("torch on", usages, emptyMap(), emptyList()))
+        assertFalse("not by the history rule", InstantRun.canRun("torch on", usages, emptyMap(), emptyList()))
+        assertTrue("but a tapped line with nothing left to choose runs", InstantRun.wholeLine("Torch on", usages, emptyMap()))
+        assertFalse(InstantRun.wholeLine("work off", usages, emptyMap()))
     }
 
     @Test fun scriptsAndStatusAreSensitive() {

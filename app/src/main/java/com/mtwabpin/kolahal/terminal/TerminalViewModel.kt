@@ -367,9 +367,9 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     private fun runsOnTap(line: String) = config[Keys.LAUNCH_INSTANT] == InstantRun.ALL &&
         // A trailing space marks a prefill ("apps " from help): it is waiting for an argument.
         !line.endsWith(' ') &&
-        InstantRun.canRun(line, scriptUsages + commandUsages, appPrefs.aliases(), _commandNames.value) { name ->
+        (InstantRun.canRun(line, scriptUsages + commandUsages, appPrefs.aliases(), _commandNames.value) { name ->
             appsRepo.searchRanked(name).firstOrNull()?.second == 0
-        }
+        } || InstantRun.wholeLine(line, scriptUsages + commandUsages, appPrefs.aliases()))
 
     fun submit() {
         val line = input.text
