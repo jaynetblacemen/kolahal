@@ -6,6 +6,7 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.util.Base64
 import com.mtwabpin.kolahal.feeds.FeedDb
+import com.mtwabpin.kolahal.notifications.KolahalNotificationListener
 
 /**
  * The raw half of a backup: every app preference file and database table, so a restore brings
@@ -36,6 +37,7 @@ object FullBackup {
 
     /** kv scopes are "script:<id>"; ids differ between devices, so backups key them by script name. */
     private const val SCRIPT_SCOPE = "script:"
+    private val BUILT_INS get() = com.mtwabpin.kolahal.terminal.CommandProcessor.COMMANDS.map { it.name }.toSet()
 
     fun export(context: Context): Map<String, Any?> {
         // Rows too big for a cursor would make the whole export fail.
@@ -45,8 +47,10 @@ object FullBackup {
         val scriptKv = LinkedHashMap<String, MutableMap<String, String?>>()
         for (t in TABLES) {
             val rows = query(t.db(context), t.name)
-            tables[t.name] = if (t.name != "kv") rows else rows.filter { row ->
+            tables[t.name] = if (t.name == "logs") rows.filterNot(::private) else if (t.name != "kv") rows else rows.filter { row ->
                 val scope = row["scope"] as? String ?: return@filter false
+                // The copy of recent notifications kept for scripts stays on the device.
+                if (scope == KolahalNotificationListener.MIRROR_SCOPE) return@filter false
                 if (!scope.startsWith(SCRIPT_SCOPE)) return@filter true
                 // Stores of deleted scripts are dropped; the rest move under the script's name.
                 scriptNames[scope]?.let { name -> scriptKv.getOrPut(name) { LinkedHashMap() }[row["k"].toString()] = row["v"] as? String }
@@ -63,7 +67,10 @@ object FullBackup {
     /** Replaces preferences and tables with the backup's. Returns how many rows were restored. */
     fun importRaw(context: Context, data: Map<*, *>): Int {
         (data["prefs"] as? Map<*, *>)?.forEach { (file, entries) ->
-            if (file is String && file in PREFS && entries is Map<*, *>) importPrefs(context, file, entries)
+            if (file !is String || file !in PREFS || entries !is Map<*, *>) return@forEach
+            // Same rule as `alias`: an alias never shadows a built-in command.
+            val safe = if (file != "aliases") entries else entries.filterKeys { it?.toString()?.lowercase() !in BUILT_INS }
+            importPrefs(context, file, safe)
         }
         var rows = 0
         val tables = data["tables"] as? Map<*, *> ?: return 0
@@ -78,8 +85,13 @@ object FullBackup {
                 } else {
                     db.delete(t.name, null, null)
                 }
+                // Only this device's columns: an unknown key would fail the insert halfway through a restore.
+                val columns = db.rawQuery("PRAGMA table_info(${t.name})", null).use { c ->
+                    buildSet { while (c.moveToNext()) add(c.getString(c.getColumnIndexOrThrow("name"))) }
+                }
                 for (row in list) {
-                    if (db.insertWithOnConflict(t.name, null, values(row), SQLiteDatabase.CONFLICT_REPLACE) != -1L) rows++
+                    val clean = if (t.name == "logs") withSafeCtx(row) else row
+                    if (db.insertWithOnConflict(t.name, null, values(clean, columns), SQLiteDatabase.CONFLICT_REPLACE) != -1L) rows++
                 }
                 db.setTransactionSuccessful()
             } finally {
@@ -154,9 +166,37 @@ object FullBackup {
             out
         }
 
-    private fun values(row: Map<*, *>) = ContentValues().apply {
+    /**
+     * Notification and call lines hold other people's messages and numbers: they stay on the
+     * device, as do lines from a private space.
+     */
+    private fun private(row: Map<String, Any?>): Boolean {
+        if (row["source"] == com.mtwabpin.kolahal.calls.CallEvents.SOURCE) return true
+        val ctx = LogContext.fromJson(row["ctx"] as? String)
+        return ctx.values.containsKey(KolahalNotificationListener.CTX_KEY)
+    }
+
+    /**
+     * A restored line must not do more on a tap than the line it claims to be: no commands that
+     * run at once, no app shortcuts, and links only to the web, maps or the store.
+     */
+    private fun withSafeCtx(row: Map<*, *>): Map<*, *> {
+        val ctx = LogContext.fromJson(row["ctx"] as? String)
+        if (ctx.isEmpty) return row
+        val kept = ctx.values.filter { (k, v) ->
+            when (k) {
+                LogContext.RUN, LogContext.SHORTCUT -> false
+                LogContext.URL -> com.mtwabpin.kolahal.script.Net.webUrl(v) != null || v.startsWith("geo:") || v.startsWith("market:")
+                LogContext.IMAGE -> com.mtwabpin.kolahal.script.Net.webUrl(v) != null
+                else -> true
+            }
+        }
+        return row.toMutableMap().apply { put("ctx", LogContext(kept).toJson()) }
+    }
+
+    private fun values(row: Map<*, *>, columns: Set<String>) = ContentValues().apply {
         row.forEach { (k, v) ->
-            val col = k?.toString() ?: return@forEach
+            val col = k?.toString()?.takeIf { it in columns } ?: return@forEach
             when (v) {
                 null -> putNull(col)
                 is Boolean -> put(col, if (v) 1 else 0)

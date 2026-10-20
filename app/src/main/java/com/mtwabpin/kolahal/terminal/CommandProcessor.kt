@@ -196,6 +196,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val seen = HashSet<String>()
         repeat(5) {
             val head = current.substringBefore(' ')
+            // A built-in always wins, even over an alias that slipped in (an old backup).
+            if (head.lowercase() in COMMANDS.map { it.name }) return current
             if (!seen.add(head)) return current
             val expansion = prefs.alias(head) ?: return current
             current = (expansion + " " + current.substringAfter(' ', "")).trim()
@@ -287,6 +289,11 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     /** Runs a `@command` script named [name]; returns null if there is none. */
     private fun scriptCommand(name: String, args: List<String>): Unit? {
         val script = scripts.byName(name)?.takeIf { ScriptMeta.isCommand(it.code) } ?: return null
+        // A switched-off script (an import not reviewed yet) doesn't run by its name.
+        if (!script.enabled) {
+            logs.add(LogKind.ERROR, "${script.name} is switched off — tap to turn it on", ctx = LogContext.of(LogContext.RUN to "script on ${script.name}"))
+            return Unit
+        }
         ScriptScheduler.runNow(context, script, args)
         return Unit
     }
@@ -1173,6 +1180,9 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 scripts.setEnabled(s.id, enabled)
                 scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
                 info("${s.name}: ${if (enabled) "enabled" else "disabled"}", scriptCtx(s))
+                // Turning a script on is consent to what it declares: say what that is.
+                val uses = ScriptMeta.uses(s.code)
+                if (enabled && uses.isNotEmpty()) info("${s.name} can use: ${uses.joinToString()}")
             }
             "rm", "delete" -> withScript(target) { s ->
                 ScriptScheduler.cancel(context, s.id)

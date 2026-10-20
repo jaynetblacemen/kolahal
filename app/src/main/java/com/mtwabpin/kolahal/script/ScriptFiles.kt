@@ -26,8 +26,8 @@ class ScriptFiles(private val context: Context) {
                 skipped += "$fileName (not .lua / .js)"
                 continue
             }
-            if (name in com.mtwabpin.kolahal.terminal.CommandProcessor.COMMANDS.map { it.name }) {
-                skipped += "$fileName ('$name' is a built-in command)"
+            ScriptNames.clash(context, name)?.let { why ->
+                skipped += "$fileName ($why)"
                 continue
             }
             val code = runCatching { Files.readText(context, uri) }.getOrElse {
@@ -35,10 +35,22 @@ class ScriptFiles(private val context: Context) {
                 continue
             }
             val existing = scripts.byName(name)
+            // A script from a file arrives switched off, and so does one whose code a file replaces:
+            // turning it on is the user's go-ahead for its timers, triggers and `@uses`.
             when {
-                existing == null -> { scripts.create(name, lang, code); created += "$name.${lang.ext}" }
+                existing == null -> {
+                    val s = scripts.create(name, lang, code)
+                    scripts.setEnabled(s.id, false)
+                    created += "$name.${lang.ext}"
+                }
                 existing.lang != lang -> skipped += "$fileName (a ${existing.lang.ext} script '$name' exists)"
-                else -> { scripts.saveCode(existing.id, code); updated += "$name.${lang.ext}" }
+                existing.code == code -> Unit
+                else -> {
+                    scripts.saveCode(existing.id, code)
+                    scripts.setEnabled(existing.id, false)
+                    scripts.byId(existing.id)?.let { runCatching { ScriptScheduler.sync(context, it) } }
+                    updated += "$name.${lang.ext}"
+                }
             }
         }
         return ImportResult(created, updated, skipped)

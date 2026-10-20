@@ -40,7 +40,13 @@ On import:
 - Unknown or invalid settings are skipped and listed.
 - Aliases that would shadow a built-in command are skipped.
 - **New scripts arrive switched off**, so you can review them before they run on a timer. Scripts
-  that already exist (same name and language) get the new code and their `enabled` flag.
+  that already exist (same name and language) keep their `enabled` flag only if their code is
+  unchanged: <span class="k-new">new</span> new code arrives switched off too. Scripts named like a built-in
+  command or one of your apps are skipped.
+- <span class="k-new">new</span> Restored log lines keep their text but can't run commands or app shortcuts
+  when tapped, and keep only web, map and store links.
+- <span class="k-new">new</span> The result names the settings worth a look: a custom search address and
+  gesture commands.
 - A script whose language differs from an existing script of the same name is skipped.
 - Intervals under 15 minutes are raised to 15 (Android's minimum).
 
@@ -49,13 +55,15 @@ where those match.
 
 Not included, because they can't move between phones: the folder picked with `script dir` (a
 storage permission you grant again) and home-screen widgets' live ids (widgets are listed so
-they can be added again). The file can contain private things (notifications in the log, notes),
-so keep it somewhere safe.
+they can be added again). <span class="k-new">new</span> Notification and call lines, and the copy of recent
+notifications kept for scripts, stay on the phone. The file can still contain private things
+(notes, the rest of the log), so keep it somewhere safe.
 
 ## Single script files
 
 In the script manager (`scripts`), **Import .lua / .js files** picks one or more files from the file
 manager. The file name becomes the script name, and importing the same name again updates it.
+Imported scripts arrive switched off; turn one on with `script on <name>` after a look at it.
 **Export** on a script saves it as a file.
 
 ## Folder sync

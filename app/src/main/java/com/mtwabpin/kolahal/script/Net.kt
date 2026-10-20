@@ -1,5 +1,6 @@
 package com.mtwabpin.kolahal.script
 
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
@@ -14,6 +15,9 @@ object Net {
             .callTimeout(30, TimeUnit.SECONDS)
             .build()
     }
+
+    /** [link] if it is an http(s) link, normalised; null for any other scheme (tel:, upi:, intent:, file: …). */
+    fun webUrl(link: String?): String? = link?.trim()?.toHttpUrlOrNull()?.toString()
 
     /** Simple blocking GET returning the body, or throwing with the HTTP status. */
     fun get(url: String): String {

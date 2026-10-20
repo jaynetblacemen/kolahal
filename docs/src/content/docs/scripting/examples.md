@@ -127,6 +127,7 @@ waiting.
 ```lua
 -- morning.lua — script at morning 07:30 · script notify morning on
 -- @desc morning summary
+-- @uses notifications
 
 local parts = {}
 

@@ -159,6 +159,30 @@ Scripts run in a separate `:script` process, so a crashing engine can't take dow
 - `sleep(ms)` is capped at 5000 ms per call.
 - `restart scripts` stops the script process if something is stuck. Scheduled scripts start it again.
 
+## What a script may use
+
+<span class="k-new">new</span> Your notifications, the clipboard, the list of your apps and your local network are only
+for scripts that ask, with a `@uses` line at the top:
+
+```lua
+-- @uses notifications, clipboard
+```
+
+| `@uses` | allows |
+| --- | --- |
+| `notifications` | [`notifications.recent`](/scripting/api/#notificationsrecentn) and the `@on notification` trigger |
+| `clipboard` | [`clipboard.get` and `clipboard.set`](/scripting/api/#clipboardget--clipboardsettext) |
+| `apps` | [`apps.list`](/scripting/api/#appslist) |
+| `lan` | `http` requests to this phone or your local network (192.168.…, router pages, a home server) |
+
+Without it, those calls stop the script with an error saying what to add. Code you type at the
+prompt (`lua`, `js`, `=`) may use everything. Scripts that come from outside (a file, a backup)
+arrive **switched off**, and `script on <name>` says what the script uses as you turn it on.
+
+Links a script puts on a line (`url`, `image`, or a notification's link) must be web links:
+anything else (`tel:`, `upi:`, an app's own link) is dropped. A line's `copy` must be what the line
+shows, part of it, or its link.
+
 ## Moving scripts
 
 Scripts are part of the [backup file](/guides/backup/), and can be imported and exported as

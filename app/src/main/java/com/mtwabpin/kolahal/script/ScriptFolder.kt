@@ -93,7 +93,7 @@ class ScriptFolder(private val context: Context) {
             if (file.isDirectory) continue
             val name = fileName.substringBeforeLast('.').lowercase()
             // Same rules as a backup: no names of built-in commands.
-            if (!NAME.matches(name) || name in com.mtwabpin.kolahal.terminal.CommandProcessor.COMMANDS.map { it.name }) {
+            if (!NAME.matches(name) || ScriptNames.clash(context, name) != null) {
                 skipped += fileName
                 continue
             }

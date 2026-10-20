@@ -79,7 +79,8 @@ class TriggerDispatcher private constructor(private val context: Context) {
         if (v != loadedVersion) {
             subscriptions = ScriptRepository.get(context).all()
                 .filter { it.enabled }
-                .map { it.id to ScriptMeta.events(it.code) }
+                // A notification's text only goes to scripts that declare `@uses notifications`.
+                .map { s -> s.id to ScriptMeta.events(s.code).filter { it != "notification" || "notifications" in ScriptMeta.uses(s.code) } }
                 .filter { it.second.isNotEmpty() }
             loadedVersion = v
         }

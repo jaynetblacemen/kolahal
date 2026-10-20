@@ -35,7 +35,16 @@ class HostApi(
     private val notifyEnabled: Boolean,
     /** Started by the user from the prompt (not a timer): may drive the launcher with launcher.run. */
     private val interactive: Boolean = false,
+    /** What the script declared with `@uses` ([ScriptMeta.uses]); null for code typed at the prompt, which may use anything. */
+    private val uses: Set<String>? = null,
 ) {
+    /** Private data and local-network reach are only for scripts that declare them. */
+    private fun need(what: String, call: String) {
+        if (uses != null && what !in uses) throw IllegalStateException("$call needs `@uses $what` at the top of the script")
+    }
+
+    /** May reach this device or the local network over http. */
+    val allowsLan: Boolean get() = uses == null || "lan" in uses
     private val logs = LogRepository.get(context)
     private val store = KvStore(context, scriptId?.let(ScriptRepository::scopeOf) ?: "repl")
 
@@ -80,15 +89,36 @@ class HostApi(
             val time = com.mtwabpin.kolahal.data.Config.get(context).shortTime()
             buffer(LogKind.INFO, "── $scriptName · $time ──", LogContext(baseCtx + mapOf(LogContext.RUN_HEADER to "1")))
         }
-        buffer(LogKind.SCRIPT, text, LogContext(baseCtx + safeCtx(ctx)))
+        buffer(LogKind.SCRIPT, text, LogContext(baseCtx + safeCtx(ctx, text)))
     }
 
     /**
      * Context a script may attach to its lines. Launcher-internal keys (tap-to-run commands, script
      * identity, app grids, error lines) are dropped, so a script can't plant a one-tap `clear all`.
      */
-    private fun safeCtx(ctx: Map<*, *>?): Map<String, String> =
-        Json.toStringMap(ctx).filterKeys { it !in RESERVED_CTX }
+    private fun safeCtx(ctx: Map<*, *>?, text: String): Map<String, String> {
+        val m = Json.toStringMap(ctx).filterKeys { it !in RESERVED_CTX }.toMutableMap()
+        // A tap opens the link in another app at once: web links only, not upi:, tel:, intent: …
+        for (key in listOf(LogContext.URL, LogContext.IMAGE)) {
+            val link = m[key] ?: continue
+            Net.webUrl(link)?.let { m[key] = it } ?: m.remove(key)
+        }
+        m[LogContext.COPY]?.let { if (!honestCopy(it, text, m[LogContext.URL])) m.remove(LogContext.COPY) }
+        return m
+    }
+
+    /**
+     * "Copy text" must copy what the line shows: all or part of it, the whole text of a line cut
+     * short with "…", or its link. Otherwise a line could show one address and copy another.
+     */
+    private fun honestCopy(copy: String, text: String, url: String?): Boolean {
+        if (copy == url) return true
+        fun bare(s: String) = s.filterNot { it.isWhitespace() || it == ',' }
+        val c = bare(copy)
+        if (c.isEmpty()) return false
+        if (bare(text).contains(c)) return true
+        return text.trimEnd().endsWith("…") && c.startsWith(bare(text.trimEnd().removeSuffix("…")))
+    }
 
     fun logError(text: String) {
         flush()
@@ -101,7 +131,7 @@ class HostApi(
         val values = Json.toStringMap(ctx)
         // With notifications off for this script, the script's own log lines already show the content.
         if (!notifyEnabled) return false
-        val posted = Notifier.post(context, scriptName, title, body, values[LogContext.URL])
+        val posted = Notifier.post(context, scriptName, title, body, values[LogContext.URL]?.let(Net::webUrl))
         if (!posted) notifyBlocked = true
         return posted
     }
@@ -189,6 +219,7 @@ class HostApi(
     // ---- device, apps, launcher ----------------------------------------------------------
 
     fun clipboardSet(text: String) {
+        need("clipboard", "clipboard.set")
         val cm = context.getSystemService(android.content.ClipboardManager::class.java)
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             cm.setPrimaryClip(android.content.ClipData.newPlainText(scriptName, text))
@@ -196,10 +227,13 @@ class HostApi(
     }
 
     /** Android only lets the focused app read the clipboard, so this is usually null in timers. */
-    fun clipboardGet(): String? = runCatching {
-        context.getSystemService(android.content.ClipboardManager::class.java)
-            .primaryClip?.getItemAt(0)?.coerceToText(context)?.toString()
-    }.getOrNull()
+    fun clipboardGet(): String? {
+        need("clipboard", "clipboard.get")
+        return runCatching {
+            context.getSystemService(android.content.ClipboardManager::class.java)
+                .primaryClip?.getItemAt(0)?.coerceToText(context)?.toString()
+        }.getOrNull()
+    }
 
     fun battery(): Map<String, Any?> {
         val intent = context.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
@@ -226,6 +260,7 @@ class HostApi(
 
     /** Launchable apps across profiles: [{label, pkg, profile}]. */
     fun appsList(): List<Map<String, Any?>> {
+        need("apps", "apps.list")
         val la = context.getSystemService(android.content.pm.LauncherApps::class.java)
         val me = android.os.Process.myUserHandle()
         val um = context.getSystemService(android.os.UserManager::class.java)
@@ -242,6 +277,7 @@ class HostApi(
 
     /** Recent notifications (needs notification access): [{pkg, app, title, text, time}], newest first. */
     fun notificationsRecent(limit: Int): List<Any?> {
+        need("notifications", "notifications.recent")
         val L = com.mtwabpin.kolahal.notifications.KolahalNotificationListener
         // Access revoked while the listener wasn't bound leaves the copy behind: drop it, share nothing.
         if (!com.mtwabpin.kolahal.notifications.NotificationActions.isEnabled(context)) {

@@ -41,6 +41,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             ctx, name, script?.id,
             notifyEnabled = script?.notify ?: true,
             interactive = repl || inputData.getBoolean(KEY_INTERACTIVE, false),
+            uses = script?.let { ScriptMeta.uses(it.code) },
         )
         val engine = ScriptEngine.forLang(lang)
         val started = System.currentTimeMillis()

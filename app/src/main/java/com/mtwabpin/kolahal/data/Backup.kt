@@ -57,6 +57,8 @@ class Backup(private val context: Context) {
         /** Rows restored from the raw data section (0 for older, settings-only backups). */
         val restored: Int = 0,
         val full: Boolean = false,
+        /** Settings from the file worth a look: where searches go, what gestures run. */
+        val review: List<String> = emptyList(),
     )
 
     fun import(uri: Uri): Result {
@@ -98,16 +100,19 @@ class Backup(private val context: Context) {
             val name = m["name"]?.toString()?.lowercase()
             val lang = m["lang"]?.toString()?.let(ScriptLang::of)
             val code = m["code"]?.toString()
-            if (name == null || lang == null || code == null || !NAME.matches(name) || name in BUILT_INS) {
+            if (name == null || lang == null || code == null || !NAME.matches(name) || name in BUILT_INS ||
+                com.mtwabpin.kolahal.script.ScriptNames.clash(context, name) != null
+            ) {
                 skipped += "script ${m["name"]}"
                 return@forEach
             }
             val existing = scripts.byName(name)
+            // New code, whether a new script or a replaced one, arrives switched off.
             var isNew = false
             val script = when {
                 existing == null -> scripts.create(name, lang, code).also { isNew = true }
                 existing.lang != lang -> { skipped += "script $name (language differs)"; return@forEach }
-                else -> existing.also { if (it.code != code) scripts.saveCode(it.id, code) }
+                else -> existing.also { if (it.code != code) { scripts.saveCode(it.id, code); isNew = true } }
             }
             (m["every"] as? Number)?.toLong()?.let { every ->
                 val minutes = every.coerceIn(0, 7L * 24 * 60).toInt()
@@ -117,7 +122,7 @@ class Backup(private val context: Context) {
                 scripts.setAtTimes(script.id, at.mapNotNull { ScriptScheduler.normalizeTime(it.toString()) }.distinct().sorted())
             }
             (m["notify"] as? Boolean)?.let { scripts.setNotify(script.id, it) }
-            // New scripts from a backup arrive switched off: review them before they run on a timer.
+            // New or changed scripts from a backup arrive switched off: review them before they run.
             if (isNew) {
                 scripts.setEnabled(script.id, false)
                 disabled++
@@ -148,7 +153,10 @@ class Backup(private val context: Context) {
             runCatching { com.mtwabpin.kolahal.feeds.FeedScheduler.sync(context) }
             runCatching { ScriptScheduler.syncAll(context) }
         }
-        return Result(settings, aliases, count, disabled, skipped, restored, full = data != null)
+        // A backup decides where searches go and what a gesture runs: name those that aren't the defaults.
+        val review = listOf(Keys.SEARCH_URL, Keys.GESTURE_DOUBLE_TAP, Keys.GESTURE_SWIPE_DOWN, Keys.GESTURE_SWIPE_UP)
+            .filterNot(config::isDefault).map { "${it.key} = ${config.display(it)}" }
+        return Result(settings, aliases, count, disabled, skipped, restored, full = data != null, review = review)
     }
 
     companion object {

@@ -69,7 +69,8 @@ class InstantRunTest {
 
     @Test fun historyLines() {
         assertTrue(InstantRun.canRun("settings", commands, emptyMap(), emptyList()))
-        assertTrue(InstantRun.canRun("theme gruvbox", commands, emptyMap(), emptyList()))
+        assertFalse("changing the theme needs Enter", InstantRun.canRun("theme gruvbox", commands, emptyMap(), emptyList()))
+        assertTrue(InstantRun.canRun("history", commands, emptyMap(), emptyList()))
         assertTrue("an app name", InstantRun.canRun("grove", commands, emptyMap(), emptyList()) { it == "grove" })
         assertFalse("unknown words are not apps by default", InstantRun.canRun("grove", commands, emptyMap(), emptyList()))
         assertFalse("synonym of a sensitive command", InstantRun.canRun("cls", commands, emptyMap(), emptyList()))
@@ -130,6 +131,12 @@ class InstantRunTest {
         )
         assertNull("work profile on: both Gmails are a choice", target(App("Gmail", on = true)))
         assertEquals("work profile paused: launches as before", Target.App(personal), target(App("Gmail", on = false)))
+    }
+
+    @Test fun calculatorLinesAreSensitive() {
+        assertTrue("no space after =", InstantRun.isSensitive("=notify('Bank', 'x')"))
+        assertTrue(InstantRun.isSensitive("= 6*7"))
+        assertTrue(InstantRun.isSensitive("pin gpay"))
     }
 
     @Test fun scriptsAndStatusAreSensitive() {

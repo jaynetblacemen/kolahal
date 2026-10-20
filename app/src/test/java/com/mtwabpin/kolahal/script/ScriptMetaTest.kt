@@ -49,6 +49,12 @@ class ScriptMetaTest {
         assertEquals("doesn't run into the next line", "ip", ScriptMeta.usage("-- @usage\n-- @desc public IP", "ip"))
     }
 
+    @Test fun usesDirective() {
+        assertEquals(setOf("notifications", "clipboard"), ScriptMeta.uses("-- @uses notifications, clipboard\nlog(1)"))
+        assertEquals(setOf("lan"), ScriptMeta.uses("// @uses LAN camera\n"))
+        assertTrue("none declared", ScriptMeta.uses("-- @command\nlog(1)").isEmpty())
+    }
+
     @Test fun usageWithoutDirective() {
         assertEquals("never reads its arguments", "ip", ScriptMeta.usage("-- @command\nlog(http.get('x').body)", "ip"))
         assertNull("reads them: unknown", ScriptMeta.usage("-- @command\nlog(argline)", "w"))

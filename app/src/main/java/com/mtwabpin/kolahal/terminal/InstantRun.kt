@@ -18,6 +18,8 @@ object InstantRun {
         "todo", "note", "notes", "remind", "timer", "alarm", "widget",
         // `scripts rm|off|import …` reaches the same handler as `script`; `status clear` wipes lines.
         "scripts", "status",
+        // Change how the launcher looks or what it puts first.
+        "theme", "font", "pin", "unpin",
     ) + com.mtwabpin.kolahal.control.ControlCommands.SENSITIVE
 
     /** Other names the dispatcher accepts for a command; checks always use the canonical name. */
@@ -32,7 +34,12 @@ object InstantRun {
     fun canonical(head: String): String = head.lowercase().let { SYNONYMS[it] ?: it }
 
     /** True when the first word of [line], after synonyms, is a sensitive command. */
-    fun isSensitive(line: String): Boolean = canonical(line.trim().substringBefore(' ')) in SENSITIVE
+    fun isSensitive(line: String): Boolean {
+        val t = line.trim()
+        // `=…` runs code in the calculator (`=notify(…)` has no space after the `=`).
+        if (t.startsWith("=")) return true
+        return canonical(t.substringBefore(' ')) in SENSITIVE
+    }
 
     /**
      * Like [isSensitive], but follows [aliases] the way the dispatcher expands them (up to 5

@@ -284,10 +284,12 @@ return json.encode({ ip = data.ip, ok = true })
 
 ### clipboard.get() / clipboard.set(text)
 
+Needs `@uses clipboard` ([what a script may use](/scripting/overview/#what-a-script-may-use)).
 Android only lets the focused app read the clipboard, so `clipboard.get()` usually returns `nil` in
 timer runs. `clipboard.set` works any time.
 
 ```lua
+-- @uses clipboard
 clipboard.set("copied by a script")
 ```
 
@@ -322,9 +324,10 @@ return `${b.level}% ${b.charging ? "charging" : ""} · ${device.network()} · ${
 ### apps.list()
 
 Launchable apps in every profile, sorted by label: `[{ label, pkg, profile }]`, where `profile` is
-`"personal"` or `"other"` (work, private, clone).
+`"personal"` or `"other"` (work, private, clone). Needs `@uses apps`.
 
 ```js
+// @uses apps
 const work = apps.list().filter(a => a.profile !== "personal");
 return `${work.length} apps outside the personal profile`;
 ```
@@ -333,9 +336,11 @@ return `${work.length} apps outside the personal profile`;
 
 The most recent notifications, newest first: `[{ pkg, app, title, text, time }]` (`time` in
 milliseconds since the epoch). `n` defaults to 20, at most 50. Needs
-[notification access](/guides/notifications/); returns an empty list without it.
+[notification access](/guides/notifications/); returns an empty list without it. Needs
+`@uses notifications`.
 
 ```lua
+-- @uses notifications
 for _, n in ipairs(notifications.recent(5)) do
   log(n.app .. ": " .. (n.title or "") .. " " .. (n.text or ""))
 end

@@ -132,7 +132,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     @Volatile private var scriptUsages: Map<String, String> = emptyMap()
 
     private fun setCommandScripts(list: List<Script>) {
-        val commands = list.filter { ScriptMeta.isCommand(it.code) }
+        val commands = list.filter { it.enabled && ScriptMeta.isCommand(it.code) }
         scriptUsages = commands.mapNotNull { s -> ScriptMeta.usage(s.code, s.name)?.let { s.name to it } }.toMap()
         _commandNames.value = commands.map { it.name }
     }
@@ -1167,6 +1167,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                 buildList {
                     if (r.created.isNotEmpty()) add("added ${r.created.joinToString()}")
                     if (r.updated.isNotEmpty()) add("updated ${r.updated.joinToString()}")
+                    if (r.created.isNotEmpty() || r.updated.isNotEmpty()) add("switched off until you turn them on (script on <name>)")
                     if (r.skipped.isNotEmpty()) add("skipped ${r.skipped.joinToString()}")
                 }.joinToString(" · ").ifEmpty { "nothing imported" }.replaceFirstChar { it.uppercase() },
                 error = r.created.isEmpty() && r.updated.isEmpty(),
@@ -1192,7 +1193,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     fun exportBackup(uri: Uri?) {
         if (uri == null) return
-        fileOp("backup") { notice("Backup saved: everything — settings, apps, ${Backup(context).export(uri)} scripts, todos, notes, reminders, feeds and the log") }
+        fileOp("backup") { notice("Backup saved: settings, apps, ${Backup(context).export(uri)} scripts, todos, notes, reminders, feeds and the log (without notifications and calls)") }
     }
 
     fun importBackup(uri: Uri?) {
@@ -1206,6 +1207,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                     (if (r.full) ", ${r.restored} saved items (todos, notes, reminders, feeds, log…)" else "") +
                     (if (r.disabled > 0) " (${r.disabled} new scripts are off — enable them in Scripts)" else "") +
                     (if (r.skipped.isNotEmpty()) " · skipped ${r.skipped.joinToString()}" else "") +
+                    (if (r.review.isNotEmpty()) " · check these settings from the file: ${r.review.joinToString()}" else "") +
                     if (r.full) " — restarting to load it all" else ""
             )
             // A full restore replaced preferences and tables under every in-memory cache: start fresh.

@@ -8,6 +8,7 @@ package com.mtwabpin.kolahal.script
  *   -- @usage [args]       — the arguments, written like a built-in usage line (`[random|<number>]`);
  *                            empty when there are none. Drives suggestions and `launch.instant`
  *   -- @on <event>[, ...]  — run when a device event happens (see [EVENTS]); the payload is `event`
+ *   -- @uses <what>[, ...] — private data or reach it needs (see [USES]); without it those calls fail
  */
 object ScriptMeta {
     private val command = Regex("""^\s*(--|//)\s*@command\b""", RegexOption.MULTILINE)
@@ -15,6 +16,22 @@ object ScriptMeta {
     private val usageLine = Regex("""^\s*(--|//)\s*@usage\b[ \t]*(.*)$""", RegexOption.MULTILINE)
     private val argRef = Regex("""\b(args|argline)\b""")
     private val on = Regex("""^\s*(--|//)\s*@on\b(.*)$""", RegexOption.MULTILINE)
+    private val usesLine = Regex("""^\s*(--|//)\s*@uses\b(.*)$""", RegexOption.MULTILINE)
+
+    /**
+     * What a script may ask for with `@uses`: `notifications` (notifications.recent and the
+     * `@on notification` trigger), `clipboard`, `apps` (apps.list) and `lan` (http to the local
+     * network or this device). Imported scripts arrive switched off, so turning one on is the
+     * user's consent to what it declares.
+     */
+    val USES = listOf("notifications", "clipboard", "apps", "lan")
+
+    /** Known names from every `@uses` line; unknown ones are ignored. */
+    fun uses(code: String): Set<String> {
+        val named = usesLine.findAll(code).flatMap { m -> m.groupValues[2].split(',', ' ', '\t') }
+            .map { it.trim().lowercase() }.toSet()
+        return USES.filterTo(LinkedHashSet()) { it in named }
+    }
 
     /** Events a script can subscribe to with `@on`. */
     val EVENTS = listOf("unlock", "charger", "unplug", "wifi", "offline", "notification", "boot", "headset")
