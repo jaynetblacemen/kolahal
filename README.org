@@ -1,13 +1,13 @@
 #+TITLE: Kolahal
 #+SUBTITLE: A keyboard-first terminal launcher for Android
 
-Kolahal (=io.github.rscipher001.launcher=) is a terminal-style home screen with first-class work
+Kolahal (=com.mtwabpin.kolahal=) is a terminal-style home screen with first-class work
 profile support and scripts in *Lua 5.4* or *JavaScript (QuickJS)*.
 
 * Documentation
 
 The full documentation (guides, command and config reference, scripting API) is at
-https://rscipher001.github.io/kolahal/. Its source is in =docs/= (Astro + Starlight), deployed to
+https://mtwabpin.github.io/kolahal/. Its source is in =docs/= (Astro + Starlight), deployed to
 GitHub Pages by =.github/workflows/docs.yml= on pushes to =main= that touch =docs/=. To work on it
 locally:
 
@@ -310,7 +310,7 @@ MainActivity (HOME) ── TerminalViewModel ── CommandProcessor
 * Repository layout
 
 A map for reviewing the code or finding where to make a change. Everything lives in one Gradle
-project; the app's code is under =app/src/main/java/io/github/rscipher001/launcher/=, written as
+project; the app's code is under =app/src/main/java/com/mtwabpin/kolahal/=, written as
 =launcher/= below.
 
 #+begin_example
@@ -425,6 +425,6 @@ A backup (=Settings → Export everything=) bundles all of the above into one JS
 - Use the release build day to day :: Debug Compose builds are noticeably slower to scroll.
 - Compile after sideloading :: A sideloaded APK runs without ahead-of-time compilation until Android
   compiles it during idle maintenance, so it can feel laggy at first. To compile it immediately, run
-  =adb shell cmd package compile -m speed -f io.github.rscipher001.launcher=.
+  =adb shell cmd package compile -m speed -f com.mtwabpin.kolahal=.
 - After installing :: Run =setup=. It checks the default launcher, Usage Access, notifications and
   battery optimisation, and each unchecked line fixes itself when tapped.

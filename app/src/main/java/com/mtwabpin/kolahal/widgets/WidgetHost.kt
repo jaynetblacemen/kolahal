@@ -1,0 +1,363 @@
+package com.mtwabpin.kolahal.widgets
+
+import android.annotation.SuppressLint
+import android.appwidget.AppWidgetHost
+import android.appwidget.AppWidgetHostView
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProviderInfo
+import android.content.ComponentName
+import android.content.Context
+import android.content.SharedPreferences
+import android.content.pm.LauncherApps
+import android.os.Build
+import android.os.Bundle
+import android.os.Process
+import android.os.UserHandle
+import android.os.UserManager
+import android.util.SizeF
+import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
+import android.view.ViewConfiguration
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlin.math.abs
+import kotlin.math.roundToInt
+
+/** An installed widget provider, for the picker. */
+data class ProviderEntry(val info: AppWidgetProviderInfo, val user: UserHandle, val serial: Long) {
+    val packageName: String get() = info.provider.packageName
+    val flat: String get() = info.provider.flattenToShortString()
+}
+
+/**
+ * Home-screen widget support: one [AppWidgetHost] for the whole app, the list of placed widgets
+ * (SharedPreferences, see [WidgetCodec]) and helpers for sizes, providers and backups.
+ * MainActivity calls [startListening] / [stopListening] from onStart / onStop.
+ */
+class WidgetHost private constructor(context: Context) {
+    private val app = context.applicationContext
+    val manager: AppWidgetManager = AppWidgetManager.getInstance(app)
+    private val userManager = app.getSystemService(UserManager::class.java)
+    private val launcherApps = app.getSystemService(LauncherApps::class.java)
+    private val prefs: SharedPreferences = app.getSharedPreferences("widgets", Context.MODE_PRIVATE)
+    private val density get() = app.resources.displayMetrics.density
+
+    val host: AppWidgetHost = object : AppWidgetHost(app, HOST_ID) {
+        override fun onCreateView(context: Context, appWidgetId: Int, appWidget: AppWidgetProviderInfo?): AppWidgetHostView =
+            KolahalWidgetView(context)
+
+        // A provider was removed, updated or (un)masked: drop widgets that no longer exist.
+        override fun onProvidersChanged() {
+            prune()
+            _providersVersion.value++
+        }
+    }
+
+    private val _widgets = MutableStateFlow(WidgetCodec.decode(prefs.getString(KEY, null)))
+    /** Every placed widget, pending re-adds included. */
+    val widgets: StateFlow<List<PlacedWidget>> = _widgets.asStateFlow()
+
+    private val _providersVersion = MutableStateFlow(0)
+    /** Bumps when installed providers change, so the picker reloads. */
+    val providersVersion: StateFlow<Int> = _providersVersion.asStateFlow()
+
+    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    /** Short results ("added Clock", errors) for the Widgets page snackbar. */
+    val messages: SharedFlow<String> = _messages.asSharedFlow()
+
+    /** Where the next widget from the picker goes (`widget add home` sets it). */
+    @Volatile var addLocation: String = WidgetLocation.PANEL
+
+    /** Ids allocated by a bind/configure flow that is still running; [prune] leaves them alone. */
+    private val inFlight = HashSet<Int>()
+    private var listening = false
+
+    fun message(text: String) { _messages.tryEmit(text) }
+
+    fun startListening() {
+        if (listening) return
+        listening = runCatching { host.startListening() }.isSuccess
+        prune()
+    }
+
+    fun stopListening() {
+        if (!listening) return
+        runCatching { host.stopListening() }
+        listening = false
+    }
+
+    private fun save(list: List<PlacedWidget>) {
+        _widgets.value = list
+        prefs.edit().putString(KEY, WidgetCodec.encode(list)).apply()
+    }
+
+    private fun update(change: (List<PlacedWidget>) -> List<PlacedWidget>) = synchronized(this) { save(change(_widgets.value)) }
+
+    // ---- placing --------------------------------------------------------------------------
+
+    fun allocate(): Int = host.allocateAppWidgetId().also { synchronized(inFlight) { inFlight += it } }
+
+    /** Gives up an id from an unfinished flow. */
+    fun discard(id: Int) {
+        synchronized(inFlight) { inFlight -= id }
+        runCatching { host.deleteAppWidgetId(id) }
+    }
+
+    /**
+     * Records a bound (and configured) widget. [replacing] is the key of a pending entry it
+     * restores: that entry's height, order and location carry over.
+     */
+    fun place(id: Int, info: AppWidgetProviderInfo, location: String, replacing: String? = null) {
+        synchronized(inFlight) { inFlight -= id }
+        update { all ->
+            val old = replacing?.let { key -> all.firstOrNull { it.key == key } }
+            val placed = PlacedWidget(
+                id = id,
+                provider = info.provider.flattenToShortString(),
+                profileSerial = serialOf(info.profile),
+                heightDp = old?.heightDp?.coerceAtLeast(minHeightDp(info)) ?: defaultHeightDp(info),
+                order = old?.order ?: WidgetOrder.nextOrder(all.filter { it.location == location }),
+                location = old?.location ?: location,
+            )
+            all.filterNot { it.key == old?.key } + placed
+        }
+        applySize(id, defaultHeightDpFor(id))
+    }
+
+    private fun defaultHeightDpFor(id: Int) = _widgets.value.firstOrNull { it.id == id }?.heightDp ?: WidgetLayout.MIN_DP
+
+    fun remove(key: String) {
+        val w = _widgets.value.firstOrNull { it.key == key } ?: return
+        w.id?.let { runCatching { host.deleteAppWidgetId(it) } }
+        update { all -> all.filterNot { it.key == key } }
+    }
+
+    fun move(key: String, direction: Int) = update { WidgetOrder.move(it, key, direction) }
+
+    fun setLocation(key: String, location: String) = update { WidgetOrder.relocate(it, key, location) }
+
+    fun resize(key: String, deltaDp: Int) {
+        val w = _widgets.value.firstOrNull { it.key == key } ?: return
+        val min = w.id?.let { info(it) }?.let { minHeightDp(it) } ?: WidgetLayout.MIN_DP
+        val h = WidgetLayout.resize(w.heightDp, deltaDp, min)
+        if (h != w.heightDp) update { all -> all.map { if (it.key == key) it.copy(heightDp = h) else it } }
+    }
+
+    // ---- providers ------------------------------------------------------------------------
+
+    fun info(id: Int): AppWidgetProviderInfo? = runCatching { manager.getAppWidgetInfo(id) }.getOrNull()
+
+    fun serialOf(user: UserHandle): Long = userManager.getSerialNumberForUser(user)
+
+    fun userFor(serial: Long): UserHandle? = userManager.getUserForSerialNumber(serial)
+
+    /** True when [serial]'s profile is paused (work apps off) or locked (private space). */
+    fun isPaused(serial: Long): Boolean {
+        val user = userFor(serial) ?: return false
+        if (user == Process.myUserHandle()) return false
+        return runCatching { userManager.isQuietModeEnabled(user) || !userManager.isUserUnlocked(user) }.getOrDefault(false)
+    }
+
+    /** Home-screen providers in every profile the launcher can see. */
+    fun providers(): List<ProviderEntry> = launcherApps.profiles.flatMap { user ->
+        val serial = serialOf(user)
+        runCatching { manager.getInstalledProvidersForProfile(user) }.getOrDefault(emptyList())
+            .filter { it.widgetCategory == 0 || it.widgetCategory and AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN != 0 }
+            .map { ProviderEntry(it, user, serial) }
+    }
+
+    /** The provider for a backup entry: same profile if it still exists, else the personal one, else any. */
+    fun findProvider(provider: String, serial: Long): ProviderEntry? {
+        val component = ComponentName.unflattenFromString(provider) ?: return null
+        val matches = providers().filter { it.info.provider == component }
+        return matches.firstOrNull { it.serial == serial }
+            ?: matches.firstOrNull { it.user == Process.myUserHandle() }
+            ?: matches.firstOrNull()
+    }
+
+    fun minHeightDp(info: AppWidgetProviderInfo): Int = WidgetLayout.minHeight(
+        minHeightDp = (info.minHeight / density).roundToInt(),
+        minResizeHeightDp = (info.minResizeHeight / density).roundToInt(),
+        resizableVertically = info.resizeMode and AppWidgetProviderInfo.RESIZE_VERTICAL != 0,
+    )
+
+    fun defaultHeightDp(info: AppWidgetProviderInfo): Int = WidgetLayout.defaultHeight(
+        (info.minHeight / density).roundToInt(),
+        if (Build.VERSION.SDK_INT >= 31) info.targetCellHeight else 0,
+    )
+
+    fun sizeLabel(info: AppWidgetProviderInfo): String = WidgetLayout.sizeLabel(
+        (info.minWidth / density).roundToInt(), (info.minHeight / density).roundToInt(),
+        if (Build.VERSION.SDK_INT >= 31) info.targetCellWidth else 0,
+        if (Build.VERSION.SDK_INT >= 31) info.targetCellHeight else 0,
+    )
+
+    /** Size options handed to bind, so the provider lays out for the column it will live in. */
+    fun options(heightDp: Int): Bundle {
+        val widthDp = widthDp()
+        return Bundle().apply {
+            putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, widthDp)
+            putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, widthDp)
+            putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, heightDp)
+            putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, heightDp)
+            putInt(AppWidgetManager.OPTION_APPWIDGET_HOST_CATEGORY, AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN)
+            if (Build.VERSION.SDK_INT >= 31) {
+                putParcelableArrayList(AppWidgetManager.OPTION_APPWIDGET_SIZES, arrayListOf(SizeF(widthDp.toFloat(), heightDp.toFloat())))
+            }
+        }
+    }
+
+    private fun widthDp(): Int = (app.resources.configuration.screenWidthDp - 32).coerceAtLeast(120)
+
+    /** Tells the provider the size before a view exists (the view reports its real size once laid out). */
+    private fun applySize(id: Int, heightDp: Int) {
+        runCatching { manager.updateAppWidgetOptions(id, options(heightDp)) }
+    }
+
+    // ---- housekeeping ---------------------------------------------------------------------
+
+    /**
+     * Drops widgets whose provider is gone (uninstalled, or its profile removed) and frees host
+     * ids nothing uses any more (left over from a flow interrupted by process death).
+     * Widgets of a paused or locked profile are kept.
+     */
+    fun prune() {
+        val dead = _widgets.value.filter { w ->
+            val id = w.id ?: return@filter false
+            if (info(id) != null) return@filter false
+            val user = userFor(w.profileSerial) ?: return@filter true
+            val available = runCatching {
+                userManager.isUserUnlocked(user) && (user == Process.myUserHandle() || !userManager.isQuietModeEnabled(user))
+            }.getOrDefault(false)
+            available
+        }
+        if (dead.isNotEmpty()) {
+            dead.forEach { w -> w.id?.let { runCatching { host.deleteAppWidgetId(it) } } }
+            val keys = dead.map { it.key }.toSet()
+            update { all -> all.filterNot { it.key in keys } }
+            message("removed ${dead.size} widget${if (dead.size == 1) "" else "s"} whose app is gone")
+        }
+        val used = _widgets.value.mapNotNull { it.id }.toSet() + synchronized(inFlight) { inFlight.toSet() }
+        runCatching { host.appWidgetIds }.getOrNull()?.filter { it !in used }?.forEach { runCatching { host.deleteAppWidgetId(it) } }
+    }
+
+    // ---- backup ---------------------------------------------------------------------------
+
+    /** For Backup: provider, profile serial, height, location and order of every placed widget. */
+    fun exportWidgets(): List<Map<String, Any?>> = WidgetCodec.export(_widgets.value)
+
+    /**
+     * For Backup: widget ids can't be restored, so imported entries become "pending re-add"
+     * rows on the Widgets page, each with a one-tap "Add again".
+     */
+    fun importWidgets(list: List<Map<String, Any?>>) = update { WidgetCodec.mergePending(it, WidgetCodec.fromExport(list)) }
+
+    companion object {
+        /** "KO". */
+        const val HOST_ID = 0x4B4F
+        private const val KEY = "placed"
+
+        @SuppressLint("StaticFieldLeak") // application context only
+        @Volatile private var instance: WidgetHost? = null
+
+        fun get(context: Context): WidgetHost = instance ?: synchronized(this) {
+            instance ?: WidgetHost(context).also { instance = it }
+        }
+    }
+}
+
+/** `widgets ls`: one (text, detail) pair per widget, home ones first. */
+fun WidgetHost.listing(context: Context): List<Pair<String, String>> {
+    val all = widgets.value
+    val ordered = WidgetOrder.inLocation(all, WidgetLocation.HOME) + WidgetOrder.inLocation(all, WidgetLocation.PANEL) +
+        WidgetOrder.sorted(all.filter { it.pending })
+    return ordered.mapIndexed { i, w ->
+        val label = w.id?.let { info(it) }?.loadLabel(context.packageManager) ?: w.provider.substringAfterLast('.')
+        val state = when {
+            w.pending -> "pending re-add"
+            isPaused(w.profileSerial) -> "${w.location} · paused"
+            else -> w.location
+        }
+        "${i + 1}. $label" to "$state · ${w.heightDp}dp · ${w.packageName}"
+    }
+}
+
+/**
+ * Host view that reports its real size to the provider and turns a long-press anywhere on the
+ * widget into [onLongPress] (cancelling the touch for the widget's own views).
+ */
+class KolahalWidgetView(context: Context) : AppWidgetHostView(context) {
+    var onLongPress: (() -> Unit)? = null
+    private val slop = ViewConfiguration.get(context).scaledTouchSlop
+    private var downX = 0f
+    private var downY = 0f
+    private var longPressed = false
+    private var cancelSent = false
+    private var lastSize = 0L
+
+    private val check = Runnable {
+        if (onLongPress != null) {
+            longPressed = true
+            performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            onLongPress?.invoke()
+        }
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                longPressed = false
+                cancelSent = false
+                downX = ev.x
+                downY = ev.y
+                if (onLongPress != null) postDelayed(check, ViewConfiguration.getLongPressTimeout().toLong())
+            }
+            MotionEvent.ACTION_MOVE -> if (abs(ev.x - downX) > slop || abs(ev.y - downY) > slop) removeCallbacks(check)
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> removeCallbacks(check)
+        }
+        if (longPressed) {
+            if (!cancelSent) {
+                cancelSent = true
+                val cancel = MotionEvent.obtain(ev).apply { action = MotionEvent.ACTION_CANCEL }
+                super.dispatchTouchEvent(cancel)
+                cancel.recycle()
+            }
+            return true
+        }
+        val handled = super.dispatchTouchEvent(ev)
+        // Keep receiving the gesture even over parts of the widget that don't take touches.
+        return handled || (onLongPress != null && ev.actionMasked == MotionEvent.ACTION_DOWN)
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (w <= 0 || h <= 0 || appWidgetId == 0) return
+        val packed = (w.toLong() shl 32) or h.toLong()
+        if (packed == lastSize) return
+        lastSize = packed
+        val d = resources.displayMetrics.density
+        val wDp = w / d
+        val hDp = h / d
+        post { reportSize(wDp, hDp) }
+    }
+
+    private fun reportSize(wDp: Float, hDp: Float) {
+        runCatching {
+            if (Build.VERSION.SDK_INT >= 31) {
+                updateAppWidgetSize(Bundle(), listOf(SizeF(wDp, hDp)))
+            } else {
+                @Suppress("DEPRECATION")
+                updateAppWidgetSize(null, wDp.toInt(), hDp.toInt(), wDp.toInt(), hDp.toInt())
+            }
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        removeCallbacks(check)
+        super.onDetachedFromWindow()
+    }
+}

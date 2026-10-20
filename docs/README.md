@@ -37,7 +37,7 @@ link or anchor.
 `site` and `base` are at the top of `astro.config.mjs`:
 
 ```js
-const SITE = process.env.DOCS_SITE ?? 'https://rscipher001.github.io';
+const SITE = process.env.DOCS_SITE ?? 'https://mtwabpin.github.io';
 const BASE = process.env.DOCS_BASE ?? '/kolahal';
 ```
 

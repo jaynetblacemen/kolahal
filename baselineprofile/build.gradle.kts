@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "io.github.rscipher001.launcher.baselineprofile"
+    namespace = "com.mtwabpin.kolahal.baselineprofile"
     compileSdk = 37
 
     defaultConfig {

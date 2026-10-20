@@ -3,7 +3,7 @@ title: Install
 description: Build Kolahal from source with Gradle, or sideload an APK, then make it your home app.
 ---
 
-Kolahal (package `io.github.rscipher001.launcher`) needs **Android 9 (API 28) or newer**. Profile
+Kolahal (package `com.mtwabpin.kolahal`) needs **Android 9 (API 28) or newer**. Profile
 toggling needs Android 10+, and private space needs Android 15+.
 
 ## Build from source
@@ -12,7 +12,7 @@ You need a JDK and the Android SDK. The project's toolchain is AGP 9.1, Gradle 9
 wrapper), Kotlin 2.3.20, compileSdk 37 and targetSdk 36.
 
 ```sh
-git clone https://github.com/rscipher001/kolahal.git
+git clone https://github.com/mtwabpin/kolahal.git
 cd kolahal
 
 ./gradlew :app:assembleRelease            # R8-optimised; signed with keystore.properties or the debug key
@@ -52,7 +52,7 @@ A sideloaded APK runs without ahead-of-time compilation until Android compiles i
 maintenance, so it can feel laggy at first. To compile it right away:
 
 ```sh
-adb shell cmd package compile -m speed -f io.github.rscipher001.launcher
+adb shell cmd package compile -m speed -f com.mtwabpin.kolahal
 ```
 
 ## Make it your home app

@@ -107,7 +107,7 @@ cost nothing.
 // @command
 // @desc GitHub stars: stars <owner/repo>
 
-const repo = (args[0] || "rscipher001/kolahal").replace(/^https:\/\/github\.com\//, "");
+const repo = (args[0] || "mtwabpin/kolahal").replace(/^https:\/\/github\.com\//, "");
 if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return "usage: stars owner/repo";
 
 const r = await http.cached(`https://api.github.com/repos/${repo}`, 600);

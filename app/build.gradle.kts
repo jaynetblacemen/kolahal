@@ -12,11 +12,11 @@ val keystoreProps = Properties().apply {
 }
 
 android {
-    namespace = "io.github.rscipher001.launcher"
+    namespace = "com.mtwabpin.kolahal"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "io.github.rscipher001.launcher"
+        applicationId = "com.mtwabpin.kolahal"
         minSdk = 28
         targetSdk = 36
         versionCode = 1

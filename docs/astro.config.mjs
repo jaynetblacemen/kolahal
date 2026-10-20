@@ -6,9 +6,9 @@ import { satteri } from '@astrojs/markdown-satteri';
 // Where the site is published. For a fork, change these two values (or set the env vars):
 //   SITE  https://<github-user>.github.io
 //   BASE  /<repository-name>        (use '/' for a custom domain or a <user>.github.io repo)
-const SITE = process.env.DOCS_SITE ?? 'https://rscipher001.github.io';
+const SITE = process.env.DOCS_SITE ?? 'https://mtwabpin.github.io';
 const BASE = process.env.DOCS_BASE ?? '/kolahal';
-const REPO = 'https://github.com/rscipher001/kolahal';
+const REPO = 'https://github.com/mtwabpin/kolahal';
 
 /**
  * Pages link to each other site-absolute (`/reference/commands/`); this adds the base path at

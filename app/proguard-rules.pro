@@ -3,4 +3,4 @@
 # quickjs-kt bridges through JNI.
 -keep class com.dokar.quickjs.** { *; }
 # Remote WorkManager worker is instantiated by class name in the :script process.
--keep class io.github.rscipher001.launcher.script.ScriptWorker { *; }
+-keep class com.mtwabpin.kolahal.script.ScriptWorker { *; }
