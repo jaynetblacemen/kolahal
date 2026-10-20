@@ -347,8 +347,8 @@ private fun renderLine(entry: LogEntry, charWidth: TextUnit, unread: Boolean) = 
                 if (unread) withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("• ") }
                 withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.script)) { append(entry.text) }
                 // The source goes at the end, muted, like other indicators (`… machine. · wikipedia`),
-                // so wrapped lines use the full width.
-                entry.source?.let { withStyle(SpanStyle(color = Term.dim)) { append(" · $it") } }
+                // so wrapped lines use the full width. A no-break space keeps the dot with the name.
+                entry.source?.let { withStyle(SpanStyle(color = Term.dim)) { append(" ·\u00A0$it") } }
             }
             LogKind.OUTPUT -> {
                 val first = entry.text.substringBefore('\n')
