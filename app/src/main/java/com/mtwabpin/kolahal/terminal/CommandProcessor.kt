@@ -55,6 +55,8 @@ interface TerminalUi {
     fun openEditor(script: Script)
     fun requestNotificationPermission()
     fun clearScreen()
+    /** `fresh`: hide what is on screen now, as `log.fresh` does after a while away. */
+    fun freshScreen() {}
     /** READ_CALENDAR for `agenda`. */
     fun requestCalendarPermission() {}
     /** READ_CALL_LOG for calls in the log and `calls`. */
@@ -90,7 +92,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val typed = line.trim()
         if (typed.isEmpty()) return
         // The same command again with nothing printed in between (settings, settings…) is one line.
-        if (logs.last() != (LogKind.COMMAND to typed)) logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
+        // `fresh` isn't logged at all: it would put a line straight back on the clean screen.
+        if (typed.lowercase() != "fresh" && logs.last() != (LogKind.COMMAND to typed)) logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
         // Aliases first, so `alias hf = help | grep feed` pipes too.
         val stages = Pipes.split(if (expand) expandAliases(typed) else typed)
         if (stages.size > 1) {
@@ -131,6 +134,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "private" -> profileToggle(ProfileKind.PRIVATE, args)
                 "unlocks" -> unlocks(args)
                 "clear", "cls" -> clear(args)
+                "fresh" -> ui.freshScreen()
                 "restart", "reboot" -> restart(args)
                 "history" -> history()
                 "scripts" -> if (args.isEmpty()) ui.openScreen(Screen.SCRIPTS) else script(args)
@@ -1267,6 +1271,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("url", "url <address>", "Open a link"),
             CommandSpec("history", "history", "Recent commands (tap to reuse)"),
             CommandSpec("clear", "clear [history|all]", "Clear the screen, the ↑ history, or both"),
+            CommandSpec("fresh", "fresh", "Start a clean screen now, like log.fresh; earlier lines are one tap away (not logged)"),
             CommandSpec("restart", "restart [scripts]", "Restart the launcher, or stop running scripts"),
             CommandSpec("status", "status [clear <name|all>]", "Header lines pinned by scripts"),
             CommandSpec("setup", "setup [text]", "Setup checklist page (text: print it in the log)"),
@@ -1317,7 +1322,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "profiles" to listOf("work", "private"),
             "productivity" to listOf("todo", "note", "notes", "remind", "reminders", "timer", "alarm", "alarms", "stopwatch", "agenda"),
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
-            "terminal" to listOf("help", "history", "clear", "restart", "alias", "unalias", "config", "theme", "font", "echo", "date"),
+            "terminal" to listOf("help", "history", "clear", "fresh", "restart", "alias", "unalias", "config", "theme", "font", "echo", "date"),
             "widgets" to listOf("widgets", "widget"),
             "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "battery", "home", "lock", "shade", "accessibility", "system"),
         )

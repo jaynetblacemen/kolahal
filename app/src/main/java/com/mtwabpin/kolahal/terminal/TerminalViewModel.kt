@@ -1364,6 +1364,11 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         io { logs.clearScreen() }
     }
 
+    override fun freshScreen() {
+        expandHeader()
+        io { logs.hideScreen() }
+    }
+
     // ---- productivity (todo, notes, reminders, agenda) --------------------------------------
 
     private val _todoCount = MutableStateFlow(0)
