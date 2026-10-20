@@ -53,6 +53,17 @@ class ScriptRepository private constructor(private val context: Context) {
 
     fun saveCode(id: Long, code: String) = update(id) { put("code", code) }
 
+    /**
+     * Changes whenever the script list would: this process's writes ([version]) and runs the
+     * script process records. Cheap, it reads no code; lets home skip re-reading every script.
+     */
+    fun fingerprint(): String = db.readableDatabase.rawQuery(
+        "SELECT COUNT(*), COALESCE(MAX(last_run), 0), COALESCE(SUM(enabled), 0), COALESCE(MAX(id), 0) FROM scripts", null,
+    ).use { c ->
+        c.moveToFirst()
+        "${version.get()}:${c.getLong(0)}:${c.getLong(1)}:${c.getLong(2)}:${c.getLong(3)}"
+    }
+
     fun setInterval(id: Long, minutes: Int) = update(id) { put("interval_min", minutes) }
 
     fun setEnabled(id: Long, enabled: Boolean) = update(id) { put("enabled", if (enabled) 1 else 0) }

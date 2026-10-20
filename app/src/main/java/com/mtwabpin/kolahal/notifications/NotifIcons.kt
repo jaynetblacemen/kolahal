@@ -18,6 +18,7 @@ import java.io.File
  */
 object NotifIcons {
     private const val PX = 48
+    private const val VERSION_TTL_MS = 10 * 60_000L
     /** Oldest files go past this; their lines fall back to the app name. */
     private const val MAX_FILES = 400
 
@@ -30,8 +31,24 @@ object NotifIcons {
     fun key(context: Context, pkg: String, icon: Icon?): String? {
         if (icon == null || icon.type != Icon.TYPE_RESOURCE) return null
         val resPkg = icon.resPackage?.takeIf { it.isNotEmpty() } ?: pkg
-        val version = runCatching { context.packageManager.getPackageInfo(resPkg, 0).longVersionCode }.getOrDefault(0L)
+        val version = versionOf(context, resPkg)
         return "${resPkg}_${Integer.toHexString(icon.resId)}_$version"
+    }
+
+    /** App versions for icon keys, cached for a while: a chatty app posts many notifications a minute. */
+    private val versions = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, Long>>()
+
+    private fun versionOf(context: Context, pkg: String): Long {
+        val now = System.currentTimeMillis()
+        versions[pkg]?.let { (version, at) -> if (now - at < VERSION_TTL_MS) return version }
+        val version = runCatching { context.packageManager.getPackageInfo(pkg, 0).longVersionCode }.getOrDefault(0L)
+        versions[pkg] = version to now
+        return version
+    }
+
+    /** Lists the saved icons off the main thread, so the first log line with one doesn't do it. */
+    fun preload(context: Context) {
+        knownSet(context)
     }
 
     /** True when [key]'s icon has been saved (a directory listing once, then kept in memory). */

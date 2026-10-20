@@ -50,6 +50,10 @@ data class AppEntry(
 ) {
     val pkg: String get() = component.packageName
     val key: String get() = keyOf(component, profile)
+
+    /** For search, worked out once per list load instead of on every keystroke. */
+    internal val lower: String = label.lowercase()
+    internal val words: List<String> = lower.split(' ', '-', '_', '.')
 }
 
 /**
@@ -79,11 +83,11 @@ class AppRepository private constructor(private val context: Context) {
         if (started) return
         started = true
         launcherApps.registerCallback(object : LauncherApps.Callback() {
-            override fun onPackageRemoved(packageName: String, user: UserHandle) = refresh()
-            override fun onPackageAdded(packageName: String, user: UserHandle) = refresh()
-            override fun onPackageChanged(packageName: String, user: UserHandle) = refresh()
-            override fun onPackagesAvailable(names: Array<out String>, user: UserHandle, replacing: Boolean) = refresh()
-            override fun onPackagesUnavailable(names: Array<out String>, user: UserHandle, replacing: Boolean) = refresh()
+            override fun onPackageRemoved(packageName: String, user: UserHandle) = refreshSoon()
+            override fun onPackageAdded(packageName: String, user: UserHandle) = refreshSoon()
+            override fun onPackageChanged(packageName: String, user: UserHandle) = refreshSoon()
+            override fun onPackagesAvailable(names: Array<out String>, user: UserHandle, replacing: Boolean) = refreshSoon()
+            override fun onPackagesUnavailable(names: Array<out String>, user: UserHandle, replacing: Boolean) = refreshSoon()
         })
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_MANAGED_PROFILE_ADDED)
@@ -107,6 +111,17 @@ class AppRepository private constructor(private val context: Context) {
     /** Requests a reload; requests are conflated and processed one at a time, so results never race. */
     fun refresh() {
         refreshRequests.trySend(Unit)
+    }
+
+    private var soon: kotlinx.coroutines.Job? = null
+
+    /** An install or update sends several callbacks in a row: one reload once they stop. */
+    private fun refreshSoon() {
+        soon?.cancel()
+        soon = scope.launch {
+            kotlinx.coroutines.delay(300)
+            refresh()
+        }
     }
 
     private fun reload() {
@@ -168,14 +183,30 @@ class AppRepository private constructor(private val context: Context) {
         searchRanked(query, kind, includeHidden).map { it.first }
 
     /** Matches with their tier: 0 exact, 1 prefix, 2 word prefix, 3 substring, 4 subsequence. */
+    /** The last search: instant run and the suggestions ask the same question on every keystroke. */
+    private class Memo(
+        val q: String, val kind: ProfileKind?, val hidden: Boolean, val apps: List<AppEntry>, val version: Int,
+        val result: List<Pair<AppEntry, Int>>,
+    )
+    @Volatile private var memo: Memo? = null
+
     fun searchRanked(query: String, kind: ProfileKind? = null, includeHidden: Boolean = false): List<Pair<AppEntry, Int>> {
         val q = query.trim().lowercase()
         if (q.isEmpty()) return emptyList()
+        val apps = _apps.value
+        val version = prefs.version.value
+        memo?.let { m -> if (m.q == q && m.kind == kind && m.hidden == includeHidden && m.apps === apps && m.version == version) return m.result }
+        val result = rank(apps, q, kind, includeHidden)
+        memo = Memo(q, kind, includeHidden, apps, version, result)
+        return result
+    }
+
+    private fun rank(apps: List<AppEntry>, q: String, kind: ProfileKind?, includeHidden: Boolean): List<Pair<AppEntry, Int>> {
         val now = System.currentTimeMillis()
-        return _apps.value
+        return apps
             .asSequence()
             .filter { (kind == null || it.profile.kind == kind) && (includeHidden || !it.hidden) }
-            .mapNotNull { app -> score(app.label.lowercase(), q)?.let { Ranked(app, it) } }
+            .mapNotNull { app -> score(app, q)?.let { Ranked(app, it) } }
             .toList()
             // Frecency is read once per match, not on every comparison.
             .onEach { it.frecency = prefs.frecency(it.app.key, now) }
@@ -208,12 +239,12 @@ class AppRepository private constructor(private val context: Context) {
         var frecency = 0.0
     }
 
-    private fun score(label: String, q: String): Int? = when {
-        label == q -> 0
-        label.startsWith(q) -> 1
-        label.split(' ', '-', '_', '.').any { it.startsWith(q) } -> 2
-        label.contains(q) -> 3
-        isSubsequence(q, label) -> 4
+    private fun score(app: AppEntry, q: String): Int? = when {
+        app.lower == q -> 0
+        app.lower.startsWith(q) -> 1
+        app.words.any { it.startsWith(q) } -> 2
+        app.lower.contains(q) -> 3
+        isSubsequence(q, app.lower) -> 4
         else -> null
     }
 

@@ -182,7 +182,11 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         snapshotFlow {
             listState.isScrollInProgress to
                 (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 48)
-        }.collect { (scrolling, atBottom) -> if (scrolling) pinned = atBottom }
+        }.collect { (scrolling, atBottom) ->
+            if (scrolling) pinned = atBottom
+            // Settled back at the newest lines: older pages loaded on the way up can go.
+            if (!scrolling && atBottom) vm.atNewest()
+        }
     }
     // Keyed on the newest *row* (rows are built after entries), so the scroll targets the new line.
     LaunchedEffect(reversedRows.firstOrNull()?.key) {
@@ -216,6 +220,11 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     }
     val dimOld = remember(configVersion) { config[Keys.LOG_DIM] }
     var menu by remember { mutableStateOf<ActionMenu?>(null) }
+    // Menus ask the system for an app's shortcuts: built off the main thread, shown when ready.
+    val menuScope = rememberCoroutineScope()
+    fun showMenu(title: String, id: Long?, build: () -> List<LogAction>) {
+        menuScope.launch { menu = ActionMenu(title, kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { build() }, id) }
+    }
     LaunchedEffect(Unit) {
         vm.events.collect { if (it == UiEvent.ShowQuick) menu = ActionMenu("Quick", vm.quickActions(), null) }
     }
@@ -355,9 +364,9 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                         highlighted = menu?.entryId == row.entry.id,
                         apps = vm::appsOf,
                         onTap = vm::onTap,
-                        onLongPress = { e -> menu = ActionMenu(e.text, vm.actionsFor(e), e.id) },
+                        onLongPress = { e -> showMenu(e.text, e.id) { vm.actionsFor(e) } },
                         onAppTap = vm::launchApp,
-                        onAppLongPress = { app -> menu = ActionMenu(app.label, vm.appActions(app), null) },
+                        onAppLongPress = { app -> showMenu(app.label, null) { vm.appActions(app) } },
                         onSwipeCopy = vm::swipeCopy,
                         onSwipeDelete = vm::swipeDelete,
                     )
@@ -407,7 +416,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 apps = apps,
                 pinned = pinnedKeys,
                 onLaunch = vm::launchApp,
-                onLongPress = { app -> menu = ActionMenu(app.label, vm.appActions(app), null) },
+                onLongPress = { app -> showMenu(app.label, null) { vm.appActions(app) } },
                 heightDp = remember(configVersion) { config[Keys.SELECTOR_HEIGHT] },
                 showHandle = remember(configVersion) { config[Keys.SELECTOR_HANDLE] },
             )
@@ -443,7 +452,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 SuggestionList(
                     suggestions,
                     onPick = vm::onSuggestion,
-                    onAppLongPress = { app -> menu = ActionMenu(app.label, vm.appActions(app), null) },
+                    onAppLongPress = { app -> showMenu(app.label, null) { vm.appActions(app) } },
                     icons = showIcons,
                 )
             }

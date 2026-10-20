@@ -67,11 +67,18 @@ class PackageEvents private constructor(private val context: Context) {
     /**
      * Called when home comes back on screen. The grace-period re-check is a timer in this process,
      * which a restart, kill or freeze can lose or delay; this catches up straight away. A settle
-     * already waiting (an install in progress) is left alone.
+     * already waiting (an install in progress) is left alone. Every app is listed again only when
+     * an uninstall is waiting out its grace period, or after an hour (a callback missed while frozen).
      */
     fun recheck() {
-        if (System.currentTimeMillis() >= settlingUntil) schedule(delayMs = 500, keepSooner = true)
+        val now = System.currentTimeMillis()
+        if (!removalPending && now - diffedAt < RECHECK_AFTER_MS) return
+        if (now >= settlingUntil) schedule(delayMs = 500, keepSooner = true)
     }
+
+    /** An app went missing and its uninstall line is waiting for the grace period. */
+    @Volatile private var removalPending = true
+    @Volatile private var diffedAt = 0L
 
     /**
      * Installed apps, the serials of paused profiles (whose apps are hidden, not gone), and the
@@ -95,19 +102,19 @@ class PackageEvents private constructor(private val context: Context) {
             for (a in activities) {
                 val key = "${a.componentName.packageName}#$serial"
                 if (key in out) continue
-                val info = runCatching {
-                    launcherApps.getApplicationInfo(a.componentName.packageName, 0, user)
-                }.getOrNull()
-                val pi = runCatching {
+                // Comes with the activity: no extra call to the system per app.
+                val info = a.applicationInfo
+                // Version details are only readable for this profile: don't ask for the others.
+                val pi = if (user != me) null else runCatching {
                     context.packageManager.getPackageInfo(a.componentName.packageName, 0)
-                }.getOrNull().takeIf { user == me }
+                }.getOrNull()
                 out[key] = Pkg(
                     label = a.label.toString(),
                     version = pi?.versionName.orEmpty(),
                     code = pi?.longVersionCode ?: 0L,
                     // Other profiles: the app's install-time stamp is not readable; the APK's
                     // file time changes on every update, which is what we need.
-                    updated = pi?.lastUpdateTime ?: info?.sourceDir?.let { java.io.File(it).lastModified() } ?: 0L,
+                    updated = pi?.lastUpdateTime ?: info.sourceDir?.let { java.io.File(it).lastModified() } ?: 0L,
                     profile = profile,
                 )
             }
@@ -141,7 +148,9 @@ class PackageEvents private constructor(private val context: Context) {
         // Before profiles were tracked: the ones with apps in the snapshot.
         val seen = loadSeen() ?: serials(before.keys)
         val plan = plan(before, now, paused, present, seen, System.currentTimeMillis())
-        save(plan.next)
+        if (plan.next != before) save(plan.next)
+        removalPending = plan.checkInMs != null
+        diffedAt = System.currentTimeMillis()
         if (plan.seen != seen) saveSeen(plan.seen)
         // Check again once the grace period is over, so a real uninstall is still logged.
         plan.checkInMs?.let { main.post { schedule(it + 500, keepSooner = true) } }
@@ -214,6 +223,7 @@ class PackageEvents private constructor(private val context: Context) {
         /** Serials of the profiles whose apps are in the snapshot. */
         private const val SEEN = "profiles"
         private const val MAX_HISTORY = 200
+        private const val RECHECK_AFTER_MS = 3_600_000L
 
         private fun serial(key: String) = key.substringAfter('#').toLongOrNull()
         private fun serials(keys: Collection<String>) = keys.mapNotNull(::serial).toSet()

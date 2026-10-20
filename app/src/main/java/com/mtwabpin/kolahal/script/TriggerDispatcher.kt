@@ -48,7 +48,8 @@ class TriggerDispatcher private constructor(private val context: Context) {
         registerPower()
         registerHeadset()
         registerNetwork()
-        checkBoot()
+        // Reads its prefs from disk: not on the main thread at start-up.
+        Thread { runCatching { checkBoot() } }.start()
     }
 
     /** Fires [event] for every subscribed script. Safe to call from any thread. */
@@ -75,16 +76,28 @@ class TriggerDispatcher private constructor(private val context: Context) {
     private fun clip(v: Any?): Any? = if (v is String && v.length > MAX_TEXT) v.take(MAX_TEXT) + "…" else v
 
     private fun subscribers(event: String): List<Long> {
-        val v = ScriptRepository.version.get()
-        if (v != loadedVersion) {
-            subscriptions = ScriptRepository.get(context).all()
-                .filter { it.enabled }
-                // A notification's text only goes to scripts that declare `@uses notifications`.
-                .map { s -> s.id to ScriptMeta.events(s.code).filter { it != "notification" || "notifications" in ScriptMeta.uses(s.code) } }
-                .filter { it.second.isNotEmpty() }
-            loadedVersion = v
-        }
+        refresh()
         return subscriptions.filter { event in it.second }.map { it.first }
+    }
+
+    /** True when a switched-on script declares `@uses notifications`; otherwise nothing keeps a copy for scripts. */
+    fun wantsNotifications(): Boolean {
+        refresh()
+        return notificationReaders
+    }
+
+    @Volatile private var notificationReaders = false
+
+    private fun refresh() {
+        val v = ScriptRepository.version.get()
+        if (v == loadedVersion) return
+        val enabled = ScriptRepository.get(context).all().filter { it.enabled }
+        subscriptions = enabled
+            // A notification's text only goes to scripts that declare `@uses notifications`.
+            .map { s -> s.id to ScriptMeta.events(s.code).filter { it != "notification" || "notifications" in ScriptMeta.uses(s.code) } }
+            .filter { it.second.isNotEmpty() }
+        notificationReaders = enabled.any { "notifications" in ScriptMeta.uses(it.code) }
+        loadedVersion = v
     }
 
     private fun registerPower() {

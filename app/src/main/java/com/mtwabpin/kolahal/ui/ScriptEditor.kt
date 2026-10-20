@@ -818,25 +818,63 @@ private class SyntaxHighlighter(
     private val matches: MatchHighlights?,
 ) : VisualTransformation {
     private val keywords = ApiDocs.keywords(lang).toSet()
+    private val js = lang == ScriptLang.JS
+    // Every token here stays on one line; JS template strings (`…`), which may span lines, are found separately.
     private val token = Regex(
         (if (lang == ScriptLang.LUA) "--[^\n]*" else "//[^\n]*") +
-            "|\"(?:\\\\.|[^\"\\\\\n])*\"|'(?:\\\\.|[^'\\\\\n])*'|`[^`]*`|\\b\\d+(?:\\.\\d+)?\\b|\\b[A-Za-z_][A-Za-z0-9_]*\\b"
+            "|\"(?:\\\\.|[^\"\\\\\n])*\"|'(?:\\\\.|[^'\\\\\n])*'|\\b\\d+(?:\\.\\d+)?\\b|\\b[A-Za-z_][A-Za-z0-9_]*\\b"
     )
+
+    /**
+     * Tokens per line, by the line's text: typing re-matches only the line being edited, not the
+     * whole script. Each token is (start, end, kind) within its line.
+     */
+    private val lineTokens = object : LinkedHashMap<String, IntArray>(512, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, IntArray>?) = size > 8000
+    }
+
+    private fun tokensOf(line: String): IntArray = lineTokens.getOrPut(line) {
+        val out = ArrayList<Int>()
+        for (m in token.findAll(line)) {
+            val t = m.value
+            val kind = when {
+                t.startsWith("--") || t.startsWith("//") -> COMMENT
+                t.startsWith("\"") || t.startsWith("'") -> STRING
+                t[0].isDigit() -> NUMBER
+                t in keywords -> KEYWORD
+                else -> continue
+            }
+            out += m.range.first; out += m.range.last + 1; out += kind
+        }
+        out.toIntArray()
+    }
 
     override fun filter(text: AnnotatedString): TransformedText {
         val src = text.text
+        val styles = arrayOf(
+            SpanStyle(color = Term.dim, fontStyle = FontStyle.Italic),
+            SpanStyle(color = Term.script),
+            SpanStyle(color = Term.palette.work),
+            SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold),
+        )
         val styled = buildAnnotatedString {
             append(src)
-            for (m in token.findAll(src)) {
-                val t = m.value
-                val style = when {
-                    t.startsWith("--") || t.startsWith("//") -> SpanStyle(color = Term.dim, fontStyle = FontStyle.Italic)
-                    t.startsWith("\"") || t.startsWith("'") || t.startsWith("`") -> SpanStyle(color = Term.script)
-                    t[0].isDigit() -> SpanStyle(color = Term.palette.work)
-                    t in keywords -> SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)
-                    else -> null
+            var lineStart = 0
+            while (lineStart <= src.length) {
+                val lineEnd = src.indexOf('\n', lineStart).let { if (it < 0) src.length else it }
+                val t = tokensOf(src.substring(lineStart, lineEnd))
+                for (i in t.indices step 3) addStyle(styles[t[i + 2]], lineStart + t[i], lineStart + t[i + 1])
+                lineStart = lineEnd + 1
+            }
+            if (js) {
+                // Template strings: pair up backticks with a plain scan (no escapes inside are honoured, as before).
+                var open = src.indexOf('`')
+                while (open >= 0) {
+                    val close = src.indexOf('`', open + 1)
+                    if (close < 0) break
+                    addStyle(styles[STRING], open, close + 1)
+                    open = src.indexOf('`', close + 1)
                 }
-                if (style != null) addStyle(style, m.range.first, m.range.last + 1)
             }
             if (flashLine != null) {
                 val start = selectionAtLine(src, flashLine).start
@@ -854,6 +892,13 @@ private class SyntaxHighlighter(
             }
         }
         return TransformedText(styled, OffsetMapping.Identity)
+    }
+
+    private companion object {
+        const val COMMENT = 0
+        const val STRING = 1
+        const val NUMBER = 2
+        const val KEYWORD = 3
     }
 
     override fun equals(other: Any?) = other is SyntaxHighlighter && other.flashLine == flashLine &&

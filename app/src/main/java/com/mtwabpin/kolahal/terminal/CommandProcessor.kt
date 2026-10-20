@@ -143,7 +143,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "js" -> eval(ScriptLang.JS, rest)
                 "rss" -> rss(rest)
                 "feeds" -> if (args.isEmpty()) ui.openScreen(Screen.FEEDS) else feeds(args)
-                "feed" -> feeds(args)
+                // A feed added, removed, switched or given a new interval changes the schedule.
+                "feed" -> feeds(args).also { runCatching { com.mtwabpin.kolahal.feeds.FeedScheduler.sync(context) } }
                 "widgets" -> if (args.isEmpty()) ui.openScreen(Screen.WIDGETS) else widgets(args)
                 "widget" -> widgets(args)
                 "notifs", "notifications-feed" -> notifs(args)
@@ -1076,7 +1077,10 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private fun setKey(name: String?, parsed: String, raw: String) = withKey(name) { key ->
         val value = if (key is ConfigKey.Text && raw.contains(key.key)) raw.substringAfter(key.key).trim() else parsed
         if (value.isBlank()) return error("${key.key} = ${conf.display(key)}  (${hint(key)})")
-        if (conf.set(key, value)) info("${key.key} = ${conf.display(key)}")
+        if (conf.set(key, value)) {
+            info("${key.key} = ${conf.display(key)}")
+            if (key == Keys.FEEDS_WIFI) runCatching { com.mtwabpin.kolahal.feeds.FeedScheduler.sync(context) }
+        }
         else error("Invalid value for ${key.key}: ${hint(key)}")
     }
 

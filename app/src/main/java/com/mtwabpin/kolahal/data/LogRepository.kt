@@ -47,7 +47,8 @@ class LogRepository private constructor(private val context: Context) {
      */
     fun addReplacing(kind: LogKind, text: String, ctx: LogContext = LogContext.EMPTY): Long {
         if (capture.get() != null) return add(kind, text, ctx = ctx)
-        db.writableDatabase.delete("logs", "kind = ? AND text = ?", arrayOf(kind.key, text))
+        // The earlier line moves to the bottom: more than an append for home's incremental load.
+        if (db.writableDatabase.delete("logs", "kind = ? AND text = ?", arrayOf(kind.key, text)) > 0) structure++
         return add(kind, text, ctx = ctx)
     }
 
@@ -94,13 +95,26 @@ class LogRepository private constructor(private val context: Context) {
         changed()
     }
 
-    fun recent(limit: Int = 400): List<LogEntry> {
+    /**
+     * Bumped by every change other than new lines at the end (deletes, hides, clears, trims, a
+     * line moved down): home then reloads the page instead of fetching only the new lines.
+     */
+    @Volatile var structure = 0L
+        private set
+
+    private fun restructured() {
+        structure++
+        changed(restructure = true)
+    }
+
+    /** The newest [limit] visible lines, oldest first; only those after [afterId] when given. */
+    fun recent(limit: Int = 400, afterId: Long = 0L): List<LogEntry> {
         val out = ArrayList<LogEntry>()
         db.readableDatabase.rawQuery(
             // substr: a row over the 2 MB cursor window (written before lines were capped) can't be
             // read at all, and would break loading the log for good.
             "SELECT id, ts, kind, source, substr(text, 1, $MAX_FIELD), substr(ctx, 1, $MAX_FIELD) FROM logs WHERE id > ? ORDER BY id DESC LIMIT ?",
-            arrayOf(visibleAfter().toString(), limit.toString()),
+            arrayOf(maxOf(visibleAfter(), afterId).toString(), limit.toString()),
         ).use { c ->
             while (c.moveToNext()) {
                 out += LogEntry(
@@ -129,7 +143,7 @@ class LogRepository private constructor(private val context: Context) {
 
     fun delete(id: Long) {
         db.writableDatabase.delete("logs", "id = ?", arrayOf(id.toString()))
-        changed()
+        restructured()
     }
 
     /** Puts a deleted line back with its original id, so it returns to the same place. */
@@ -142,7 +156,7 @@ class LogRepository private constructor(private val context: Context) {
             put("text", clip(e.text))
             put("ctx", clip(e.ctx).toJson())
         }, android.database.sqlite.SQLiteDatabase.CONFLICT_IGNORE)
-        changed()
+        restructured()
     }
 
     /** Empties ↑ recall; the log itself (commands and their output) stays as it is. */
@@ -150,14 +164,14 @@ class LogRepository private constructor(private val context: Context) {
         val maxId = db.readableDatabase.rawQuery("SELECT COALESCE(MAX(id), 0) FROM logs", null)
             .use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
         prefs.edit().putLong(KEY_HISTORY_FROM, maxId).apply()
-        changed()
+        restructured()
     }
 
     /** Deletes the whole log, history included. */
     fun clearAll() {
         db.writableDatabase.delete("logs", null, null)
         prefs.edit().putLong(KEY_CLEARED_UP_TO, 0L).putLong(KEY_HISTORY_FROM, 0L).putLong(KEY_HIDDEN_UP_TO, 0L).apply()
-        changed()
+        restructured()
     }
 
     /** Lines at or below this id are not shown: the larger of a real clear and a fresh-screen hide. */
@@ -169,12 +183,12 @@ class LogRepository private constructor(private val context: Context) {
      */
     fun hideScreen(upTo: Long = maxId()) {
         prefs.edit().putLong(KEY_HIDDEN_UP_TO, upTo).apply()
-        changed()
+        restructured()
     }
 
     fun unhide() {
         prefs.edit().putLong(KEY_HIDDEN_UP_TO, 0L).apply()
-        changed()
+        restructured()
     }
 
     /** Lines a fresh-screen hide is keeping out of view (0 when nothing can be restored). */
@@ -200,11 +214,9 @@ class LogRepository private constructor(private val context: Context) {
         db.writableDatabase.delete(
             "logs", "id <= ? AND kind != ?", arrayOf(maxId.toString(), LogKind.COMMAND.key),
         )
-        changed()
+        restructured()
     }
 
-    /** Keeps the newest [keep] lines and drops anything older than [maxAgeDays]. */
-    /** [maxAgeDays] only from the UI process (the :script process has a stale settings copy). */
     /**
      * `log.keepdays` for a launcher that stays running for weeks: the age trim, at most every 12
      * hours, so notification and call lines don't outlive the setting.
@@ -216,16 +228,25 @@ class LogRepository private constructor(private val context: Context) {
         trim(maxAgeDays = maxAgeDays)
     }
 
+    /** Keeps the newest [keep] lines and drops anything older than [maxAgeDays]. */
+    /** [maxAgeDays] only from the UI process (the :script process has a stale settings copy). */
     fun trim(keep: Int = 5000, maxAgeDays: Int? = null) {
-        db.writableDatabase.execSQL(
+        val w = db.writableDatabase
+        w.execSQL(
             "DELETE FROM logs WHERE id <= (SELECT id FROM logs ORDER BY id DESC LIMIT 1 OFFSET ?)",
             arrayOf(keep),
         )
-        if (maxAgeDays == null) return
-        val cutoff = System.currentTimeMillis() - maxAgeDays * 86_400_000L
-        // Commands are kept (↑ history); only their output ages out.
-        db.writableDatabase.delete("logs", "ts < ? AND kind != ?", arrayOf(cutoff.toString(), LogKind.COMMAND.key))
+        var removed = changes(w)
+        if (maxAgeDays != null) {
+            val cutoff = System.currentTimeMillis() - maxAgeDays * 86_400_000L
+            // Commands are kept (↑ history); only their output ages out.
+            removed += w.delete("logs", "ts < ? AND kind != ?", arrayOf(cutoff.toString(), LogKind.COMMAND.key))
+        }
+        if (removed > 0) restructured()
     }
+
+    private fun changes(w: android.database.sqlite.SQLiteDatabase): Int =
+        w.rawQuery("SELECT changes()", null).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
 
     fun maxId(): Long = db.readableDatabase.rawQuery("SELECT COALESCE(MAX(id), 0) FROM logs", null)
         .use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
@@ -243,10 +264,20 @@ class LogRepository private constructor(private val context: Context) {
         _version.value++
     }
 
-    private fun changed() {
+    /** Another process changed more than the end of the log (a trim): reload the page. */
+    fun onExternalRestructure() = restructured()
+
+    private fun changed(restructure: Boolean = false) {
         _version.value++
-        context.sendBroadcast(Intent(ACTION_LOGS_CHANGED).setPackage(context.packageName))
+        // Other processes (scripts) tell home; home's own writes already bumped the version above.
+        if (!inMainProcess) {
+            context.sendBroadcast(
+                Intent(ACTION_LOGS_CHANGED).setPackage(context.packageName).putExtra(EXTRA_RESTRUCTURE, restructure),
+            )
+        }
     }
+
+    private val inMainProcess by lazy { android.app.Application.getProcessName() == context.packageName }
 
     /** Caps a line's text: one huge value (an HTTP body, a script's log(bigString)) must stay readable. */
     private fun clip(s: String) = if (s.length <= MAX_FIELD) s else s.take(MAX_FIELD - 1) + "…"
@@ -264,6 +295,7 @@ class LogRepository private constructor(private val context: Context) {
         private const val KEY_SEEN_UP_TO = "seen_up_to"
         private const val KEY_HISTORY_FROM = "history_from"
         const val ACTION_LOGS_CHANGED = "com.mtwabpin.kolahal.LOGS_CHANGED"
+        const val EXTRA_RESTRUCTURE = "restructure"
 
         @Volatile
         private var instance: LogRepository? = null

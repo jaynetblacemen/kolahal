@@ -72,24 +72,42 @@ class UnlockCounter private constructor(private val context: Context) {
 
     val source: String get() = if (hasUsageAccess()) "usage-stats" else "receiver"
 
+    /** Finished days don't change: counted once. */
+    private val pastDays = java.util.concurrent.ConcurrentHashMap<LocalDate, Int>()
+
+    /** Today so far: the day, how far its events were read, and the count up to there. */
+    private var todayScan: Triple<LocalDate, Long, Int>? = null
+
+    /**
+     * Unlocks on [day]. With usage access, today's count reads only the events since the last
+     * call (it runs on every unlock and return home), and past days are read once.
+     */
+    @Synchronized
     fun countFor(day: LocalDate): Int {
-        if (hasUsageAccess()) {
-            val zone = ZoneId.systemDefault()
-            val start = day.atStartOfDay(zone).toInstant().toEpochMilli()
-            val end = minOf(day.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli(), System.currentTimeMillis())
-            if (end > start) {
-                val usm = context.getSystemService(UsageStatsManager::class.java)
-                val events = usm.queryEvents(start, end)
-                val event = UsageEvents.Event()
-                var count = 0
-                while (events.hasNextEvent()) {
-                    events.getNextEvent(event)
-                    if (event.eventType == UsageEvents.Event.KEYGUARD_HIDDEN) count++
-                }
-                return count
-            }
+        if (!hasUsageAccess()) return prefs.getInt(dayKey(day), 0)
+        val zone = ZoneId.systemDefault()
+        val start = day.atStartOfDay(zone).toInstant().toEpochMilli()
+        val today = LocalDate.now(zone)
+        if (day != today) {
+            val end = day.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+            return pastDays.getOrPut(day) { keyguardHidden(start, end) }
         }
-        return prefs.getInt(dayKey(day), 0)
+        val (_, upTo, count) = todayScan?.takeIf { it.first == today } ?: Triple(today, start, 0)
+        val now = System.currentTimeMillis()
+        val total = count + if (now > upTo) keyguardHidden(upTo, now) else 0
+        todayScan = Triple(today, now, total)
+        return total
+    }
+
+    private fun keyguardHidden(from: Long, until: Long): Int {
+        val events = context.getSystemService(UsageStatsManager::class.java).queryEvents(from, until)
+        val event = UsageEvents.Event()
+        var count = 0
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            if (event.eventType == UsageEvents.Event.KEYGUARD_HIDDEN) count++
+        }
+        return count
     }
 
     /** Counts for the last [days] days, oldest first. */

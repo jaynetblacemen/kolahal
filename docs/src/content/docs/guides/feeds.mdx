@@ -79,8 +79,9 @@ feed rm 2                # unsubscribe and delete its items
 
 ## How fetching works
 
-- One background job runs every 15 minutes (when there is a network, or only on Wi-Fi with
-  `feeds.wifi on`) and fetches the feeds that are due by their own interval.
+- One background job fetches the feeds that are due by their own interval. <span class="k-new">new</span> It
+  wakes only as often as your most frequent feed needs (every 15 minutes at most), and only when there
+  is a network, or only on Wi-Fi with `feeds.wifi on`.
 - Requests are conditional (ETag / Last-Modified), so an unchanged feed costs a `304` and no parsing.
 - Up to 300 items are kept per feed (unread first, then newest).
 - A failed scheduled fetch is only recorded in the feed's status (shown by `feed`). A fetch you

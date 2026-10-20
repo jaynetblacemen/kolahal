@@ -45,6 +45,11 @@ class KolahalNotificationListener : NotificationListenerService() {
         mirrorJob?.cancel()
         mirrorJob = scope.launch {
             kotlinx.coroutines.delay(400)
+            // Only kept while a script may read it (`@uses notifications`); otherwise no copy at all.
+            if (!com.mtwabpin.kolahal.script.TriggerDispatcher.get(this@KolahalNotificationListener).wantsNotifications()) {
+                runCatching { clearMirror(this@KolahalNotificationListener) }
+                return@launch
+            }
             runCatching {
                 com.mtwabpin.kolahal.data.KvStore(this@KolahalNotificationListener, MIRROR_SCOPE)
                     .set(MIRROR_KEY, com.mtwabpin.kolahal.script.Json.stringify(NotificationStore.recent(50)))
@@ -71,7 +76,6 @@ class KolahalNotificationListener : NotificationListenerService() {
         val n = toNotif(sbn)
         val known = NotificationStore.find(n.key)?.let { !it.removed } == true
         NotificationStore.put(n, sbn.notification.contentIntent)
-        mirror()
         val extras = sbn.notification.extras
         // Download/upload progress and "alert once" updates re-post the same key many times a
         // second; keep the store current but don't spam the log or fire scripts for each tick.
@@ -82,6 +86,7 @@ class KolahalNotificationListener : NotificationListenerService() {
                 indeterminate = extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false),
             )
         ) return
+        mirror()
         // The line is written once its icon is saved, so it never shows the app name first.
         maybeLog(n, scope.launch { saveIcon(n, sbn) })
         com.mtwabpin.kolahal.script.TriggerDispatcher.get(this).fire(

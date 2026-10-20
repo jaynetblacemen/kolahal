@@ -109,6 +109,11 @@ private val USAGES: Map<String, String> by lazy { CommandProcessor.COMMANDS.asso
 private const val PAGE = 400
 private const val KEY_PENDING_EXPORT = "pending_export"
 private const val MAX_PAGE = 5000
+/** Profile flags typed after an app name (`-w`, `-p`), dropped before searching. */
+private val FLAGS = Regex("\\s-\\w+")
+
+/** The whole page is read again at least this often, catching trims by other processes. */
+private const val FULL_RELOAD_MS = 60_000L
 
 @OptIn(kotlinx.coroutines.FlowPreview::class)
 class TerminalViewModel(app: Application, private val state: SavedStateHandle) : AndroidViewModel(app), TerminalUi {
@@ -117,6 +122,18 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** Reload requests from anywhere (log changes, paging, resume) funnel into one latest-wins pipeline. */
     private val reloadRequests = MutableStateFlow(0L)
     private fun requestReload() = reloadRequests.update { it + 1 }
+
+    /** How many numbers each contact name has, worked out once per contact list, not per keystroke. */
+    private var countedContacts: List<Any>? = null
+    private var namesCounted: Map<String, Int> = emptyMap()
+
+    private fun numbersPerName(all: List<com.mtwabpin.kolahal.contacts.Contact>): Map<String, Int> {
+        if (countedContacts !== all) {
+            namesCounted = all.groupingBy { it.name.lowercase() }.eachCount()
+            countedContacts = all
+        }
+        return namesCounted
+    }
 
     /** Serials of private spaces that are locked. */
     private fun lockedPrivate(profiles: List<Profile>): Set<Long> =
@@ -277,21 +294,63 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         requestReload()
     }
 
+    /** Every visible line loaded, before the private-space filter; what the next reload builds on. */
+    private var loaded: List<LogEntry> = emptyList()
+    private var loadedStructure = -1L
+    private var loadedLimit = 0
+    private var fullAt = 0L
+    private var scriptsPrint: String? = null
+
+    /**
+     * Brings the log up to date. Usually only the lines after the newest one shown are read; the
+     * whole page is read again after a delete, hide or clear, when the page size changes, and once
+     * a minute (another process may have trimmed old lines). Scripts, history and the todo and
+     * feed caches are read only when something they show could have changed.
+     */
     private suspend fun reload() {
-        val (all, hist, scriptList) = withContext(Dispatchers.IO) {
-            Triple(logs.recent(pageLimit), logs.commandHistory(), scripts.all())
+        val now = System.currentTimeMillis()
+        val structure = logs.structure
+        val newest = loaded.lastOrNull()?.id
+        val incremental = newest != null && structure == loadedStructure && pageLimit == loadedLimit && now - fullAt < FULL_RELOAD_MS
+        val fresh = withContext(Dispatchers.IO) { if (incremental) logs.recent(pageLimit, afterId = newest!!) else logs.recent(pageLimit) }
+        val all = if (incremental) (loaded + fresh).takeLast(pageLimit) else fresh
+        if (!incremental) {
+            loadedStructure = structure
+            loadedLimit = pageLimit
+            fullAt = now
         }
-        scriptCache.value = scriptList
+        loaded = all
+        val print = withContext(Dispatchers.IO) { scripts.fingerprint() }
+        if (print != scriptsPrint) {
+            val scriptList = withContext(Dispatchers.IO) { scripts.all() }
+            scriptCache.value = scriptList
+            withContext(Dispatchers.Default) { setCommandScripts(scriptList) }
+            scriptsPrint = print
+        }
         _statuses.value = withContext(Dispatchers.IO) { KvStore(context, HostApi.STATUS_SCOPE).all() }
-        withContext(Dispatchers.Default) { setCommandScripts(scriptList) }
-        _hiddenLines.value = withContext(Dispatchers.IO) { logs.hiddenCount() }
+        if (!incremental) _hiddenLines.value = withContext(Dispatchers.IO) { logs.hiddenCount() }
+        if (!incremental || fresh.any { it.kind == LogKind.COMMAND }) history = withContext(Dispatchers.IO) { logs.commandHistory() }
+        if (!incremental || fresh.any(::touchesProductivity)) refreshProductivity()
         // A locked private space hides its apps; its lines (launches, notifications) hide with it.
         val locked = lockedPrivate(appsRepo.profiles.value)
         val list = if (locked.isEmpty()) all else all.filterNot { it.ctx.userSerial in locked }
         _entries.value = list
-        refreshProductivity()
         _rows.value = withContext(Dispatchers.Default) { buildRows(list, seenUpTo, unreadUntil) }
-        history = hist
+    }
+
+    /** A line after which the todo, note, reminder or feed caches may be out of date. */
+    private fun touchesProductivity(e: LogEntry): Boolean {
+        val k = e.ctx.values.keys
+        return LogContext.TODO in k || LogContext.NOTE in k || LogContext.REMINDER in k ||
+            com.mtwabpin.kolahal.feeds.FeedWorker.CTX_FEED in k || com.mtwabpin.kolahal.feeds.FeedWorker.CTX_ITEM in k ||
+            e.source == "remind"
+    }
+
+    /** Back at the newest lines after scrolling up: the page shrinks again, so each reload stays small. */
+    fun atNewest() {
+        if (pageLimit <= PAGE) return
+        pageLimit = PAGE
+        requestReload()
     }
 
     /** Script lines in (seenUpTo, unreadUntil] arrived while the user was away; later ones were seen live. */
@@ -547,7 +606,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         val last = parts.last()
         return when (head) {
             "open", "launch" -> if (arg.contains(':')) shortcutSuggestions(head, arg)
-                else appsRepo.search(arg.replace(Regex("\\s-\\w+"), "").trim()).take(12).map { Suggestion.App(it) }
+                else appsRepo.search(arg.replace(FLAGS, "").trim()).take(12).map { Suggestion.App(it) }
             "info", "uninstall", "hide", "unhide", "rename", "shortcuts", "pin", "fav", "unpin", "unfav" ->
                 if (head == "rename" && arg.contains('=')) emptyList() else appCompletions(head, arg, includeHidden = head == "unhide")
             "notifs" -> when {
@@ -620,7 +679,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     /** `<head> <app>` completions; the profile flag is added when the app exists in several profiles. */
     private fun appCompletions(head: String, arg: String, includeHidden: Boolean = false): List<Suggestion> =
-        appsRepo.search(arg.replace(Regex("\\s-\\w+"), "").trim(), includeHidden = includeHidden)
+        appsRepo.search(arg.replace(FLAGS, "").trim(), includeHidden = includeHidden)
             .take(12).map { Suggestion.Completion("${it.label} [${it.profile.kind.tag}]", "$head ${it.label}" + flagFor(it), app = it) }
 
     /** Last app's shortcut labels, so typing after `open maps:` doesn't ask the system on every key. */
@@ -655,7 +714,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         // Allowed after start (e.g. from system settings): load now; [contacts] recomposes us when done.
         if (all.isEmpty() && !contactsLoadRequested) { contactsLoadRequested = true; repo.refresh() }
         val list =if (query.isBlank()) all.take(12) else repo.search(query, 12)
-        val numbersPerName = all.groupingBy { it.name.lowercase() }.eachCount()
+        val numbersPerName = numbersPerName(all)
         return list.map { c ->
             val shared = (numbersPerName[c.name.lowercase()] ?: 1) > 1
             val label = (if (c.starred) "★ " else "") + c.name + if (shared) " · ${c.label} ${c.number}" else ""
@@ -748,7 +807,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         ctx.values[NOTIF]?.let { key ->
             actions += LogAction("Open notification") { if (!NotificationActions.open(getApplication(), key)) appFor(ctx)?.let { app -> io { processor.launch(app) } } }
             ctx.pkg?.let { pkg ->
-                actions += LogAction("Mute this app's notifications") { NotifPrefs.get(getApplication()).mute(pkg); logs.add(LogKind.INFO, "Muted notifications from ${appFor(ctx)?.label ?: pkg}") }
+                actions += LogAction("Mute this app's notifications") { io { NotifPrefs.get(getApplication()).mute(pkg); logs.add(LogKind.INFO, "Muted notifications from ${appFor(ctx)?.label ?: pkg}") } }
             }
             danger += LogAction("Dismiss notification", destructive = true) { NotificationActions.dismiss(key) }
         }
@@ -1261,7 +1320,9 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         setCommandScripts(list)
     }
 
-    fun setConfig(key: ConfigKey<*>, raw: String): Boolean = config.set(key, raw)
+    fun setConfig(key: ConfigKey<*>, raw: String): Boolean = config.set(key, raw).also { ok ->
+        if (ok && key == Keys.FEEDS_WIFI) io { com.mtwabpin.kolahal.feeds.FeedScheduler.sync(context) }
+    }
 
     fun resetConfig(key: ConfigKey<*>) = config.reset(key)
 

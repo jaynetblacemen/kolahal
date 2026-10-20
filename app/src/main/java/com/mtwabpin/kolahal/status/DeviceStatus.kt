@@ -33,12 +33,7 @@ class DeviceStatus private constructor(private val context: Context) {
         if (started) return
         started = true
 
-        val battery = object : BroadcastReceiver() {
-            override fun onReceive(c: Context, intent: Intent) = onBattery(intent)
-        }
-        ContextCompat.registerReceiver(
-            context, battery, IntentFilter(Intent.ACTION_BATTERY_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED,
-        )?.let(::onBattery)
+        watchBattery(true)
 
         ContextCompat.registerReceiver(context, object : BroadcastReceiver() {
             override fun onReceive(c: Context, intent: Intent) = refreshAlarm()
@@ -63,6 +58,27 @@ class DeviceStatus private constructor(private val context: Context) {
                 _status.update { it.copy(network = "offline") }
             }
         })
+    }
+
+    private val battery = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, intent: Intent) = onBattery(intent)
+    }
+    private var batteryOn = false
+
+    /**
+     * The battery broadcast comes on every change of level, voltage or temperature (often, while
+     * charging): only listened to while home is on screen. The sticky value catches up on return.
+     */
+    fun watchBattery(on: Boolean) {
+        if (on == batteryOn) return
+        batteryOn = on
+        if (on) {
+            ContextCompat.registerReceiver(
+                context, battery, IntentFilter(Intent.ACTION_BATTERY_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED,
+            )?.let(::onBattery)
+        } else {
+            runCatching { context.unregisterReceiver(battery) }
+        }
     }
 
     private fun onBattery(intent: Intent) {

@@ -45,12 +45,22 @@ class LauncherApp : Application(), Configuration.Provider {
             runCatching { com.mtwabpin.kolahal.feeds.FeedScheduler.sync(this) }
             runCatching { com.mtwabpin.kolahal.productivity.ReminderScheduler.rescheduleAll(this) }
             runCatching { LogRepository.get(this).trimIfDue(Config.get(this)[Keys.LOG_KEEP_DAYS]) }
-            runCatching { com.mtwabpin.kolahal.data.KvStore.repairOversized(this) }
+            // A whole-table scan: once per app version is enough (it repairs rows from old versions).
+            runCatching {
+                val prefs = getSharedPreferences("launcher", MODE_PRIVATE)
+                val version = packageManager.getPackageInfo(packageName, 0).longVersionCode
+                if (prefs.getLong("repaired_for", -1L) != version) {
+                    com.mtwabpin.kolahal.data.KvStore.repairOversized(this)
+                    prefs.edit().putLong("repaired_for", version).apply()
+                }
+            }
+            runCatching { com.mtwabpin.kolahal.notifications.NotifIcons.preload(this) }
         }.start()
 
         val logs = LogRepository.get(this)
         ContextCompat.registerReceiver(this, object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) = logs.onExternalChange()
+            override fun onReceive(context: Context, intent: Intent) =
+                if (intent.getBooleanExtra(LogRepository.EXTRA_RESTRUCTURE, false)) logs.onExternalRestructure() else logs.onExternalChange()
         }, IntentFilter(LogRepository.ACTION_LOGS_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)
     }
 }

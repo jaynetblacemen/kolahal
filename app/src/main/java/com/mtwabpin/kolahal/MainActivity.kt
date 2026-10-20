@@ -88,11 +88,13 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         WidgetHost.get(this).startListening()
+        com.mtwabpin.kolahal.status.DeviceStatus.get(this).watchBattery(true)
     }
 
     override fun onStop() {
         super.onStop()
         WidgetHost.get(this).stopListening()
+        com.mtwabpin.kolahal.status.DeviceStatus.get(this).watchBattery(false)
     }
 
     @Deprecated("Needed for AppWidgetHost.startAppWidgetConfigureActivityForResult, which reports here")

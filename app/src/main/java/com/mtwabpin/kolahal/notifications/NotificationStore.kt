@@ -10,6 +10,8 @@ import java.util.concurrent.ConcurrentHashMap
 /** In-memory feed of recent notifications (UI process only), newest first. */
 object NotificationStore {
     const val CAP = 200
+    /** Characters of each notification's text in the copy kept for scripts. */
+    private const val MAX_TEXT = 2000
 
     private val _items = MutableStateFlow<List<Notif>>(emptyList())
     val items: StateFlow<List<Notif>> = _items.asStateFlow()
@@ -60,7 +62,8 @@ object NotificationStore {
                     "pkg" to it.pkg,
                     "app" to it.app,
                     "title" to it.title,
-                    "text" to it.text,
+                    // A long conversation's full text would make the copy for scripts huge.
+                    "text" to it.text?.let { t -> if (t.length > MAX_TEXT) t.take(MAX_TEXT) + "…" else t },
                     "time" to it.postTime,
                 )
             }

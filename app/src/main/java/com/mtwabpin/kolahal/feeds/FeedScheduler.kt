@@ -25,15 +25,25 @@ object FeedScheduler {
 
     private val network by lazy { Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build() }
 
-    /** Enqueues the periodic check when any feed exists, cancels it when none. Safe to call often. */
+    /**
+     * Enqueues the periodic check when any feed exists, cancels it when none. Safe to call often.
+     * It wakes as often as the most frequent feed (no sooner than every [PERIOD_MIN] minutes),
+     * and with `feeds.wifi` only on unmetered networks, instead of waking to find nothing to do.
+     */
     fun sync(context: Context) {
         val wm = WorkManager.getInstance(context)
-        if (FeedRepository.get(context).feeds().none { it.enabled }) {
+        val feeds = FeedRepository.get(context).feeds().filter { it.enabled }
+        if (feeds.isEmpty()) {
             wm.cancelUniqueWork(UNIQUE_NAME)
             return
         }
-        val request = PeriodicWorkRequestBuilder<FeedWorker>(PERIOD_MIN, TimeUnit.MINUTES)
-            .setConstraints(network)
+        val period = feeds.minOf { it.intervalMin }.toLong().coerceAtLeast(PERIOD_MIN)
+        val wifiOnly = com.mtwabpin.kolahal.data.Config.get(context)[com.mtwabpin.kolahal.data.Keys.FEEDS_WIFI]
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
+            .build()
+        val request = PeriodicWorkRequestBuilder<FeedWorker>(period, TimeUnit.MINUTES)
+            .setConstraints(constraints)
             .addTag(UNIQUE_NAME)
             .build()
         // UPDATE (not REPLACE): re-syncing keeps the schedule, but installs that enqueued the old
