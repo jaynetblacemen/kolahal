@@ -8,6 +8,7 @@ import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
@@ -73,6 +74,7 @@ import com.mtwabpin.kolahal.apps.ProfileKind
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogEntry
 import com.mtwabpin.kolahal.data.LogKind
+import com.mtwabpin.kolahal.terminal.ActionIcon
 import com.mtwabpin.kolahal.terminal.Gutter
 import com.mtwabpin.kolahal.terminal.LogAction
 import com.mtwabpin.kolahal.terminal.LogRow
@@ -425,7 +427,8 @@ fun ActionSheet(menu: ActionMenu, onDismiss: () -> Unit) {
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
             var dividerShown = false
-            // Symbols come from fallback fonts with their own widths: a fixed column keeps labels aligned.
+            // The header's icon size; the column is as wide as its battery, so labels line up.
+            val iconSize = (Term.fontSize + 3).dp
             val iconColumn = menu.actions.any { it.icon != null }
             menu.actions.forEach { action ->
                 if (action.destructive && !dividerShown) {
@@ -445,9 +448,35 @@ fun ActionSheet(menu: ActionMenu, onDismiss: () -> Unit) {
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                 ) {
                     if (iconColumn) {
-                        Box(Modifier.width(32.dp), contentAlignment = Alignment.CenterStart) {
-                            action.icon?.let { Text(it, style = Term.mono.copy(color = Term.prompt), maxLines = 1) }
+                        Box(Modifier.width(iconSize * 1.6f), contentAlignment = Alignment.Center) {
+                            when (val icon = action.icon) {
+                                is ActionIcon.Drawable -> Image(
+                                    painter = painterResource(icon.id),
+                                    contentDescription = null,
+                                    colorFilter = ColorFilter.tint(
+                                        when {
+                                            icon.alert -> Term.error
+                                            icon.profile != null -> Term.profileColor(icon.profile)
+                                            else -> Term.dim
+                                        },
+                                    ),
+                                    modifier = Modifier.size(iconSize),
+                                )
+                                is ActionIcon.Battery -> BatteryGlyph(
+                                    icon.pct,
+                                    icon.charging,
+                                    when {
+                                        icon.charging -> Term.prompt
+                                        icon.pct <= 15 -> Term.error
+                                        else -> Term.dim
+                                    },
+                                    iconSize,
+                                    cutout = Term.surface,
+                                )
+                                null -> Unit
+                            }
                         }
+                        Spacer(Modifier.width(12.dp))
                     }
                     Text(action.label, style = Term.mono.copy(color = color))
                 }

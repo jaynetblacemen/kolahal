@@ -302,11 +302,11 @@ internal fun Header(
 
 /**
  * A battery drawn to scale: outline, a fill proportional to [pct], and a bolt cut out of the
- * fill while charging. Sized to sit on a line of header text.
+ * fill while charging. Sized to sit on a line of header text. [cutout]: what the glyph sits on.
  */
 @Composable
-private fun BatteryGlyph(pct: Int, charging: Boolean, color: Color, height: Dp) {
-    val bg = Term.bg
+internal fun BatteryGlyph(pct: Int, charging: Boolean, color: Color, height: Dp, cutout: Color = Term.bg) {
+    val bg = cutout
     androidx.compose.foundation.Canvas(Modifier.size(width = height * 1.6f, height = height)) {
         val stroke = 1.4.dp.toPx()
         val capW = size.width * 0.08f

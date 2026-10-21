@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.core.net.toUri
+import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.apps.AppEntry
 import com.mtwabpin.kolahal.apps.AppPrefs
 import com.mtwabpin.kolahal.apps.AppRepository
@@ -182,7 +183,7 @@ class LogLineActions(private val context: Context, private val processor: Comman
         add(LogAction("Launch ${app.label} [${app.profile.kind.tag}]") { host.io { processor.launch(app) } })
         // The app's own shortcuts (e.g. "New message"), when Kolahal is the default launcher.
         appsRepo.shortcuts(app).take(5).forEach { s ->
-            add(LogAction("${s.shortLabel}", icon = "›") { host.io { runCatching { appsRepo.startShortcut(app, s.id) } } })
+            add(LogAction("${s.shortLabel}", icon = ActionIcon.Drawable(R.drawable.ic_chevron_right)) { host.io { runCatching { appsRepo.startShortcut(app, s.id) } } })
         }
         appsRepo.apps.value.firstOrNull { it.pkg == app.pkg && it.profile.serial != app.profile.serial }?.let { twin ->
             add(LogAction("Launch in ${twin.profile.kind.label} profile") { host.io { processor.launch(twin) } })

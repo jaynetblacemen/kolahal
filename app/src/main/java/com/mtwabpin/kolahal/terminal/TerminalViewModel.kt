@@ -7,6 +7,7 @@ import android.net.Uri
 import android.provider.AlarmClock
 import android.provider.Settings
 import androidx.core.content.edit
+import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.ui.HeaderTarget
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -613,26 +614,39 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun openQuick() { _events.tryEmit(UiEvent.ShowQuick) }
 
     fun quickActions(): List<LogAction> = buildList {
-        add(LogAction("Settings", icon = "⚙") { openScreen(Screen.SETTINGS) })
-        add(LogAction("Notifications", icon = "▾") { expandNotifications() })
-        add(LogAction("Alarms & clock", icon = "◷") { onHeaderTap(HeaderTarget.ALARM) })
-        add(LogAction("Battery", icon = "▮") { onHeaderTap(HeaderTarget.BATTERY) })
-        add(LogAction("Network", icon = "⇅") { onHeaderTap(HeaderTarget.NETWORK) })
-        add(LogAction("Unlocks this week", icon = "#") { onHeaderTap(HeaderTarget.UNLOCKS) })
+        // The header's icons where it has them (battery and network as it shows them now).
+        fun icon(id: Int) = ActionIcon.Drawable(id)
+        val s = status.value
+        add(LogAction("Settings", icon = icon(R.drawable.ic_settings)) { openScreen(Screen.SETTINGS) })
+        add(LogAction("Notifications", icon = icon(R.drawable.ic_notifications)) { expandNotifications() })
+        add(LogAction("Alarms & clock", icon = icon(R.drawable.ic_alarm)) { onHeaderTap(HeaderTarget.ALARM) })
+        add(LogAction("Battery", icon = s.batteryPct?.let { ActionIcon.Battery(it, s.charging) }) { onHeaderTap(HeaderTarget.BATTERY) })
+        val net = when (s.network) {
+            "wifi" -> icon(R.drawable.ic_wifi)
+            "offline" -> ActionIcon.Drawable(R.drawable.ic_cloud_off, alert = true)
+            else -> icon(R.drawable.ic_signal)
+        }
+        add(LogAction("Network", icon = net) { onHeaderTap(HeaderTarget.NETWORK) })
+        add(LogAction("Unlocks this week", icon = icon(R.drawable.ic_lock_open)) { onHeaderTap(HeaderTarget.UNLOCKS) })
         profiles.value.filter { it.kind == ProfileKind.WORK || it.kind == ProfileKind.PRIVATE }.forEach { p ->
             val cmd = if (p.kind == ProfileKind.PRIVATE) "private" else "work"
+            // As in the header: the profile's colour while it runs, dim while paused.
+            val res = if (p.kind == ProfileKind.WORK) R.drawable.ic_work else R.drawable.ic_lock
             add(
-                LogAction(if (p.quiet) "Resume ${p.kind.label} profile" else "Pause ${p.kind.label} profile", icon = if (p.quiet) "▸" else "‖") {
+                LogAction(
+                    if (p.quiet) "Resume ${p.kind.label} profile" else "Pause ${p.kind.label} profile",
+                    icon = ActionIcon.Drawable(res, profile = p.kind.takeUnless { p.quiet }),
+                ) {
                     runCommand("$cmd ${if (p.quiet) "on" else "off"}")
                 },
             )
         }
-        add(LogAction("Apps", icon = "☰") { runCommand("apps") })
-        add(LogAction("Widgets", icon = "◫") { openScreen(Screen.WIDGETS) })
-        add(LogAction("Feeds", icon = "≋") { openScreen(Screen.FEEDS) })
-        add(LogAction("Scripts", icon = "{}") { openScreen(Screen.SCRIPTS) })
+        add(LogAction("Apps", icon = icon(R.drawable.ic_apps)) { runCommand("apps") })
+        add(LogAction("Widgets", icon = icon(R.drawable.ic_widgets)) { openScreen(Screen.WIDGETS) })
+        add(LogAction("Feeds", icon = icon(R.drawable.ic_rss)) { openScreen(Screen.FEEDS) })
+        add(LogAction("Scripts", icon = icon(R.drawable.ic_code)) { openScreen(Screen.SCRIPTS) })
         if (com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE) {
-            add(LogAction("Lock screen", icon = "⏻") { if (!com.mtwabpin.kolahal.gesture.LockService.lock()) runCommand("lock") })
+            add(LogAction("Lock screen", icon = icon(R.drawable.ic_power)) { if (!com.mtwabpin.kolahal.gesture.LockService.lock()) runCommand("lock") })
         }
     }
 

@@ -74,7 +74,7 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 | `selector.rail` | bool | `on` | App selector on the right edge while the keyboard is down: slide along the right edge to glide through all your apps; let go on one to launch, hold for its actions |
 | `selector.handle` | bool | `on` | show the slim A–Z handle on the right edge; off hides it while the selector keeps working (it still appears under your finger) |
 | `selector.height` | number 200–900 | `350` | height (dp) of the app selector band, low on the right edge: shorter means less thumb travel |
-| `suggestions` | number 0–30 | `12` | max suggestions shown while typing |
+| `suggestions` | number 0–30 | `5` | max suggestions shown while typing |
 | `search.engine` | choice: `duckduckgo` `google` `bing` `brave` `startpage` `kagi` `custom` | `duckduckgo` | web search engine for `search` / `g` |
 | `search.url` | text | `https://duckduckgo.com/?q=%s` | custom search URL (`%s` = query), used when `search.engine` = `custom` |
 

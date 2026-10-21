@@ -53,8 +53,8 @@ internal fun completionHelp(label: String, replacement: String): String? {
 
 /**
  * `suggestions.style list`: matches stacked above the prompt, best one at the bottom nearest the
- * thumb (it is what Enter / TAB act on, so it is highlighted). At most ~40% of the screen tall;
- * more scroll. Tap picks; long-press an app for its actions.
+ * thumb (it is what Enter / TAB act on, so it is highlighted). At most ~40% of the screen tall,
+ * and no taller than the room above the prompt; more scroll. Tap picks; long-press an app for its actions.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

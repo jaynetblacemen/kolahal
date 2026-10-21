@@ -72,7 +72,7 @@ object Keys {
         "Terminal font (custom: a .ttf/.otf imported with 'font import')",
     )
     val FONT_SIZE = ConfigKey.Num("font.size", 14, 10..24, "Terminal font size (sp)")
-    val SUGGESTIONS = ConfigKey.Num("suggestions", 12, 0..30, "Max suggestions shown while typing")
+    val SUGGESTIONS = ConfigKey.Num("suggestions", 5, 0..30, "Max suggestions shown while typing")
     val AUTO_LAUNCH = ConfigKey.Bool("launch.single", true, "Launch automatically when only one app matches")
     val LAUNCH_INSTANT = ConfigKey.Choice(
         "launch.instant", "all", listOf("off", "apps", "all"),

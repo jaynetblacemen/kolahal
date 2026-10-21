@@ -262,6 +262,11 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         // widgets.home: widgets placed on home; they fold away with the header.
         HomeWidgets(vm, visible = !headerCollapsed)
         val hiddenLines by vm.hiddenLines.collectAsStateWithLifecycle()
+        // A hardware keyboard already has these keys: the bar follows the on-screen keyboard.
+        val typing = promptFocused && WindowInsets.isImeVisible
+        // The log and the suggestions share what the header, key bar and prompt leave. Those are
+        // measured first, so a long suggestion list can't push the prompt off the screen.
+        Column(Modifier.weight(1f).fillMaxWidth()) {
         Box(Modifier.weight(1f).fillMaxWidth()) {
         LazyColumn(
             state = listState,
@@ -368,8 +373,6 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         }
         // [/selector]
         }
-        // A hardware keyboard already has these keys: the bar follows the on-screen keyboard.
-        val typing = promptFocused && WindowInsets.isImeVisible
         // suggestions.auto: hidden on an idle home; shown while typing, or whenever there is input
         // (so hardware-keyboard typing still gets them).
         val suggestionsAuto = remember(configVersion) { config[Keys.SUGGESTIONS_AUTO] }
@@ -403,6 +406,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             }
         }
         // [/selector]
+        }
         // keybar.auto: only while typing, so an idle home shows more of the log.
         val keyBarAuto = remember(configVersion) { config[Keys.KEYBAR_AUTO] }
         val promptTypingHeight = remember(configVersion) { config[Keys.PROMPT_HEIGHT_TYPING].dp }

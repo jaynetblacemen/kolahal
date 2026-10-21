@@ -1,6 +1,7 @@
 package com.mtwabpin.kolahal.terminal
 
 import com.mtwabpin.kolahal.apps.AppEntry
+import com.mtwabpin.kolahal.apps.ProfileKind
 
 /** One-off requests from the view model to the activity or the screen. */
 sealed interface UiEvent {
@@ -36,7 +37,16 @@ sealed interface Suggestion {
 }
 
 /**
- * One entry of a log line's long-press menu. [icon]: a short symbol drawn in a fixed-width column,
- * so labels line up whatever its width.
+ * One entry of a log line's long-press menu. [icon]: drawn in a fixed-width column, so labels
+ * line up whatever its width.
  */
-data class LogAction(val label: String, val destructive: Boolean = false, val icon: String? = null, val run: () -> Unit)
+data class LogAction(val label: String, val destructive: Boolean = false, val icon: ActionIcon? = null, val run: () -> Unit)
+
+/** A menu icon in the header's style and size. */
+sealed interface ActionIcon {
+    /** A drawable [id], dim like the header's, or coloured as the header colours it: [profile]'s colour, red for [alert]. */
+    data class Drawable(val id: Int, val profile: ProfileKind? = null, val alert: Boolean = false) : ActionIcon
+
+    /** The header's battery, drawn to its level. */
+    data class Battery(val pct: Int, val charging: Boolean) : ActionIcon
+}

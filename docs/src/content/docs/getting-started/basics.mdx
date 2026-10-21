@@ -69,13 +69,13 @@ The strip above the key bar changes as you type:
 
 Command chips start with `$` (`$ maps`), app chips show the app name, and a ✕ at the end of the
 prompt clears it. Tap a chip to use it. Tab (on the key bar or a hardware keyboard) takes the first one. The number
-of chips is `suggestions` (default 12).
+of chips is `suggestions` (default 5).
 
 By default (`suggestions.style list`) the suggestions are a **list** stacked directly above the
 prompt instead of chips: the best match sits at the bottom, nearest your thumb, highlighted with
 a ⏎ because it is what Enter and Tab act on. Command rows show `$ name` and the command's short
-description; app rows show the profile tag. The list takes at most about 40% of the screen and
-scrolls beyond that. Long-press an app row for its actions. `config set suggestions.style chips`
+description; app rows show the profile tag. The list takes at most about 40% of the screen, and
+never more than the room above the prompt, so the prompt stays in view; it scrolls beyond that. Long-press an app row for its actions. `config set suggestions.style chips`
 brings back the chip strip (`suggestions.rows` applies to chips only). Turn on **Show app icons**
 (`suggestions.icons`, off by default) for each app's icon in front of its name, in both styles (commands get a
 terminal icon in the same place, so every name lines up); work and
@@ -173,7 +173,8 @@ copy text, and delete the line or the whole block.
 
 - **Quick sheet:** tap the `$` at the start of the prompt for everything the header offers —
   settings, notifications, alarms, battery, network, unlocks, pause / resume the work or private
-  profile, apps, widgets, feeds, scripts and lock. Any gesture can open it too (`quick`).
+  profile, apps, widgets, feeds, scripts and lock, with the header's icons (battery and network
+  as they are now). Any gesture can open it too (`quick`).
 - **Swipe a log line:** right copies it, left deletes it (with UNDO for a few seconds).
 - **Long-press output** to run or edit the command that printed it.
 - **Two rows of suggestions** while typing (`suggestions.rows`).
