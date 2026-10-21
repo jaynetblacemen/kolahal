@@ -267,7 +267,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         val structure = logs.structure
         val newest = loaded.lastOrNull()?.id
         val incremental = newest != null && structure == loadedStructure && pageLimit == loadedLimit && now - fullAt < FULL_RELOAD_MS
-        val fresh = withContext(Dispatchers.IO) { if (incremental) logs.recent(pageLimit, afterId = newest!!) else logs.recent(pageLimit) }
+        val fresh = withContext(Dispatchers.IO) { if (incremental) logs.recent(pageLimit, afterId = newest) else logs.recent(pageLimit) }
         val all = if (incremental) (loaded + fresh).takeLast(pageLimit) else fresh
         if (!incremental) {
             loadedStructure = structure

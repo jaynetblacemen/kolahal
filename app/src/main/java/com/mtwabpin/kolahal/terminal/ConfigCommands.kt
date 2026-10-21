@@ -74,7 +74,7 @@ class ConfigCommands(private val context: Context, private val ui: TerminalUi) {
         if (key == null) error("Unknown setting '${name.orEmpty()}' — run 'config'") else action(key)
     }
 
-    private fun setKey(name: String?, parsed: String, raw: String) = withKey(name) { key ->
+    private fun setKey(name: String?, parsed: String, raw: String): Unit = withKey(name) { key ->
         val value = if (key is ConfigKey.Text && raw.contains(key.key)) raw.substringAfter(key.key).trim() else parsed
         if (value.isBlank()) return error("${key.key} = ${conf.display(key)}  (${hint(key)})")
         if (conf.set(key, value)) {

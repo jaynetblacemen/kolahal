@@ -34,7 +34,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         val code = script?.code ?: inputData.getString(KEY_CODE) ?: return Result.failure()
         val name = script?.name ?: inputData.getString(KEY_NAME) ?: lang.ext
         val repl = script == null
-        val args = inputData.getStringArray(KEY_ARGS)?.toList().orEmpty()
+        val args = inputData.getNullableStringArray(KEY_ARGS)?.filterNotNull().orEmpty()
         val event = inputData.getString(KEY_EVENT)?.let { runCatching { Json.parse(it) as? Map<*, *> }.getOrNull() }
 
         val host = HostApi(

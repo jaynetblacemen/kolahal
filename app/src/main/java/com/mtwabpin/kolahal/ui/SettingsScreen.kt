@@ -32,6 +32,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderState
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
@@ -267,6 +268,12 @@ private fun SettingItem(
 
             is ConfigKey.Num -> {
                 var current by remember(key, value) { mutableFloatStateOf(value.toFloat()) }
+                val slider = remember(key) {
+                    // Ticks only for short ranges; wide ones (dp sizes, days) slide smoothly.
+                    val steps = (key.range.last - key.range.first - 1).let { if (it in 1..11) it else 0 }
+                    SliderState(current, steps, key.range.first.toFloat()..key.range.last.toFloat())
+                }
+                slider.value = current
                 SegmentedListItem(
                     colors = segColors(),
                     shapes = shapes,
@@ -277,12 +284,9 @@ private fun SettingItem(
                         Column {
                             supporting()
                             Slider(
-                                value = current,
+                                state = slider,
                                 onValueChange = { current = it },
                                 onValueChangeFinished = { vm.setConfig(key, current.roundToInt().toString()) },
-                                valueRange = key.range.first.toFloat()..key.range.last.toFloat(),
-                                // Ticks only for short ranges; wide ones (dp sizes, days) slide smoothly.
-                                steps = (key.range.last - key.range.first - 1).let { if (it in 1..11) it else 0 },
                             )
                         }
                     },

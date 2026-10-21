@@ -31,7 +31,7 @@ object NotifIcons {
     /** Key for [icon] posted by [pkg], or null when it isn't a resource icon. Cheap: no drawing. */
     fun key(context: Context, pkg: String, icon: Icon?): String? {
         if (icon == null || icon.type != Icon.TYPE_RESOURCE) return null
-        val resPkg = icon.resPackage?.takeIf { it.isNotEmpty() } ?: pkg
+        val resPkg = icon.resPackage.takeIf { it.isNotEmpty() } ?: pkg
         val version = versionOf(context, resPkg)
         return "${resPkg}_${Integer.toHexString(icon.resId)}_$version"
     }

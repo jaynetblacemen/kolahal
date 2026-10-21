@@ -418,7 +418,7 @@ fun AppSelector(
                         val down = awaitFirstDown(requireUnconsumed = false)
                         down.consume()
                         if (count == 0) {
-                            while (awaitPointerEvent().changes.onEach { it.consume() }.any { it.pressed }) Unit
+                            while (awaitPointerEvent().changes.onEach { it.consume() }.any { it.pressed }) {}
                             return@awaitEachGesture
                         }
                         val maxScrollPx = SelectorMath.maxScroll(count, rowPx.toFloat(), panelHPx)

@@ -329,7 +329,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val cached = cache.get(from)?.let { runCatching { Json.parse(it) as? Map<*, *> }.getOrNull() }
         val fresh = (cached?.get("at") as? Number)?.toLong()?.let { System.currentTimeMillis() - it < 6 * 3_600_000L } == true
         val rates = if (fresh) {
-            cached?.get("rates") as? Map<*, *>
+            cached["rates"] as? Map<*, *>
         } else {
             val body = Json.parse(Net.get("https://open.er-api.com/v6/latest/$from")) as? Map<*, *>
                 ?: throw IllegalStateException("bad response")
