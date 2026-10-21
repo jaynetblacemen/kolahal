@@ -35,9 +35,9 @@ Google Play Protect blocks sideloaded apps (installed from a browser, a messagin
 manager) that declare an accessibility service or notification access, in India and some other
 countries. The full build has both: the accessibility service only locks the screen, and
 notification access shows your notifications in the log. `assembleLite` builds the same app without
-them (version `0.1.0-lite`, same package, so it installs over the full build and the other way round).
-It has no `lock` or double-tap lock, no `notifs`, no media controls and now-playing line, and scripts
-get no `notifications.recent()` or `@on notification`. Everything else is the same.
+them (its version ends in `-lite`; same package, so it installs over the full build and the other
+way round). It has no `lock` or double-tap lock, no `notifs`, no media controls and now-playing
+line, and scripts get no `notifications.recent()` or `@on notification`. Everything else is the same.
 
 To install the full build where it is blocked, turn off **Play Store → profile → Play Protect →
 ⚙ → Scan apps with Play Protect** while installing (and back on after), or install with
