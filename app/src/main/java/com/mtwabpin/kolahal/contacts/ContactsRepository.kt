@@ -1,6 +1,7 @@
 package com.mtwabpin.kolahal.contacts
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.database.ContentObserver
@@ -133,6 +134,8 @@ class ContactsRepository private constructor(private val context: Context) {
 
     companion object {
         private const val RELOAD_DEBOUNCE_MS = 1_000L
+
+        @SuppressLint("StaticFieldLeak") // application context only
 
         @Volatile
         private var instance: ContactsRepository? = null

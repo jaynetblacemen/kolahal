@@ -1,5 +1,6 @@
 package com.mtwabpin.kolahal.control
 
+import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
 import android.media.MediaMetadata
@@ -202,6 +203,7 @@ class MediaRepository private constructor(private val context: Context) {
     }
 
     companion object {
+        @SuppressLint("StaticFieldLeak") // application context only
         @Volatile
         private var instance: MediaRepository? = null
 

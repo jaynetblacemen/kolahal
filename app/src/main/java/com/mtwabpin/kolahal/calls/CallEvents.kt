@@ -1,6 +1,7 @@
 package com.mtwabpin.kolahal.calls
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.database.ContentObserver
@@ -156,6 +157,8 @@ class CallEvents private constructor(private val context: Context) {
         fun ctx(c: Call): LogContext =
             if (c.number.isBlank() || c.presentation != CallLog.Calls.PRESENTATION_ALLOWED) LogContext.EMPTY
             else LogContext.of(LogContext.PHONE to c.number, LogContext.CONTACT to c.lookupUri, LogContext.COPY to c.number)
+
+        @SuppressLint("StaticFieldLeak") // application context only
 
         @Volatile
         private var instance: CallEvents? = null

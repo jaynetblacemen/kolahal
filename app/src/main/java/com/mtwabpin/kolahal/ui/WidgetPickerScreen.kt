@@ -11,6 +11,7 @@ import android.view.MotionEvent
 import android.widget.FrameLayout
 import android.widget.RemoteViews
 import androidx.activity.compose.BackHandler
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -261,6 +262,7 @@ private fun ProviderCard(p: ProviderEntry, widgets: WidgetHost, onClick: () -> U
 }
 
 /** Android 12+ `previewLayout`, inflated as a non-interactive view (touches fall through to the card). */
+@RequiresApi(31)
 @Composable
 private fun LayoutPreview(info: AppWidgetProviderInfo) {
     AndroidView(

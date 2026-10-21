@@ -1,5 +1,6 @@
 package com.mtwabpin.kolahal.status
 
+import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -95,6 +96,7 @@ class DeviceStatus private constructor(private val context: Context) {
     }
 
     companion object {
+        @SuppressLint("StaticFieldLeak") // application context only
         @Volatile
         private var instance: DeviceStatus? = null
 

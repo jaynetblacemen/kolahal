@@ -1,5 +1,6 @@
 package com.mtwabpin.kolahal.data
 
+import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
@@ -127,6 +128,7 @@ object FullBackup {
             }
         }
 
+    @SuppressLint("ApplySharedPref") // commit() is deliberate, see the end
     private fun importPrefs(context: Context, file: String, entries: Map<*, *>) {
         val edit = context.getSharedPreferences(file, Context.MODE_PRIVATE).edit().clear()
         entries.forEach { (k, tagged) ->

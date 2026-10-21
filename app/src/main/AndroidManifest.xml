@@ -64,7 +64,6 @@
             android:stateNotNeeded="true"
             android:excludeFromRecents="true"
             android:resumeWhilePausing="true"
-            android:screenOrientation="unspecified"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode|density"
             android:windowSoftInputMode="adjustResize|stateAlwaysHidden">
             <intent-filter>

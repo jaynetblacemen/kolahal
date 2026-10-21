@@ -1,6 +1,7 @@
 package com.mtwabpin.kolahal.terminal
 
 import android.app.Application
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.AlarmClock
@@ -69,7 +70,7 @@ private const val FULL_RELOAD_MS = 60_000L
 
 @OptIn(kotlinx.coroutines.FlowPreview::class)
 class TerminalViewModel(app: Application, private val state: SavedStateHandle) : AndroidViewModel(app), TerminalUi {
-    private val context = app.applicationContext
+    private val context: Context get() = getApplication()
 
     /** Reload requests from anywhere (log changes, paging, resume) funnel into one latest-wins pipeline. */
     private val reloadRequests = MutableStateFlow(0L)

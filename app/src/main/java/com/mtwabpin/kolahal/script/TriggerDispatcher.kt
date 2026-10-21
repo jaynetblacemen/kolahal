@@ -1,5 +1,6 @@
 package com.mtwabpin.kolahal.script
 
+import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -205,6 +206,8 @@ class TriggerDispatcher private constructor(private val context: Context) {
         const val DEBOUNCE_MS = 30_000L
         private const val OFFLINE_CONFIRM_MS = 3_000L
         private const val MAX_TEXT = 2_000
+
+        @SuppressLint("StaticFieldLeak") // application context only
 
         @Volatile
         private var instance: TriggerDispatcher? = null

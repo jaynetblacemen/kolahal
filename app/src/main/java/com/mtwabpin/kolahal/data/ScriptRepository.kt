@@ -1,5 +1,6 @@
 package com.mtwabpin.kolahal.data
 
+import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
@@ -120,6 +121,8 @@ class ScriptRepository private constructor(private val context: Context) {
 
         /** Bumped on every write made in this process; caches compare it to know when to reload. */
         val version = java.util.concurrent.atomic.AtomicLong()
+
+        @SuppressLint("StaticFieldLeak") // application context only
 
         @Volatile
         private var instance: ScriptRepository? = null

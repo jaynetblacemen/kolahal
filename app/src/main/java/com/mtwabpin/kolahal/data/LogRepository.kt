@@ -1,5 +1,6 @@
 package com.mtwabpin.kolahal.data
 
+import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -299,6 +300,8 @@ class LogRepository private constructor(private val context: Context) {
         private const val KEY_HISTORY_FROM = "history_from"
         const val ACTION_LOGS_CHANGED = "com.mtwabpin.kolahal.LOGS_CHANGED"
         const val EXTRA_RESTRUCTURE = "restructure"
+
+        @SuppressLint("StaticFieldLeak") // application context only
 
         @Volatile
         private var instance: LogRepository? = null

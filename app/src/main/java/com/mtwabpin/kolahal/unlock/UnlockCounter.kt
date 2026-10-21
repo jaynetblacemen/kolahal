@@ -1,5 +1,6 @@
 package com.mtwabpin.kolahal.unlock
 
+import android.annotation.SuppressLint
 import android.app.AppOpsManager
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
@@ -119,6 +120,7 @@ class UnlockCounter private constructor(private val context: Context) {
     private fun dayKey(day: LocalDate) = "d:$day"
 
     companion object {
+        @SuppressLint("StaticFieldLeak") // application context only
         @Volatile
         private var instance: UnlockCounter? = null
 

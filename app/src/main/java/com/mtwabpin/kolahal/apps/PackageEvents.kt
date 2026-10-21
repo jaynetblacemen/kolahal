@@ -1,5 +1,6 @@
 package com.mtwabpin.kolahal.apps
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.LauncherApps
 import android.os.Handler
@@ -284,6 +285,8 @@ class PackageEvents private constructor(private val context: Context) {
             }
             return Plan(events, next, seen - gone + fresh, nextCheck.takeIf { it != Long.MAX_VALUE })
         }
+
+        @SuppressLint("StaticFieldLeak") // application context only
 
         @Volatile
         private var instance: PackageEvents? = null

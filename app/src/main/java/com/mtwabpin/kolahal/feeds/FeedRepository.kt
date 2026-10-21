@@ -1,5 +1,6 @@
 package com.mtwabpin.kolahal.feeds
 
+import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
@@ -343,6 +344,8 @@ class FeedRepository private constructor(private val context: Context) {
 
     companion object {
         private const val ITEM_COLUMNS = "id, feed_id, guid, title, link, published_text, summary, fetched_at, read"
+
+        @SuppressLint("StaticFieldLeak") // application context only
 
         @Volatile
         private var instance: FeedRepository? = null
