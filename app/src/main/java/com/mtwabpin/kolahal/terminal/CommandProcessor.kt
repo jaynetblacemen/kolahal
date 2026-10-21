@@ -119,6 +119,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "sms", "text" -> people.sms(args)
                 "contacts", "contact" -> people.listContacts(rest)
                 "notifications" -> notifications(args)
+                "local-network" -> localNetwork(args)
                 "setup" -> if (args.firstOrNull() == "text") setupText() else ui.openScreen(Screen.SETUP)
                 "status" -> scriptCommands.status(args)
                 "usage-access" -> startActivity(unlocks.usageAccessIntent())
@@ -379,6 +380,17 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         }
     }
 
+    /** `local-network`: Android 17's permission for scripts with `@uses lan` and feeds on your network. */
+    private fun localNetwork(args: List<String>) {
+        when {
+            Build.VERSION.SDK_INT < 37 -> info("Reaching your local network needs no permission before Android 17")
+            args.firstOrNull() == "--settings" ->
+                startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
+            Net.localNetworkAllowed() -> info("Local network access is allowed")
+            else -> ui.requestLocalNetworkPermission()
+        }
+    }
+
     /** `clear` screen · `clear history` ↑ recall · `clear all` everything (log + history). */
     private fun clear(args: List<String>) {
         when (args.firstOrNull()) {
@@ -503,6 +515,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("setup", "setup [text]", "Setup checklist page (text: print it in the log)"),
             CommandSpec("notifications", "notifications", "Allow script notifications"),
             CommandSpec("usage-access", "usage-access", "Grant usage access (unlock count)"),
+            CommandSpec("local-network", "local-network", "Let scripts (@uses lan) and feeds reach your local network (Android 17+)"),
             CommandSpec("battery", "battery", "Battery optimization settings"),
             CommandSpec("home", "home", "Choose the default launcher"),
             CommandSpec("lock", "lock", "Lock the screen (needs the accessibility service)"),
@@ -556,7 +569,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
             "terminal" to listOf("help", "history", "clear", "fresh", "restart", "alias", "unalias", "config", "theme", "font", "echo", "date"),
             "widgets" to listOf("widgets", "widget"),
-            "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "battery", "home", "lock", "shade", "accessibility", "system"),
+            "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "local-network", "battery", "home", "lock", "shade", "accessibility", "system"),
         )
     }
 }

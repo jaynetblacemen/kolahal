@@ -9,6 +9,7 @@ import android.os.PowerManager
 import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.apps.ProfileKind
 import com.mtwabpin.kolahal.notify.Notifier
+import com.mtwabpin.kolahal.script.Net
 import com.mtwabpin.kolahal.unlock.UnlockCounter
 
 /** One item of the setup checklist; [fix] is a terminal command that opens the right system page. */
@@ -84,6 +85,12 @@ object SetupChecks {
                 "Optional: incoming, outgoing and missed calls appear in the log",
                 com.mtwabpin.kolahal.calls.CallEvents.hasPermission(context),
                 "calls --allow",
+            ),
+            if (Build.VERSION.SDK_INT < 37) null else SetupCheck(
+                "Local network (scripts, feeds)",
+                "Optional: lets scripts with @uses lan and feeds on a home server reach your network",
+                Net.localNetworkAllowed(),
+                "local-network",
             ),
             SetupCheck(
                 "Battery unrestricted",

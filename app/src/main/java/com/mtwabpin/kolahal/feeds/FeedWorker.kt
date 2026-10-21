@@ -60,7 +60,9 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                 // Scheduled failures stay in last_status; only a fetch the user asked for is logged.
                 if (explicit) {
                     lines += LogRepository.Pending(
-                        LogKind.ERROR, "$source: ${r.error}", source, LogContext(feedCtx + (LogContext.URL to feed.url)), ts,
+                        LogKind.ERROR, "$source: ${r.error}", source,
+                        // A blocked home-server feed: the tap asks for the permission rather than opening the feed.
+                        LogContext(feedCtx + (if (r.lanBlocked) LogContext.RUN to "local-network" else LogContext.URL to feed.url)), ts,
                     )
                 }
                 continue

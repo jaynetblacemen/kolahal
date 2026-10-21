@@ -56,6 +56,10 @@ class HostApi(
     var notifyBlocked = false
         private set
 
+    /** A request was refused because Kolahal may not reach the local network yet (reported once by the worker). */
+    var lanBlocked = false
+        private set
+
     private val baseCtx: Map<String, String> =
         if (scriptId != null) mapOf(LogContext.SCRIPT to scriptName) else emptyMap()
 
@@ -164,13 +168,20 @@ class HostApi(
             .headers(h.toHeaders())
             .method(m, if (m != "GET" && m != "HEAD") reqBody else null)
             .build()
-        client.newCall(request).execute().use { resp ->
-            return mapOf(
-                "status" to resp.code,
-                "ok" to resp.isSuccessful,
-                "body" to resp.peekBody(MAX_BODY).string(),
-                "headers" to resp.headers.associate { (k, v) -> k.lowercase() to v },
-            )
+        try {
+            client.newCall(request).execute().use { resp ->
+                return mapOf(
+                    "status" to resp.code,
+                    "ok" to resp.isSuccessful,
+                    "body" to resp.peekBody(MAX_BODY).string(),
+                    "headers" to resp.headers.associate { (k, v) -> k.lowercase() to v },
+                )
+            }
+        } catch (e: Net.LocalNetworkBlocked) {
+            // Without `@uses lan` the address isn't allowed at all; with it, Android's permission is what's missing.
+            if (!allowsLan) throw java.io.IOException("${e.host} is this phone or the local network: not allowed here")
+            lanBlocked = true
+            throw e
         }
     }
 

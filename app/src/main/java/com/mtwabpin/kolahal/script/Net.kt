@@ -1,11 +1,16 @@
 package com.mtwabpin.kolahal.script
 
+import android.os.Build
+import java.io.IOException
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.Socket
+import java.net.SocketAddress
+import java.util.concurrent.TimeUnit
+import javax.net.SocketFactory
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
-import java.io.IOException
-import java.net.InetAddress
-import java.util.concurrent.TimeUnit
 
 /** One HTTP client for the whole app (scripts, feeds, currency rates). */
 object Net {
@@ -16,8 +21,46 @@ object Net {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .callTimeout(30, TimeUnit.SECONDS)
+            .socketFactory(GuardedSocketFactory)
             .addNetworkInterceptor(reachGuard)
             .build()
+    }
+
+    /**
+     * Whether Kolahal may reach the local network: Android 17's runtime permission, set at start-up
+     * in each process. Before Android 17 there is nothing to ask for.
+     */
+    @Volatile var localNetworkAllowed: () -> Boolean = { true }
+
+    /** A connection Android would block (local network, no permission), refused at once instead of timing out. */
+    class LocalNetworkBlocked(val host: String) :
+        IOException("$host is on your local network, which Kolahal isn't allowed to reach yet (run 'local-network')")
+
+    /** Addresses Android 17 keeps behind the local network permission; this phone itself is not one of them. */
+    private fun needsPermission(a: InetAddress): Boolean {
+        if (Build.VERSION.SDK_INT < 37 || a.isLoopbackAddress) return false
+        if (a.isSiteLocalAddress || a.isLinkLocalAddress || a.isMulticastAddress) return true
+        return a.address.size == 16 && (a.address[0].toInt() and 0xfe) == 0xfc
+    }
+
+    // Android lets a blocked connection hang until the connect timeout; this says why straight away.
+    private class GuardedSocket : Socket() {
+        override fun connect(endpoint: SocketAddress?, timeout: Int) {
+            val target = endpoint as? InetSocketAddress
+            val address = target?.address
+            if (address != null && needsPermission(address) && !localNetworkAllowed()) throw LocalNetworkBlocked(target.hostString)
+            super.connect(endpoint, timeout)
+        }
+    }
+
+    private object GuardedSocketFactory : SocketFactory() {
+        override fun createSocket(): Socket = GuardedSocket()
+        override fun createSocket(host: String, port: Int): Socket = GuardedSocket().apply { connect(InetSocketAddress(host, port)) }
+        override fun createSocket(host: String, port: Int, localHost: InetAddress, localPort: Int): Socket =
+            GuardedSocket().apply { bind(InetSocketAddress(localHost, localPort)); connect(InetSocketAddress(host, port)) }
+        override fun createSocket(host: InetAddress, port: Int): Socket = GuardedSocket().apply { connect(InetSocketAddress(host, port)) }
+        override fun createSocket(address: InetAddress, port: Int, localAddress: InetAddress, localPort: Int): Socket =
+            GuardedSocket().apply { bind(InetSocketAddress(localAddress, localPort)); connect(InetSocketAddress(address, port)) }
     }
 
     /** How far a request may reach. Checked on every hop once connected, redirects included. */

@@ -82,7 +82,8 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             // The run's lines went out before its result was stored; without this, home could show the previous run.
             logs.touch()
         }
-        if (host.notifyBlocked) reportBlockedNotifications(ctx, logs, name)
+        if (host.notifyBlocked) reportBlocked(ctx, logs, name, "notify-blocked", "notifications are blocked", "notifications")
+        if (host.lanBlocked) reportBlocked(ctx, logs, name, "lan-blocked", "Kolahal may not reach your local network yet", "local-network")
         logs.trim()
         return Result.success()
     }
@@ -94,18 +95,13 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         ScriptLang.JS -> (e as? com.dokar.quickjs.QuickJsException)?.lineNumber?.minus(1)?.takeIf { it > 0 }
     }
 
-    /** One "tap to allow" line per day instead of one per dropped notification. */
-    private fun reportBlockedNotifications(context: Context, logs: LogRepository, name: String) {
+    /** One "tap to allow" line per day ([key] tells kinds apart) instead of one per blocked call. */
+    private fun reportBlocked(context: Context, logs: LogRepository, name: String, key: String, what: String, fix: String) {
         val store = KvStore(context, "worker")
         val today = java.time.LocalDate.now().toString()
-        if (store.get("notify-blocked") == today) return
-        store.set("notify-blocked", today)
-        logs.add(
-            LogKind.ERROR,
-            "$name: notifications are blocked — tap to allow",
-            name,
-            LogContext.of(LogContext.RUN to "notifications"),
-        )
+        if (store.get(key) == today) return
+        store.set(key, today)
+        logs.add(LogKind.ERROR, "$name: $what — tap to allow", name, LogContext.of(LogContext.RUN to fix))
     }
 
     companion object {

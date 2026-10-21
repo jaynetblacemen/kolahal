@@ -196,6 +196,7 @@ See [Widgets](/guides/widgets/).
 | `unlocks [days]` | | unlock counts (1–30 days) |
 | `notifications [settings]` | | allow script notifications |
 | `usage-access` | | grant usage access (unlock count) |
+| `local-network [--settings]` | | <span class="k-new">new</span> let scripts (`@uses lan`) and feeds reach your local network (Android 17+); `--settings` opens app settings after a denial |
 | `battery` | | battery optimization settings |
 | `home` | | choose the default launcher |
 | `lock` | | lock the screen (needs the accessibility service) |

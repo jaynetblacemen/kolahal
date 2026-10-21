@@ -26,7 +26,8 @@ class FeedFetcher(context: Context) {
 
     /** Outcome of one feed in [fetchAll]; [error] is null on success (including 304). */
     /** [first]: this was the feed's first successful fetch, so [newItems] is its backlog, not news. */
-    data class Result(val feed: Feed, val newItems: List<FeedItem>, val error: String?, val first: Boolean = false)
+    /** [lanBlocked]: the feed is on the local network and Kolahal may not reach it yet. */
+    data class Result(val feed: Feed, val newItems: List<FeedItem>, val error: String?, val first: Boolean = false, val lanBlocked: Boolean = false)
 
     /**
      * Fetches [feed] and stores unseen items. Returns them newest first (empty on 304).
@@ -53,7 +54,7 @@ class FeedFetcher(context: Context) {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
-            Result(feed, emptyList(), describe(e))
+            Result(feed, emptyList(), describe(e), lanBlocked = e is Net.LocalNetworkBlocked)
         }
     }
 

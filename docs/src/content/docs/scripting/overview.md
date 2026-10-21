@@ -180,8 +180,10 @@ for scripts that ask, with a `@uses` line at the top:
 | `apps` | [`apps.list`](/scripting/api/#appslist) |
 | `lan` | `http` requests to this phone or your local network (192.168.…, router pages, a home server) |
 
-Without it, those calls stop the script with an error saying what to add. Code you type at the
-prompt (`lua`, `js`, `=`) may use everything. Scripts that come from outside (a file, a backup)
+Without it, those calls stop the script with an error saying what to add.
+<span class="k-new">new</span> On Android 17 and newer, reaching your local network also needs Android's
+local network permission: run `local-network` once, or tap the line a blocked request leaves in the
+log. Code you type at the prompt (`lua`, `js`, `=`) may use everything. Scripts that come from outside (a file, a backup)
 arrive **switched off**, and `script on <name>` says what the script uses as you turn it on.
 
 Links a script puts on a line (`url`, `image`, or a notification's link) must be web links:

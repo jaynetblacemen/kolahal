@@ -1,10 +1,13 @@
 package com.mtwabpin.kolahal
 
+import android.Manifest
 import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.work.Configuration
@@ -13,6 +16,7 @@ import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.data.Config
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.notify.Notifier
+import com.mtwabpin.kolahal.script.Net
 import com.mtwabpin.kolahal.script.ScriptScheduler
 import com.mtwabpin.kolahal.unlock.UnlockCounter
 import com.mtwabpin.kolahal.status.DeviceStatus
@@ -28,6 +32,10 @@ class LauncherApp : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         Notifier.createChannels(this)
+        // Both processes make requests: scripts in :script, feeds and images here.
+        if (Build.VERSION.SDK_INT >= 37) {
+            Net.localNetworkAllowed = { checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED }
+        }
         // The :script process only needs the database and notifications.
         if (getProcessName() != packageName) return
 

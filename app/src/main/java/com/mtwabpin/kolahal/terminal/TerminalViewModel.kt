@@ -1037,6 +1037,21 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         _events.tryEmit(UiEvent.RequestCallLogPermission)
     }
 
+    override fun requestLocalNetworkPermission() {
+        _events.tryEmit(UiEvent.RequestLocalNetworkPermission)
+    }
+
+    fun onLocalNetworkPermission(granted: Boolean) {
+        refreshSetup()
+        io {
+            if (granted) {
+                logs.add(LogKind.INFO, "Local network allowed — scripts with @uses lan and feeds on your network can reach it")
+            } else {
+                logs.add(LogKind.ERROR, "Local network permission denied — tap to open app settings", ctx = LogContext.of(LogContext.RUN to "local-network --settings"))
+            }
+        }
+    }
+
     fun onCallLogPermission(granted: Boolean) {
         refreshSetup()
         if (granted) com.mtwabpin.kolahal.calls.CallEvents.get(context).start()

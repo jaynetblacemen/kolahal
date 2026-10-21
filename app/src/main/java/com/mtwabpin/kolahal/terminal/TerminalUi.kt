@@ -21,6 +21,8 @@ interface TerminalUi {
     fun requestCalendarPermission() {}
     /** READ_CALL_LOG for calls in the log and `calls`. */
     fun requestCallLogPermission() {}
+    /** ACCESS_LOCAL_NETWORK (Android 17+) for `local-network`. */
+    fun requestLocalNetworkPermission() {}
 }
 
 data class CommandSpec(val name: String, val usage: String, val help: String)

@@ -38,6 +38,7 @@ Declared in the manifest:
 | Permission | Why |
 | --- | --- |
 | `INTERNET` | scripts, feeds and currency rates (see above) |
+| `ACCESS_LOCAL_NETWORK` | <span class="k-new">new</span> Android 17 and newer: scripts with `@uses lan` and feeds on your own network (a home server, a router page). Asked for with `local-network`; optional |
 | `ACCESS_NETWORK_STATE` | the `net` item in the header and `device.network()` |
 | `READ_CONTACTS` | `call`, `sms` and `contacts` name matching. Asked for on first use; optional |
 | `READ_CALENDAR` | `agenda` lists upcoming events. Asked for on first use; optional; nothing leaves the device |
@@ -70,6 +71,7 @@ These are off until you enable them, usually from the [setup checklist](/getting
 | Do Not Disturb access | `dnd`, `ring silent` | those print a tappable line to grant it |
 | Modify system settings | `brightness`, `rotate`, `screen-timeout` | those print a tappable line to grant it |
 | Accessibility service **Kolahal screen lock** | double-tap / `lock` locks the screen. It can't read window content and receives no events | no lock gesture |
+| Local network (Android 17+) | scripts with `@uses lan`, feeds on a home server | those requests fail with a line to tap and allow it |
 | Battery unrestricted | timers and feeds run on time | Android may defer them |
 
 Notification text read through notification access stays on the device: it goes into the log and
