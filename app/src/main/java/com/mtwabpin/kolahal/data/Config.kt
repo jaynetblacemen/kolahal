@@ -76,7 +76,7 @@ object Keys {
         "The phone's own font instead of the terminal font: off, the prompt only, or all of the terminal (lists that line up columns and the script editor stay monospace)",
     )
     val FONT_SIZE = ConfigKey.Num("font.size", 14, 10..24, "Terminal font size (sp)")
-    val SUGGESTIONS = ConfigKey.Num("suggestions", 5, 0..30, "Max suggestions shown while typing")
+    val SUGGESTIONS = ConfigKey.Num("suggestions", 30, 0..30, "Max suggestions shown while typing")
     val AUTO_LAUNCH = ConfigKey.Bool("launch.single", true, "Launch automatically when only one app matches")
     val LAUNCH_INSTANT = ConfigKey.Choice(
         "launch.instant", "all", listOf("off", "apps", "all"),
@@ -85,6 +85,7 @@ object Keys {
     val LAUNCH_INSTANT_MIN = ConfigKey.Num("launch.instant.min", 2, 1..6, "Letters to type before an instant launch")
     val LAUNCH_TOP = ConfigKey.Bool("launch.top", true, "Enter launches the best match when it starts with what you typed")
     val SUGGEST_ICONS = ConfigKey.Bool("suggestions.icons", false, "Show app icons next to app suggestions, in the list and on chips")
+    val SUGGESTIONS_WRAP = ConfigKey.Bool("suggestions.wrap", false, "Show a command's or setting's whole description in the suggestion list, over more lines (off: one line, cut short)")
     val SUGGEST_IDLE = ConfigKey.Bool("suggestions.idle", false, "Show most-used apps when the prompt is empty")
     val SUGGESTIONS_AUTO = ConfigKey.Bool("suggestions.auto", true, "Show suggestions only while typing (keyboard up or text in the prompt)")
     val SUGGESTION_ROWS = ConfigKey.Num("suggestions.rows", 2, 1..2, "Rows of suggestion chips while typing (suggestions.style chips)")
@@ -130,7 +131,7 @@ object Keys {
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
-        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, GUI_COLORS, STATUS_BAR, FONT, FONT_SANS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGEST_ICONS, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_HANDLE, SELECTOR_HEIGHT, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
+        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, GUI_COLORS, STATUS_BAR, FONT, FONT_SANS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGEST_ICONS, SUGGESTIONS_WRAP, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_HANDLE, SELECTOR_HEIGHT, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_GUTTER, LOG_LINE_HEIGHT, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_FRESH, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP_ON, GESTURE_SWIPE_UP,
         FEEDS_LOG, FEEDS_LOG_LINES, FEEDS_READ_SHOWN, FEEDS_BACKLOG_READ, FEEDS_INTERVAL, FEEDS_NOTIFY, FEEDS_WIFI,

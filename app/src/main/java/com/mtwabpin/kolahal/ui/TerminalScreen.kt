@@ -417,6 +417,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                     onPick = vm::onSuggestion,
                     onAppLongPress = { app -> showMenu(app.label, null) { vm.appActions(app) } },
                     icons = showIcons,
+                    wrapHelp = remember(configVersion) { config[Keys.SUGGESTIONS_WRAP] },
                 )
             }
         }

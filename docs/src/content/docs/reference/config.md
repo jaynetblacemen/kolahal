@@ -69,13 +69,14 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 | `launch.instant.min` | number 1–6 | `2` | letters to type before an instant launch |
 | `suggestions.idle` | bool | `off` | show most-used apps when the prompt is empty |
 | `suggestions.icons` | bool | `off` | show app icons next to app suggestions, in the list and on chips |
+| `suggestions.wrap` | bool | `off` | <span class="k-new">new</span> show a command's or setting's whole description in the suggestion list, over more lines (off: one line, cut short) |
 | `suggestions.auto` | bool | `on` | show suggestions only while typing (keyboard up or text in the prompt) |
 | `suggestions.style` | choice: `list` `chips` | `list` | while typing: a list above the prompt (best match at the bottom, nearest the thumb, with command descriptions) or a strip of chips |
 | `suggestions.rows` | number 1–2 | `2` | rows of suggestion chips while typing (`suggestions.style chips`) |
 | `selector.rail` | bool | `on` | App selector on the right edge while the keyboard is down: slide along the right edge to glide through all your apps; let go on one to launch, hold for its actions |
 | `selector.handle` | bool | `on` | show the slim A–Z handle on the right edge; off hides it while the selector keeps working (it still appears under your finger) |
 | `selector.height` | number 200–900 | `350` | height (dp) of the app selector band, low on the right edge: shorter means less thumb travel |
-| `suggestions` | number 0–30 | `5` | max suggestions shown while typing |
+| `suggestions` | number 0–30 | `30` | max suggestions shown while typing |
 | `search.engine` | choice: `duckduckgo` `google` `bing` `brave` `startpage` `kagi` `custom` | `duckduckgo` | web search engine for `search` / `g` |
 | `search.url` | text | `https://duckduckgo.com/?q=%s` | custom search URL (`%s` = query), used when `search.engine` = `custom` |
 

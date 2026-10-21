@@ -69,12 +69,12 @@ The strip above the prompt changes as you type:
 
 Command chips start with `$` (`$ maps`), app chips show the app name, and a ✕ at the end of the
 prompt clears it. Tap a chip to use it. Tab (on the key bar or a hardware keyboard) takes the first one. The number
-of chips is `suggestions` (default 5).
+of chips is `suggestions` (default 30).
 
 By default (`suggestions.style list`) the suggestions are a **list** stacked directly above the
 prompt instead of chips: the best match sits at the bottom, nearest your thumb, highlighted with
 a ⏎ because it is what Enter and Tab act on. Command rows show `$ name` and the command's short
-description; app rows show the profile tag. The list takes at most about 40% of the screen, and
+description, cut to one line (<span class="k-new">new</span> `suggestions.wrap on` shows all of it, over more lines); app rows show the profile tag. The list takes at most about 40% of the screen, and
 never more than the room above the prompt, so the prompt stays in view; it scrolls beyond that. Long-press an app row for its actions. `config set suggestions.style chips`
 brings back the chip strip (`suggestions.rows` applies to chips only). Turn on **Show app icons**
 (`suggestions.icons`, off by default) for each app's icon in front of its name, in both styles (commands get a

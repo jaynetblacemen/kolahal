@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
@@ -58,7 +59,7 @@ internal fun completionHelp(label: String, replacement: String): String? {
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppLongPress: (AppEntry) -> Unit, icons: Boolean = false) {
+fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppLongPress: (AppEntry) -> Unit, icons: Boolean = false, wrapHelp: Boolean = false) {
     if (items.isEmpty()) return
     val maxHeight = with(LocalDensity.current) { (LocalWindowInfo.current.containerSize.height * 0.4f).toDp() }
     // A lazy list keeps its first visible item in place when the data changes; the best match
@@ -120,25 +121,29 @@ fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppL
                         )
                     }
                     is Suggestion.Completion -> {
+                        // suggestions.wrap: the whole description in its own column, as many lines as it
+                        // needs, with the name on its first line; otherwise one line, cut short.
+                        val firstLine = if (wrapHelp) Modifier.alignBy(FirstBaseline) else Modifier
                         // With icons on, a terminal icon takes the `$`'s place so labels line up with apps.
                         if (icons) {
                             if (s.app != null) AppIcon(s.app, iconSize) else CommandIcon(iconSize)
                             Spacer(Modifier.width(8.dp))
                         } else {
-                            Text("$ ", style = Term.text.copy(color = Term.prompt, fontWeight = FontWeight.Bold))
+                            Text("$ ", style = Term.text.copy(color = Term.prompt, fontWeight = FontWeight.Bold), modifier = firstLine)
                         }
                         Text(
                             s.label,
                             style = Term.text.copy(color = Term.fg, fontWeight = if (first) FontWeight.Bold else FontWeight.Normal),
                             maxLines = 1,
+                            modifier = firstLine,
                         )
                         val help = completionHelp(s.label, s.replacement)
                         Text(
-                            if (help != null) "  $help" else "",
+                            if (help == null) "" else if (wrapHelp) help else "  $help",
                             style = Term.text.copy(color = Term.dim, fontSize = (Term.fontSize - 2).sp),
-                            maxLines = 1,
+                            maxLines = if (wrapHelp) Int.MAX_VALUE else 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).then(firstLine).then(if (wrapHelp) Modifier.padding(start = 12.dp, top = 4.dp, bottom = 4.dp) else Modifier),
                         )
                     }
                 }
