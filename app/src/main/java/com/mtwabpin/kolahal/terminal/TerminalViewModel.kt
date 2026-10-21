@@ -630,7 +630,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                 .filter { it.startsWith(last) && it != last }.map { Suggestion.Completion("last $it", "$head $it") } else emptyList()
             "script" -> {
                 if (parts.size == 2) {
-                    CommandProcessor.SCRIPT_SUBCOMMANDS.filter { it.startsWith(parts[1]) && it != parts[1] }
+                    ScriptCommands.SUBCOMMANDS.filter { it.startsWith(parts[1]) && it != parts[1] }
                         .map { Suggestion.Completion(it, "script $it ") }
                 } else {
                     val sub = parts[1]

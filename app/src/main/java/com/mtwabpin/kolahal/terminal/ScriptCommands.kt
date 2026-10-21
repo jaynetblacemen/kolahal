@@ -1,0 +1,251 @@
+package com.mtwabpin.kolahal.terminal
+
+import android.content.Context
+import com.mtwabpin.kolahal.data.KvStore
+import com.mtwabpin.kolahal.data.LogContext
+import com.mtwabpin.kolahal.data.LogKind
+import com.mtwabpin.kolahal.data.LogRepository
+import com.mtwabpin.kolahal.data.Script
+import com.mtwabpin.kolahal.data.ScriptLang
+import com.mtwabpin.kolahal.data.ScriptRepository
+import com.mtwabpin.kolahal.notify.Notifier
+import com.mtwabpin.kolahal.script.HostApi
+import com.mtwabpin.kolahal.script.ScriptFolder
+import com.mtwabpin.kolahal.script.ScriptLibrary
+import com.mtwabpin.kolahal.script.ScriptMeta
+import com.mtwabpin.kolahal.script.ScriptScheduler
+import com.mtwabpin.kolahal.script.ScriptTemplates
+import java.text.DateFormat
+import java.util.Date
+
+/**
+ * `script …`, `status`, and `@command` scripts run by name. Kept out of [CommandProcessor] so
+ * the dispatcher only needs one line per command.
+ */
+class ScriptCommands(
+    private val context: Context,
+    private val ui: TerminalUi,
+    /** Runs slow work (folder sync) off the serial command queue; failures are logged. */
+    private val background: (label: String, block: () -> Unit) -> Unit,
+) {
+    private val logs = LogRepository.get(context)
+    private val scripts = ScriptRepository.get(context)
+    private val folder = ScriptFolder(context)
+
+    private fun out(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.OUTPUT, text, ctx = ctx) }
+    private fun info(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.INFO, text, ctx = ctx) }
+    private fun error(text: String) { logs.add(LogKind.ERROR, text) }
+
+    /** Runs a `@command` script named [name]; returns null if there is none. */
+    fun runCommand(name: String, args: List<String>): Unit? {
+        val script = scripts.byName(name)?.takeIf { ScriptMeta.isCommand(it.code) } ?: return null
+        // A switched-off script (an import not reviewed yet) doesn't run by its name.
+        if (!script.enabled) {
+            logs.add(LogKind.ERROR, "${script.name} is switched off — tap to turn it on", ctx = LogContext.of(LogContext.RUN to "script on ${script.name}"))
+            return Unit
+        }
+        ScriptScheduler.runNow(context, script, args)
+        return Unit
+    }
+
+    /** `status` lists script status lines; `status clear <name|all>` removes them. */
+    fun status(args: List<String>) {
+        val store = KvStore(context, HostApi.STATUS_SCOPE)
+        val all = store.all()
+        when (args.firstOrNull()) {
+            null, "ls" -> {
+                if (all.isEmpty()) info("No status lines — scripts set them with status(text)")
+                all.forEach { (name, text) -> out("$name ▸ $text", LogContext.of(LogContext.SCRIPT to name)) }
+            }
+            "clear" -> {
+                val target = args.getOrNull(1) ?: "all"
+                (if (target == "all") all.keys else listOf(target)).forEach { store.set(it, null) }
+                logs.onStatusChanged()
+                info("Cleared status: $target")
+            }
+            else -> error("Usage: status [clear <name|all>]")
+        }
+    }
+
+    fun script(args: List<String>) {
+        val sub = args.firstOrNull() ?: "ls"
+        val target = args.getOrNull(1)
+        when (sub) {
+            "ls", "list" -> listScripts()
+            "triggers", "events" -> listTriggers()
+            "dir", "folder" -> {
+                folder.uri?.let { info("Script folder: ${it.lastPathSegment}") }
+                ui.pickScriptFolder()
+            }
+            // Folder sync can be slow on SAF providers; run it off the serial command queue.
+            "lib", "library" -> {
+                val lib = ScriptLibrary(context)
+                val installed = scripts.all()
+                info("Script library — 'script install <name>', or browse it in 'scripts'")
+                lib.entries.forEach { e ->
+                    val state = when (lib.state(e, installed)) {
+                        ScriptLibrary.State.NOT_INSTALLED -> ""
+                        ScriptLibrary.State.INSTALLED -> " ✓"
+                        ScriptLibrary.State.MODIFIED -> " (edited)"
+                        ScriptLibrary.State.UPDATE_AVAILABLE -> " (update available)"
+                    }
+                    out("${e.name}.${e.lang.ext}$state", LogContext.of(LogContext.COMMAND to "script install ${e.name}", LogContext.DESC to e.description))
+                }
+            }
+            "install" -> {
+                val lib = ScriptLibrary(context)
+                val entry = lib.entries.firstOrNull { it.name == target?.lowercase()?.substringBefore('.') }
+                    ?: return error("No library script '${target.orEmpty()}' — 'script lib' lists them")
+                // Updating an unedited copy is safe; a copy with your changes (or your own script of
+                // that name) is only replaced when asked.
+                if ("--replace" !in args && lib.state(entry, scripts.all()) == ScriptLibrary.State.MODIFIED) {
+                    return error(
+                        "Your ${entry.name}.${entry.lang.ext} differs from the library's: " +
+                            "'script install ${entry.name} --replace' replaces it (export it first to keep a copy)"
+                    )
+                }
+                val s = lib.install(entry)
+                info("Installed ${s.name}.${s.lang.ext}" + (if (entry.command) " — run it as '${s.name}'" else "") +
+                    (if (s.intervalMin > 0) " · every ${CommandParsing.formatInterval(s.intervalMin)}" else ""), scriptCtx(s))
+            }
+            "export" -> background("export") { info("Exported ${folder.export()} scripts + kolahal.json") }
+            "import" -> background("import") {
+                val r = folder.import()
+                info("Imported: ${r.created} new, ${r.updated} updated" + if (r.skipped.isNotEmpty()) ", skipped ${r.skipped.joinToString()}" else "")
+            }
+            "new" -> {
+                val (name, lang) = parseName(target ?: return error("Usage: script new <name>[.lua|.js] [lua|js] [--cmd]"))
+                if (!Regex("^[a-z0-9_-]{1,40}$").matches(name)) return error("Script names: lowercase letters, digits, - and _ only")
+                if (name in CommandProcessor.COMMAND_NAMES) return error("'$name' is a built-in command, pick another name")
+                val asCommand = "--cmd" in args || "cmd" in args
+                val chosen = args.drop(2).firstNotNullOfOrNull(ScriptLang::of) ?: lang ?: ScriptLang.LUA
+                if (scripts.byName(name) != null) return error("Script '$name' exists — 'script edit $name'")
+                val template = if (asCommand) ScriptTemplates.command(chosen, name) else ScriptTemplates.forLang(chosen, name)
+                val script = scripts.create(name, chosen, template)
+                info("Created ${script.name}.${script.lang.ext}", scriptCtx(script))
+                ui.openEditor(script)
+            }
+            "edit" -> withScript(target) { ui.openEditor(it) }
+            "run" -> withScript(target) {
+                ScriptScheduler.runNow(context, it)
+                info("Running ${it.name}…", scriptCtx(it))
+            }
+            "every" -> withScript(target) { s ->
+                val minutes = CommandParsing.parseInterval(args.getOrNull(2))
+                    ?: return error("Usage: script every <name> <15m|30m|2h|1d|off>")
+                val effective = if (minutes > 0) minutes.coerceAtLeast(ScriptScheduler.MIN_INTERVAL_MIN) else 0
+                scripts.setInterval(s.id, effective)
+                if (effective > 0 && !s.enabled) scripts.setEnabled(s.id, true)
+                scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
+                info(
+                    if (effective == 0) "${s.name}: timer off" else "${s.name}: runs every ${CommandParsing.formatInterval(effective)}" +
+                        if (minutes in 1 until ScriptScheduler.MIN_INTERVAL_MIN) " (Android minimum is 15m)" else "",
+                    scriptCtx(s),
+                )
+            }
+            "at" -> withScript(target) { s ->
+                val spec = args.getOrNull(2) ?: return error("Usage: script at <name> <HH:mm[,HH:mm…]|off>")
+                val times = if (spec == "off") emptyList() else spec.split(',').map { CommandParsing.parseClock(it) ?: return error("Bad time '$it' — use HH:mm") }
+                scripts.setAtTimes(s.id, times.distinct().sorted())
+                if (times.isNotEmpty() && !s.enabled) scripts.setEnabled(s.id, true)
+                scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
+                info(if (times.isEmpty()) "${s.name}: no daily times" else "${s.name}: daily at ${times.distinct().sorted().joinToString(", ")}", scriptCtx(s))
+            }
+            "notify" -> withScript(target) { s ->
+                val on = when (args.getOrNull(2)) {
+                    "on" -> true
+                    "off" -> false
+                    else -> return error("Usage: script notify <name> on|off")
+                }
+                scripts.setNotify(s.id, on)
+                info("${s.name}: notifications ${if (on) "on" else "off"}", scriptCtx(s))
+                if (on && !Notifier.canPost(context)) ui.requestNotificationPermission()
+            }
+            "on", "off", "enable", "disable" -> withScript(target) { s ->
+                val enabled = sub == "on" || sub == "enable"
+                scripts.setEnabled(s.id, enabled)
+                scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
+                info("${s.name}: ${if (enabled) "enabled" else "disabled"}", scriptCtx(s))
+                // Turning a script on is consent to what it declares: say what that is.
+                val uses = ScriptMeta.uses(s.code)
+                if (enabled && uses.isNotEmpty()) info("${s.name} can use: ${uses.joinToString()}")
+            }
+            "rm", "delete" -> withScript(target) { s ->
+                ScriptScheduler.cancel(context, s.id)
+                scripts.delete(s.id)
+                KvStore(context, HostApi.STATUS_SCOPE).set(s.name, null)
+                logs.onStatusChanged()
+                info("Deleted ${s.name}")
+            }
+            "cat", "show" -> withScript(target) { s ->
+                s.code.lines().forEachIndexed { i, l -> out("${(i + 1).toString().padStart(3)}  $l", LogContext.of(LogContext.COPY to s.code)) }
+            }
+            else -> error("Usage: script [ls|new|edit|run|every|at|notify|on|off|triggers|rm|cat] <name>")
+        }
+    }
+
+    private fun listScripts() {
+        val all = scripts.all()
+        if (all.isEmpty()) {
+            info("No scripts yet — try 'script new hn' or 'script new feed.js'")
+            return
+        }
+        val df = DateFormat.getTimeInstance(DateFormat.SHORT)
+        all.forEach { s ->
+            val timer = listOfNotNull(
+                s.intervalMin.takeIf { it > 0 }?.let { "every ${CommandParsing.formatInterval(it)}" },
+                s.atTimes.takeIf { it.isNotEmpty() }?.let { "at " + it.joinToString(",") },
+            ).joinToString(" ").ifEmpty { "manual" }
+            val last = s.lastRun?.let { "${df.format(Date(it))} ${s.lastStatus.orEmpty()}" } ?: "never run"
+            val parts = buildList {
+                add(timer)
+                if (ScriptMeta.isCommand(s.code)) add("command")
+                ScriptMeta.events(s.code).takeIf { it.isNotEmpty() }?.let { add("on " + it.joinToString(",")) }
+                if (s.notify) add("notify")
+                if (!s.enabled) add("disabled")
+                add(last)
+            }
+            out("${s.name}.${s.lang.ext}", scriptCtx(s) + mapOf(LogContext.DESC to parts.joinToString(" · ")))
+        }
+    }
+
+    /** Scripts with `@on` lines and the events they run on. */
+    private fun listTriggers() {
+        val subscribed = scripts.all().mapNotNull { s ->
+            val events = ScriptMeta.events(s.code)
+            val unknown = ScriptMeta.unknownEvents(s.code)
+            if (events.isEmpty() && unknown.isEmpty()) null else Triple(s, events, unknown)
+        }
+        if (subscribed.isEmpty()) {
+            info("No script has an @on line — add '-- @on unlock' (Lua) or '// @on charger' (JS)")
+        }
+        subscribed.forEach { (s, events, unknown) ->
+            val parts = buildList {
+                add(if (events.isEmpty()) "no known events" else "on " + events.joinToString(", "))
+                if (unknown.isNotEmpty()) add("unknown: " + unknown.joinToString(", "))
+                if (!s.enabled) add("disabled")
+            }
+            out("${s.name}.${s.lang.ext}", scriptCtx(s) + mapOf(LogContext.DESC to parts.joinToString(" · ")))
+        }
+        info("Events: ${ScriptMeta.EVENTS.joinToString(" ")}")
+    }
+
+    private inline fun withScript(name: String?, action: (Script) -> Unit) {
+        if (name == null) return error("Script name required")
+        val script = scripts.byName(parseName(name).first)
+        if (script == null) error("No script named '$name' — 'script ls'") else action(script)
+    }
+
+    private fun scriptCtx(s: Script) = LogContext.of(LogContext.SCRIPT to s.name)
+
+    private fun parseName(raw: String): Pair<String, ScriptLang?> {
+        val ext = raw.substringAfterLast('.', "")
+        val lang = ScriptLang.of(ext)
+        return (if (lang != null) raw.substringBeforeLast('.') else raw).lowercase() to lang
+    }
+
+    companion object {
+        /** What follows `script`, for completion. */
+        val SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "triggers", "rm", "cat", "dir", "export", "import")
+    }
+}
