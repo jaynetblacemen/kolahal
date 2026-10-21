@@ -30,7 +30,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,7 +60,7 @@ internal fun completionHelp(label: String, replacement: String): String? {
 @Composable
 fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppLongPress: (AppEntry) -> Unit, icons: Boolean = false) {
     if (items.isEmpty()) return
-    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.4f).dp
+    val maxHeight = with(LocalDensity.current) { (LocalWindowInfo.current.containerSize.height * 0.4f).toDp() }
     // A lazy list keeps its first visible item in place when the data changes; the best match
     // (what Enter acts on) must always be in view, so jump back to it when it changes.
     val state = androidx.compose.foundation.lazy.rememberLazyListState()

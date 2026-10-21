@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.work.Configuration
 import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.data.LogRepository
@@ -51,7 +52,7 @@ class LauncherApp : Application(), Configuration.Provider {
                 val version = packageManager.getPackageInfo(packageName, 0).longVersionCode
                 if (prefs.getLong("repaired_for", -1L) != version) {
                     com.mtwabpin.kolahal.data.KvStore.repairOversized(this)
-                    prefs.edit().putLong("repaired_for", version).apply()
+                    prefs.edit { putLong("repaired_for", version) }
                 }
             }
             runCatching { com.mtwabpin.kolahal.notifications.NotifIcons.preload(this) }

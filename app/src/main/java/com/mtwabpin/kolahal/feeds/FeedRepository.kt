@@ -5,6 +5,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
+import androidx.core.database.sqlite.transaction
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -85,14 +86,10 @@ class FeedRepository private constructor(private val context: Context) {
 
     fun remove(id: Long) {
         val w = db.writableDatabase
-        w.beginTransaction()
-        try {
+        w.transaction {
             // Explicit delete as well as the cascade, in case foreign keys were off for this connection.
             w.delete("items", "feed_id = ?", arrayOf(id.toString()))
             w.delete("feeds", "id = ?", arrayOf(id.toString()))
-            w.setTransactionSuccessful()
-        } finally {
-            w.endTransaction()
         }
         changed()
     }
@@ -177,12 +174,8 @@ class FeedRepository private constructor(private val context: Context) {
         val values = ContentValues().apply { put("read", 1) }
         val w = db.writableDatabase
         var n = 0
-        w.beginTransaction()
-        try {
+        w.transaction {
             for (id in itemIds.distinct()) n += w.update("items", values, "id = ? AND read = 0", arrayOf(id.toString()))
-            w.setTransactionSuccessful()
-        } finally {
-            w.endTransaction()
         }
         if (n > 0) changed()
     }
@@ -227,8 +220,7 @@ class FeedRepository private constructor(private val context: Context) {
         val now = System.currentTimeMillis()
         val inserted = ArrayList<FeedItem>()
         val w = db.writableDatabase
-        w.beginTransaction()
-        try {
+        w.transaction {
             for (it in items.asReversed()) {
                 val rowId = w.insertWithOnConflict("items", null, ContentValues().apply {
                     put("feed_id", feedId)
@@ -244,9 +236,6 @@ class FeedRepository private constructor(private val context: Context) {
                 }
             }
             if (inserted.isNotEmpty()) prune(w, feedId)
-            w.setTransactionSuccessful()
-        } finally {
-            w.endTransaction()
         }
         if (inserted.isEmpty()) return emptyList()
         changed()

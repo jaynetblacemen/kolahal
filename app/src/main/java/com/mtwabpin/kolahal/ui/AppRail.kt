@@ -257,10 +257,10 @@ fun AppSelector(
     pinned: Set<String>,
     onLaunch: (AppEntry) -> Unit,
     onLongPress: (AppEntry) -> Unit,
+    modifier: Modifier = Modifier,
     heightDp: Int = 350,
     /** selector.handle: draw the A–Z handle when idle (it still shows under the finger). */
     showHandle: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     val entries = remember(apps, pinned) {
         SelectorMath.build(

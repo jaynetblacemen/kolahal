@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Process
 import android.provider.Settings
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -43,7 +44,7 @@ class UnlockCounter private constructor(private val context: Context) {
         ContextCompat.registerReceiver(context, object : BroadcastReceiver() {
             override fun onReceive(c: Context, intent: Intent) {
                 val key = dayKey(LocalDate.now())
-                prefs.edit().putInt(key, prefs.getInt(key, 0) + 1).apply()
+                prefs.edit { putInt(key, prefs.getInt(key, 0) + 1) }
                 com.mtwabpin.kolahal.script.TriggerDispatcher.get(context).fire("unlock")
                 refresh()
             }

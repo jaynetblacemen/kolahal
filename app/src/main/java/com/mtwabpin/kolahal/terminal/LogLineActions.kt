@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.core.net.toUri
 import com.mtwabpin.kolahal.apps.AppEntry
 import com.mtwabpin.kolahal.apps.AppPrefs
 import com.mtwabpin.kolahal.apps.AppRepository
@@ -128,7 +129,7 @@ class LogLineActions(private val context: Context, private val processor: Comman
             actions += LogAction("Call $number") { host.startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", number, null))) }
             actions += LogAction("Send a message") { host.startActivity(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", number, null))) }
             ctx.values[LogContext.CONTACT]?.let { uri ->
-                actions += LogAction("Open contact") { host.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri))) }
+                actions += LogAction("Open contact") { host.startActivity(Intent(Intent.ACTION_VIEW, uri.toUri())) }
             }
             actions += LogAction("Copy number") { copy(number) }
         }
@@ -234,7 +235,7 @@ class LogLineActions(private val context: Context, private val processor: Comman
     private fun appFor(ctx: LogContext): AppEntry? =
         ctx.pkg?.let { appsRepo.find(it, ctx.cls, ctx.userSerial) ?: appsRepo.find(it, null, ctx.userSerial) }
 
-    private fun openUrl(url: String) = host.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    private fun openUrl(url: String) = host.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
 
     /** Opens a line's link; a feed item counts as read once you have opened it. */
     private fun openLink(ctx: LogContext) {

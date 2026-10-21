@@ -6,13 +6,13 @@ import android.content.Intent
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.media.AudioManager
-import android.net.Uri
 import android.net.wifi.WifiManager
 import android.nfc.NfcAdapter
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import androidx.core.net.toUri
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
 import com.mtwabpin.kolahal.data.LogRepository
@@ -281,7 +281,7 @@ class ControlCommands(private val context: Context) {
     }
 
     private fun writeSettingsIntent() =
-        Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:" + context.packageName))
+        Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, ("package:" + context.packageName).toUri())
 
     private val resolver get() = context.contentResolver
 

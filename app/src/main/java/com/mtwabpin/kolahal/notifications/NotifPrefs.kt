@@ -1,6 +1,7 @@
 package com.mtwabpin.kolahal.notifications
 
 import android.content.Context
+import androidx.core.content.edit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,7 +18,7 @@ class NotifPrefs private constructor(context: Context) {
 
     var logToTerminal: Boolean
         get() = prefs.getBoolean(KEY_LOG, true)
-        set(value) = prefs.edit().putBoolean(KEY_LOG, value).apply()
+        set(value) = prefs.edit { putBoolean(KEY_LOG, value) }
 
     fun isMuted(pkg: String): Boolean = pkg in _muted.value
 
@@ -30,7 +31,7 @@ class NotifPrefs private constructor(context: Context) {
 
     private fun setMuted(set: Set<String>) {
         _muted.value = set
-        prefs.edit().putStringSet(KEY_MUTED, set).apply()
+        prefs.edit { putStringSet(KEY_MUTED, set) }
     }
 
     companion object {

@@ -7,11 +7,11 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.mtwabpin.kolahal.MainActivity
 import com.mtwabpin.kolahal.R
 
@@ -82,7 +82,7 @@ object Notifier {
             if (!canPost(context)) return false
             val notifId = id ?: (tag + title + body).hashCode()
             val launcher = { Intent(context, MainActivity::class.java) }
-            val tapIntent = (url?.let { runCatching { Intent(Intent.ACTION_VIEW, Uri.parse(it)) }.getOrNull() } ?: launcher())
+            val tapIntent = (url?.let { runCatching { Intent(Intent.ACTION_VIEW, it.toUri()) }.getOrNull() } ?: launcher())
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             val pi = runCatching { PendingIntent.getActivity(context, notifId, tapIntent, flags) }.getOrNull()

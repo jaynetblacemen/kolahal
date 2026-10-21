@@ -2,6 +2,7 @@ package com.mtwabpin.kolahal.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -156,13 +157,13 @@ class Config private constructor(private val prefs: SharedPreferences) {
     /** Returns false if [raw] is not a valid value for [key]. */
     fun <T> set(key: ConfigKey<T>, raw: String): Boolean {
         val value = key.parse(raw) ?: return false
-        prefs.edit().putString(key.key, key.format(value)).apply()
+        prefs.edit { putString(key.key, key.format(value)) }
         _version.update { it + 1 }
         return true
     }
 
     fun reset(key: ConfigKey<*>) {
-        prefs.edit().remove(key.key).apply()
+        prefs.edit { remove(key.key) }
         _version.update { it + 1 }
     }
 

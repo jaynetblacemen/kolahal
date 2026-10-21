@@ -1,6 +1,7 @@
 package com.mtwabpin.kolahal.script
 
 import android.content.Context
+import androidx.core.content.edit
 import androidx.work.Constraints
 import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -67,7 +68,7 @@ object ScriptScheduler {
         if (wanted.joinToString(",") != scheduled) {
             wm.cancelAllWorkByTag(dailyTag(script.id))
             wanted.forEach { enqueueDaily(context, wm, script.id, it) }
-            prefs.edit().putString(key, wanted.joinToString(",")).apply()
+            prefs.edit { putString(key, wanted.joinToString(",")) }
             return
         }
         if (!reanchor) return
@@ -127,7 +128,7 @@ object ScriptScheduler {
     fun cancel(context: Context, scriptId: Long) {
         WorkManager.getInstance(context).cancelUniqueWork(uniqueName(scriptId))
         WorkManager.getInstance(context).cancelAllWorkByTag(dailyTag(scriptId))
-        context.getSharedPreferences("daily_schedule", Context.MODE_PRIVATE).edit().remove("script:$scriptId").apply()
+        context.getSharedPreferences("daily_schedule", Context.MODE_PRIVATE).edit { remove("script:$scriptId") }
     }
 
     fun runNow(context: Context, script: Script, args: List<String> = emptyList(), interactive: Boolean = true) {

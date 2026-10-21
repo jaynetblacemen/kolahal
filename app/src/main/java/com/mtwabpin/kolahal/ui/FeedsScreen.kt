@@ -71,6 +71,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.data.Keys
@@ -215,7 +216,7 @@ private fun openItem(context: Context, scope: CoroutineScope, repo: FeedReposito
         scope.launch { snackbar.showSnackbar("this item has no link") }
     } else {
         try {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            context.startActivity(Intent(Intent.ACTION_VIEW, link.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (_: Exception) {
             // No handler, a malformed link, or a SecurityException from the target activity.
             scope.launch { snackbar.showSnackbar("no app can open $link") }

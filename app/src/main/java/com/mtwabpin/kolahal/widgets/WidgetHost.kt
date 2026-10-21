@@ -18,6 +18,7 @@ import android.util.SizeF
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.ViewConfiguration
+import androidx.core.content.edit
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -92,7 +93,7 @@ class WidgetHost private constructor(context: Context) {
 
     private fun save(list: List<PlacedWidget>) {
         _widgets.value = list
-        prefs.edit().putString(KEY, WidgetCodec.encode(list)).apply()
+        prefs.edit { putString(KEY, WidgetCodec.encode(list)) }
     }
 
     private fun update(change: (List<PlacedWidget>) -> List<PlacedWidget>) = synchronized(this) { save(change(_widgets.value)) }

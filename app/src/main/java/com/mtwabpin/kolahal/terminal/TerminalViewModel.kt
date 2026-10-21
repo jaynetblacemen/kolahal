@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.AlarmClock
 import android.provider.Settings
+import androidx.core.content.edit
 import com.mtwabpin.kolahal.ui.HeaderTarget
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -230,7 +231,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             // A persistent flag, so `clear all` doesn't look like a first run.
             val prefs = context.getSharedPreferences("launcher", android.content.Context.MODE_PRIVATE)
             val firstRun = !prefs.getBoolean("intro_shown", false) && logs.recent(1).isEmpty()
-            prefs.edit().putBoolean("intro_shown", true).apply()
+            prefs.edit { putBoolean("intro_shown", true) }
             if (firstRun) {
                 logs.add(LogKind.INFO, "Kolahal — a terminal launcher. type 'help' or start typing an app name.")
                 logs.add(LogKind.INFO, "↑/↓ recall commands · tap a line to reuse/open it · long-press for actions")

@@ -1,6 +1,7 @@
 package com.mtwabpin.kolahal.script
 
 import android.content.Context
+import androidx.core.content.edit
 import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.data.ScriptRepository
@@ -78,7 +79,7 @@ class ScriptLibrary(private val context: Context) {
             repo.saveCode(existing.id, code)
             existing
         }
-        prefs.edit().putString("installed:${entry.name}", code).apply()
+        prefs.edit { putString("installed:${entry.name}", code) }
         return repo.byId(script.id)!!.also { ScriptScheduler.sync(context, it) }
     }
 

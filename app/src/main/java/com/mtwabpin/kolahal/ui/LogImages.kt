@@ -15,10 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalWindowInfo
 import com.mtwabpin.kolahal.script.Net
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -151,8 +150,7 @@ object LogImages {
 fun LogImage(url: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    val screenHeightDp = LocalConfiguration.current.screenHeightDp
-    val maxHeightPx = with(density) { (screenHeightDp * 0.75f).dp.toPx() }
+    val maxHeightPx = LocalWindowInfo.current.containerSize.height * 0.75f
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val widthPx = constraints.maxWidth.coerceAtLeast(1)
         // null while loading; Result.failure once it can't be had.

@@ -1,11 +1,12 @@
 package com.mtwabpin.kolahal.data
 
-import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.util.Base64
+import androidx.core.content.edit
+import androidx.core.database.sqlite.transaction
 import com.mtwabpin.kolahal.feeds.FeedDb
 import com.mtwabpin.kolahal.notifications.KolahalNotificationListener
 
@@ -78,8 +79,7 @@ object FullBackup {
         for (t in TABLES) {
             val list = (tables[t.name] as? List<*>)?.filterIsInstance<Map<*, *>>() ?: continue
             val db = t.db(context)
-            db.beginTransaction()
-            try {
+            db.transaction {
                 if (t.name == "kv") {
                     // Keep this device's script stores; they are re-attached by name afterwards.
                     db.delete("kv", "scope NOT LIKE ?", arrayOf("$SCRIPT_SCOPE%"))
@@ -94,9 +94,6 @@ object FullBackup {
                     val clean = if (t.name == "logs") withSafeCtx(row) else row
                     if (db.insertWithOnConflict(t.name, null, values(clean, columns), SQLiteDatabase.CONFLICT_REPLACE) != -1L) rows++
                 }
-                db.setTransactionSuccessful()
-            } finally {
-                db.endTransaction()
             }
         }
         return rows
@@ -128,23 +125,23 @@ object FullBackup {
             }
         }
 
-    @SuppressLint("ApplySharedPref") // commit() is deliberate, see the end
     private fun importPrefs(context: Context, file: String, entries: Map<*, *>) {
-        val edit = context.getSharedPreferences(file, Context.MODE_PRIVATE).edit().clear()
-        entries.forEach { (k, tagged) ->
-            val key = k?.toString() ?: return@forEach
-            val m = tagged as? Map<*, *> ?: return@forEach
-            when {
-                "b" in m -> edit.putBoolean(key, m["b"] == true)
-                "i" in m -> edit.putInt(key, (m["i"] as? Number)?.toInt() ?: 0)
-                "l" in m -> edit.putLong(key, (m["l"] as? Number)?.toLong() ?: 0L)
-                "f" in m -> edit.putFloat(key, (m["f"] as? Number)?.toFloat() ?: 0f)
-                "set" in m -> edit.putStringSet(key, (m["set"] as? List<*>)?.map { it.toString() }?.toSet() ?: emptySet())
-                else -> edit.putString(key, m["s"]?.toString())
+        // commit, not apply: the app restarts right after a restore.
+        context.getSharedPreferences(file, Context.MODE_PRIVATE).edit(commit = true) {
+            clear()
+            entries.forEach { (k, tagged) ->
+                val key = k?.toString() ?: return@forEach
+                val m = tagged as? Map<*, *> ?: return@forEach
+                when {
+                    "b" in m -> putBoolean(key, m["b"] == true)
+                    "i" in m -> putInt(key, (m["i"] as? Number)?.toInt() ?: 0)
+                    "l" in m -> putLong(key, (m["l"] as? Number)?.toLong() ?: 0L)
+                    "f" in m -> putFloat(key, (m["f"] as? Number)?.toFloat() ?: 0f)
+                    "set" in m -> putStringSet(key, (m["set"] as? List<*>)?.map { it.toString() }?.toSet() ?: emptySet())
+                    else -> putString(key, m["s"]?.toString())
+                }
             }
         }
-        // commit, not apply: the app restarts right after a restore.
-        edit.commit()
     }
 
     // ---- tables ------------------------------------------------------------------------------

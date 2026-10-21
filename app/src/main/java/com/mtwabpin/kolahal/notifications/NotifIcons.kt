@@ -8,6 +8,7 @@ import android.graphics.drawable.Icon
 import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.createBitmap
 import java.io.File
 
 /**
@@ -65,7 +66,7 @@ object NotifIcons {
         val set = knownSet(context)
         if (key in set) return
         val drawable = icon.loadDrawable(context) ?: return
-        val bitmap = Bitmap.createBitmap(PX, PX, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(PX, PX, Bitmap.Config.ARGB_8888)
         drawable.setBounds(0, 0, PX, PX)
         drawable.draw(Canvas(bitmap))
         val dir = dir(context).apply { mkdirs() }

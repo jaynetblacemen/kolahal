@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.core.net.toUri
 import com.mtwabpin.kolahal.apps.AppEntry
 import com.mtwabpin.kolahal.apps.AppPrefs
 import com.mtwabpin.kolahal.script.ScriptMeta
@@ -280,7 +281,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private fun openUrl(raw: String) {
         if (raw.isBlank()) return error("Usage: url <address>")
         val url = if (raw.contains("://")) raw else "https://$raw"
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
         info("Opened $url", LogContext.of(LogContext.URL to url))
     }
 
@@ -298,13 +299,13 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             else -> "https://duckduckgo.com/?q=%s"
         }
         val url = template.replace("%s", Uri.encode(query))
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
         info("Search: $query", LogContext.of(LogContext.URL to url))
     }
 
     /** Opens [uri] in whatever app handles it (maps, store, ...). */
     private fun openUri(uri: String, what: String) {
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri)))
+        startActivity(Intent(Intent.ACTION_VIEW, uri.toUri()))
         info(what, LogContext.of(LogContext.URL to uri))
     }
 

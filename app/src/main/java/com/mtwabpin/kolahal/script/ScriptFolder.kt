@@ -3,6 +3,7 @@ package com.mtwabpin.kolahal.script
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.core.content.edit
 import androidx.documentfile.provider.DocumentFile
 import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.data.ScriptRepository
@@ -25,7 +26,7 @@ class ScriptFolder(private val context: Context) {
         uri?.takeIf { it != tree }?.let { old ->
             runCatching { context.contentResolver.releasePersistableUriPermission(old, flags) }
         }
-        prefs.edit().putString(KEY_URI, tree.toString()).apply()
+        prefs.edit { putString(KEY_URI, tree.toString()) }
     }
 
     private fun folder(): DocumentFile {

@@ -15,6 +15,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import com.mtwabpin.kolahal.data.ScriptRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -198,7 +199,7 @@ class TriggerDispatcher private constructor(private val context: Context) {
         val id = bootId?.let { "count:$it" }
             ?: "time:${(System.currentTimeMillis() - SystemClock.elapsedRealtime()) / 60_000}"
         if (prefs.getString("boot", null) == id) return
-        prefs.edit().putString("boot", id).apply()
+        prefs.edit { putString("boot", id) }
         fire("boot", mapOf("uptime" to SystemClock.elapsedRealtime() / 1000))
     }
 

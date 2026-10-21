@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import androidx.core.content.edit
+import androidx.core.database.sqlite.transaction
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -78,8 +80,7 @@ class LogRepository private constructor(private val context: Context) {
             return
         }
         val w = db.writableDatabase
-        w.beginTransaction()
-        try {
+        w.transaction {
             for (p in lines) {
                 w.insert("logs", null, ContentValues().apply {
                     put("ts", p.ts)
@@ -89,9 +90,6 @@ class LogRepository private constructor(private val context: Context) {
                     put("ctx", clip(p.ctx).toJson())
                 })
             }
-            w.setTransactionSuccessful()
-        } finally {
-            w.endTransaction()
         }
         changed()
     }
@@ -164,14 +162,14 @@ class LogRepository private constructor(private val context: Context) {
     fun clearHistory() {
         val maxId = db.readableDatabase.rawQuery("SELECT COALESCE(MAX(id), 0) FROM logs", null)
             .use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
-        prefs.edit().putLong(KEY_HISTORY_FROM, maxId).apply()
+        prefs.edit { putLong(KEY_HISTORY_FROM, maxId) }
         restructured()
     }
 
     /** Deletes the whole log, history included. */
     fun clearAll() {
         db.writableDatabase.delete("logs", null, null)
-        prefs.edit().putLong(KEY_CLEARED_UP_TO, 0L).putLong(KEY_HISTORY_FROM, 0L).putLong(KEY_HIDDEN_UP_TO, 0L).apply()
+        prefs.edit { putLong(KEY_CLEARED_UP_TO, 0L).putLong(KEY_HISTORY_FROM, 0L).putLong(KEY_HIDDEN_UP_TO, 0L) }
         restructured()
     }
 
@@ -183,12 +181,12 @@ class LogRepository private constructor(private val context: Context) {
      * says how much can come back with [unhide].
      */
     fun hideScreen(upTo: Long = maxId()) {
-        prefs.edit().putLong(KEY_HIDDEN_UP_TO, upTo).apply()
+        prefs.edit { putLong(KEY_HIDDEN_UP_TO, upTo) }
         restructured()
     }
 
     fun unhide() {
-        prefs.edit().putLong(KEY_HIDDEN_UP_TO, 0L).apply()
+        prefs.edit { putLong(KEY_HIDDEN_UP_TO, 0L) }
         restructured()
     }
 
@@ -211,7 +209,7 @@ class LogRepository private constructor(private val context: Context) {
     fun clearScreen() {
         val maxId = db.readableDatabase.rawQuery("SELECT COALESCE(MAX(id), 0) FROM logs", null)
             .use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
-        prefs.edit().putLong(KEY_CLEARED_UP_TO, maxId).apply()
+        prefs.edit { putLong(KEY_CLEARED_UP_TO, maxId) }
         db.writableDatabase.delete(
             "logs", "id <= ? AND kind != ?", arrayOf(maxId.toString(), LogKind.COMMAND.key),
         )
@@ -225,7 +223,7 @@ class LogRepository private constructor(private val context: Context) {
     fun trimIfDue(maxAgeDays: Int) {
         val now = System.currentTimeMillis()
         if (now - prefs.getLong(KEY_TRIMMED_AT, 0L) < 12 * 3_600_000L) return
-        prefs.edit().putLong(KEY_TRIMMED_AT, now).apply()
+        prefs.edit { putLong(KEY_TRIMMED_AT, now) }
         trim(maxAgeDays = maxAgeDays)
     }
 
@@ -255,7 +253,7 @@ class LogRepository private constructor(private val context: Context) {
     /** Newest log id the user has seen (set when home is left), for unread markers. */
     var seenUpTo: Long
         get() = prefs.getLong(KEY_SEEN_UP_TO, Long.MAX_VALUE)
-        set(value) = prefs.edit().putLong(KEY_SEEN_UP_TO, value).apply()
+        set(value) = prefs.edit { putLong(KEY_SEEN_UP_TO, value) }
 
     /** Script status lines live in the kv table; reuse the log change signal to refresh the header. */
     fun onStatusChanged() = changed()

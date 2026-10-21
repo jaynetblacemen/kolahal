@@ -1,6 +1,7 @@
 package com.mtwabpin.kolahal.apps
 
 import android.content.Context
+import androidx.core.content.edit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,8 +23,8 @@ class AppPrefs private constructor(context: Context) {
     private val usage = context.getSharedPreferences(USAGE_FILE, Context.MODE_PRIVATE).also { u ->
         val old = apps.all.filterKeys { it.startsWith("launch:") }
         if (old.isNotEmpty()) {
-            u.edit().apply { old.forEach { (k, v) -> putString(k, v as? String) } }.apply()
-            apps.edit().apply { old.keys.forEach(::remove) }.apply()
+            u.edit { old.forEach { (k, v) -> putString(k, v as? String) } }
+            apps.edit { old.keys.forEach(::remove) }
         }
     }
 
@@ -35,14 +36,14 @@ class AppPrefs private constructor(context: Context) {
     fun isHidden(key: String) = apps.getBoolean("hidden:$key", false)
 
     fun setHidden(key: String, hidden: Boolean) {
-        apps.edit().apply { if (hidden) putBoolean("hidden:$key", true) else remove("hidden:$key") }.apply()
+        apps.edit { if (hidden) putBoolean("hidden:$key", true) else remove("hidden:$key") }
         _version.update { it + 1 }
     }
 
     fun label(key: String): String? = apps.getString("label:$key", null)
 
     fun setLabel(key: String, label: String?) {
-        apps.edit().apply { if (label.isNullOrBlank()) remove("label:$key") else putString("label:$key", label) }.apply()
+        apps.edit { if (label.isNullOrBlank()) remove("label:$key") else putString("label:$key", label) }
         _version.update { it + 1 }
     }
 
@@ -60,7 +61,7 @@ class AppPrefs private constructor(context: Context) {
 
     fun setPinned(key: String, pinned: Boolean) {
         val list = pinned().filter { it != key }.let { if (pinned) it + key else it }
-        apps.edit().putString("pinned", list.joinToString("\n")).apply()
+        apps.edit { putString("pinned", list.joinToString("\n")) }
         _version.update { it + 1 }
     }
 
@@ -73,7 +74,7 @@ class AppPrefs private constructor(context: Context) {
         // Read-modify-write: two launches recorded at once must both count.
         synchronized(this) {
             val (count, _) = launchStats(key)
-            usage.edit().putString("launch:$key", "${count + 1}:${System.currentTimeMillis()}").apply()
+            usage.edit { putString("launch:$key", "${count + 1}:${System.currentTimeMillis()}") }
         }
         _version.update { it + 1 } // refreshes the "most used" suggestions
     }
@@ -108,7 +109,7 @@ class AppPrefs private constructor(context: Context) {
 
     fun setAlias(name: String, expansion: String?) {
         synchronized(aliasLock) {
-            aliasPrefs.edit().apply { if (expansion == null) remove(name) else putString(name, expansion) }.apply()
+            aliasPrefs.edit { if (expansion == null) remove(name) else putString(name, expansion) }
             aliasCache = null
         }
         _version.update { it + 1 }
