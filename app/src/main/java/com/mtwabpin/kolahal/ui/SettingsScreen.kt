@@ -47,7 +47,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -316,19 +316,30 @@ private fun SettingItem(
     val changed by remember(key) { derivedStateOf { version.value; !config.isDefault(key) } }
     val shapes = segShapes(index, count)
     val title = TITLES[key.key] ?: key.key
-    // Reset sits on the key-name line, so it never narrows the controls below it.
+    // The setting's name, then a reset icon right after it once it is changed (a switch is reset by
+    // switching it): in the same place on every row, whatever sits on the right of the title.
+    // An icon rather than a Reset button keeps this line short; it never narrows the controls below.
     val supporting: @Composable () -> Unit = {
         Column {
             Text(key.help.replaceFirstChar { it.uppercase() })
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
                 Text(
-                    key.key + if (changed) "  · changed" else "",
+                    key.key,
                     style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
                     color = MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.weight(1f),
                 )
                 if (changed && key !is ConfigKey.Bool) {
-                    TextButton(onClick = { vm.resetConfig(key) }) { Text("Reset") }
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        painterResource(R.drawable.ic_restart),
+                        contentDescription = "Reset to default",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .clickable { vm.resetConfig(key) }
+                            .padding(4.dp),
+                    )
                 }
             }
         }
