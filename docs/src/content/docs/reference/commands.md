@@ -26,17 +26,17 @@ Profile flags for app commands: `-w` work, `-p` personal, `-s` private space, `-
 | `unpin <app>` | `unfav` | remove a favourite |
 | `pins` | `favs` | grid of pinned apps |
 | `rename <app> = <name>` | | custom label; `rename <app> =` restores the original |
-| `usage [days]` | `screentime` | screen time per app (1–30 days; needs Usage Access) |
-| `installs [n]` | `updates` | recent app installs, updates and uninstalls |
+| `usage [<days>]` | `screentime` | screen time per app (1–30 days; needs Usage Access) |
+| `installs [<n>]` | `updates` | recent app installs, updates and uninstalls |
 
 ## people
 
 | Usage | Aliases | Description |
 | --- | --- | --- |
 | `call <name\|number>` | `dial` | dial a contact or number |
-| `sms <name\|number> [text]` | `text` | start a text message |
-| `contacts [query]` | `contact` | find contacts (favourites when empty) |
-| `calls [n]` | | <span class="k-new">new</span> recent calls, incoming, outgoing and missed (20 by default; `calls --allow` asks for call log access) |
+| `sms <name\|number> [<text>]` | `text` | start a text message |
+| `contacts [<query>]` | `contact` | find contacts (favourites when empty) |
+| `calls [<n>]` | | <span class="k-new">new</span> recent calls, incoming, outgoing and missed (20 by default; `calls --allow` asks for call log access) |
 
 ## web
 
@@ -53,7 +53,7 @@ Profile flags for app commands: `-w` work, `-p` personal, `-s` private space, `-
 
 | Usage | Aliases | Description |
 | --- | --- | --- |
-| `feed [add <url>\|rm\|fetch\|read\|open\|notify\|every] [id]` | `feeds` | RSS/Atom subscriptions with unread counts |
+| `feed [add <url>\|rm\|fetch\|read\|open\|notify\|every] [<id>]` | `feeds` | RSS/Atom subscriptions with unread counts |
 | `rss <url>` | | fetch a feed into the log once |
 | `notifs [all\|enable\|mute <app>\|muted\|clear]` | `notifications-feed` | your notifications in the terminal |
 
@@ -115,10 +115,10 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `notes [grep <text>\|rm <n>]` | | notes, newest first; tap copies |
 | `remind <when> <text>` | | notification later: `10m`, `2h`, `1h30m`, `18:30`, `6pm`, `tomorrow 9:00`, `fri 8am` |
 | `reminders` / `remind rm <n>` | | pending reminders / cancel one |
-| `timer <5m\|1h30m\|25> [label]` | | start a timer in the clock app (no args: show timers) |
-| `alarm <HH:MM\|7am> [label]` | | set an alarm in the clock app (no args: show alarms) |
+| `timer <5m\|1h30m\|25> [<label>]` | | start a timer in the clock app (no args: show timers) |
+| `alarm <HH:MM\|7am> [<label>]` | | set an alarm in the clock app (no args: show alarms) |
 | `alarms` / `stopwatch` | | open the clock app |
-| `agenda [days]` | | upcoming calendar events (3 days by default, up to 31); tap opens one |
+| `agenda [<days>]` | | upcoming calendar events (3 days by default, up to 31); tap opens one |
 
 ## profiles
 
@@ -193,11 +193,11 @@ See [Widgets](/guides/widgets/).
 | --- | --- | --- |
 | `settings` | `prefs` | Kolahal settings screen (+ backup import/export) |
 | `setup [text]` | | setup checklist page (`text`: print it in the log) |
-| `unlocks [days]` | | unlock counts (1–30 days) |
+| `unlocks [<days>]` | | unlock counts (1–30 days) |
 | `notifications [settings]` | | allow script notifications |
 | `usage-access` | | grant usage access (unlock count) |
 | `local-network [--settings]` | | <span class="k-new">new</span> let scripts (`@uses lan`) and feeds reach your local network (Android 17+); `--settings` opens app settings after a denial |
-| `crashes [share\|clear] [n]` | | <span class="k-new">new</span> crash reports kept on this phone, newest first (tap one to share it); `share` opens the share sheet with report `n` (default: the newest), `clear` deletes them all. See [Privacy](/reference/privacy/#crash-reports) |
+| `crashes [share\|clear] [<n>]` | | <span class="k-new">new</span> crash reports kept on this phone, newest first (tap one to share it); `share` opens the share sheet with report `n` (default: the newest), `clear` deletes them all. See [Privacy](/reference/privacy/#crash-reports) |
 | `battery` | | battery optimization settings |
 | `home` | | choose the default launcher |
 | `lock` | | lock the screen (needs the accessibility service) |

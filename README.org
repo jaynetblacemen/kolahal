@@ -96,7 +96,7 @@ cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
   Not Disturb access and brightness / rotate / timeout need "Modify system settings"; without them
   the command prints a tappable line that opens the grant page (also in =setup=).
 - Feeds :: Built-in RSS/Atom subscriptions with unread counts, per-feed intervals and optional
-  notifications: =feed add <url>=, =feed= (list), =feed read [id]=, =feed open=, =feed every 1 2h=.
+  notifications: =feed add <url>=, =feed= (list), =feed read [<id>]=, =feed open=, =feed every 1 2h=.
   =feeds= opens the feed manager screen: add feeds, read items (tap opens the link and marks it
   read), per-feed refresh / notifications / interval, and OPML import / export.
 - Widgets :: Host any app's home-screen widgets (work-profile ones too). =widgets= opens the
@@ -106,15 +106,15 @@ cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
   =widgets.height= 180dp). =widgets ls= lists them; =widget add [home]= opens the picker. Backups
   keep the layout; restored widgets get a one-tap "Add again".
 - People :: =call <name>= / =sms <name> [text]= with contact suggestions (favourites first);
-  =contacts [query]=. Numbers in the log are tappable. With call log access, every call gets a line
-  in the log as it ends (=Call from Sandhya ↙=, =Call to … ↗=, =Missed call from … ✕=); =calls [n]= lists them.
+  =contacts [<query>]=. Numbers in the log are tappable. With call log access, every call gets a line
+  in the log as it ends (=Call from Sandhya ↙=, =Call to … ↗=, =Missed call from … ✕=); =calls [<n>]= lists them.
 - Favourites :: =pin <app>= (or long-press → Pin) puts an app first in the empty-prompt strip, in pin
   order, ahead of the most-used ones. =pins= lists them, =unpin <app>= removes one.
 - Productivity :: =todo buy milk= / =todo= (tap ticks an item; long-press edits or deletes;
   =todo done 2=, =todo clear=; the header shows the open count, =header.todo=). =note <text>= and
   =notes [grep <q>|rm <n>]= (tap copies). =remind 10m tea=, =remind tomorrow 9:00 call mom=,
   =remind fri 8am …= post a notification on time and survive reboots; =reminders=, =remind rm <n>=.
-  =timer 25m focus= and =alarm 7:30 gym= hand off to the clock app. =agenda [days]= lists upcoming
+  =timer 25m focus= and =alarm 7:30 gym= hand off to the clock app. =agenda [<days>]= lists upcoming
   calendar events by day (tap opens one; asks for the calendar permission on first use).
 - App shortcuts :: =shortcuts <app>= lists an app's launcher shortcuts; =open maps:home= starts one.
   They are also in every app's long-press sheet.
@@ -130,8 +130,8 @@ cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
 - Web :: =search=, =yt=, =wiki=, =maps=, =play=; the engine is =config search.engine= (ddg, google,
   bing, brave, startpage) or a custom =search.url= containing =%s=.
 - App events :: Installs, updates and uninstalls always appear in the log; an update, or an
-  uninstall followed by a reinstall within 20 s, is one "updated" line. =installs [n]= lists the history.
-- Screen time :: =usage [days]= shows time per app (needs Usage Access).
+  uninstall followed by a reinstall within 20 s, is one "updated" line. =installs [<n>]= lists the history.
+- Screen time :: =usage [<days>]= shows time per app (needs Usage Access).
 - Script library :: 15 ready-made Lua/JS scripts (weather, Hacker News, battery log, …) in the
   script manager's Library section, or =script lib= / =script install <name>=.
 - Log history :: Scrolling to the top loads older entries; entries older than =log.keepdays= (60)
@@ -157,25 +157,25 @@ cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
 
 #+begin_example
 apps      open <app>[:shortcut] [-w|-p|-s|-c]   apps [work|personal|private|hidden] [-l]   shortcuts <app>
-          info <app>  uninstall <app>  hide / unhide <app>  rename <app> = <name>  usage [days]
-people    call <name|number>   sms <name|number> [text]   contacts [query]
+          info <app>  uninstall <app>  hide / unhide <app>  rename <app> = <name>  usage [<days>]
+people    call <name|number>   sms <name|number> [<text>]   contacts [<query>]
 web       search  yt  wiki  maps  play  url
-feeds     feeds (manager screen)   feed [ls|add <url>|rm|fetch|read|all|open|notify|every|on|off] [id]   rss <url>
+feeds     feeds (manager screen)   feed [ls|add <url>|rm|fetch|read|all|open|notify|every|on|off] [<id>]   rss <url>
           notifs [all|enable|mute <app>|unmute <app>|muted|log on|off|clear]
 control   media [play|pause|toggle|next|prev|stop]   mp   next   prev   torch [on|off]   toggles
           volume [0-100|up|down|mute]   ring [normal|vibrate|silent]   dnd [on|off|alarms|none|access]
           brightness [0-100|up|down|auto|access]   rotate [on|off]   screen-timeout <30s|1m|…>
           wifi   bt   nfc   data
 productivity  todo [<text>|add|done|undo|edit|rm <n>|all|clear]   note <text>   notes [grep <q>|rm <n>]
-          remind <when> <text>   reminders   remind rm <n>   timer <dur> [label]   alarm <HH:MM> [label]
-          alarms   stopwatch   agenda [days]
+          remind <when> <text>   reminders   remind rm <n>   timer <dur> [<label>]   alarm <HH:MM> [<label>]
+          alarms   stopwatch   agenda [<days>]
 profiles  work [on|off|status]   private [on|off|status]
 scripts   scripts (manager)   script ls|lib|install|new|edit|run|cat|rm|on|off|every|at|notify|triggers|dir|export|import
           lua <code>   js <code>   = <expression>   status [clear <name|all>]
 terminal  help  history  clear [history|all]  restart [scripts]  alias [name = command]  unalias  config  theme <name>
           font [<name>|import]  echo  date
 widgets   widgets (page)   widgets ls   widget add [home]
-device    settings  setup  unlocks [days]  notifications  usage-access  local-network  crashes [share|clear] [n]
+device    settings  setup  unlocks [<days>]  notifications  usage-access  local-network  crashes [share|clear] [<n>]
           battery  home  system
 #+end_example
 
