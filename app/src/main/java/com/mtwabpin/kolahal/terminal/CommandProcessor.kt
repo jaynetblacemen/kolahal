@@ -120,6 +120,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "contacts", "contact" -> people.listContacts(rest)
                 "notifications" -> notifications(args)
                 "local-network" -> localNetwork(args)
+                "crashes" -> crashes(args)
                 "setup" -> if (args.firstOrNull() == "text") setupText() else ui.openScreen(Screen.SETUP)
                 "status" -> scriptCommands.status(args)
                 "usage-access" -> startActivity(unlocks.usageAccessIntent())
@@ -391,6 +392,39 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         }
     }
 
+    /** `crashes [share|clear] [n]`: the crash reports kept on this phone ([CrashReports]). */
+    private fun crashes(args: List<String>) {
+        val reports = com.mtwabpin.kolahal.CrashReports.list(context)
+        when (args.firstOrNull()?.lowercase()) {
+            null, "ls" -> {
+                if (reports.isEmpty()) return info("No crash reports. If Kolahal stops unexpectedly, its report waits here until you share or clear it")
+                reports.forEachIndexed { i, r ->
+                    out(
+                        "#${i + 1} ${r.kind.label} ${com.mtwabpin.kolahal.CrashReports.whenText(context, r.time)}\n${r.summary.take(160)}",
+                        LogContext.of(LogContext.RUN to "crashes share ${r.id}"),
+                    )
+                }
+                info("Tap one to share it · crashes clear deletes them all")
+            }
+            "share" -> {
+                val which = args.getOrNull(1)
+                val r = when {
+                    which == null -> reports.firstOrNull()
+                    which.toIntOrNull() != null -> reports.getOrNull(which.toInt() - 1)
+                    else -> reports.firstOrNull { it.id == which }
+                } ?: return error(if (reports.isEmpty()) "No crash reports" else "No crash report $which (crashes lists them)")
+                val send = Intent(Intent.ACTION_SEND).setType("text/plain")
+                    .putExtra(Intent.EXTRA_SUBJECT, "Kolahal crash report")
+                    .putExtra(Intent.EXTRA_TEXT, r.text())
+                startActivity(Intent.createChooser(send, "Share the crash report"))
+            }
+            "clear" -> com.mtwabpin.kolahal.CrashReports.clear(context).let { n ->
+                info(if (n == 1) "Deleted 1 crash report" else "Deleted $n crash reports")
+            }
+            else -> error("Usage: crashes [share|clear] [<n>]")
+        }
+    }
+
     /** `clear` screen · `clear history` ↑ recall · `clear all` everything (log + history). */
     private fun clear(args: List<String>) {
         when (args.firstOrNull()) {
@@ -516,6 +550,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("notifications", "notifications", "Allow script notifications"),
             CommandSpec("usage-access", "usage-access", "Grant usage access (unlock count)"),
             CommandSpec("local-network", "local-network", "Let scripts (@uses lan) and feeds reach your local network (Android 17+)"),
+            CommandSpec("crashes", "crashes [share|clear] [<n>]", "Crash reports kept on this phone; share one to report a bug"),
             CommandSpec("battery", "battery", "Battery optimization settings"),
             CommandSpec("home", "home", "Choose the default launcher"),
             CommandSpec("lock", "lock", "Lock the screen (needs the accessibility service)"),
@@ -569,7 +604,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
             "terminal" to listOf("help", "history", "clear", "fresh", "restart", "alias", "unalias", "config", "theme", "font", "echo", "date"),
             "widgets" to listOf("widgets", "widget"),
-            "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "local-network", "battery", "home", "lock", "shade", "accessibility", "system"),
+            "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "local-network", "crashes", "battery", "home", "lock", "shade", "accessibility", "system"),
         )
     }
 }

@@ -335,6 +335,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         if (exact && exactAlarms == false) io { com.mtwabpin.kolahal.productivity.ReminderScheduler.rescheduleAll(context) }
         exactAlarms = exact
         io { logs.trimIfDue(config[Keys.LOG_KEEP_DAYS]) }
+        // A crash in the script process doesn't restart home: its report is announced here.
+        io { runCatching { com.mtwabpin.kolahal.CrashReports.announce(context) } }
         // Coming back from an app is a fresh look at home: show the full header again.
         expandHeader()
         seenUpTo = logs.seenUpTo

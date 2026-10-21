@@ -31,6 +31,8 @@ class LauncherApp : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        // Before anything else can fail: a crash in either process leaves a report (see `crashes`).
+        CrashReports.install(this)
         Notifier.createChannels(this)
         // Both processes make requests: scripts in :script, feeds and images here.
         if (Build.VERSION.SDK_INT >= 37) {
@@ -50,6 +52,7 @@ class LauncherApp : Application(), Configuration.Provider {
 
         // Re-anchor daily script times (periodic work drifts), restore schedules after updates, trim old log.
         Thread {
+            runCatching { CrashReports.announce(this) }
             runCatching { ScriptScheduler.syncAll(this) }
             runCatching { com.mtwabpin.kolahal.feeds.FeedScheduler.sync(this) }
             runCatching { com.mtwabpin.kolahal.productivity.ReminderScheduler.rescheduleAll(this) }

@@ -612,7 +612,7 @@ All app code is under =app/src/main/java/com/mtwabpin/kolahal/=.
 
 | Package               | What's inside                                                                      | Start with                     |
 |-----------------------+------------------------------------------------------------------------------------+--------------------------------|
-| (root)                | =LauncherApp= (process start-up), =MainActivity= (host and router)                 | [[src:LauncherApp.kt::class LauncherApp][LauncherApp.kt]]                 |
+| (root)                | =LauncherApp= (process start-up), =MainActivity= (host and router), =CrashReports= | [[src:LauncherApp.kt::class LauncherApp][LauncherApp.kt]]                 |
 | =terminal/=           | the ViewModel, command parsing and dispatch, suggestions, log row building         | [[src:terminal/TerminalViewModel.kt::class TerminalViewModel][TerminalViewModel.kt]]           |
 | =ui/=                 | every Compose screen and widget, theme, fonts                                      | [[src:ui/TerminalScreen.kt::fun TerminalScreen][TerminalScreen.kt]]              |
 | =data/=               | the database, the log, settings, scripts table, key/value store, backups           | [[src:data/LogRepository.kt::class LogRepository][LogRepository.kt]]               |

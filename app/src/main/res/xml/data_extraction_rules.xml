@@ -19,6 +19,9 @@
         <!-- Which apps you open and when, and how often you unlock: not for the cloud. -->
         <exclude domain="sharedpref" path="app_usage.xml" />
         <exclude domain="sharedpref" path="unlocks.xml" />
+        <!-- Crash reports belong to this phone. -->
+        <exclude domain="file" path="crash/" />
+        <exclude domain="sharedpref" path="crash.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="database" path="kolahal.db" />
@@ -30,5 +33,7 @@
         <exclude domain="database" path="feeds.db-wal" />
         <exclude domain="database" path="feeds.db-shm" />
         <exclude domain="sharedpref" path="logs.xml" />
+        <exclude domain="file" path="crash/" />
+        <exclude domain="sharedpref" path="crash.xml" />
     </device-transfer>
 </data-extraction-rules>

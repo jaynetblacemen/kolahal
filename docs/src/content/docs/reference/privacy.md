@@ -3,7 +3,8 @@ title: Privacy & permissions
 description: What each permission is for, and what leaves the device.
 ---
 
-Kolahal has no account, no analytics, no ads and no crash reporting. Its dependencies are AndroidX,
+Kolahal has no account, no analytics, no ads and no crash reporting service: a
+[crash report](#crash-reports) stays on your phone until you share it. Its dependencies are AndroidX,
 Jetpack Compose, WorkManager, OkHttp and the two script engines (LuaJava and quickjs-kt). Your log,
 settings, scripts, feeds and notifications are stored in the app's private storage on the phone.
 
@@ -24,6 +25,20 @@ Commands like `search`, `yt`, `wiki`, `maps`, `play` and `url` don't make reques
 hand a link to your browser or the matching app.
 
 Plain `http://` is allowed, because many feeds are still served without TLS.
+
+## Crash reports
+
+<span class="k-new">new</span> If Kolahal stops unexpectedly, it keeps a report on the phone: the app version and
+build, the Android version, the phone model, which part of Kolahal stopped, and the error with
+its stack trace (the code that was running). On Android 11 and newer it also notes when Kolahal
+froze ("not responding") or crashed inside native code such as the script engines, from what
+Android recorded.
+
+The next time you open home, a red line says Kolahal stopped unexpectedly; tap it to share the
+report with the share sheet (email, a chat, or paste it into a GitHub issue). `crashes` lists the
+reports, and `crashes clear` deletes them. Nothing is sent by itself, the newest 10 are kept, and
+they are left out of Android's backup. An error message can contain a bit of what you were doing
+(a command, a file name), so read the report before you send it.
 
 :::note[Android's own backup]
 The app allows Android's system backup. If device backup is on in your Android settings, Android

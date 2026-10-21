@@ -197,6 +197,7 @@ See [Widgets](/guides/widgets/).
 | `notifications [settings]` | | allow script notifications |
 | `usage-access` | | grant usage access (unlock count) |
 | `local-network [--settings]` | | <span class="k-new">new</span> let scripts (`@uses lan`) and feeds reach your local network (Android 17+); `--settings` opens app settings after a denial |
+| `crashes [share\|clear] [n]` | | <span class="k-new">new</span> crash reports kept on this phone, newest first (tap one to share it); `share` opens the share sheet with report `n` (default: the newest), `clear` deletes them all. See [Privacy](/reference/privacy/#crash-reports) |
 | `battery` | | battery optimization settings |
 | `home` | | choose the default launcher |
 | `lock` | | lock the screen (needs the accessibility service) |
