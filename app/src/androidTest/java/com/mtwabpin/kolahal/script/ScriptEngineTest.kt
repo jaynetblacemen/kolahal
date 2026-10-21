@@ -86,7 +86,7 @@ class ScriptEngineTest {
             lua("local t = {} for i = 1, 1e8 do t[i] = ('x'):rep(64) .. i end", repl = false, timeout = 20_000)
             fail("expected memory limit")
         } catch (e: Exception) {
-            assertTrue(e.message.orEmpty(), e.message.orEmpty().contains("memory limit"))
+            assertTrue(e.message.orEmpty(), e.message.orEmpty().contains("memory limit", ignoreCase = true))
         }
     }
 
@@ -122,7 +122,7 @@ class ScriptEngineTest {
         h.flush() // the worker flushes buffered lines at the end of a run
         val last = logs.recent(5).last { it.kind == LogKind.SCRIPT }
         assertEquals("hello from lua", last.text)
-        assertEquals("https://example.com", last.ctx.url)
+        assertEquals("https://example.com/", last.ctx.url)  // links are normalised
     }
 
     @Test fun jsExpression() = assertEquals("42", js("6 * 7"))

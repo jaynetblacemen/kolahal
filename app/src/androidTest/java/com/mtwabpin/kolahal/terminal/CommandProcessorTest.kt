@@ -61,7 +61,7 @@ class CommandProcessorTest {
 
     @Test fun echoAndUnknown() {
         assertEquals(listOf("hello world"), run("echo hello world"))
-        assertTrue(run("definitely-not-an-app-zzz").single().startsWith("command not found"))
+        assertTrue(run("definitely-not-an-app-zzz").single().startsWith("Command not found"))
     }
 
     @Test fun aliasExpands() {
@@ -74,7 +74,7 @@ class CommandProcessorTest {
     @Test fun configSetAndValidate() {
         run("config set font.size 18")
         assertEquals(18, config[Keys.FONT_SIZE])
-        assertTrue(run("config set font.size 99").single().startsWith("invalid value"))
+        assertTrue(run("config set font.size 99").single().startsWith("Invalid value"))
         assertEquals(18, config[Keys.FONT_SIZE])
         run("theme amber")
         assertEquals("amber", config[Keys.THEME])
@@ -93,7 +93,7 @@ class CommandProcessorTest {
         assertEquals(15, ScriptRepository.get(context).byName("cptest")!!.intervalMin)
         run("script at cptest 7:05,19:00")
         assertEquals(listOf("07:05", "19:00"), ScriptRepository.get(context).byName("cptest")!!.atTimes)
-        assertTrue(run("script at cptest 25:00").single().startsWith("bad time"))
+        assertTrue(run("script at cptest 25:00").single().startsWith("Bad time"))
         run("script rm cptest")
         assertEquals(null, ScriptRepository.get(context).byName("cptest"))
         assertTrue(run("script new help").single().contains("built-in"))
