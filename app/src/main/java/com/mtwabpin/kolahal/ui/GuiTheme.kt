@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 /**
  * Material 3 Expressive theme for the GUI screens (settings, script manager). Colours come from
  * the terminal palette so the screens match the chosen theme, or from the system (Material You)
- * when `gui.colors = system` on Android 12+.
+ * when `theme.settings-colors = system` on Android 12+.
  */
 @Composable
 fun GuiTheme(useSystemColors: Boolean, content: @Composable () -> Unit) {

@@ -35,7 +35,7 @@ feed fetch           # refresh every feed now (feed fetch 2 for one)
 ```
 
 Item lines are tappable links; long-press to share or copy. When a fetch finds new items they
-appear in the log under a `── Feeds · 10:30 ──` header, at most `feeds.log.lines` (default 10) per
+appear in the log under a `── Feeds · 10:30 ──` header, at most `feeds.log-lines` (default 10) per
 feed, with a "+N more" line (tapping it puts `feed read <id>` in the prompt).
 
 ## Read and unread
@@ -50,11 +50,11 @@ Every item starts **unread** when it is first fetched. It becomes **read** when 
 - use "Mark all read" on the Feeds screen.
 
 Seeing a line scroll by in the log does not mark it read, unless you turn on
-`feeds.read.shown`. `feed all` lists items without changing them. The unread count is simply the
+`feeds.read-shown`. `feed all` lists items without changing them. The unread count is simply the
 number of stored items still unread (up to 300 per feed are kept, unread ones first).
 
 When you subscribe, everything the feed already contains is unread too. A busy feed can start at
-20 or more unread items. Turn on `feeds.backlog.read` to count those as read, so only posts that
+20 or more unread items. Turn on `feeds.backlog-read` to count those as read, so only posts that
 appear after you subscribed are unread.
 
 ### Feeds screen

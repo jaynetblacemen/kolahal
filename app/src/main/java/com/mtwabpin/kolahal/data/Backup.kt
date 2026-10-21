@@ -14,7 +14,7 @@ import com.mtwabpin.kolahal.script.ScriptScheduler
  *
  * ```
  * { "kolahal": 1,
- *   "config":  { "theme": "gruvbox", ... },          // only changed settings
+ *   "config":  { "theme.name": "gruvbox", ... },          // only changed settings
  *   "aliases": { "m": "open maps" },
  *   "apps":    { "hidden": ["<component>#<user>"], "labels": { "<component>#<user>": "Name" } },
  *   "scripts": [ { "name": "hn", "lang": "lua", "code": "...", "every": 30,
@@ -72,9 +72,11 @@ class Backup(private val context: Context) {
         val restored = data?.let { FullBackup.importRaw(context, it) } ?: 0
 
         var settings = 0
-        (root["config"] as? Map<*, *>)?.forEach { (k, v) ->
-            val key = Keys.byName(k.toString())
-            if (key != null && v != null && config.set(key, v.toString())) settings++ else skipped += "config ${k}"
+        // Older backups use the names settings had before 0.3.0.
+        val savedConfig = (root["config"] as? Map<*, *>)?.entries?.mapNotNull { (k, v) -> if (k != null && v != null) k.toString().lowercase() to v.toString() else null }?.toMap()
+        savedConfig?.let(Keys::migrate)?.forEach { (k, v) ->
+            val key = Keys.byName(k)
+            if (key != null && config.set(key, v)) settings++ else skipped += "config $k"
         }
 
         var aliases = 0

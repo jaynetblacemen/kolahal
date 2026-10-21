@@ -66,7 +66,7 @@ internal fun Prompt(
     onTapPrompt: () -> Unit,
 ) {
     val configVersion by vm.config.version.collectAsStateWithLifecycle()
-    val swipeUpOn = remember(configVersion) { vm.config[Keys.GESTURE_SWIPE_UP_ON] }
+    val swipeUpOn = remember(configVersion) { vm.config[Keys.GESTURE_SWIPE_UP].trim().lowercase() !in setOf("", "none") }
     val promptStyle = Term.promptText.copy(fontSize = (Term.fontSize + 2).sp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -76,8 +76,8 @@ internal fun Prompt(
             // As tall as [height] or the text, whichever is more; the $, ✕ and ⌨ targets fill it,
             // so a tap anywhere on the line's height hits them.
             .height(IntrinsicSize.Min)
-            // Swipe up on the prompt line: gesture.swipeup, only while gesture.swipeup.on (off by
-            // default). When off the detector isn't installed at all, so it can't misfire.
+            // Swipe up on the prompt line: gesture.swipe-up, unless it is none (the default). When
+            // none, the detector isn't installed at all, so it can't misfire.
             .then(
                 if (!swipeUpOn) Modifier else Modifier.pointerInput(Unit) {
                     var total = 0f

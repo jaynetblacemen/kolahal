@@ -78,7 +78,7 @@ class CommandProcessorTest {
         assertEquals(18, config[Keys.FONT_SIZE])
         run("theme amber")
         assertEquals("amber", config[Keys.THEME])
-        run("config set keybar ESC,TAB,\",|")
+        run("config set keybar.row1 ESC,TAB,\",|")
         assertEquals("ESC,TAB,\",|", config[Keys.KEYBAR])
         run("config reset all")
         assertEquals(14, config[Keys.FONT_SIZE])

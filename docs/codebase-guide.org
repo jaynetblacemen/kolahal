@@ -603,7 +603,7 @@ Four layers took part, and none of them reached past its neighbour.
      (so a theme or font change repaints everything);
    - =TerminalScreen='s =remember(configVersion) { ... }= blocks re-read their settings.
 
-The same =config.set()= runs when you type =config set theme amber= at the prompt; both paths
+The same =config.set()= runs when you type =config set theme.name amber= (or =theme amber=) at the prompt; both paths
 end in one place.
 
 * Part 5: Package map

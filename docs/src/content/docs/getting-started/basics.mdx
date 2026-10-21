@@ -36,7 +36,7 @@ Type a command, or any part of an app name, and press Enter.
   (a number could go there instead) and `apps work` (`-l` could follow) wait for Enter.
   Sensitive commands never run without Enter: `call`, `sms`,
   `uninstall`, `work`, `private`, `clear`, `restart`, `lock`, `script`, `config`, `alias` and similar.
-  Calls always open the dialer, so you confirm there. `launch.instant.min` (default 2) is how many
+  Calls always open the dialer, so you confirm there. `launch.instant-letters` (default 2) is how many
   letters to type first; `launch.instant off` turns it off.
 - A mistyped command gets a tappable **"did you mean"** that puts the corrected command in the prompt.
 - `= <expression>` is a [calculator and unit converter](/guides/web-and-calculator/).
@@ -69,7 +69,7 @@ The strip above the prompt changes as you type:
 
 Command chips start with `$` (`$ maps`), app chips show the app name, and a ✕ at the end of the
 prompt clears it. Tap a chip to use it. Tab (on the key bar or a hardware keyboard) takes the first one. The number
-of chips is `suggestions` (default 30).
+of chips is `suggestions.max` (default 30).
 
 By default (`suggestions.style list`) the suggestions are a **list** stacked directly above the
 prompt instead of chips: the best match sits at the bottom, nearest your thumb, highlighted with
@@ -127,7 +127,7 @@ red for errors. Hide it with `log.gutter off`. Output older than the latest comm
   "▴ N earlier lines" to bring it back. `fresh` does the same on demand (and isn't logged itself). Script lines that arrived while you were away stay visible.
 - When you scroll up, a ↓ button jumps back to the newest lines. Repeating a command with nothing
   printed in between (`settings`, `settings`) doesn't add another line.
-- Scroll to the top to load older entries. Entries older than `log.keepdays` (60) are trimmed.
+- Scroll to the top to load older entries. Entries older than `log.keep-days` (60) are trimmed.
 - `clear` clears the screen, `clear history` forgets the ↑ history but keeps the log, and
   `clear all` removes both.
 
@@ -217,7 +217,7 @@ The ⌨ button at the right end of the prompt line turns the bar on or off (`key
 green while the bar is on.
 Make it and the prompt slimmer while typing with `keybar.height` (row height, 20–64 dp) and
 `prompt.height` (20–72 dp), also under Settings → Typing.
-For a denser screen, `log.lineheight` (Settings → Log) sets the minimum height of log lines and
+For a denser screen, `log.line-height` (Settings → Log) sets the minimum height of log lines and
 `chips.height` the height of suggestion and app-grid chips.
 
 Touch keyboards lack the keys a terminal needs, so Kolahal adds a two-row bar:
@@ -230,18 +230,18 @@ TAB  |  .  ←  ↓  →  ⏎
 - `↑` / `↓` walk the command history; `TAB` completes; `ESC` clears the prompt; `⇤` / `⇥` jump to
   the start or end.
 - Arrows and backspace repeat while held, and dragging sideways across the bar moves the cursor.
-- Both rows are configurable: `keybar` and `keybar2` take comma-separated keys from `ESC TAB UP DOWN
+- Both rows are configurable: `keybar.row1` and `keybar.row2` take comma-separated keys from `ESC TAB UP DOWN
   LEFT RIGHT HOME END BKSP ENTER SPACE KBD`, or any literal text. `KBD` shows the soft keyboard.
   Clear **Key bar, row 2** in Settings for a single row, or hide the bar with `keybar.show off`.
 
 ```sh
-config set keybar ESC,TAB,UP,DOWN,|,~,KBD
-config reset keybar      # back to the default row
+config set keybar.row1 ESC,TAB,UP,DOWN,|,~,KBD
+config reset keybar.row1      # back to the default row
 ```
 
 ## Touch
 
-- Tap empty log space to bring up the keyboard (`keyboard.onhome on` opens it every time Home is shown).
+- Tap empty log space to bring up the keyboard (`keyboard.on-home on` opens it every time Home is shown).
 - Pinch the log to resize the text (`font.size`, 10–24).
 - Double-tap empty log space to lock the screen, and swipe up on the prompt for the app grid. See [Gestures](/guides/gestures/).
 

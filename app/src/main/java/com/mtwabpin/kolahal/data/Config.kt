@@ -51,23 +51,23 @@ object Keys {
     val HEADER_ICONS = ConfigKey.Bool("header.icons", true, "Icons for battery, network, unlocks, alarm and profiles in the header (off: text labels)")
     val CLOCK_24H = ConfigKey.Bool("clock.24h", false, "Use 24-hour time in the header and log")
     val KEYBAR = ConfigKey.Text(
-        "keybar", DEFAULT_KEYBAR,
+        "keybar.row1", DEFAULT_KEYBAR,
         "Touch keys, comma separated: ESC TAB UP DOWN LEFT RIGHT HOME END BKSP ENTER SPACE KBD or literal text",
     )
-    val KEYBAR2 = ConfigKey.Text("keybar2", DEFAULT_KEYBAR2, "Second key bar row (same syntax; empty for one row)")
+    val KEYBAR2 = ConfigKey.Text("keybar.row2", DEFAULT_KEYBAR2, "Second key bar row (same syntax; empty for one row)")
     val KEYBAR_SHOW = ConfigKey.Bool("keybar.show", false, "Show the touch key bar")
     val KEYBAR_AUTO = ConfigKey.Bool("keybar.auto", true, "Show the key bar only while the on-screen keyboard is up for the prompt (off: always)")
     val KEYBAR_HEIGHT = ConfigKey.Num("keybar.height", 40, 20..64, "Key bar row height (dp); smaller leaves more room for the log")
     val PROMPT_HEIGHT_TYPING = ConfigKey.Num("prompt.height", 40, 20..72, "Prompt line height (dp); it never gets shorter than its text")
     val THEME = ConfigKey.Choice(
-        "theme", "green",
+        "theme.name", "green",
         listOf("green", "amber", "mono", "dracula", "solarized", "gruvbox", "gruvbox-material"),
         "Colour theme",
     )
-    val GUI_COLORS = ConfigKey.Choice("gui.colors", "theme", listOf("theme", "system"), "Settings screens follow the terminal theme or the system (Material You) colours")
-    val STATUS_BAR = ConfigKey.Choice("statusbar", "immersive", listOf("show", "hide", "immersive"), "Full screen: hide the status bar, or both system bars (immersive); swipe from the edge to peek")
+    val GUI_COLORS = ConfigKey.Choice("theme.settings-colors", "theme", listOf("theme", "system"), "Settings screens follow the terminal theme or the system (Material You) colours")
+    val STATUS_BAR = ConfigKey.Choice("screen.bars", "immersive", listOf("show", "hide", "immersive"), "Full screen: hide the status bar, or both system bars (immersive); swipe from the edge to peek")
     val FONT = ConfigKey.Choice(
-        "font", "jetbrains-mono",
+        "font.family", "jetbrains-mono",
         listOf("system", "jetbrains-mono", "fira-code", "ibm-plex-mono", "source-code-pro", "custom"),
         "Terminal font (custom: a .ttf/.otf imported with 'font import')",
     )
@@ -76,13 +76,13 @@ object Keys {
         "The phone's own font instead of the terminal font: off, the prompt only, or all of the terminal (lists that line up columns and the script editor stay monospace)",
     )
     val FONT_SIZE = ConfigKey.Num("font.size", 14, 10..24, "Terminal font size (sp)")
-    val SUGGESTIONS = ConfigKey.Num("suggestions", 30, 0..30, "Max suggestions shown while typing")
+    val SUGGESTIONS = ConfigKey.Num("suggestions.max", 30, 0..30, "Max suggestions shown while typing")
     val AUTO_LAUNCH = ConfigKey.Bool("launch.single", true, "Launch automatically when only one app matches")
     val LAUNCH_INSTANT = ConfigKey.Choice(
         "launch.instant", "all", listOf("off", "apps", "all"),
         "Run without Enter once the input can only mean one thing: apps, or apps and commands (calls, uninstall and other sensitive commands always need Enter)",
     )
-    val LAUNCH_INSTANT_MIN = ConfigKey.Num("launch.instant.min", 2, 1..6, "Letters to type before an instant launch")
+    val LAUNCH_INSTANT_MIN = ConfigKey.Num("launch.instant-letters", 2, 1..6, "Letters to type before an instant launch")
     val LAUNCH_TOP = ConfigKey.Bool("launch.top", true, "Enter launches the best match when it starts with what you typed")
     val SUGGEST_ICONS = ConfigKey.Bool("suggestions.icons", false, "Show app icons next to app suggestions, in the list and on chips")
     val SUGGESTIONS_WRAP = ConfigKey.Bool("suggestions.wrap", false, "Show a command's or setting's whole description in the suggestion list, over more lines (off: one line, cut short)")
@@ -97,14 +97,14 @@ object Keys {
     val LOG_DIM = ConfigKey.Bool("log.dim", true, "Dim output older than the latest command")
     val LOG_SPACING = ConfigKey.Num("log.spacing", 10, 0..40, "Gap (dp) above each output group: a command and its output, or a background batch (feeds, scripts)")
     val LOG_GUTTER = ConfigKey.Bool("log.gutter", true, "Thin colour bar at the left of each log line: green for commands, script colour for background output, red for errors")
-    val LOG_LINE_HEIGHT = ConfigKey.Num("log.lineheight", 25, 10..56, "Minimum height (dp) of a log line and of script status lines in the header; tappable log lines get a little more")
+    val LOG_LINE_HEIGHT = ConfigKey.Num("log.line-height", 25, 10..56, "Minimum height (dp) of a log line and of script status lines in the header; tappable log lines get a little more")
     val CHIP_HEIGHT = ConfigKey.Num("chips.height", 48, 20..64, "Height (dp) of suggestion chips and app-grid chips; list-style suggestion rows shrink with it below 44")
-    val LOG_KEEP_DAYS = ConfigKey.Num("log.keepdays", 60, 1..365, "Delete log lines older than this many days")
+    val LOG_KEEP_DAYS = ConfigKey.Num("log.keep-days", 60, 1..365, "Delete log lines older than this many days")
     val LOG_FRESH = ConfigKey.Num("log.fresh", 10, 0..240, "Start home with a clean screen after this many minutes away (0: never); earlier output is one tap away")
     val FEEDS_LOG = ConfigKey.Bool("feeds.log", true, "Post new feed items in the log")
-    val FEEDS_LOG_LINES = ConfigKey.Num("feeds.log.lines", 10, 1..50, "New items per feed and refresh shown in the log; the rest is one '+N more' line")
-    val FEEDS_READ_SHOWN = ConfigKey.Bool("feeds.read.shown", false, "Items posted in the log count as read (otherwise only opened or listed ones do)")
-    val FEEDS_BACKLOG_READ = ConfigKey.Bool("feeds.backlog.read", false, "When you subscribe, the posts already in the feed count as read; only newer ones are unread")
+    val FEEDS_LOG_LINES = ConfigKey.Num("feeds.log-lines", 10, 1..50, "New items per feed and refresh shown in the log; the rest is one '+N more' line")
+    val FEEDS_READ_SHOWN = ConfigKey.Bool("feeds.read-shown", false, "Items posted in the log count as read (otherwise only opened or listed ones do)")
+    val FEEDS_BACKLOG_READ = ConfigKey.Bool("feeds.backlog-read", false, "When you subscribe, the posts already in the feed count as read; only newer ones are unread")
     val FEEDS_INTERVAL = ConfigKey.Num("feeds.interval", 60, 15..1440, "Refresh interval for newly added feeds (minutes)")
     val FEEDS_NOTIFY = ConfigKey.Bool("feeds.notify", false, "Newly added feeds notify about new items")
     val FEEDS_WIFI = ConfigKey.Bool("feeds.wifi", false, "Scheduled refreshes only on Wi-Fi (unmetered networks); 'feed fetch' always runs")
@@ -114,7 +114,7 @@ object Keys {
         "Web search engine for search / g",
     )
     val SEARCH_URL = ConfigKey.Text("search.url", "https://duckduckgo.com/?q=%s", "Custom search URL (%s = query), used when search.engine = custom")
-    val FOCUS_ON_HOME = ConfigKey.Bool("keyboard.onhome", false, "Open the soft keyboard whenever home is shown")
+    val FOCUS_ON_HOME = ConfigKey.Bool("keyboard.on-home", false, "Open the soft keyboard whenever home is shown")
     val IME_SUGGESTIONS = ConfigKey.Bool(
         "keyboard.suggestions", false,
         "Prompt keyboard suggestions (off uses a password-type field: no autocorrect, but Latin-only on some keyboards)",
@@ -124,21 +124,71 @@ object Keys {
     val WIDGETS_PAGE = ConfigKey.Choice("widgets.page", "left", listOf("left", "right", "off"), "A widgets page beside the terminal: swipe sideways on home to reach it")
     val WIDGETS_HEIGHT = ConfigKey.Num("widgets.height", 180, 60..480, "Max height (dp) of the home widget area; it scrolls when widgets need more")
 
-    val GESTURE_DOUBLE_TAP = ConfigKey.Text("gesture.doubletap", if (com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE) "lock" else "none", "Double-tap empty log space: a command, lock, shade, quick (quick actions) or none")
-    val GESTURE_SWIPE_DOWN = ConfigKey.Text("gesture.swipedown", "shade", "Swipe down on the header: a command, lock, shade, quick or none")
-    val GESTURE_SWIPE_UP = ConfigKey.Text("gesture.swipeup", "apps", "Swipe up on the prompt: a command, lock, shade, quick or none")
-    val GESTURE_SWIPE_UP_ON = ConfigKey.Bool("gesture.swipeup.on", false, "Turn the swipe-up-on-prompt gesture on (off by default: it fires by accident easily)")
+    val GESTURE_DOUBLE_TAP = ConfigKey.Text("gesture.double-tap", if (com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE) "lock" else "none", "Double-tap empty log space: a command, lock, shade, quick (quick actions) or none")
+    val GESTURE_SWIPE_DOWN = ConfigKey.Text("gesture.swipe-down", "shade", "Swipe down on the header: a command, lock, shade, quick or none")
+    val GESTURE_SWIPE_UP = ConfigKey.Text("gesture.swipe-up", "none", "Swipe up on the prompt: a command, lock, shade, quick or none (none by default: it fires by accident easily; apps opens the app grid)")
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
         HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, GUI_COLORS, STATUS_BAR, FONT, FONT_SANS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGEST_ICONS, SUGGESTIONS_WRAP, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_HANDLE, SELECTOR_HEIGHT, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_GUTTER, LOG_LINE_HEIGHT, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_FRESH, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
-        GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP_ON, GESTURE_SWIPE_UP,
+        GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP,
         FEEDS_LOG, FEEDS_LOG_LINES, FEEDS_READ_SHOWN, FEEDS_BACKLOG_READ, FEEDS_INTERVAL, FEEDS_NOTIFY, FEEDS_WIFI,
         HEADER_TODO, WIDGETS_HOME, WIDGETS_PAGE, WIDGETS_HEIGHT,
     )
 
-    fun byName(name: String) = ALL.firstOrNull { it.key == name.lowercase() }
+    /** A setting by name; an old name ([RENAMED]) finds the setting under its new one. */
+    fun byName(name: String): ConfigKey<*>? {
+        val n = name.lowercase()
+        return ALL.firstOrNull { it.key == (RENAMED[n] ?: n) }
+    }
+
+    /**
+     * Names settings had before 0.3.0, old to new. Saved values move over once ([Config]); `config`
+     * and backups still take the old names.
+     */
+    val RENAMED: Map<String, String> = mapOf(
+        "theme" to "theme.name",
+        "gui.colors" to "theme.settings-colors",
+        "font" to "font.family",
+        "statusbar" to "screen.bars",
+        "suggestions" to "suggestions.max",
+        "keybar" to "keybar.row1",
+        "keybar2" to "keybar.row2",
+        "launch.instant.min" to "launch.instant-letters",
+        "feeds.log.lines" to "feeds.log-lines",
+        "feeds.backlog.read" to "feeds.backlog-read",
+        "feeds.read.shown" to "feeds.read-shown",
+        "gesture.doubletap" to "gesture.double-tap",
+        "gesture.swipedown" to "gesture.swipe-down",
+        "gesture.swipeup" to "gesture.swipe-up",
+        "log.lineheight" to "log.line-height",
+        "log.keepdays" to "log.keep-days",
+        "keyboard.onhome" to "keyboard.on-home",
+    )
+
+    /** The old switch for swiping up on the prompt: `gesture.swipe-up` is now `none` while it is off. */
+    const val OLD_SWIPE_UP_ON = "gesture.swipeup.on"
+
+    /**
+     * Saved settings ([saved]: name to raw value) under today's names. A value already saved under
+     * the new name wins. The swipe-up switch (off by default, with `apps` as its action) folds into
+     * `gesture.swipe-up`.
+     */
+    fun migrate(saved: Map<String, String>): Map<String, String> {
+        val out = LinkedHashMap<String, String>()
+        for ((name, value) in saved) {
+            if (name == OLD_SWIPE_UP_ON) continue
+            val new = RENAMED[name] ?: name
+            if (new != name && new in saved) continue
+            out[new] = value
+        }
+        val swipeUp = GESTURE_SWIPE_UP.key
+        if (swipeUp !in saved) {
+            if (saved[OLD_SWIPE_UP_ON] == "on") out[swipeUp] = saved["gesture.swipeup"] ?: "apps" else out.remove(swipeUp)
+        }
+        return out
+    }
 }
 
 private const val DEFAULT_KEYBAR = "ESC,/,-,HOME,UP,END,BKSP"
@@ -148,6 +198,22 @@ private const val DEFAULT_KEYBAR2 = "TAB,|,.,LEFT,DOWN,RIGHT,ENTER"
 class Config private constructor(private val prefs: SharedPreferences) {
     private val _version = MutableStateFlow(0)
     val version: StateFlow<Int> = _version.asStateFlow()
+
+    init {
+        migrate()
+    }
+
+    /** Settings saved under names from before 0.3.0 ([Keys.RENAMED]) move to today's names. */
+    fun migrate() {
+        val saved = prefs.all.mapNotNull { (k, v) -> (v as? String)?.let { k to it } }.toMap()
+        if (saved.keys.none { it in Keys.RENAMED || it == Keys.OLD_SWIPE_UP_ON }) return
+        val moved = Keys.migrate(saved)
+        prefs.edit(commit = true) {
+            saved.keys.filter { it !in moved }.forEach { remove(it) }
+            moved.forEach { (k, v) -> putString(k, v) }
+        }
+        _version.update { it + 1 }
+    }
 
     // Every change goes through set()/reset(), which bump the version directly. (A SharedPreferences
     // change listener is only weakly referenced by Android; R8 dropped our strong reference in release

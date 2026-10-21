@@ -7,9 +7,9 @@ Three gestures are configurable, in **Settings → Gestures** or with `config se
 
 | Gesture | Key | Default |
 | --- | --- | --- |
-| Double-tap empty log space | `gesture.doubletap` | `lock` |
-| Swipe down on the header | `gesture.swipedown` | `shade` |
-| Swipe up on the prompt | `gesture.swipeup` | `apps` |
+| Double-tap empty log space | `gesture.double-tap` | `lock` |
+| Swipe down on the header | `gesture.swipe-down` | `shade` |
+| Swipe up on the prompt | `gesture.swipe-up` | `none` (off: it fires by accident easily) |
 
 Each value is one of:
 
@@ -19,9 +19,9 @@ Each value is one of:
 - **any command**, run as if you typed it.
 
 ```sh
-config set gesture.swipeup apps -l
-config set gesture.doubletap feed read
-config set gesture.swipedown none
+config set gesture.swipe-up apps -l   # swipe up on the prompt for the app list
+config set gesture.double-tap feed read
+config set gesture.swipe-down none
 ```
 
 `lock` and `shade` are also commands you can type, alias or use from a script command.

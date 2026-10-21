@@ -42,7 +42,7 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         return Result.success()
     }
 
-    /** One header for the whole run, then up to `feeds.log.lines` lines per feed. */
+    /** One header for the whole run, then up to `feeds.log-lines` lines per feed. */
     private fun report(ctx: Context, results: List<FeedFetcher.Result>, explicit: Boolean) {
         val config = Config.get(ctx)
         val repo = FeedRepository.get(ctx)
@@ -68,7 +68,7 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                 continue
             }
             if (r.newItems.isEmpty()) continue
-            // feeds.backlog.read: what a feed already had when you subscribed is not "new" to you.
+            // feeds.backlog-read: what a feed already had when you subscribed is not "new" to you.
             if (r.first && config[Keys.FEEDS_BACKLOG_READ]) {
                 repo.markRead(r.newItems.map { it.id })
                 if (toLog) lines += LogRepository.Pending(

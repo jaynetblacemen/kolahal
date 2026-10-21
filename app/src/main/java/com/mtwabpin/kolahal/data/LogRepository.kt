@@ -217,7 +217,7 @@ class LogRepository private constructor(private val context: Context) {
     }
 
     /**
-     * `log.keepdays` for a launcher that stays running for weeks: the age trim, at most every 12
+     * `log.keep-days` for a launcher that stays running for weeks: the age trim, at most every 12
      * hours, so notification and call lines don't outlive the setting.
      */
     fun trimIfDue(maxAgeDays: Int) {

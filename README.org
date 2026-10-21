@@ -46,7 +46,7 @@ cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
 - Touch ::
   - A two-row key bar (=ESC / - ⇤ ↑ ⇥ ⌫= and =TAB  It shows only while the on-screen keyboard is up
     for the prompt; the ⌨ button at the end of the prompt line turns it on or off (=keybar.auto off= keeps it always visible). =keybar.height= and =prompt.height=
-    make both slimmer while typing. =log.lineheight= and =chips.height= tighten log lines and
+    make both slimmer while typing. =log.line-height= and =chips.height= tighten log lines and
     suggestion chips.| . ← ↓ → ⏎=); arrows and backspace repeat
     when held, and dragging sideways moves the cursor.
   - Tap any line for its main action; long-press opens an action sheet. Swipe a line right to copy
@@ -78,7 +78,7 @@ cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
 - GUI screens ::
   - *Settings* (=settings= or ⚙): Material 3 Expressive grouped lists with switches, connected button
     groups, sliders, theme preview cards and backup export/import. Colours follow the terminal theme,
-    or the system (Material You) colours with =gui.colors system=.
+    or the system (Material You) colours with =theme.settings-colors system=.
   - *Script manager* (=scripts=): import =.lua= / =.js= files from the file manager, create, run,
     edit, export and delete scripts, and set timers and notifications.
 - Notifications :: With notification access (=setup= → Notification access), new notifications
@@ -123,7 +123,7 @@ cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
   argument-free commands and aliases that way (=setti= opens settings) and makes tapped history lines run at once.
   A line whose arguments leave nothing to choose runs as well: =torch on=, =dnd off=, =media pause=.
   Calls, messages, uninstall, profile switches, =clear= and other sensitive commands always need
-  Enter, and calls still open the dialer for you to confirm. =launch.instant.min= sets how many
+  Enter, and calls still open the dialer for you to confirm. =launch.instant-letters= sets how many
   letters to type first (2).
 - Calculator & units :: === 2^10=, === 5 km in mi=, === 72 f to c=, === 100 usd in eur= (rates cached
   for six hours).
@@ -134,10 +134,10 @@ cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
 - Screen time :: =usage [<days>]= shows time per app (needs Usage Access).
 - Script library :: 15 ready-made Lua/JS scripts (weather, Hacker News, battery log, …) in the
   script manager's Library section, or =script lib= / =script install <name>=.
-- Log history :: Scrolling to the top loads older entries; entries older than =log.keepdays= (60)
+- Log history :: Scrolling to the top loads older entries; entries older than =log.keep-days= (60)
   are trimmed. =clear history= forgets the ↑ history but keeps the log.
 - Widgets page :: Swipe sideways on home for a page of widgets (=widgets.page left|right|off=).
-- Full screen :: Settings → Look & feel → Full screen (=config set statusbar hide=) hides the status bar;
+- Full screen :: Settings → Look & feel → Full screen (=config set screen.bars hide=) hides the status bar;
   =immersive= hides the navigation bar too. Swipe from the edge to peek at them.
 - Themes :: green, amber, mono, dracula, solarized, gruvbox, gruvbox-material.
 - Fonts :: =font= switches the terminal font (log, prompt, header, suggestions, key bar, editor):

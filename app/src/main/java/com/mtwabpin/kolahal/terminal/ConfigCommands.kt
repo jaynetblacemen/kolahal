@@ -74,7 +74,16 @@ class ConfigCommands(private val context: Context, private val ui: TerminalUi) {
 
     private inline fun withKey(name: String?, action: (ConfigKey<*>) -> Unit) {
         val key = name?.let(Keys::byName)
-        if (key == null) error("Unknown setting '${name.orEmpty()}' — run 'config'") else action(key)
+        when {
+            key != null -> {
+                action(key)
+                // Old names (before 0.3.0) still work, and say what they are called now.
+                if (name.lowercase() != key.key) info("${name.lowercase()} is now called ${key.key}")
+            }
+            name?.lowercase() == Keys.OLD_SWIPE_UP_ON ->
+                error("${Keys.OLD_SWIPE_UP_ON} is gone: set ${Keys.GESTURE_SWIPE_UP.key} to an action to turn swiping up on, or none to turn it off")
+            else -> error("Unknown setting '${name.orEmpty()}' — run 'config'")
+        }
     }
 
     private fun setKey(name: String?, parsed: String, raw: String): Unit = withKey(name) { key ->
