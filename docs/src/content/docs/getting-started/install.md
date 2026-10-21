@@ -8,8 +8,8 @@ toggling needs Android 10+, and private space needs Android 15+.
 
 ## Build from source
 
-You need a JDK and the Android SDK. The project's toolchain is AGP 9.1, Gradle 9.3.1 (through the
-wrapper), Kotlin 2.3.20, compileSdk 37 and targetSdk 36.
+You need a JDK and the Android SDK. The project's toolchain is AGP 9.4.1, Gradle 9.8.2 (through the
+wrapper), Kotlin 2.4.21, compileSdk 37 and targetSdk 36.
 
 ```sh
 git clone https://github.com/mtwabpin/kolahal.git
