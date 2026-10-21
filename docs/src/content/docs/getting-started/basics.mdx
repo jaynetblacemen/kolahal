@@ -9,7 +9,7 @@ import terminal from '../../../assets/terminal-feeds.png';
 <Image src={terminal} alt="The Kolahal home screen: header with clock and status, feed lines in the log, the key bar and the prompt" class="shot shot-single" width={320} />
 
 The home screen has four parts, from top to bottom: the **header**, the **log**, the
-**suggestion strip and key bar**, and the **prompt** (`$`).
+**suggestion strip**, and the **prompt** (`$`), with the **key bar** below it while you type.
 
 ## The prompt
 
@@ -46,7 +46,7 @@ Type a command, or any part of an app name, and press Enter.
 The strip is hidden on an idle home screen and appears while you type (the on-screen keyboard is
 up, or there is text in the prompt); `suggestions.auto off` keeps it always visible.
 
-The strip above the key bar changes as you type:
+The strip above the prompt changes as you type:
 
 - **Empty prompt**: your [pinned favourites](/guides/apps/#favourites) first, then your most-used apps, ranked
   by frecency (how often and how recently you opened them).
@@ -171,7 +171,7 @@ copy text, and delete the line or the whole block.
 
 ### One-handed use
 
-- **Quick sheet:** tap the `$` at the start of the prompt for everything the header offers —
+- **Quick actions:** tap the `$` at the start of the prompt for everything the header offers —
   settings, notifications, alarms, battery, network, unlocks, pause / resume the work or private
   profile, apps, widgets, feeds, scripts and lock, with the header's icons (battery and network
   as they are now). Any gesture can open it too (`quick`).
@@ -207,7 +207,8 @@ notification shade (a [gesture](/guides/gestures/) you can change).
 ## The key bar
 
 The bar appears only while the on-screen keyboard is up for the prompt, so an idle home screen
-shows more of the log (`keybar.auto off` keeps it always visible).
+shows more of the log (`keybar.auto off` keeps it always visible). <span class="k-new">new</span> It sits
+below the prompt, right on top of the keyboard, so the best suggestion stays just above what you type.
 The ⌨ button at the right end of the prompt line turns the bar on or off (`keybar.show`, off by default); it is
 green while the bar is on.
 Make it and the prompt slimmer while typing with `keybar.height` (row height, 20–64 dp) and

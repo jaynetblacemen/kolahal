@@ -83,7 +83,7 @@ internal fun Prompt(
             // Vertical room comes from [height] (centred), so small values really shrink the line.
             .padding(horizontal = 12.dp, vertical = 2.dp),
     ) {
-        // Tap `$`: the quick sheet (settings, battery, profiles, …) within thumb reach.
+        // Tap `$`: quick actions (settings, battery, profiles, …) within thumb reach.
         Text(
             "$ ",
             style = promptStyle.copy(color = Term.prompt, fontWeight = FontWeight.Bold),

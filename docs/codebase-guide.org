@@ -424,7 +424,7 @@ and a Home press while already home (=onNewIntent=) → =vm.onHomePressed()=.
 
 | Screen                         | File                                                                            | Notes                                                                    |
 |--------------------------------+---------------------------------------------------------------------------------+--------------------------------------------------------------------------|
-| Terminal (home)                | [[src:ui/TerminalScreen.kt::fun TerminalScreen][ui/TerminalScreen.kt]]                                                            | header, log, suggestions, key bar, prompt                                |
+| Terminal (home)                | [[src:ui/TerminalScreen.kt::fun TerminalScreen][ui/TerminalScreen.kt]]                                                            | header, log, suggestions, prompt, key bar                                |
 | one log line                   | [[src:ui/LogView.kt::fun LogLine][ui/LogView.kt]]                                                                   | =LogLine=, the app grid, the long-press =ActionSheet=                    |
 | prompt                         | [[src:ui/Prompt.kt::fun Prompt][ui/Prompt.kt]]                                                                    | the text field and hardware-key handling                                 |
 | header                         | [[src:ui/TerminalHeader.kt::internal fun Header(][ui/TerminalHeader.kt]]                                                            | =Header= and =CompactHeader=: clock, battery, unlocks, profiles          |

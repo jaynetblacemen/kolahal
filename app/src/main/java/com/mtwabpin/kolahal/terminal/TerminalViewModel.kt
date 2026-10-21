@@ -608,7 +608,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     /** Resuming is harmless, pausing asks for a second tap (the logged line). */
     /**
-     * The quick sheet (tap `$` on the prompt, or the `quick` gesture): everything the header
+     * Quick actions (tap `$` on the prompt, or the `quick` gesture): everything the header
      * offers, in thumb reach at the bottom of the screen.
      */
     fun openQuick() { _events.tryEmit(UiEvent.ShowQuick) }

@@ -89,7 +89,7 @@ import java.util.Locale
 enum class TimeMode { OFF, COMMANDS, ALL }
 
 /** What the long-press sheet shows: the line (for context) and its actions. */
-/** [systemFont]: the system's font instead of the terminal's (the quick sheet, which reads as a menu). */
+/** [systemFont]: the system's font instead of the terminal's (quick actions, which reads as a menu). */
 data class ActionMenu(val title: String, val actions: List<LogAction>, val entryId: Long?, val systemFont: Boolean = false)
 
 @Composable

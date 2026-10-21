@@ -171,7 +171,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         menuScope.launch { menu = ActionMenu(title, kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { build() }, id) }
     }
     LaunchedEffect(Unit) {
-        vm.events.collect { if (it == UiEvent.ShowQuick) menu = ActionMenu("Quick", vm.quickActions(), null, systemFont = true) }
+        vm.events.collect { if (it == UiEvent.ShowQuick) menu = ActionMenu("Quick actions", vm.quickActions(), null, systemFont = true) }
     }
     menu?.let { ActionSheet(it, onDismiss = { menu = null }) }
     val commandGap = remember(configVersion) { config[Keys.LOG_SPACING].dp }
@@ -411,21 +411,6 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         val keyBarAuto = remember(configVersion) { config[Keys.KEYBAR_AUTO] }
         val promptTypingHeight = remember(configVersion) { config[Keys.PROMPT_HEIGHT_TYPING].dp }
         val keyBarOn = remember(configVersion) { config[Keys.KEYBAR_SHOW] }
-        if (keyBarOn && (!keyBarAuto || typing)) {
-            KeyBar(
-                specs = remember(configVersion) { listOf(config[Keys.KEYBAR], config[Keys.KEYBAR2]) },
-                rowHeight = remember(configVersion) { config[Keys.KEYBAR_HEIGHT].dp },
-                onKey = { key ->
-                    if (key == KeyBarKey.KBD) {
-                        runCatching { focus.requestFocus() }
-                        keyboard?.show()
-                    } else {
-                        vm.onKeyBar(key)
-                    }
-                },
-                onText = vm::insert,
-            )
-        }
         Prompt(
             vm = vm,
             focus = focus,
@@ -448,6 +433,23 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 keyboard?.show()
             },
         )
+        // Below the prompt, so it sits on the keyboard like an extra row of keys and the best
+        // suggestion stays right above what's typed.
+        if (keyBarOn && (!keyBarAuto || typing)) {
+            KeyBar(
+                specs = remember(configVersion) { listOf(config[Keys.KEYBAR], config[Keys.KEYBAR2]) },
+                rowHeight = remember(configVersion) { config[Keys.KEYBAR_HEIGHT].dp },
+                onKey = { key ->
+                    if (key == KeyBarKey.KBD) {
+                        runCatching { focus.requestFocus() }
+                        keyboard?.show()
+                    } else {
+                        vm.onKeyBar(key)
+                    }
+                },
+                onText = vm::insert,
+            )
+        }
     }
 }
 
