@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -38,7 +37,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -66,160 +64,6 @@ import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.terminal.Screen
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import kotlin.math.roundToInt
-
-/** Human titles for settings; the description comes from the key's help text. */
-private val TITLES = mapOf(
-    "theme" to "Theme",
-    "gui.colors" to "Settings colours",
-    "statusbar" to "Full screen",
-    "font" to "Font",
-    "font.size" to "Text size",
-    "header.date" to "Date",
-    "clock.24h" to "24-hour clock",
-    "header.device" to "Device name",
-    "header.icons" to "Icons instead of labels",
-    "header.unlocks" to "Unlock count",
-    "header.battery" to "Battery",
-    "header.network" to "Network",
-    "header.alarm" to "Next alarm",
-    "header.profiles" to "Work / private state",
-    "header.media" to "Now playing",
-    "header.todo" to "Open todos",
-    "header.status" to "Script status lines",
-    "header.autohide" to "Shrink while using the log",
-    "widgets.home" to "Widgets on home",
-    "widgets.page" to "Widgets page (swipe sideways)",
-    "widgets.height" to "Widget area height (dp)",
-    "log.time" to "Times",
-    "log.dim" to "Dim older output",
-    "log.spacing" to "Space between output groups (dp)",
-    "log.gutter" to "Colour bar beside lines",
-    "log.lineheight" to "Line height (dp)",
-    "log.keepdays" to "Keep log for (days)",
-    "log.fresh" to "Fresh screen after (minutes away)",
-    "suggestions.auto" to "Only while typing",
-    "suggestions.idle" to "Favourites & most-used on empty prompt",
-    "suggestions" to "How many",
-    "suggestions.style" to "Style while typing",
-    "suggestions.icons" to "Show app icons",
-    "selector.rail" to "Show the app selector",
-    "selector.handle" to "Show the A–Z handle",
-    "selector.height" to "App selector height (dp)",
-    "suggestions.rows" to "Chip rows",
-    "chips.height" to "Chip height (dp)",
-    "keybar.show" to "Show the key bar",
-    "keybar.auto" to "Only while typing",
-    "keybar.height" to "Row height (dp)",
-    "keybar" to "Row 1 keys",
-    "keybar2" to "Row 2 keys",
-    "prompt.height" to "Prompt height while typing (dp)",
-    "keyboard.suggestions" to "Keyboard autocorrect & suggestions",
-    "keyboard.onhome" to "Open the keyboard on Home",
-    "launch.instant" to "Instant launch",
-    "launch.instant.min" to "Letters before instant launch",
-    "launch.top" to "Enter opens the best match",
-    "launch.single" to "Enter opens the only match",
-    "search.engine" to "Search engine",
-    "search.url" to "Custom search URL",
-    "gesture.doubletap" to "Double-tap empty space",
-    "gesture.swipedown" to "Swipe down on the header",
-    "gesture.swipeup.on" to "Swipe up on the prompt",
-    "gesture.swipeup" to "Swipe up action",
-    "feeds.log" to "Show new items in the log",
-    "feeds.log.lines" to "Items per feed per refresh",
-    "feeds.read.shown" to "Items shown in the log count as read",
-    "feeds.backlog.read" to "Mark existing posts read when subscribing",
-    "feeds.interval" to "Refresh interval for new feeds (min)",
-    "feeds.notify" to "Notify for new feeds",
-    "feeds.wifi" to "Refresh on Wi-Fi only",
-)
-
-/** A settings page: grouped keys (a null group title means no sub-header). */
-private class Category(
-    val id: String,
-    val title: String,
-    val subtitle: String,
-    val icon: Int,
-    val groups: List<Pair<String?, List<ConfigKey<*>>>>,
-    /** A manager screen this page leads to (shown first): title, subtitle, screen. */
-    val manage: Triple<String, String, Screen>? = null,
-) {
-    val keys get() = groups.flatMap { it.second }
-}
-
-private val CATEGORIES = listOf(
-    Category(
-        "look", "Look & feel", "Theme, font, text size, full screen", R.drawable.ic_palette,
-        listOf(
-            "Terminal" to listOf(Keys.THEME, Keys.FONT, Keys.FONT_SIZE),
-            "Screen" to listOf(Keys.STATUS_BAR),
-            "Settings pages" to listOf(Keys.GUI_COLORS),
-        ),
-    ),
-    Category(
-        "home", "Home screen", "Clock, header items, widgets", R.drawable.ic_home,
-        listOf(
-            "Clock" to listOf(Keys.HEADER_DATE, Keys.CLOCK_24H, Keys.HEADER_DEVICE),
-            "Header items" to listOf(
-                Keys.HEADER_ICONS, Keys.HEADER_UNLOCKS, Keys.HEADER_BATTERY, Keys.HEADER_NETWORK, Keys.HEADER_ALARM,
-                Keys.HEADER_PROFILES, Keys.HEADER_MEDIA, Keys.HEADER_TODO, Keys.HEADER_STATUS,
-            ),
-            "Behaviour" to listOf(Keys.HEADER_AUTOHIDE),
-            "Widgets" to listOf(Keys.WIDGETS_PAGE, Keys.WIDGETS_HOME, Keys.WIDGETS_HEIGHT),
-        ),
-        manage = Triple("Arrange widgets", "Add, resize and reorder widgets", Screen.WIDGETS),
-    ),
-    Category(
-        "log", "Log", "Times, spacing, line height, history", R.drawable.ic_stat_terminal,
-        listOf(
-            "Display" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_GUTTER, Keys.LOG_SPACING, Keys.LOG_LINE_HEIGHT),
-            "History" to listOf(Keys.LOG_FRESH, Keys.LOG_KEEP_DAYS),
-        ),
-    ),
-    Category(
-        "feeds", "Feeds", "Refresh, log, read / unread, notifications", R.drawable.ic_rss,
-        listOf(
-            "In the log" to listOf(Keys.FEEDS_LOG, Keys.FEEDS_LOG_LINES),
-            "Read / unread" to listOf(Keys.FEEDS_READ_SHOWN, Keys.FEEDS_BACKLOG_READ),
-            "Refreshing" to listOf(Keys.FEEDS_WIFI),
-            "New subscriptions" to listOf(Keys.FEEDS_INTERVAL, Keys.FEEDS_NOTIFY),
-        ),
-        manage = Triple("Manage feeds", "Subscriptions, unread counts, refresh, OPML import / export", Screen.FEEDS),
-    ),
-    Category(
-        "typing", "Typing", "Suggestions, key bar, prompt, keyboard", R.drawable.ic_keyboard,
-        listOf(
-            "Suggestions" to listOf(Keys.SUGGESTIONS_STYLE, Keys.SUGGEST_ICONS, Keys.SUGGESTIONS_AUTO, Keys.SUGGESTION_ROWS, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS, Keys.CHIP_HEIGHT),
-            "App selector (right edge)" to listOf(Keys.SELECTOR_RAIL, Keys.SELECTOR_HANDLE, Keys.SELECTOR_HEIGHT),
-            "Key bar" to listOf(Keys.KEYBAR_SHOW, Keys.KEYBAR_AUTO, Keys.KEYBAR_HEIGHT, Keys.KEYBAR, Keys.KEYBAR2),
-            "Prompt & keyboard" to listOf(Keys.PROMPT_HEIGHT_TYPING, Keys.IME_SUGGESTIONS, Keys.FOCUS_ON_HOME),
-        ),
-    ),
-    Category(
-        "launch", "Launching & search", "Instant launch, Enter, web search", R.drawable.ic_search,
-        listOf(
-            "Launching" to listOf(Keys.LAUNCH_INSTANT, Keys.LAUNCH_INSTANT_MIN, Keys.LAUNCH_TOP, Keys.AUTO_LAUNCH),
-            "Web search" to listOf(Keys.SEARCH_ENGINE, Keys.SEARCH_URL),
-        ),
-    ),
-    Category(
-        "gestures", "Gestures", "Double-tap and swipes", R.drawable.ic_touch,
-        listOf(null to listOf(Keys.GESTURE_DOUBLE_TAP, Keys.GESTURE_SWIPE_DOWN, Keys.GESTURE_SWIPE_UP_ON, Keys.GESTURE_SWIPE_UP)),
-    ),
-)
-
-/** Keys no page lists (e.g. added later) still get a home under "More". */
-private val OTHER: Category by lazy {
-    val listed = CATEGORIES.flatMap { it.keys }.toSet()
-    Category("other", "More", "Everything else", R.drawable.ic_tune, listOf(null to Keys.ALL.filter { it !in listed }))
-}
-
-private fun allCategories() = CATEGORIES + listOfNotNull(OTHER.takeIf { it.keys.isNotEmpty() })
-
-private fun matches(key: ConfigKey<*>, q: String): Boolean {
-    val title = TITLES[key.key] ?: key.key
-    return listOf(title, key.key, key.help).any { it.contains(q, ignoreCase = true) }
-}
 
 /**
  * Material 3 Expressive settings. The main page has a search box, the setting categories, the
@@ -489,30 +333,6 @@ fun ChipChoices(choices: List<String>, selected: String, onPick: (String) -> Uni
     }
 }
 
-/** Single-select connected button group (Material 3 Expressive). */
-@Composable
-fun ConnectedChoices(choices: List<String>, selected: String, onPick: (String) -> Unit) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        choices.forEachIndexed { i, choice ->
-            ToggleButton(
-                checked = choice == selected,
-                onCheckedChange = { onPick(choice) },
-                shapes = when (i) {
-                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                    choices.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                },
-                modifier = Modifier.weight(1f),
-            ) {
-                Text(choice, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-    }
-}
-
 /** Theme picker: a preview card per palette. */
 @Composable
 private fun ThemeSwatches(selected: String, onPick: (String) -> Unit) {
@@ -540,40 +360,4 @@ private fun ThemeSwatches(selected: String, onPick: (String) -> Unit) {
             }
         }
     }
-}
-
-data class Action(val icon: Int, val title: String, val subtitle: String, val chevron: Boolean = false, val onClick: () -> Unit)
-
-/** A segmented group of clickable rows. */
-@Composable
-fun ActionGroup(actions: List<Action>) {
-    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
-        actions.forEachIndexed { i, a ->
-            SegmentedListItem(
-                colors = segColors(),
-                onClick = a.onClick,
-                shapes = segShapes(i, actions.size),
-                leadingContent = { Icon(painterResource(a.icon), null, tint = MaterialTheme.colorScheme.primary) },
-                supportingContent = { Text(a.subtitle) },
-                trailingContent = if (a.chevron) {
-                    { Icon(painterResource(R.drawable.ic_chevron_right), null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
-                } else null,
-            ) { Text(a.title) }
-        }
-    }
-}
-
-@Composable
-fun GroupHeader(title: String) {
-    Text(
-        title,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp),
-    )
-}
-
-@Composable
-fun BackButton(onClick: () -> Unit) {
-    IconButton(onClick = onClick) { Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back") }
 }

@@ -3,7 +3,6 @@ package com.mtwabpin.kolahal.ui
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.text.format.DateUtils
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,7 +18,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,7 +30,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
@@ -48,10 +45,8 @@ import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -105,18 +100,6 @@ private fun hostOf(url: String): String =
     runCatching { URI(url).host }.getOrNull()?.removePrefix("www.") ?: url
 
 private fun FeedInfo.displayTitle(): String = title?.takeIf { it.isNotBlank() } ?: hostOf(url)
-
-/** "5 minutes ago"; [short] gives "5 min. ago" for one-line rows. */
-internal fun relative(time: Long, short: Boolean = false): String =
-    if (System.currentTimeMillis() - time < DateUtils.MINUTE_IN_MILLIS) "just now" else relativeSpan(time, short)
-
-private fun relativeSpan(time: Long, short: Boolean = false): String =
-    DateUtils.getRelativeTimeSpanString(
-        time, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS,
-        // The three-argument form's flags, plus the short form when asked.
-        DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_YEAR or DateUtils.FORMAT_ABBREV_MONTH or
-            (if (short) DateUtils.FORMAT_ABBREV_RELATIVE else 0),
-    ).toString()
 
 /**
  * Feed manager (Material 3 Expressive): subscriptions with unread counts, per-feed settings in a
@@ -478,7 +461,7 @@ private fun FeedSheet(
             Spacer(Modifier.height(12.dp))
             Text("Refresh every", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(8.dp))
-            IntervalGroup(feed.intervalMin, onInterval)
+            IntervalGroup(feed.intervalMin, onInterval, FEED_INTERVALS)
             if (FEED_INTERVALS.none { it.first == feed.intervalMin }) {
                 Text(
                     "Currently every ${CommandProcessor.formatInterval(feed.intervalMin)} (set from the terminal)",
@@ -514,50 +497,6 @@ private fun FeedSheet(
             },
             dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text("Cancel") } },
         )
-    }
-}
-
-/** Full-width row (≥ 56dp) whose whole surface toggles the switch. */
-@Composable
-internal fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Surface(
-        onClick = { onChange(!checked) },
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.bodyLarge)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Switch(checked = checked, onCheckedChange = null)
-        }
-    }
-}
-
-/** Connected button group of interval presets; narrow padding so seven or eight fit on a phone. */
-@Composable
-internal fun IntervalGroup(selected: Int, onPick: (Int) -> Unit, choices: List<Pair<Int, String>> = FEED_INTERVALS) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        choices.forEachIndexed { i, (minutes, label) ->
-            ToggleButton(
-                checked = minutes == selected,
-                onCheckedChange = { onPick(minutes) },
-                shapes = when (i) {
-                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                    choices.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                },
-                contentPadding = PaddingValues(horizontal = 2.dp),
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-            ) {
-                Text(label, maxLines = 1, overflow = TextOverflow.Clip, style = MaterialTheme.typography.labelMedium)
-            }
-        }
     }
 }
 
