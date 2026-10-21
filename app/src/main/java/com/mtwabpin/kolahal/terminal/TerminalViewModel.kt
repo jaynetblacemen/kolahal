@@ -1,11 +1,7 @@
 package com.mtwabpin.kolahal.terminal
 
 import android.app.Application
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Intent
-import com.mtwabpin.kolahal.notifications.NotifPrefs
-import com.mtwabpin.kolahal.notifications.NotificationActions
 import android.net.Uri
 import android.provider.AlarmClock
 import android.provider.Settings
@@ -21,7 +17,6 @@ import com.mtwabpin.kolahal.apps.AppEntry
 import com.mtwabpin.kolahal.apps.AppPrefs
 import com.mtwabpin.kolahal.data.ConfigKey
 import com.mtwabpin.kolahal.script.ScriptMeta
-import com.mtwabpin.kolahal.script.Json
 import com.mtwabpin.kolahal.script.ScriptFolder
 import com.mtwabpin.kolahal.script.ScriptFiles
 import com.mtwabpin.kolahal.script.ScriptLibrary
@@ -64,8 +59,6 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-private const val NOTIF = com.mtwabpin.kolahal.notifications.KolahalNotificationListener.CTX_KEY
 
 private const val PAGE = 400
 private const val KEY_PENDING_EXPORT = "pending_export"
@@ -503,195 +496,36 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     // ---- log line interaction -------------------------------------------------------------
 
+    private val lineActions = LogLineActions(context, processor, object : LogLineActions.Host {
+        override val entries get() = _entries.value
+        override val scripts get() = scriptCache.value
+        override fun io(block: suspend () -> Unit) = this@TerminalViewModel.io(block)
+        override fun setText(text: String) = this@TerminalViewModel.setText(text)
+        override fun submit() = this@TerminalViewModel.submit()
+        override fun emit(event: UiEvent) { _events.tryEmit(event) }
+        override fun collapseHeader() = this@TerminalViewModel.collapseHeader()
+        override fun runsOnTap(line: String) = this@TerminalViewModel.runsOnTap(line)
+        override fun runCommand(cmd: String) = this@TerminalViewModel.runCommand(cmd)
+        override fun openEditorAt(script: Script, line: Int?) = this@TerminalViewModel.openEditorAt(script, line)
+        override fun startActivity(intent: Intent) = this@TerminalViewModel.startActivity(intent)
+    })
+
     /** Single tap: the most likely action for this line. */
-    fun onTap(entry: LogEntry) {
-        val ctx = entry.ctx
-        val errorLine = ctx.values[LogContext.LINE]?.toIntOrNull()
-        when {
-            errorLine != null && ctx.script != null -> {
-                val name = ctx.script!!
-                io { scripts.byName(name)?.let { openEditorAt(it, errorLine) } }
-            }
-            ctx.values[LogContext.NOTE] != null -> copy(ctx.copy ?: entry.text)
-            ctx.values[LogContext.EVENT] != null -> ProductivityCommands.eventIntent(ctx)?.let(::startActivity)
-            // Cancelling takes Enter (or the long-press "Cancel reminder").
-            ctx.values[LogContext.REMINDER] != null -> {
-                setText("remind rm #${ctx.values.getValue(LogContext.REMINDER)}")
-                _events.tryEmit(UiEvent.FocusPrompt)
-            }
-            ctx.values[LogContext.RUN] != null -> {
-                val cmd = ctx.values.getValue(LogContext.RUN)
-                _events.tryEmit(UiEvent.ScrollToBottom)
-                io { processor.run(cmd, expand = false) }
-            }
-            entry.kind == LogKind.COMMAND || ctx.command != null -> {
-                val line = ctx.command ?: entry.text
-                if (runsOnTap(line)) {
-                    collapseHeader()
-                    _events.tryEmit(UiEvent.ScrollToBottom)
-                    io { processor.run(line) }
-                } else {
-                    setText(line)
-                    _events.tryEmit(UiEvent.FocusPrompt)
-                }
-            }
-            ctx.values[NOTIF] != null -> {
-                // The notification's own tap action if it's still live, otherwise just the app.
-                if (!NotificationActions.open(getApplication(), ctx.values.getValue(NOTIF))) appFor(ctx)?.let { app -> io { processor.launch(app) } }
-            }
-            ctx.values[LogContext.SHORTCUT] != null && appFor(ctx) != null -> {
-                val app = appFor(ctx)!!
-                val id = ctx.values.getValue(LogContext.SHORTCUT)
-                io { runCatching { appsRepo.startShortcut(app, id) }.onFailure { logs.add(LogKind.ERROR, "Shortcut unavailable: ${it.message}") } }
-            }
-            ctx.values[LogContext.PHONE] != null -> startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", ctx.values.getValue(LogContext.PHONE), null)))
-            ctx.pkg != null -> appFor(ctx)?.let { app -> io { processor.launch(app) } }
-            ctx.url != null -> openLink(ctx)
-        }
-    }
+    fun onTap(entry: LogEntry) = lineActions.onTap(entry)
 
     /** Long-press: every action that makes sense for the saved context. Destructive ones come last. */
-    fun actionsFor(entry: LogEntry): List<LogAction> {
-        val ctx = entry.ctx
-        val actions = ArrayList<LogAction>()
-        val danger = ArrayList<LogAction>()
-        val command = ctx.command ?: entry.text.takeIf { entry.kind == LogKind.COMMAND }
-        if (command != null) {
-            actions += LogAction("Run again") { setText(command); submit() }
-            actions += LogAction("Edit in prompt") { setText(command); _events.tryEmit(UiEvent.FocusPrompt) }
-        } else if (entry.kind != LogKind.SCRIPT) {
-            // Plain output: offer the command that printed it.
-            producingCommand(entry)?.let { cmd ->
-                actions += LogAction("Run '${cmd.text}' again") { setText(cmd.text); submit() }
-                actions += LogAction("Edit '${cmd.text}' in prompt") { setText(cmd.text); _events.tryEmit(UiEvent.FocusPrompt) }
-            }
-        }
-        appFor(ctx)?.let { app ->
-            val (safe, destructive) = appActions(app).partition { !it.destructive }
-            actions += safe
-            danger += destructive
-        }
-        ctx.values[NOTIF]?.let { key ->
-            actions += LogAction("Open notification") { if (!NotificationActions.open(getApplication(), key)) appFor(ctx)?.let { app -> io { processor.launch(app) } } }
-            ctx.pkg?.let { pkg ->
-                actions += LogAction("Mute this app's notifications") { io { NotifPrefs.get(getApplication()).mute(pkg); logs.add(LogKind.INFO, "Muted notifications from ${appFor(ctx)?.label ?: pkg}") } }
-            }
-            danger += LogAction("Dismiss notification", destructive = true) { NotificationActions.dismiss(key) }
-        }
-        ctx.values[LogContext.PHONE]?.let { number ->
-            actions += LogAction("Call $number") { startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", number, null))) }
-            actions += LogAction("Send a message") { startActivity(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", number, null))) }
-            ctx.values[LogContext.CONTACT]?.let { uri ->
-                actions += LogAction("Open contact") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri))) }
-            }
-            actions += LogAction("Copy number") { copy(number) }
-        }
-        ctx.url?.let { url ->
-            actions += LogAction("Open link") { openLink(ctx) }
-            actions += LogAction("Share link") { share(entry.text, url) }
-            actions += LogAction("Copy link") { copy(url) }
-        }
-        ctx.image?.takeIf { it != ctx.url }?.let { image -> actions += LogAction("Open image") { openUrl(image) } }
-        ctx.script?.let { name ->
-            scriptCache.value.firstOrNull { it.name == name }?.let { s ->
-                actions += LogAction("Run $name now") { io { ScriptScheduler.runNow(context, s) } }
-                ctx.values[LogContext.LINE]?.toIntOrNull()?.let { line ->
-                    actions += LogAction("Edit $name at line $line") { io { scripts.byId(s.id)?.let { openEditorAt(it, line) } } }
-                }
-                actions += LogAction("Edit $name.${s.lang.ext}") { io { scripts.byId(s.id)?.let(::openEditor) } }
-                actions += LogAction(if (s.enabled) "Disable $name" else "Enable $name") {
-                    io {
-                        scripts.setEnabled(s.id, !s.enabled)
-                        scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
-                        logs.add(LogKind.INFO, "$name: ${if (s.enabled) "disabled" else "enabled"}", ctx = LogContext.of(LogContext.SCRIPT to name))
-                    }
-                }
-                actions += LogAction(if (s.notify) "Mute notifications" else "Notify on new items") {
-                    io {
-                        scripts.setNotify(s.id, !s.notify)
-                        logs.add(LogKind.INFO, "$name: notifications ${if (s.notify) "off" else "on"}", ctx = LogContext.of(LogContext.SCRIPT to name))
-                    }
-                    if (!s.notify) _events.tryEmit(UiEvent.RequestNotificationPermission)
-                }
-            }
-        }
-        productivityActions(ctx, actions, danger)
-        if (entry.id < 0) return actions + danger // synthetic entry (e.g. an app chip): nothing to copy or delete
-        val block = if (entry.kind == LogKind.COMMAND) blockOf(entry) else emptyList()
-        if (block.size > 1) {
-            actions += LogAction("Copy output") { copy(block.drop(1).joinToString("\n") { it.text }) }
-            danger += LogAction("Delete command and output", destructive = true) {
-                val ids = block.map { it.id }
-                io { ids.forEach(logs::delete) }
-            }
-        }
-        actions += LogAction("Copy text") { copy(ctx.copy ?: entry.text, sensitive(entry)) }
-        danger += LogAction("Delete line", destructive = true) { io { logs.delete(entry.id) } }
-        return actions + danger
-    }
+    fun actionsFor(entry: LogEntry): List<LogAction> = lineActions.actionsFor(entry)
 
     /** Actions for one app (log lines and grid chips). */
-    fun appActions(app: AppEntry): List<LogAction> = buildList {
-        add(LogAction("Launch ${app.label} [${app.profile.kind.tag}]") { io { processor.launch(app) } })
-        // The app's own shortcuts (e.g. "New message"), when Kolahal is the default launcher.
-        appsRepo.shortcuts(app).take(5).forEach { s ->
-            add(LogAction("${s.shortLabel}", icon = "›") { io { runCatching { appsRepo.startShortcut(app, s.id) } } })
-        }
-        apps.value.firstOrNull { it.pkg == app.pkg && it.profile.serial != app.profile.serial }?.let { twin ->
-            add(LogAction("Launch in ${twin.profile.kind.label} profile") { io { processor.launch(twin) } })
-        }
-        add(LogAction("App info") { io { appsRepo.openAppInfo(app) } })
-        add(LogAction("Copy package name") { copy(app.pkg) })
-        val pinned = appPrefs.isPinned(app.key)
-        add(LogAction(if (pinned) "Unpin from favourites" else "Pin to favourites") { appPrefs.setPinned(app.key, !pinned) })
-        add(LogAction(if (app.hidden) "Unhide" else "Hide from lists") {
-            io {
-                appPrefs.setHidden(app.key, !app.hidden)
-                appsRepo.refresh()
-            }
-        })
-        add(LogAction("Uninstall", destructive = true) { io { appsRepo.uninstall(app) } })
-    }
+    fun appActions(app: AppEntry): List<LogAction> = lineActions.appActions(app)
+
+    /** Apps referenced by a grid line. */
+    fun appsOf(entry: LogEntry): List<AppEntry> = lineActions.appsOf(entry)
 
     fun launchApp(app: AppEntry) = io { processor.launch(app) }
 
     /** Keys of favourite apps (listed first, with ★, in the app selector). */
     fun pinnedKeys(): Set<String> = appPrefs.pinned().toSet()
-
-    /** A command line plus the output that followed it (up to the next command; timer output excluded). */
-    /** The command line above [entry] in its block (null for script output or orphan lines). */
-    private fun producingCommand(entry: LogEntry): LogEntry? {
-        val all = _entries.value
-        val index = all.indexOfFirst { it.id == entry.id }
-        if (index < 0) return null
-        for (i in index - 1 downTo 0) {
-            val e = all[i]
-            // Timer script lines can land inside a block; they are not part of it.
-            if (e.kind == LogKind.COMMAND) return e
-        }
-        return null
-    }
-
-    private fun blockOf(command: LogEntry): List<LogEntry> {
-        val all = _entries.value
-        val start = all.indexOfFirst { it.id == command.id }
-        if (start < 0) return listOf(command)
-        val rest = all.drop(start + 1).takeWhile { it.kind != LogKind.COMMAND }.filter { it.kind != LogKind.SCRIPT }
-        return listOf(command) + rest
-    }
-
-    /** Apps referenced by a grid line (`ctx.apps` = JSON list of {pkg, cls, user}). */
-    fun appsOf(entry: LogEntry): List<AppEntry> {
-        val raw = entry.ctx.values[LogContext.APPS] ?: return emptyList()
-        val list = runCatching { Json.parse(raw) as? List<*> }.getOrNull().orEmpty()
-        return list.filterIsInstance<Map<*, *>>().mapNotNull { m ->
-            val pkg = m["pkg"]?.toString() ?: return@mapNotNull null
-            appsRepo.find(pkg, m["cls"]?.toString(), m["user"]?.toString()?.toLongOrNull())
-        }
-    }
-
-    private fun appFor(ctx: LogContext): AppEntry? =
-        ctx.pkg?.let { appsRepo.find(it, ctx.cls, ctx.userSerial) ?: appsRepo.find(it, null, ctx.userSerial) }
 
     /** One serial worker: commands and actions run in order, and failures are logged, never crash home. */
     private val serialIo = Dispatchers.IO.limitedParallelism(1)
@@ -701,23 +535,6 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     private fun io(block: suspend () -> Unit) {
         viewModelScope.launch(serialIo + errors) { block() }
-    }
-
-    private fun openUrl(url: String) = startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-
-    /** Opens a line's link; a feed item counts as read once you have opened it. */
-    private fun openLink(ctx: LogContext) {
-        openUrl(ctx.url ?: return)
-        ctx.values[com.mtwabpin.kolahal.feeds.FeedWorker.CTX_ITEM]?.toLongOrNull()?.let { id ->
-            io { com.mtwabpin.kolahal.feeds.FeedRepository.get(context).markRead(id) }
-        }
-    }
-
-    private fun share(title: String, url: String) {
-        val send = Intent(Intent.ACTION_SEND).setType("text/plain")
-            .putExtra(Intent.EXTRA_SUBJECT, title)
-            .putExtra(Intent.EXTRA_TEXT, url)
-        startActivity(Intent.createChooser(send, null))
     }
 
     private val _undoDelete = MutableStateFlow<LogEntry?>(null)
@@ -744,20 +561,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     }
 
     /** Swipe right on a log line. */
-    fun swipeCopy(entry: LogEntry) = copy(entry.text, sensitive(entry))
-
-    /** Notification and call lines: other people's messages, codes and numbers. */
-    private fun sensitive(entry: LogEntry) =
-        entry.ctx.values.containsKey(NOTIF) || entry.source == com.mtwabpin.kolahal.calls.CallEvents.SOURCE
-
-    /** [sensitive] text is marked so the keyboard's clipboard preview and history hide it. */
-    private fun copy(text: String, sensitive: Boolean = false) {
-        val clip = ClipData.newPlainText("kolahal", text)
-        if (sensitive) clip.description.extras = android.os.PersistableBundle().apply {
-            putBoolean("android.content.extra.IS_SENSITIVE", true)
-        }
-        context.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
-    }
+    fun swipeCopy(entry: LogEntry) = lineActions.swipeCopy(entry)
 
     private fun startActivity(intent: Intent) {
         runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
@@ -1261,28 +1065,6 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                 _todoCount.value = todoCache.count { !it.done }
             }
             runCatching { feedCache = com.mtwabpin.kolahal.feeds.FeedRepository.get(context).all() }
-        }
-    }
-
-    /** Long-press entries for todo, note and reminder lines (destructive ones go to [danger]). */
-    private fun productivityActions(ctx: LogContext, actions: MutableList<LogAction>, danger: MutableList<LogAction>) {
-        ctx.values[LogContext.TODO]?.let { id ->
-            val done = ctx.values[LogContext.TODO_DONE] == "1"
-            actions += LogAction(if (done) "Mark not done" else "Mark done") { runCommand("todo ${if (done) "undo" else "done"} #$id") }
-            actions += LogAction("Edit in prompt") {
-                setText("todo edit #$id ${ctx.copy.orEmpty()}")
-                _events.tryEmit(UiEvent.FocusPrompt)
-            }
-            danger += LogAction("Delete todo", destructive = true) { runCommand("todo rm #$id") }
-        }
-        ctx.values[LogContext.NOTE]?.let { id ->
-            danger += LogAction("Delete note", destructive = true) { runCommand("notes rm #$id") }
-        }
-        ctx.values[LogContext.REMINDER]?.let { id ->
-            danger += LogAction("Cancel reminder", destructive = true) { runCommand("remind rm #$id") }
-        }
-        if (ctx.values[LogContext.EVENT] != null) {
-            actions += LogAction("Open event") { ProductivityCommands.eventIntent(ctx)?.let(::startActivity) }
         }
     }
 
