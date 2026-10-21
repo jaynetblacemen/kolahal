@@ -537,6 +537,9 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         /** Every built-in command name, for alias, script-name and typo checks. */
         val COMMAND_NAMES: Set<String> = COMMANDS.map { it.name }.toSet()
 
+        /** Usage line per command name, for option completion and instant runs. */
+        val COMMAND_USAGES: Map<String, String> = COMMANDS.associate { it.name to it.usage }
+
         /** Commands handled by [ProductivityCommands]. */
         val PRODUCTIVITY = setOf("todo", "note", "notes", "remind", "reminders", "timer", "alarm", "alarms", "stopwatch", "agenda")
 
