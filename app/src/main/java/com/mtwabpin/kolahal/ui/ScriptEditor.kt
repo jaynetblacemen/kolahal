@@ -15,25 +15,15 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,10 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isShiftPressed
@@ -63,28 +51,18 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.TransformedText
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.data.Script
-import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.script.ApiDoc
-import com.mtwabpin.kolahal.script.ApiDocs
 import com.mtwabpin.kolahal.script.ScriptWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -638,355 +616,11 @@ fun ScriptEditor(
     }
 }
 
-@Composable
-private fun EditorButton(label: String, onClick: () -> Unit) {
-    Text(
-        "[$label]",
-        style = Term.mono.copy(color = Term.fg),
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .heightIn(min = 48.dp)
-            .padding(horizontal = 12.dp, vertical = 14.dp),
-    )
-}
-
-@Composable
-private fun BarButton(label: String, color: Color = Term.fg, description: String? = null, onClick: () -> Unit) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .heightIn(min = 48.dp)
-            .widthIn(min = 48.dp)
-            .clickable(onClickLabel = description, onClick = onClick)
-            .padding(horizontal = 8.dp),
-    ) {
-        Text(label, style = Term.mono.copy(color = color, fontWeight = FontWeight.Bold))
-    }
-}
-
-@Composable
-private fun BarField(
-    value: TextFieldValue,
-    onValueChange: (TextFieldValue) -> Unit,
-    placeholder: String,
-    imeAction: ImeAction,
-    onAction: () -> Unit,
-    onKey: (KeyEvent) -> Boolean,
-    modifier: Modifier,
-) {
-    BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
-        singleLine = true,
-        textStyle = Term.mono,
-        cursorBrush = SolidColor(Term.prompt),
-        keyboardOptions = KeyboardOptions(
-            autoCorrectEnabled = false,
-            capitalization = KeyboardCapitalization.None,
-            keyboardType = KeyboardType.Text,
-            imeAction = imeAction,
-        ),
-        keyboardActions = KeyboardActions(onSearch = { onAction() }, onDone = { onAction() }),
-        decorationBox = { inner ->
-            Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.heightIn(min = 48.dp)) {
-                if (value.text.isEmpty()) Text(placeholder, style = Term.mono.copy(color = Term.dim))
-                inner()
-            }
-        },
-        modifier = modifier.onPreviewKeyEvent(onKey),
-    )
-}
-
-private fun KeyEvent.isEnter() = key == Key.Enter || key == Key.NumPadEnter
-
-@Composable
-private fun FindBar(
-    query: TextFieldValue,
-    onQuery: (TextFieldValue) -> Unit,
-    replacement: TextFieldValue,
-    onReplacement: (TextFieldValue) -> Unit,
-    replaceOpen: Boolean,
-    onToggleReplace: () -> Unit,
-    ignoreCase: Boolean,
-    onToggleCase: () -> Unit,
-    count: String,
-    noMatch: Boolean,
-    focusRequester: FocusRequester,
-    onNext: () -> Unit,
-    onPrev: () -> Unit,
-    onReplace: () -> Unit,
-    onReplaceAll: () -> Unit,
-    onClose: () -> Unit,
-) {
-    Column(Modifier.fillMaxWidth().background(Term.surface.copy(alpha = 0.7f)).testTag("findbar")) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            BarButton("Aa", if (ignoreCase) Term.dim else Term.prompt, if (ignoreCase) "Match case" else "Ignore case", onToggleCase)
-            BarField(
-                value = query,
-                onValueChange = onQuery,
-                placeholder = "find",
-                imeAction = ImeAction.Search,
-                onAction = onNext,
-                onKey = { e ->
-                    if (e.type == KeyEventType.KeyDown && e.isEnter()) {
-                        if (e.isShiftPressed) onPrev() else onNext()
-                        true
-                    } else e.isEnter() // swallow Enter key-ups too
-                },
-                modifier = Modifier.weight(1f).focusRequester(focusRequester).testTag("find"),
-            )
-            Text(count, style = Term.mono.copy(color = if (noMatch) Term.error else Term.dim), modifier = Modifier.padding(horizontal = 4.dp))
-            BarButton("↑", description = "Previous match", onClick = onPrev)
-            BarButton("↓", description = "Next match", onClick = onNext)
-            BarButton("⇄", if (replaceOpen) Term.prompt else Term.fg, "Replace", onToggleReplace)
-            BarButton("×", description = "Close find", onClick = onClose)
-        }
-        if (replaceOpen) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                BarField(
-                    value = replacement,
-                    onValueChange = onReplacement,
-                    placeholder = "replace with",
-                    imeAction = ImeAction.Done,
-                    onAction = onReplace,
-                    onKey = { e ->
-                        if (e.type == KeyEventType.KeyDown && e.isEnter()) {
-                            onReplace()
-                            true
-                        } else e.isEnter()
-                    },
-                    modifier = Modifier.weight(1f).padding(start = 12.dp).testTag("replace"),
-                )
-                EditorButton("replace", onReplace)
-                EditorButton("all", onReplaceAll)
-            }
-        }
-    }
-}
-
-@Composable
-private fun GotoLineDialog(lineCount: Int, onDismiss: () -> Unit, onGo: (Int) -> Unit) {
-    var text by remember { mutableStateOf("") }
-    val line = text.trim().toIntOrNull()?.takeIf { it in 1..lineCount }
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Go to line") },
-        text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it.filter(Char::isDigit).take(9) },
-                label = { Text("Line (1–$lineCount)") },
-                singleLine = true,
-                isError = text.isNotEmpty() && line == null,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Go),
-                keyboardActions = KeyboardActions(onGo = { line?.let(onGo) }),
-                modifier = Modifier
-                    .focusRequester(focus)
-                    .onPreviewKeyEvent { e ->
-                        if (e.type == KeyEventType.KeyDown && e.isEnter()) {
-                            line?.let(onGo)
-                            true
-                        } else false
-                    },
-            )
-        },
-        confirmButton = { TextButton(onClick = { line?.let(onGo) }, enabled = line != null) { Text("Go") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
-}
-
-/** Full API reference for the script's language; tapping an entry inserts it at the cursor. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ApiReferenceSheet(lang: ScriptLang, onDismiss: () -> Unit, onPick: (ApiDoc) -> Unit) {
-    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val docs = remember(lang) { ApiDocs.forLang(lang).filter { it.kind != ApiDoc.Kind.KEYWORD } }
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = state,
-        containerColor = Term.surface,
-        dragHandle = null,
-        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
-    ) {
-        LazyColumn(Modifier.navigationBarsPadding().padding(vertical = 8.dp).testTag("apiref")) {
-            item {
-                Text(
-                    "API reference · ${if (lang == ScriptLang.LUA) "Lua" else "JavaScript"}",
-                    style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
-            items(docs) { d ->
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 48.dp)
-                        .clickable { onPick(d) }
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                ) {
-                    Text(d.signature, style = Term.mono.copy(color = if (d.kind == ApiDoc.Kind.NAMESPACE) Term.info else Term.fg))
-                    Text(d.doc, style = Term.mono.copy(color = Term.dim, fontSize = Term.mono.fontSize * 0.85f))
-                }
-            }
-            item {
-                Text(
-                    "keywords: " + ApiDocs.keywords(lang).joinToString(" "),
-                    style = Term.mono.copy(color = Term.dim, fontSize = Term.mono.fontSize * 0.85f),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
-        }
-    }
-}
-
 /** Cursor at the start of [line] (1-based), or at the end of the text. */
-private fun selectionAtLine(text: String, line: Int?): TextRange =
+internal fun selectionAtLine(text: String, line: Int?): TextRange =
     if (line == null || line < 1) TextRange(text.length) else TextRange(EditorLogic.lineStart(text, line))
 
 /** One line of feedback above the symbol bar; [line] makes it a jump to that line. */
 private class EditorMessage(val text: String, val kind: Kind, val line: Int? = null) {
     enum class Kind { INFO, OK, BUSY, ERROR }
-}
-
-/** Snapshot-based undo: a new step after a pause in typing or at a newline. */
-private class UndoHistory(initial: String) {
-    private val undo = ArrayDeque<String>().apply { addLast(initial) }
-    private val redo = ArrayDeque<String>()
-    private var lastRecord = 0L
-
-    fun record(text: String) {
-        val now = System.currentTimeMillis()
-        val newline = text.length > undo.last().length && text.count { it == '\n' } != undo.last().count { it == '\n' }
-        if (now - lastRecord > 600 || newline || undo.size == 1) {
-            undo.addLast(text)
-            if (undo.size > 200) undo.removeFirst()
-        } else {
-            undo[undo.lastIndex] = text
-        }
-        lastRecord = now
-        redo.clear()
-    }
-
-    /** The next [record] starts a new undo step (used around replace operations). */
-    fun checkpoint() {
-        lastRecord = 0
-    }
-
-    val canUndo get() = undo.size > 1
-    val canRedo get() = redo.isNotEmpty()
-
-    fun undo(): String? {
-        if (undo.size <= 1) return null
-        redo.addLast(undo.removeLast())
-        lastRecord = 0
-        return undo.last()
-    }
-
-    fun redo(): String? {
-        val text = redo.removeLastOrNull() ?: return null
-        undo.addLast(text)
-        lastRecord = 0
-        return text
-    }
-}
-
-/** Find matches to draw: a window of start offsets around the current one. */
-private class MatchHighlights(val starts: IntArray, val length: Int, val current: Int)
-
-/** Colours comments, strings, numbers and keywords; flashes one line (error jump); marks find matches. */
-private class SyntaxHighlighter(
-    lang: ScriptLang,
-    private val flashLine: Int?,
-    private val matches: MatchHighlights?,
-) : VisualTransformation {
-    private val keywords = ApiDocs.keywords(lang).toSet()
-    private val js = lang == ScriptLang.JS
-    // Every token here stays on one line; JS template strings (`…`), which may span lines, are found separately.
-    private val token = Regex(
-        (if (lang == ScriptLang.LUA) "--[^\n]*" else "//[^\n]*") +
-            "|\"(?:\\\\.|[^\"\\\\\n])*\"|'(?:\\\\.|[^'\\\\\n])*'|\\b\\d+(?:\\.\\d+)?\\b|\\b[A-Za-z_][A-Za-z0-9_]*\\b"
-    )
-
-    /**
-     * Tokens per line, by the line's text: typing re-matches only the line being edited, not the
-     * whole script. Each token is (start, end, kind) within its line.
-     */
-    private val lineTokens = object : LinkedHashMap<String, IntArray>(512, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, IntArray>?) = size > 8000
-    }
-
-    private fun tokensOf(line: String): IntArray = lineTokens.getOrPut(line) {
-        val out = ArrayList<Int>()
-        for (m in token.findAll(line)) {
-            val t = m.value
-            val kind = when {
-                t.startsWith("--") || t.startsWith("//") -> COMMENT
-                t.startsWith("\"") || t.startsWith("'") -> STRING
-                t[0].isDigit() -> NUMBER
-                t in keywords -> KEYWORD
-                else -> continue
-            }
-            out += m.range.first; out += m.range.last + 1; out += kind
-        }
-        out.toIntArray()
-    }
-
-    override fun filter(text: AnnotatedString): TransformedText {
-        val src = text.text
-        val styles = arrayOf(
-            SpanStyle(color = Term.dim, fontStyle = FontStyle.Italic),
-            SpanStyle(color = Term.script),
-            SpanStyle(color = Term.palette.work),
-            SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold),
-        )
-        val styled = buildAnnotatedString {
-            append(src)
-            var lineStart = 0
-            while (lineStart <= src.length) {
-                val lineEnd = src.indexOf('\n', lineStart).let { if (it < 0) src.length else it }
-                val t = tokensOf(src.substring(lineStart, lineEnd))
-                for (i in t.indices step 3) addStyle(styles[t[i + 2]], lineStart + t[i], lineStart + t[i + 1])
-                lineStart = lineEnd + 1
-            }
-            if (js) {
-                // Template strings: pair up backticks with a plain scan (no escapes inside are honoured, as before).
-                var open = src.indexOf('`')
-                while (open >= 0) {
-                    val close = src.indexOf('`', open + 1)
-                    if (close < 0) break
-                    addStyle(styles[STRING], open, close + 1)
-                    open = src.indexOf('`', close + 1)
-                }
-            }
-            if (flashLine != null) {
-                val start = selectionAtLine(src, flashLine).start
-                val end = src.indexOf('\n', start).let { if (it < 0) src.length else it }
-                if (end > start) addStyle(SpanStyle(background = Term.error.copy(alpha = 0.25f)), start, end)
-            }
-            if (matches != null) {
-                val other = SpanStyle(background = Term.info.copy(alpha = 0.3f))
-                val cur = SpanStyle(background = Term.prompt.copy(alpha = 0.55f), color = Term.bg)
-                // Offsets can be a beat stale while matches are recomputed after an edit.
-                for (s in matches.starts) {
-                    val e = s + matches.length
-                    if (e <= src.length) addStyle(if (s == matches.current) cur else other, s, e)
-                }
-            }
-        }
-        return TransformedText(styled, OffsetMapping.Identity)
-    }
-
-    private companion object {
-        const val COMMENT = 0
-        const val STRING = 1
-        const val NUMBER = 2
-        const val KEYWORD = 3
-    }
-
-    override fun equals(other: Any?) = other is SyntaxHighlighter && other.flashLine == flashLine &&
-        other.keywords == keywords && other.matches === matches
-
-    override fun hashCode() = 31 * (31 * keywords.hashCode() + (flashLine ?: 0)) + System.identityHashCode(matches)
 }

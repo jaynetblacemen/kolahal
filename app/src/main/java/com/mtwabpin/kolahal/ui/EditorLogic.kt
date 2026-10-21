@@ -209,3 +209,45 @@ object EditorLogic {
         }
     }
 }
+
+/** Snapshot-based undo: a new step after a pause in typing or at a newline. */
+internal class UndoHistory(initial: String) {
+    private val undo = ArrayDeque<String>().apply { addLast(initial) }
+    private val redo = ArrayDeque<String>()
+    private var lastRecord = 0L
+
+    fun record(text: String) {
+        val now = System.currentTimeMillis()
+        val newline = text.length > undo.last().length && text.count { it == '\n' } != undo.last().count { it == '\n' }
+        if (now - lastRecord > 600 || newline || undo.size == 1) {
+            undo.addLast(text)
+            if (undo.size > 200) undo.removeFirst()
+        } else {
+            undo[undo.lastIndex] = text
+        }
+        lastRecord = now
+        redo.clear()
+    }
+
+    /** The next [record] starts a new undo step (used around replace operations). */
+    fun checkpoint() {
+        lastRecord = 0
+    }
+
+    val canUndo get() = undo.size > 1
+    val canRedo get() = redo.isNotEmpty()
+
+    fun undo(): String? {
+        if (undo.size <= 1) return null
+        redo.addLast(undo.removeLast())
+        lastRecord = 0
+        return undo.last()
+    }
+
+    fun redo(): String? {
+        val text = redo.removeLastOrNull() ?: return null
+        undo.addLast(text)
+        lastRecord = 0
+        return text
+    }
+}
