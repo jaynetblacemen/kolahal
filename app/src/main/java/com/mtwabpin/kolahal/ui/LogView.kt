@@ -87,12 +87,12 @@ enum class TimeMode { OFF, COMMANDS, ALL }
 /** What the long-press sheet shows: the line (for context) and its actions. */
 data class ActionMenu(val title: String, val actions: List<LogAction>, val entryId: Long?)
 
-private val dayFormat = DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault())
-
 @Composable
 fun DayDivider(row: LogRow.Day) {
     val label = remember(row.day) {
-        if (row.day == LocalDate.now().minusDays(1)) "Yesterday" else row.day.format(dayFormat)
+        // Made here, not once per process, so the dividers follow a change of language.
+        if (row.day == LocalDate.now().minusDays(1)) "Yesterday"
+        else row.day.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault()))
     }
     Text(
         "── $label ──",
