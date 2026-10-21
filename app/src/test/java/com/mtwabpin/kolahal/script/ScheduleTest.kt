@@ -1,6 +1,6 @@
 package com.mtwabpin.kolahal.script
 
-import com.mtwabpin.kolahal.terminal.CommandProcessor
+import com.mtwabpin.kolahal.terminal.CommandParsing
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -32,9 +32,9 @@ class ScheduleTest {
     }
 
     @Test fun parseClock() {
-        assertEquals("08:00", CommandProcessor.parseClock("8:00"))
-        assertEquals("18:30", CommandProcessor.parseClock("18:30"))
-        assertNull(CommandProcessor.parseClock("24:00"))
-        assertNull(CommandProcessor.parseClock("7pm"))
+        assertEquals("08:00", CommandParsing.parseClock("8:00"))
+        assertEquals("18:30", CommandParsing.parseClock("18:30"))
+        assertNull(CommandParsing.parseClock("24:00"))
+        assertNull(CommandParsing.parseClock("7pm"))
     }
 }

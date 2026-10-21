@@ -13,7 +13,7 @@ object ScriptNames {
      * before an app with the same name would open, so typing `gpay` could run a script instead.
      */
     fun clash(context: Context, name: String): String? {
-        if (name in CommandProcessor.COMMANDS.map { it.name }) return "'$name' is a built-in command"
+        if (name in CommandProcessor.COMMAND_NAMES) return "'$name' is a built-in command"
         val bare = name.replace(PUNCTUATION, "")
         val app = AppRepository.get(context).apps.value.firstOrNull { it.label.lowercase().replace(PUNCTUATION, "") == bare }
         return app?.let { "'$name' is the name of the app ${it.label}" }

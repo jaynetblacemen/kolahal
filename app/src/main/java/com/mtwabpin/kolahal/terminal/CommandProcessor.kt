@@ -1,10 +1,8 @@
 package com.mtwabpin.kolahal.terminal
 
 import android.content.Context
-import android.app.role.RoleManager
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.PowerManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -41,29 +39,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.util.Date
-
-/** UI-only operations the processor cannot do from an application context. */
-/** Full-screen GUI pages besides the terminal (the script editor is separate). */
-enum class Screen { TERMINAL, SETTINGS, SCRIPTS, SETUP, FEEDS, WIDGETS, WIDGET_PICKER }
-
-interface TerminalUi {
-    fun requestContactsPermission()
-    fun openScreen(screen: Screen)
-    fun pickScriptFolder()
-    /** File picker for `font import` (a .ttf/.otf). */
-    fun requestFontImport()
-    fun openEditor(script: Script)
-    fun requestNotificationPermission()
-    fun clearScreen()
-    /** `fresh`: hide what is on screen now, as `log.fresh` does after a while away. */
-    fun freshScreen() {}
-    /** READ_CALENDAR for `agenda`. */
-    fun requestCalendarPermission() {}
-    /** READ_CALL_LOG for calls in the log and `calls`. */
-    fun requestCallLogPermission() {}
-}
-
-data class CommandSpec(val name: String, val usage: String, val help: String)
 
 /**
  * Parses and runs commands typed at the prompt. Everything it prints goes into the
@@ -114,7 +89,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         if (trimmed.startsWith("=")) return calc(trimmed.drop(1).trim())
         val name = trimmed.substringBefore(' ').lowercase()
         val rest = trimmed.substringAfter(' ', "").trim()
-        val args = tokenize(rest)
+        val args = CommandParsing.tokenize(rest)
         runCatching {
             when (name) {
                 "alias" -> alias(rest)
@@ -198,7 +173,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         repeat(5) {
             val head = current.substringBefore(' ')
             // A built-in always wins, even over an alias that slipped in (an old backup).
-            if (head.lowercase() in COMMANDS.map { it.name }) return current
+            if (head.lowercase() in COMMAND_NAMES) return current
             if (!seen.add(head)) return current
             val expansion = prefs.alias(head) ?: return current
             current = (expansion + " " + current.substringAfter(' ', "")).trim()
@@ -218,7 +193,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         when {
             !rest.contains('=') -> prefs.alias(name)?.let { out("$name = $it") } ?: error("No alias '$name'")
             name.isEmpty() || expansion.isEmpty() -> error("Usage: alias <name> = <command>")
-            name in COMMANDS.map { it.name } -> error("'$name' is a built-in command and can't be an alias")
+            name in COMMAND_NAMES -> error("'$name' is a built-in command and can't be an alias")
             else -> {
                 prefs.setAlias(name, expansion)
                 info("Alias $name = $expansion")
@@ -457,10 +432,10 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private fun notFound(text: String) {
         val head = text.substringBefore(' ').lowercase()
         val rest = text.substringAfter(' ', "")
-        val candidates = COMMANDS.map { it.name } + prefs.aliases().keys +
+        val candidates = COMMAND_NAMES + prefs.aliases().keys +
             scripts.all().filter { ScriptMeta.isCommand(it.code) }.map { it.name }
         val best = candidates.filter { it.length > 1 }
-            .map { it to editDistance(head, it) }
+            .map { it to CommandParsing.editDistance(head, it) }
             .filter { (c, d) -> d <= (if (c.length <= 4) 1 else 2) }
             .minByOrNull { it.second }?.first
         if (best == null) {
@@ -680,7 +655,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 if (all.isEmpty()) return info("No feeds yet — feed add <url> (or 'feeds' for the manager and OPML import)")
                 all.forEach { f ->
                     val flags = listOfNotNull(
-                        "${f.unread}/${f.total} unread", "every ${formatInterval(f.intervalMin)}",
+                        "${f.unread}/${f.total} unread", "every ${CommandParsing.formatInterval(f.intervalMin)}",
                         if (f.notify) "notify" else null, if (!f.enabled) "off" else null, f.lastStatus,
                     ).joinToString(" · ")
                     out(
@@ -743,10 +718,10 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 info("Feed #$id notifications ${args.getOrNull(2) ?: "on"}")
             }
             "every" -> {
-                val minutes = parseInterval(args.getOrNull(2))
+                val minutes = CommandParsing.parseInterval(args.getOrNull(2))
                 if (id == null || minutes == null || minutes <= 0) return error("Usage: feed every <id> <30m|2h|…>")
                 repo.setInterval(id, minutes)
-                info("Feed #$id every ${formatInterval(minutes.coerceAtLeast(15))}")
+                info("Feed #$id every ${CommandParsing.formatInterval(minutes.coerceAtLeast(15))}")
             }
             "on", "off" -> {
                 id ?: return error("Usage: feed ${args[0]} <id>")
@@ -896,7 +871,6 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val minutes = ms / 60_000
         return if (minutes >= 60) "${minutes / 60}h ${minutes % 60}m" else "${minutes}m"
     }
-
 
     /** Asks for the runtime permission when it can; otherwise (pre-13, or turned off) opens settings. */
     private fun notifications(args: List<String>) {
@@ -1132,7 +1106,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 }
                 val s = lib.install(entry)
                 info("Installed ${s.name}.${s.lang.ext}" + (if (entry.command) " — run it as '${s.name}'" else "") +
-                    (if (s.intervalMin > 0) " · every ${formatInterval(s.intervalMin)}" else ""), scriptCtx(s))
+                    (if (s.intervalMin > 0) " · every ${CommandParsing.formatInterval(s.intervalMin)}" else ""), scriptCtx(s))
             }
             "export" -> background("export") { info("Exported ${folder.export()} scripts + kolahal.json") }
             "import" -> background("import") {
@@ -1142,7 +1116,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "new" -> {
                 val (name, lang) = parseName(target ?: return error("Usage: script new <name>[.lua|.js] [lua|js] [--cmd]"))
                 if (!Regex("^[a-z0-9_-]{1,40}$").matches(name)) return error("Script names: lowercase letters, digits, - and _ only")
-                if (name in COMMANDS.map { it.name }) return error("'$name' is a built-in command, pick another name")
+                if (name in COMMAND_NAMES) return error("'$name' is a built-in command, pick another name")
                 val asCommand = "--cmd" in args || "cmd" in args
                 val chosen = args.drop(2).firstNotNullOfOrNull(ScriptLang::of) ?: lang ?: ScriptLang.LUA
                 if (scripts.byName(name) != null) return error("Script '$name' exists — 'script edit $name'")
@@ -1157,21 +1131,21 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 info("Running ${it.name}…", scriptCtx(it))
             }
             "every" -> withScript(target) { s ->
-                val minutes = parseInterval(args.getOrNull(2))
+                val minutes = CommandParsing.parseInterval(args.getOrNull(2))
                     ?: return error("Usage: script every <name> <15m|30m|2h|1d|off>")
                 val effective = if (minutes > 0) minutes.coerceAtLeast(ScriptScheduler.MIN_INTERVAL_MIN) else 0
                 scripts.setInterval(s.id, effective)
                 if (effective > 0 && !s.enabled) scripts.setEnabled(s.id, true)
                 scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
                 info(
-                    if (effective == 0) "${s.name}: timer off" else "${s.name}: runs every ${formatInterval(effective)}" +
+                    if (effective == 0) "${s.name}: timer off" else "${s.name}: runs every ${CommandParsing.formatInterval(effective)}" +
                         if (minutes in 1 until ScriptScheduler.MIN_INTERVAL_MIN) " (Android minimum is 15m)" else "",
                     scriptCtx(s),
                 )
             }
             "at" -> withScript(target) { s ->
                 val spec = args.getOrNull(2) ?: return error("Usage: script at <name> <HH:mm[,HH:mm…]|off>")
-                val times = if (spec == "off") emptyList() else spec.split(',').map { parseClock(it) ?: return error("Bad time '$it' — use HH:mm") }
+                val times = if (spec == "off") emptyList() else spec.split(',').map { CommandParsing.parseClock(it) ?: return error("Bad time '$it' — use HH:mm") }
                 scripts.setAtTimes(s.id, times.distinct().sorted())
                 if (times.isNotEmpty() && !s.enabled) scripts.setEnabled(s.id, true)
                 scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
@@ -1219,7 +1193,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val df = DateFormat.getTimeInstance(DateFormat.SHORT)
         all.forEach { s ->
             val timer = listOfNotNull(
-                s.intervalMin.takeIf { it > 0 }?.let { "every ${formatInterval(it)}" },
+                s.intervalMin.takeIf { it > 0 }?.let { "every ${CommandParsing.formatInterval(it)}" },
                 s.atTimes.takeIf { it.isNotEmpty() }?.let { "at " + it.joinToString(",") },
             ).joinToString(" ").ifEmpty { "manual" }
             val last = s.lastRun?.let { "${df.format(Date(it))} ${s.lastStatus.orEmpty()}" } ?: "never run"
@@ -1347,6 +1321,9 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("agenda", "agenda [days]", "Upcoming calendar events (tap opens one)"),
         )
 
+        /** Every built-in command name, for alias, script-name and typo checks. */
+        val COMMAND_NAMES: Set<String> = COMMANDS.map { it.name }.toSet()
+
         /** Commands handled by [ProductivityCommands]. */
         val PRODUCTIVITY = setOf("todo", "note", "notes", "remind", "reminders", "timer", "alarm", "alarms", "stopwatch", "agenda")
 
@@ -1366,67 +1343,5 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         )
 
         val SCRIPT_SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "triggers", "rm", "cat", "dir", "export", "import")
-
-        fun tokenize(s: String): List<String> {
-            val out = ArrayList<String>()
-            val cur = StringBuilder()
-            var quote: Char? = null
-            for (ch in s) {
-                when {
-                    quote != null && ch == quote -> quote = null
-                    quote != null -> cur.append(ch)
-                    ch == '"' || ch == '\'' -> quote = ch
-                    ch.isWhitespace() -> if (cur.isNotEmpty()) { out += cur.toString(); cur.clear() }
-                    else -> cur.append(ch)
-                }
-            }
-            if (cur.isNotEmpty()) out += cur.toString()
-            return out
-        }
-
-        /** Longest timer or feed interval: a week, like backup import allows. */
-        const val MAX_INTERVAL_MIN = 7L * 24 * 60
-
-        /** "30m", "2h", "1d", "45" (minutes), "off" -> minutes (0 = off). */
-        fun parseInterval(s: String?): Int? {
-            if (s == null) return null
-            if (s == "off" || s == "0" || s == "manual") return 0
-            val m = Regex("^(\\d+)([mhd]?)$").find(s.lowercase()) ?: return null
-            // Long, then capped: `1500000d` must be rejected, not wrap to a negative "timer off".
-            val n = m.groupValues[1].toLongOrNull() ?: return null
-            val minutes = when (m.groupValues[2]) {
-                "h" -> n * 60
-                "d" -> n * 60 * 24
-                else -> n
-            }
-            return minutes.takeIf { it <= MAX_INTERVAL_MIN }?.toInt()
-        }
-
-        /** "8:00", "08:00", "18:30" -> "HH:mm"; null if invalid. */
-        fun parseClock(s: String): String? {
-            val m = Regex("^([01]?\\d|2[0-3]):([0-5]\\d)$").find(s.trim()) ?: return null
-            return String.format(java.util.Locale.ROOT, "%02d:%s", m.groupValues[1].toInt(), m.groupValues[2])
-        }
-
-        /** Levenshtein distance, for "did you mean". */
-        fun editDistance(a: String, b: String): Int {
-            var prev = IntArray(b.length + 1) { it }
-            for (i in 1..a.length) {
-                val cur = IntArray(b.length + 1)
-                cur[0] = i
-                for (j in 1..b.length) {
-                    val cost = if (a[i - 1] == b[j - 1]) 0 else 1
-                    cur[j] = minOf(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
-                }
-                prev = cur
-            }
-            return prev[b.length]
-        }
-
-        fun formatInterval(min: Int): String = when {
-            min % (60 * 24) == 0 -> "${min / (60 * 24)}d"
-            min % 60 == 0 -> "${min / 60}h"
-            else -> "${min}m"
-        }
     }
 }

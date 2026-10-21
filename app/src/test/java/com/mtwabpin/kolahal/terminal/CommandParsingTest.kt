@@ -6,22 +6,22 @@ import org.junit.Test
 
 class CommandParsingTest {
     @Test fun tokenizeHonoursQuotes() {
-        assertEquals(listOf("open", "Google Maps", "-w"), CommandProcessor.tokenize("open \"Google Maps\" -w"))
-        assertEquals(listOf("a", "b c"), CommandProcessor.tokenize("  a   'b c' "))
+        assertEquals(listOf("open", "Google Maps", "-w"), CommandParsing.tokenize("open \"Google Maps\" -w"))
+        assertEquals(listOf("a", "b c"), CommandParsing.tokenize("  a   'b c' "))
     }
 
     @Test fun parseInterval() {
-        assertEquals(30, CommandProcessor.parseInterval("30m"))
-        assertEquals(30, CommandProcessor.parseInterval("30"))
-        assertEquals(120, CommandProcessor.parseInterval("2h"))
-        assertEquals(1440, CommandProcessor.parseInterval("1d"))
-        assertEquals(0, CommandProcessor.parseInterval("off"))
-        assertNull(CommandProcessor.parseInterval("soon"))
+        assertEquals(30, CommandParsing.parseInterval("30m"))
+        assertEquals(30, CommandParsing.parseInterval("30"))
+        assertEquals(120, CommandParsing.parseInterval("2h"))
+        assertEquals(1440, CommandParsing.parseInterval("1d"))
+        assertEquals(0, CommandParsing.parseInterval("off"))
+        assertNull(CommandParsing.parseInterval("soon"))
     }
 
     @Test fun formatInterval() {
-        assertEquals("30m", CommandProcessor.formatInterval(30))
-        assertEquals("2h", CommandProcessor.formatInterval(120))
-        assertEquals("1d", CommandProcessor.formatInterval(1440))
+        assertEquals("30m", CommandParsing.formatInterval(30))
+        assertEquals("2h", CommandParsing.formatInterval(120))
+        assertEquals("1d", CommandParsing.formatInterval(1440))
     }
 }

@@ -551,7 +551,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         val head = parts.first().lowercase()
         val scriptList = scriptCache.value
         if (parts.size == 1) {
-            val names = CommandProcessor.COMMANDS.map { it.name } +
+            val names = CommandProcessor.COMMAND_NAMES +
                 _commandNames.value +
                 appPrefs.aliases().keys
             val cmds = names.distinct()
@@ -1234,7 +1234,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             _notice.value = "names: lowercase letters, digits, - and _"
             return
         }
-        if (clean in CommandProcessor.COMMANDS.map { it.name }) {
+        if (clean in CommandProcessor.COMMAND_NAMES) {
             _notice.value = "'$clean' is a built-in command, pick another name"
             return
         }

@@ -82,7 +82,7 @@ import com.mtwabpin.kolahal.feeds.FeedUrl
 import com.mtwabpin.kolahal.feeds.exportOpml
 import com.mtwabpin.kolahal.feeds.importOpml
 import com.mtwabpin.kolahal.script.Files
-import com.mtwabpin.kolahal.terminal.CommandProcessor
+import com.mtwabpin.kolahal.terminal.CommandParsing
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -331,7 +331,7 @@ private fun FeedListPage(
 private fun FeedRow(f: FeedInfo, index: Int, count: Int, onClick: () -> Unit, onMenu: () -> Unit) {
     val failed = f.lastStatus?.startsWith("error") == true
     val status = buildList {
-        add("every ${CommandProcessor.formatInterval(f.intervalMin)}")
+        add("every ${CommandParsing.formatInterval(f.intervalMin)}")
         if (f.notify) add("notify")
         if (!f.enabled) add("off")
         f.lastFetch?.let { add(relative(it)) } ?: add("never fetched")
@@ -464,7 +464,7 @@ private fun FeedSheet(
             IntervalGroup(feed.intervalMin, onInterval, FEED_INTERVALS)
             if (FEED_INTERVALS.none { it.first == feed.intervalMin }) {
                 Text(
-                    "Currently every ${CommandProcessor.formatInterval(feed.intervalMin)} (set from the terminal)",
+                    "Currently every ${CommandParsing.formatInterval(feed.intervalMin)} (set from the terminal)",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp),

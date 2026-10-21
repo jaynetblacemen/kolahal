@@ -71,6 +71,7 @@ import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.script.ScriptLibrary
 import com.mtwabpin.kolahal.script.ScriptMeta
+import com.mtwabpin.kolahal.terminal.CommandParsing
 import com.mtwabpin.kolahal.terminal.CommandProcessor
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import kotlinx.coroutines.Dispatchers
@@ -230,7 +231,7 @@ fun ScriptsScreen(
 /** How [s] gets started: `command · every 1h · daily 08:00 · on boot`, or "run by hand". */
 private fun schedule(s: Script, isCommand: Boolean, events: List<String>): String = buildList {
     if (isCommand) add("command")
-    if (s.intervalMin > 0) add("every ${CommandProcessor.formatInterval(s.intervalMin)}")
+    if (s.intervalMin > 0) add("every ${CommandParsing.formatInterval(s.intervalMin)}")
     if (s.atTimes.isNotEmpty()) add("daily ${s.atTimes.joinToString(", ")}")
     if (events.isNotEmpty()) add("on ${events.joinToString(", ")}")
 }.joinToString(" · ").ifEmpty { "run by hand" }
@@ -370,7 +371,7 @@ private fun ScriptSheet(
             IntervalGroup(s.intervalMin, { vm.setScriptInterval(s, it) }, INTERVALS)
             if (s.intervalMin > 0 && INTERVALS.none { it.first == s.intervalMin }) {
                 Text(
-                    "Currently every ${CommandProcessor.formatInterval(s.intervalMin)} (set from the terminal)",
+                    "Currently every ${CommandParsing.formatInterval(s.intervalMin)} (set from the terminal)",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp),
@@ -463,7 +464,7 @@ private fun NewScriptDialog(existing: Set<String>, onDismiss: () -> Unit, onCrea
     var name by remember { mutableStateOf("") }
     var lang by remember { mutableStateOf(ScriptLang.LUA) }
     var command by remember { mutableStateOf(false) }
-    val builtIns = remember { CommandProcessor.COMMANDS.map { it.name }.toSet() }
+    val builtIns = CommandProcessor.COMMAND_NAMES
     val clean = name.trim().lowercase()
     // The same checks as `script new`, shown while typing.
     val problem = when {
@@ -525,7 +526,7 @@ private fun LibraryRow(r: LibRow, index: Int, count: Int, onInstall: () -> Unit)
         overlineContent = {
             Text(
                 "${e.name}.${e.lang.ext}" + (if (e.command) " · command" else
-                    if (e.suggestedEvery > 0) " · every ${CommandProcessor.formatInterval(e.suggestedEvery)}" else "") +
+                    if (e.suggestedEvery > 0) " · every ${CommandParsing.formatInterval(e.suggestedEvery)}" else "") +
                     r.events.let { if (it.isEmpty()) "" else " · on " + it.joinToString(", ") },
                 style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
             )
