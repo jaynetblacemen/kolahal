@@ -1,5 +1,6 @@
 package com.mtwabpin.kolahal.baselineprofile
 
+import androidx.benchmark.macro.MacrobenchmarkScope
 import androidx.benchmark.macro.junit4.BaselineProfileRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -18,9 +19,15 @@ class BaselineProfileGenerator {
 
     private val target = InstrumentationRegistry.getArguments().getString("targetAppId") ?: "com.mtwabpin.kolahal"
 
+    /** Notification access, as on a phone that uses it, so the listener's start-up is recorded too. */
+    private fun MacrobenchmarkScope.allowNotifications() {
+        device.executeShellCommand("cmd notification allow_listener $target/com.mtwabpin.kolahal.notifications.KolahalNotificationListener")
+    }
+
     /** Startup profile (dex layout): only the cold start to a drawn terminal. */
     @Test
     fun startup() = rule.collect(packageName = target, includeInStartupProfile = true) {
+        allowNotifications()
         pressHome()
         startActivityAndWait()
         device.waitForIdle()
@@ -29,6 +36,7 @@ class BaselineProfileGenerator {
     /** Baseline profile: a whole normal session. */
     @Test
     fun generate() = rule.collect(packageName = target) {
+        allowNotifications()
         pressHome()
         startActivityAndWait()
         device.waitForIdle()
