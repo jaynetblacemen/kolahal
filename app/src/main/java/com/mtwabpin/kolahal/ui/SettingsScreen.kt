@@ -1,6 +1,10 @@
 package com.mtwabpin.kolahal.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +31,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.text.KeyboardActions
@@ -77,6 +82,43 @@ import com.mtwabpin.kolahal.terminal.Screen
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+
+/**
+ * Settings, with home drawn underneath while a look setting is being changed (a slider dragged,
+ * the eye held): Settings fades away around the control and home shows as it will look. Home only
+ * looks: it takes no touches.
+ */
+@Composable
+fun SettingsOverHome(
+    vm: TerminalViewModel,
+    onExportBackup: () -> Unit,
+    onImportBackup: () -> Unit,
+    onImportFont: () -> Unit = {},
+) {
+    Box(Modifier.fillMaxSize()) {
+        val peek by vm.peek.collectAsStateWithLifecycle()
+        // Kept after the peek ends, so home fades out instead of vanishing under Settings.
+        val lastPeek = remember { arrayOfNulls<TerminalViewModel.Peek>(1) }
+        if (peek != null) lastPeek[0] = peek
+        AnimatedVisibility(
+            visible = peek != null,
+            enter = fadeIn(tween(PEEK_FADE_MS)),
+            exit = fadeOut(tween(PEEK_FADE_MS)),
+        ) {
+            lastPeek[0]?.let { p ->
+                Box(Modifier.fillMaxSize()) {
+                    TerminalScreen(vm, onRequestNotifications = {}, onPickFolder = {}, preview = p)
+                    Box(
+                        Modifier.fillMaxSize().pointerInput(Unit) {
+                            awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
+                        },
+                    )
+                }
+            }
+        }
+        SettingsScreen(vm, onExportBackup, onImportBackup, onImportFont)
+    }
+}
 
 /**
  * Material 3 Expressive settings. The main page has a search box, the setting categories, the
@@ -413,6 +455,7 @@ private fun SettingItem(
                                     config.preview(key, null)
                                 },
                                 interactionSource = interactions,
+                                modifier = Modifier.testTag("slider ${key.key}"),
                             )
                         }
                     },

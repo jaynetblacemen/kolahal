@@ -87,7 +87,9 @@ class ConfigCommands(private val context: Context, private val ui: TerminalUi) {
     }
 
     private fun setKey(name: String?, parsed: String, raw: String): Unit = withKey(name) { key ->
-        val value = if (key is ConfigKey.Text && raw.contains(key.key)) raw.substringAfter(key.key).trim() else parsed
+        // Free text as typed after the name (an old name too), so quotes in it survive.
+        val at = if (key is ConfigKey.Text && name != null) raw.indexOf(name, ignoreCase = true) else -1
+        val value = if (at >= 0) raw.substring(at + name!!.length).trim() else parsed
         if (value.isBlank()) return error("${key.key} = ${conf.display(key)}  (${hint(key)})")
         if (conf.set(key, value)) {
             info("${key.key} = ${conf.display(key)}")

@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -15,6 +18,9 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
@@ -23,8 +29,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mtwabpin.kolahal.data.Config
 import com.mtwabpin.kolahal.data.Keys
+import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -58,6 +67,12 @@ class HomeScreenTest {
     private fun type(vm: TerminalViewModel, text: String) {
         compose.runOnIdle { vm.onInputChange(TextFieldValue(text, TextRange(text.length))) }
         compose.waitForIdle()
+    }
+
+    private fun SemanticsNodeInteraction.layout(): TextLayoutResult {
+        val results = mutableListOf<TextLayoutResult>()
+        fetchSemanticsNode().config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(results)
+        return results.single()
     }
 
     /**
@@ -96,5 +111,49 @@ class HomeScreenTest {
         compose.onNodeWithTag("prompt-quick").performClick()
         compose.onNodeWithText("Quick actions").assertIsDisplayed()
         compose.onNodeWithText("Unlocks this week").assertIsDisplayed()
+    }
+
+    /**
+     * suggestions.wrap: a setting's description is cut to one line, or (on) shown whole over more
+     * lines in its own column, its first line level with the setting's name.
+     */
+    @Test fun wrappedDescriptionsShowWhole() {
+        val vm = show(360.dp, 700.dp)
+        type(vm, "config set header.au")
+        val help = compose.onNodeWithText(Keys.HEADER_AUTOHIDE.help, substring = true, useUnmergedTree = true)
+        assertEquals(1, help.layout().lineCount)
+
+        compose.runOnIdle { config.set(Keys.SUGGESTIONS_WRAP, "on") }
+        val wrapped = help.layout()
+        assertTrue("${wrapped.lineCount} lines", wrapped.lineCount > 1)
+        val name = compose.onNodeWithText(Keys.HEADER_AUTOHIDE.key, substring = true, useUnmergedTree = true)
+        val nameBounds = name.getUnclippedBoundsInRoot()
+        val helpBounds = help.getUnclippedBoundsInRoot()
+        assertTrue("the description starts at ${helpBounds.left}, the name ends at ${nameBounds.right}", helpBounds.left >= nameBounds.right)
+        with(compose.density) {
+            val nameBaseline = nameBounds.top + name.layout().firstBaseline.toDp()
+            val helpBaseline = helpBounds.top + wrapped.firstBaseline.toDp()
+            assertEquals(nameBaseline.value, helpBaseline.value, 1f)
+        }
+    }
+
+    /** gesture.swipe-up is none by default, which turns swiping up off; an action turns it on. */
+    @Test fun swipeUpRunsOnlyWhenGivenAnAction() {
+        val logs = LogRepository.get(app)
+        val mark = "swiped up ${System.nanoTime()}"
+        show(360.dp, 700.dp)
+        fun swipe() = compose.onNodeWithTag("prompt-quick").performTouchInput {
+            swipeUp(startY = height - 1f, endY = height - 1f - 120.dp.toPx(), durationMillis = 200)
+        }
+        fun ran() = logs.recent(50).any { it.text == mark }
+
+        swipe()
+        compose.waitForIdle()
+        Thread.sleep(500)
+        assertFalse("swiping up ran its action while it was none", ran())
+
+        compose.runOnIdle { config.set(Keys.GESTURE_SWIPE_UP, "echo $mark") }
+        swipe()
+        compose.waitUntil(5_000) { ran() }
     }
 }

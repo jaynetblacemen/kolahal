@@ -84,6 +84,19 @@ class CommandProcessorTest {
         assertEquals(14, config[Keys.FONT_SIZE])
     }
 
+    /** Names from before 0.3.0 still work in `config`, and say what the setting is called now. */
+    @Test fun oldSettingNamesStillWork() {
+        assertEquals(listOf("theme.name = amber", "theme is now called theme.name"), run("config set theme amber"))
+        assertEquals("amber", config[Keys.THEME])
+        run("config set keybar2 ESC,TAB,\",|")
+        assertEquals("ESC,TAB,\",|", config[Keys.KEYBAR2])
+        run("config reset theme")
+        assertTrue(config.isDefault(Keys.THEME))
+        // The swipe-up switch has no new name: it became gesture.swipe-up's none.
+        assertTrue(run("config set gesture.swipeup.on on").single().startsWith("gesture.swipeup.on is gone"))
+        assertTrue(config.isDefault(Keys.GESTURE_SWIPE_UP))
+    }
+
     @Test fun scriptLifecycle() {
         run("script new cptest --cmd")
         val script = ScriptRepository.get(context).byName("cptest")

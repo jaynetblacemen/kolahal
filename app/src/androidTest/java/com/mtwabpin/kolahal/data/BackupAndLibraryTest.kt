@@ -43,6 +43,38 @@ class BackupAndLibraryTest {
         assertTrue(config.version.value > mid)
     }
 
+    /** Settings saved before 0.3.0 move to today's names when Config starts. */
+    @Test fun savedSettingsMoveToNewNames() {
+        val saved = context.getSharedPreferences("config", android.content.Context.MODE_PRIVATE)
+        val old = listOf("theme", "keyboard.onhome", Keys.OLD_SWIPE_UP_ON, "gesture.swipeup")
+        try {
+            saved.edit().putString("theme", "dracula").putString("keyboard.onhome", "on")
+                .putString(Keys.OLD_SWIPE_UP_ON, "on").putString("gesture.swipeup", "quick").commit()
+            val before = config.version.value
+            config.migrate()
+            assertEquals("dracula", config[Keys.THEME])
+            assertTrue(config[Keys.FOCUS_ON_HOME])
+            assertEquals("quick", config[Keys.GESTURE_SWIPE_UP])
+            assertTrue("the screens redraw with the moved values", config.version.value > before)
+            assertTrue(saved.all.keys.toString(), old.none(saved::contains))
+        } finally {
+            saved.edit().apply { old.forEach(::remove) }.commit()
+        }
+    }
+
+    /** A backup from before 0.3.0 has the old setting names; they land on today's settings. */
+    @Test fun oldBackupNamesImport() {
+        val file = File(context.cacheDir, "kolahal-backup-old-names.json")
+        file.writeText("""{"kolahal":1,"config":{"theme":"amber","keybar2":"TAB","log.lineheight":"30","gesture.swipeup.on":"on"}}""")
+        val r = Backup(context).import(Uri.fromFile(file))
+        assertEquals("amber", config[Keys.THEME])
+        assertEquals("TAB", config[Keys.KEYBAR2])
+        assertEquals(30, config[Keys.LOG_LINE_HEIGHT])
+        assertEquals("apps", config[Keys.GESTURE_SWIPE_UP])
+        assertTrue(r.skipped.toString(), r.skipped.isEmpty())
+        file.delete()
+    }
+
     @Test fun backupRoundTrip() {
         config.set(Keys.THEME, "gruvbox")
         config.set(Keys.LOG_SPACING, "20")
