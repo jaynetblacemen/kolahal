@@ -1,5 +1,6 @@
 package com.mtwabpin.kolahal.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.text.BasicTextField
@@ -25,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -34,6 +37,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -42,6 +46,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 
@@ -129,6 +134,8 @@ internal fun Prompt(
                     }
                 },
         )
+        // Drawn icons like the header's: ✕ and ⌨ as text come from a fallback symbol font and look hand-drawn.
+        val iconSize = (Term.fontSize + 6).dp
         // Clear: touch typing has no Esc when the key bar is hidden.
         if (vm.input.text.isNotEmpty()) {
             Box(
@@ -139,7 +146,12 @@ internal fun Prompt(
                     .fillMaxHeight()
                     .clickable(onClickLabel = "clear the prompt") { vm.escape() },
             ) {
-                Text("✕", style = promptStyle.copy(color = Term.dim))
+                Image(
+                    painterResource(R.drawable.ic_close),
+                    contentDescription = "Clear",
+                    colorFilter = ColorFilter.tint(Term.dim),
+                    modifier = Modifier.size(iconSize),
+                )
             }
         }
         // Key bar toggle (keybar.show); dim while the bar is off. Flush right, in line with the log's edge;
@@ -152,7 +164,12 @@ internal fun Prompt(
                 .fillMaxHeight()
                 .clickable(onClickLabel = "toggle key bar", onClick = onToggleKeyBar),
         ) {
-            Text("⌨", style = promptStyle.copy(color = if (keyBarOn) Term.prompt else Term.dim))
+            Image(
+                painterResource(R.drawable.ic_keyboard),
+                contentDescription = "Key bar",
+                colorFilter = ColorFilter.tint(if (keyBarOn) Term.prompt else Term.dim),
+                modifier = Modifier.size(iconSize),
+            )
         }
     }
 }
