@@ -171,7 +171,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         menuScope.launch { menu = ActionMenu(title, kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { build() }, id) }
     }
     LaunchedEffect(Unit) {
-        vm.events.collect { if (it == UiEvent.ShowQuick) menu = ActionMenu("Quick", vm.quickActions(), null) }
+        vm.events.collect { if (it == UiEvent.ShowQuick) menu = ActionMenu("Quick", vm.quickActions(), null, systemFont = true) }
     }
     menu?.let { ActionSheet(it, onDismiss = { menu = null }) }
     val commandGap = remember(configVersion) { config[Keys.LOG_SPACING].dp }

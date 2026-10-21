@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
@@ -88,7 +89,8 @@ import java.util.Locale
 enum class TimeMode { OFF, COMMANDS, ALL }
 
 /** What the long-press sheet shows: the line (for context) and its actions. */
-data class ActionMenu(val title: String, val actions: List<LogAction>, val entryId: Long?)
+/** [systemFont]: the system's font instead of the terminal's (the quick sheet, which reads as a menu). */
+data class ActionMenu(val title: String, val actions: List<LogAction>, val entryId: Long?, val systemFont: Boolean = false)
 
 @Composable
 fun DayDivider(row: LogRow.Day) {
@@ -419,9 +421,14 @@ fun ActionSheet(menu: ActionMenu, onDismiss: () -> Unit) {
         shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
     ) {
         Column(Modifier.navigationBarsPadding().padding(vertical = 8.dp)) {
+            // Sized with the terminal's text either way, like the icons.
+            val textStyle = if (!menu.systemFont) Term.mono else MaterialTheme.typography.bodyLarge.copy(
+                fontSize = (Term.fontSize + 2).sp,
+                lineHeight = ((Term.fontSize + 2) * 1.4f).sp,
+            )
             Text(
                 menu.title,
-                style = Term.mono.copy(color = Term.dim),
+                style = textStyle.copy(color = Term.dim),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -478,7 +485,7 @@ fun ActionSheet(menu: ActionMenu, onDismiss: () -> Unit) {
                         }
                         Spacer(Modifier.width(12.dp))
                     }
-                    Text(action.label, style = Term.mono.copy(color = color))
+                    Text(action.label, style = textStyle.copy(color = color))
                 }
             }
         }

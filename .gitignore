@@ -20,3 +20,6 @@ keystore.properties
 docs/node_modules/
 docs/dist/
 docs/.astro/
+
+# Emacs backup files
+*~

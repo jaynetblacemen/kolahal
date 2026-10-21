@@ -1,0 +1,792 @@
+#+TITLE: Kolahal: a guided tour of the code
+#+SUBTITLE: For a developer new to the codebase and to MVVM
+#+STARTUP: content
+#+OPTIONS: toc:2 ^:{}
+#+LINK: src file:../app/src/main/java/com/mtwabpin/kolahal/
+#+LINK: repo file:../
+
+* How to read this
+
+This guide takes you from "what is MVVM?" to tracing a keystroke through the whole app. Read it
+top to bottom once; after that, use it as a map.
+
+- Part 1 says what the app is and what it's built with.
+- Part 2 teaches MVVM using Kolahal's own code as the examples.
+- Part 3 lays out Kolahal's architecture layer by layer.
+- Part 4 follows five real actions through the code, step by step. *This is the part to read
+  with the code open beside you.*
+- Parts 5 to 8 are reference: a package map, where Kolahal bends the textbook, how to build and
+  test, and a hands-on path into the code.
+
+*Links.* Links like [[src:terminal/TerminalViewModel.kt::fun submit][TerminalViewModel.submit]] open the source file and jump to that
+text (=C-c C-o= in Emacs). They search for a string rather than a line number, so they keep
+working as the code changes.
+
+*Freshness.* Written on 21 October 2026 against version 0.2.2 (commit =97be986=). Where this
+guide and the code disagree, the code wins.
+
+* Part 1: What Kolahal is
+
+Kolahal is an Android /home screen/ (a launcher) that looks and works like a terminal. You type
+a command or part of an app name; the result appears as lines in a scrolling log. Every line
+remembers what it is about (an app, a link, a script, a phone number), so tapping it later does
+the obvious thing and long-pressing it offers more.
+
+That one idea shapes the whole codebase: *the log is the product.* Commands, scripts,
+notifications, calls and app installs all end up as rows in a database table, and the home
+screen is a view of that table.
+
+** The stack
+
+| Concern           | Kolahal uses                                                    | Notably *not* used     |
+|-------------------+-----------------------------------------------------------------+------------------------|
+| Language          | Kotlin, Java 17 target                                          |                        |
+| UI                | Jetpack Compose, Material 3 (Expressive)                        | XML layouts, Fragments |
+| Async             | Kotlin coroutines and =Flow=                                    | RxJava, LiveData       |
+| Storage           | SQLite through =SQLiteOpenHelper=, =SharedPreferences=          | Room, DataStore        |
+| Background work   | WorkManager (including its multi-process variant), AlarmManager |                        |
+| Networking        | OkHttp                                                          | Retrofit               |
+| Scripting         | Lua 5.4 (LuaJava), JavaScript (QuickJS via quickjs-kt)          |                        |
+| Dependency wiring | Hand-written singletons (=Thing.get(context)=)                  | Hilt, Koin, Dagger     |
+| Navigation        | An enum and a =when=                                            | Navigation Compose     |
+
+=minSdk= 28 (Android 9), =targetSdk= 37 (Android 17). Versions are in
+[[repo:gradle/libs.versions.toml][gradle/libs.versions.toml]]; the app module's build is [[repo:app/build.gradle.kts][app/build.gradle.kts]].
+
+The short "not used" column is worth noticing: Kolahal is built from the platform's basic
+pieces. That makes it easier to read once you know those pieces, because there is very little
+framework magic between you and what runs.
+
+* Part 2: MVVM in ten minutes, with Kolahal examples
+
+** The problem MVVM solves
+
+An Android screen has three jobs tangled together: drawing pixels, holding the current state
+("what's typed in the prompt", "which page is open"), and doing the work (querying the
+database, launching an app). If all three live in one class:
+
+- you can't test the logic without a phone, because it's mixed with drawing code;
+- the state dies whenever Android destroys the screen (rotation, low memory, theme change);
+- every change touches everything.
+
+MVVM (Model, View, ViewModel) separates the three.
+
+** The three roles
+
+| Role      | Its job                                                                                                                                 | It knows about   | In Kolahal                                                               |
+|-----------+-----------------------------------------------------------------------------------------------------------------------------------------+------------------+--------------------------------------------------------------------------|
+| Model     | The data and the rules. Reads and writes storage, talks to Android services.                                                            | Nothing above it | Repositories and stores: =LogRepository=, =Config=, =AppRepository=, ... |
+| ViewModel | Holds the screen's state and exposes it as observable streams. Receives user actions as function calls and turns them into Model calls. | The Model        | =TerminalViewModel= (one, shared by every screen)                        |
+| View      | Draws the current state. Forwards user actions to the ViewModel.                                                                        | The ViewModel    | Compose functions in =ui/= and the =MainActivity= that hosts them        |
+
+The dependency arrows only point *down*: the View knows the ViewModel, the ViewModel knows the
+Model, and nothing points back up. The Model never calls the View. So how does the screen find
+out that something changed? It /observes/.
+
+** State flows down, events flow up
+
+This is the core loop. Learn to see it everywhere:
+
+#+begin_example
+            state (observable values)
+   ┌──────────────────────────────────────┐
+   ▼                                      │
+ VIEW  ── user action (a function call) ──▶  VIEWMODEL  ── reads / writes ──▶  MODEL
+                                          ▲                                    │
+                                          └──── "something changed" ───────────┘
+#+end_example
+
+Called /unidirectional data flow/: the View never changes state directly. It asks the
+ViewModel, the ViewModel updates the state, and the new state flows back down and redraws the
+View.
+
+A real example, which page is showing. In the ViewModel
+([[src:terminal/TerminalViewModel.kt::private val _screen][TerminalViewModel]]):
+
+#+begin_src kotlin
+private val _screen = MutableStateFlow(Screen.TERMINAL)   // private, writable
+val screen: StateFlow<Screen> = _screen.asStateFlow()      // public, read-only
+#+end_src
+
+This "backing property" pattern appears dozens of times. The underscore version is private and
+mutable; the public one is read-only. Only the ViewModel can change the page; anyone can watch it.
+
+In the View ([[src:MainActivity.kt::val screen by vm.screen][MainActivity]]):
+
+#+begin_src kotlin
+val screen by vm.screen.collectAsStateWithLifecycle()
+when (screen) {
+    Screen.SETTINGS -> SettingsScreen(vm, ...)
+    Screen.TERMINAL -> TerminalScreen(vm, ...)
+    ...
+}
+#+end_src
+
+=collectAsStateWithLifecycle()= subscribes to the flow while the screen is visible and hands
+Compose a value. When =_screen.value= changes, Compose re-runs ("recomposes") this function and
+the new page appears. Nobody calls "refresh the screen"; the subscription does it.
+
+An event going up, from the prompt ([[src:ui/Prompt.kt::onValueChange = vm::onInputChange][Prompt.kt]]):
+
+#+begin_src kotlin
+BasicTextField(
+    value = vm.input,                                   // state down
+    onValueChange = vm::onInputChange,                  // event up (each keystroke)
+    keyboardActions = KeyboardActions(onGo = { vm.submit() }),  // event up (Enter)
+    ...
+)
+#+end_src
+
+The text field doesn't decide anything. It shows =vm.input= and reports what the user did.
+
+** The three kinds of thing a ViewModel exposes
+
+1. *State*: "what is true right now". Exposed as =StateFlow=. Always has a current value; a new
+   subscriber immediately gets it. Examples: =screen=, =rows= (the log lines to draw),
+   =editing= (the script open in the editor, or null), =headerCollapsed=.
+
+2. *Text-field state*: =input= is a Compose =mutableStateOf=, not a =StateFlow=
+   ([[src:terminal/TerminalViewModel.kt::var input by mutableStateOf][here]]). Text fields are the usual exception: Compose's guidance is to keep a text
+   field's state in =MutableState=, because a flow delivers its value a frame later and a
+   field that lags behind the keyboard can drop characters or jump the cursor.
+
+3. *One-off events*: "do this once". Exposed as a =SharedFlow<UiEvent>=
+   ([[src:terminal/TerminalModels.kt::sealed interface UiEvent][UiEvent]]): scroll to the bottom, focus the prompt, ask for a permission.
+   These are not state, because state is re-delivered to every new subscriber: a
+   "request the contacts permission" state would fire again on every recomposition.
+
+   The trade-off with events: if nobody is listening when one is sent, it is lost. Kolahal hits
+   exactly this. Pressing Home from the Settings page should focus the terminal's prompt, but
+   the terminal isn't on screen yet, so there's no listener. The fix is a small piece of state
+   that the terminal picks up when it appears: see =Arrival= and =consumeArrival()= at the
+   bottom of [[src:terminal/TerminalViewModel.kt::data class Arrival][TerminalViewModel]]. Recognising "event or state?" is a core MVVM skill.
+
+** Why the ViewModel can't do everything
+
+A ViewModel deliberately outlives screens, so it must never hold a reference to an
+=Activity= (that would leak the whole screen's memory). But some Android APIs need an
+=Activity=: asking for a permission and opening a file picker both go through
+=registerForActivityResult=.
+
+So the ViewModel /asks/ and the Activity /does/:
+
+1. The ViewModel emits an event, e.g. =UiEvent.RequestContactsPermission=.
+2. =MainActivity= collects =vm.events= and launches the system dialog.
+3. The dialog's result comes back to =MainActivity=, which calls =vm.onContactsPermission(granted)=.
+
+Look at the block of =registerForActivityResult= declarations at the top of [[src:MainActivity.kt::class MainActivity][MainActivity]]:
+every one of them ends in a =vm.something(...)= call. That's this pattern, eleven times over.
+
+** Why a ViewModel at all, if Kolahal handles rotation itself?
+
+The manifest's =android:configChanges= tells Android not to recreate =MainActivity= on rotation
+or keyboard changes, so the classic "survive rotation" benefit matters less here. The
+ViewModel still earns its place:
+
+- it is the one place where screen state and screen logic live, apart from drawing code;
+- =viewModelScope= gives coroutines that are cancelled when the ViewModel is cleared;
+- =SavedStateHandle= survives /process death/: Kolahal stores the id of a script waiting for
+  the "save as" picker there ([[src:terminal/TerminalViewModel.kt::fun beginExportScript][beginExportScript]]), because the system may kill the app while
+  the picker is open.
+
+** Vocabulary you'll meet constantly
+
+| Term                                   | What it means                                                                                                                                     |
+|----------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------|
+| =suspend fun=                          | A function that can pause (e.g. waiting on disk) without blocking a thread. Only callable from a coroutine.                                       |
+| coroutine, =launch=                    | A lightweight task. =scope.launch { ... }= starts one.                                                                                            |
+| =viewModelScope=                       | A coroutine scope owned by the ViewModel; its tasks are cancelled when the ViewModel is cleared.                                                  |
+| =Dispatchers.IO= / =Default= / =Main=  | Thread pools: =IO= for disk and network, =Default= for CPU work, =Main= for UI. =withContext(Dispatchers.IO) { ... }= hops threads for one block. |
+| =Flow=                                 | A stream of values over time.                                                                                                                     |
+| =StateFlow= / =MutableStateFlow=       | A flow that always holds a current value. The state container of choice here.                                                                     |
+| =SharedFlow=                           | A flow with no current value; used here for one-off events.                                                                                       |
+| =combine=, =debounce=, =collectLatest= | Flow operators: merge flows; wait for a quiet gap; cancel the previous handler when a new value arrives.                                          |
+| =@Composable=                          | A function that describes UI. Compose calls it again (/recomposes/) when state it read changes.                                                   |
+| =remember { }=                         | Keep a value across recompositions. =remember(key) { }= recomputes when =key= changes.                                                            |
+| =derivedStateOf { }=                   | A computed value that only triggers recomposition when its /result/ changes.                                                                      |
+| =LaunchedEffect(key) { }=              | Run a coroutine tied to a composable; restarts when =key= changes.                                                                                |
+| =snapshotFlow { }=                     | Turn Compose state reads into a =Flow= (used to watch scroll position).                                                                           |
+| =produceState=                         | Compose state filled in by a coroutine (used by =FeedsScreen= to load from the database).                                                         |
+| =collectAsStateWithLifecycle()=        | Subscribe to a =Flow= from Compose, only while the screen is visible.                                                                             |
+| =AndroidViewModel=                     | A ViewModel that gets the =Application= (a safe, long-lived =Context=).                                                                           |
+| =@Immutable=                           | A promise to Compose that an object never changes, so it can skip redrawing it.                                                                   |
+| =sealed interface= / =data object=     | A closed set of types: the compiler knows every =UiEvent= and checks that =when= covers them all.                                                 |
+
+* Part 3: Kolahal's architecture
+
+** The big picture
+
+#+begin_example
+┌─────────────────────────── UI process: com.mtwabpin.kolahal ───────────────────────────┐
+│                                                                                       │
+│  VIEW        MainActivity  (router, permissions, file pickers, theme)                 │
+│                 │ hosts                                                               │
+│                 ▼                                                                     │
+│              TerminalScreen · SettingsScreen · ScriptsScreen · FeedsScreen · ...      │
+│                 │ calls vm.xxx()                    ▲ collects StateFlows             │
+│                 ▼                                   │                                 │
+│  VIEWMODEL   TerminalViewModel ─── uses ──▶ CommandProcessor (+ *Commands helpers)    │
+│                 │                           LogLineActions, Completer, InstantRun     │
+│                 │ reads / writes            ▲ version counters, StateFlows            │
+│                 ▼                           │                                         │
+│  MODEL       LogRepository · Config · AppRepository · ScriptRepository ·              │
+│              FeedRepository · TodoStore · DeviceStatus · UnlockCounter · ...          │
+│                 │                                                                     │
+│                 ▼                                                                     │
+│              kolahal.db   feeds.db   SharedPreferences   Android system services      │
+│                 ▲                                                                     │
+└─────────────────┼─────────────────────────────────────────────────────────────────────┘
+                  │ same SQLite file (WAL mode)  +  "logs changed" broadcast back
+┌─────────────────┴──────── :script process ─────────┐
+│  ScriptWorker ─▶ LuaEngine / JsEngine ─▶ HostApi   │
+└────────────────────────────────────────────────────┘
+#+end_example
+
+** The central idea: the log is the source of truth
+
+In many apps, a button calls a function that returns a result, and the screen shows the
+result. Kolahal does something different:
+
+#+begin_quote
+Commands don't return their output. They *write lines into the =logs= table*. The home screen
+watches that table and shows what's in it.
+#+end_quote
+
+Consequences, all deliberate:
+
+- Output is persistent for free. Leave home, come back tomorrow, it's still there.
+- Everything reaches the screen the same way: a typed command, a tapped line, a timer script in
+  another process, a notification, a missed call. There's only one path to debug.
+- Because every line stores a =LogContext= (below), old lines stay actionable.
+
+The data types are in [[src:data/LogEntry.kt::data class LogEntry][data/LogEntry.kt]]:
+
+- =LogEntry=: one row: =id=, timestamp =ts=, =kind=, =source=, =text=, =ctx=.
+- =LogKind=: =COMMAND= (something you typed), =OUTPUT=, =INFO=, =ERROR=, =SCRIPT=.
+- =LogContext=: a string map saved with the line, as JSON. Its keys decide what a tap does:
+  =url= opens a link, =pkg= / =cls= / =user= identify an app to launch, =run= is a command
+  to run on tap, =line= + =script= open the editor at a script error, =apps= turns the line
+  into a grid of app chips, and so on. Read the constants in that file; they are the
+  vocabulary of the whole UI.
+
+** Model layer: repositories and stores
+
+*** The singleton pattern
+
+Almost every Model class looks like this ([[src:data/LogRepository.kt::fun get(context: Context): LogRepository][LogRepository]]):
+
+#+begin_src kotlin
+class LogRepository private constructor(private val context: Context) {
+    ...
+    companion object {
+        @Volatile private var instance: LogRepository? = null
+
+        fun get(context: Context): LogRepository = instance ?: synchronized(this) {
+            instance ?: LogRepository(context.applicationContext).also { instance = it }
+        }
+    }
+}
+#+end_src
+
+One instance per process, created on first use, holding only the /application/ context (never
+an Activity, so nothing leaks). Any class anywhere can call =LogRepository.get(context)=. This
+is Kolahal's replacement for a dependency-injection framework.
+
+*** Two ways the Model announces change
+
+1. *Value flows*: the repository keeps the current value in a =StateFlow=, and observers get
+   the value itself.
+   - =AppRepository.apps= and =.profiles= (installed apps across personal / work / private profiles)
+   - =DeviceStatus.status= (battery, network, next alarm)
+   - =UnlockCounter.today=, =MediaRepository.nowPlaying=, =ContactsRepository.contacts=
+
+2. *Version counters*: the repository bumps a number on every write, and observers re-read
+   what they need. Used where the data is big or queried in different ways.
+   - =LogRepository.version= (the log)
+   - =Config.version= (settings)
+   - =FeedRepository.version=, =AppPrefs.version=
+
+   The counter is a cheap "something changed, look again" signal. You'll see code like
+   =remember(configVersion) { config[Keys.SUGGESTIONS] }=: re-read this setting whenever any
+   setting changes.
+
+*** Where data lives
+
+| Store                        | What's in it                                                       | Code                                           |
+|------------------------------+--------------------------------------------------------------------+------------------------------------------------|
+| =kolahal.db= (SQLite, WAL)   | tables =logs=, =scripts=, =kv=, =todos=, =notes=, =reminders=      | [[src:data/Db.kt::class Db][data/Db.kt]]                                     |
+| =feeds.db= (SQLite, WAL)     | feed subscriptions and items                                       | [[src:feeds/FeedDb.kt::class FeedDb][feeds/FeedDb.kt]]                                |
+| =SharedPreferences= "config" | every user setting                                                 | [[src:data/Config.kt::class Config private constructor][data/Config.kt]]                                 |
+| other =SharedPreferences=    | aliases, hidden/renamed apps, launch history, widgets, log markers | =AppPrefs=, =WidgetHost=, =LogRepository=, ... |
+| =kv= table                   | per-script key/value store, script status lines in the header      | [[src:data/KvStore.kt::class KvStore][data/KvStore.kt]]                                |
+| memory only                  | recent notifications                                               | [[src:notifications/NotificationStore.kt::object NotificationStore][notifications/NotificationStore.kt]]             |
+
+*** Settings, a small complete example
+
+[[src:data/Config.kt::sealed class ConfigKey][data/Config.kt]] is short and worth reading in full. Each setting is a typed =ConfigKey=
+(=Bool=, =Num= with a range, =Choice=, =Text=) declared once in =object Keys= with its name,
+default and help text. Reading is =config[Keys.THEME]=; writing is =config.set(key, raw)=,
+which validates, saves, and bumps =version=. The Settings screen, =config set ...= at the
+prompt, its suggestions, and backups all work from that one list (=Keys.ALL=).
+
+** ViewModel layer: =TerminalViewModel=
+
+[[src:terminal/TerminalViewModel.kt::class TerminalViewModel][terminal/TerminalViewModel.kt]] (about 1100 lines) is the only ViewModel. =MainActivity=
+creates it with =private val vm: TerminalViewModel by viewModels()= and passes it to every
+screen.
+
+*** What it exposes
+
+| Property                          | Type                                           | What the View does with it                     |
+|-----------------------------------+------------------------------------------------+------------------------------------------------|
+| =rows=                            | =StateFlow<List<LogRow>>=                      | the log lines (plus day separators) to draw    |
+| =entries=                         | =StateFlow<List<LogEntry>>=                    | the raw lines behind =rows=                    |
+| =input=                           | Compose state                                  | the prompt's text and cursor                   |
+| =screen=                          | =StateFlow<Screen>=                            | which page is showing                          |
+| =editing=, =editLine=             | =StateFlow=                                    | the script in the editor and a line to jump to |
+| =headerCollapsed=, =headerHidden= | =StateFlow<Boolean>=                           | header size while scrolling                    |
+| =apps=, =profiles=, =status=, ... | =StateFlow= (passed through from repositories) | header and suggestions                         |
+| =events=                          | =SharedFlow<UiEvent>=                          | one-off requests (scroll, focus, permissions)  |
+| =config=                          | =Config=                                       | settings, read directly                        |
+
+And dozens of plain functions the View calls: =submit()=, =onInputChange()=, =onTap(entry)=,
+=openScreen()=, =setConfig()=, =runScript()=, ...
+
+*** The reload pipeline (the heart of the app)
+
+In the ViewModel's =init= ([[src:terminal/TerminalViewModel.kt::combine(logs.version, reloadRequests)][here]]):
+
+#+begin_src kotlin
+combine(logs.version, reloadRequests) { a, b -> a to b }
+    .debounce(40)
+    .collectLatest { reload() }
+#+end_src
+
+Read it as: whenever the log changes or someone asks for a reload, wait until things have been
+quiet for 40 ms (a script printing 50 lines causes one reload, not 50), then run =reload()=,
+cancelling any reload still in progress.
+
+[[src:terminal/TerminalViewModel.kt::private suspend fun reload()][reload()]] then:
+
+1. reads only the lines newer than the newest one already shown (an /incremental/ load), or the
+   whole page after a delete, clear or trim;
+2. refreshes the caches that depend on the log (scripts, history, todos) only when needed;
+3. calls the pure function [[src:terminal/LogRows.kt::fun buildRows][buildRows()]] to turn entries into =LogRow=s: dimming, coloured
+   gutters, day separators, the "N new since you left" divider;
+4. sets =_rows.value=, which the terminal screen is collecting.
+
+*** The serial command queue
+
+[[src:terminal/TerminalViewModel.kt::private fun io(block][io { ... }]] runs work on a single-file lane of =Dispatchers.IO=
+(=limitedParallelism(1)=), with an exception handler that writes failures to the log:
+
+- commands run in the order you typed them, never two at once;
+- a command that throws becomes a red =Error:= line instead of crashing your home screen.
+
+*** Helpers with narrow interfaces
+
+A 1100-line class stays manageable because the heavy logic lives in helpers, and each helper
+declares exactly what it needs from the ViewModel as a small interface:
+
+| Helper           | Job                                                      | What it asks of the ViewModel                     |
+|------------------+----------------------------------------------------------+---------------------------------------------------|
+| [[src:terminal/CommandProcessor.kt::class CommandProcessor][CommandProcessor]] | parse and run a command line                             | =TerminalUi=: open a screen, ask for a permission |
+| [[src:terminal/LogLineActions.kt::class LogLineActions][LogLineActions]]   | what a tap or long-press on a line does                  | =LogLineActions.Host=: set prompt text, run, emit |
+| [[src:terminal/Completer.kt::class Completer][Completer]]        | suggestions for what's typed                             | =Completer.Data=: history, scripts, todos, ...    |
+| [[src:terminal/InstantRun.kt::object InstantRun][InstantRun]]       | "is this input unambiguous enough to run without Enter?" | nothing: a pure =object=, unit-tested             |
+
+[[src:terminal/TerminalUi.kt::interface TerminalUi][TerminalUi]] is the important one. =CommandProcessor= is a plain class with no access to the
+screen, yet commands like =settings= or =contacts= need to open a page or ask for a permission.
+So it receives a =TerminalUi=, and =TerminalViewModel= implements it. In the on-device tests,
+[[repo:app/src/androidTest/java/com/mtwabpin/kolahal/terminal/CommandProcessorTest.kt::private val ui = object : TerminalUi][CommandProcessorTest]] passes a fake =TerminalUi= instead and tests commands with no screen at
+all. That is the payoff of depending on an interface rather than on the ViewModel itself.
+
+=CommandProcessor= delegates further, one class per command family: =AppCommands=,
+=ScriptCommands=, =FeedCommands=, =ConfigCommands=, =PeopleCommands=, =ProductivityCommands=
+(all in =terminal/=), and =ControlCommands= (in =control/=).
+
+** View layer: Compose screens
+
+*** MainActivity: host and router
+
+[[src:MainActivity.kt::override fun onCreate][MainActivity.onCreate]] does four things:
+
+1. sets up edge-to-edge drawing and applies the theme;
+2. re-applies the theme whenever =vm.config.version= changes;
+3. collects =vm.events= for the requests only an Activity can carry out (permissions, the font picker);
+4. calls =setContent { ... }=, which picks what to show: the script editor if =vm.editing= is
+   set, otherwise the page named by =vm.screen=.
+
+It also forwards lifecycle callbacks: =onResume= → =vm.onResume()=, =onPause= → =vm.onPause()=,
+and a Home press while already home (=onNewIntent=) → =vm.onHomePressed()=.
+
+*** The screens
+
+| Screen                         | File                                                                            | Notes                                                                    |
+|--------------------------------+---------------------------------------------------------------------------------+--------------------------------------------------------------------------|
+| Terminal (home)                | [[src:ui/TerminalScreen.kt::fun TerminalScreen][ui/TerminalScreen.kt]]                                                            | header, log, suggestions, key bar, prompt                                |
+| one log line                   | [[src:ui/LogView.kt::fun LogLine][ui/LogView.kt]]                                                                   | =LogLine=, the app grid, the long-press =ActionSheet=                    |
+| prompt                         | [[src:ui/Prompt.kt::fun Prompt][ui/Prompt.kt]]                                                                    | the text field and hardware-key handling                                 |
+| header                         | [[src:ui/TerminalHeader.kt::internal fun Header(][ui/TerminalHeader.kt]]                                                            | =Header= and =CompactHeader=: clock, battery, unlocks, profiles          |
+| app selector on the right edge | [[src:ui/AppRail.kt::fun AppSelector(][ui/AppRail.kt]]                                                                   | =AppSelector=; pure maths split out and unit-tested (=SelectorMathTest=) |
+| Settings                       | [[src:ui/SettingsScreen.kt::fun SettingsScreen][ui/SettingsScreen.kt]]                                                            | pages come from [[src:ui/SettingsCatalog.kt::private val CATEGORIES][ui/SettingsCatalog.kt]]                                    |
+| Script manager and editor      | [[src:ui/ScriptsScreen.kt::fun ScriptsScreen][ui/ScriptsScreen.kt]], [[src:ui/ScriptEditor.kt::fun ScriptEditor][ui/ScriptEditor.kt]]                                         | editor logic in =EditorLogic.kt= (unit-tested)                           |
+| Feeds, widgets, setup          | =FeedsScreen.kt=, =WidgetsScreen.kt=, =WidgetPickerScreen.kt=, =SetupScreen.kt= |                                                                          |
+
+*** How =TerminalScreen= consumes the ViewModel
+
+Open [[src:ui/TerminalScreen.kt::fun TerminalScreen][TerminalScreen]] and look at its first lines: a column of
+=val x by vm.x.collectAsStateWithLifecycle()=. That's the "state down" half. Further down, in
+the =LazyColumn=, you'll see the "events up" half: =onTap = vm::onTap=,
+=onSwipeDelete = vm::swipeDelete=, and so on.
+
+Things specific to this screen:
+
+- The log is a =LazyColumn= with =reverseLayout=: item 0 is at the /bottom/, so new lines
+  appear where your thumb is. That's why the code uses =rows.asReversed()= and scrolls to
+  index 0 to reach the newest line.
+- =pinned= is local UI state (=remember { mutableStateOf(true) }=): "is the user looking at
+  the newest line?". It belongs to the View, not the ViewModel, because it's purely about
+  scrolling. Deciding where each piece of state belongs is a good habit to practise.
+- A =LaunchedEffect= collects =vm.events= for scroll, focus and keyboard requests.
+
+*** Theme
+
+[[src:ui/Theme.kt::object Term][Term]] in =ui/Theme.kt= is a global object whose fields are Compose state: palette, font,
+font size, line height. =MainActivity.applyTheme()= copies the settings into it, and everything
+that reads =Term.x= recomposes. This is a pragmatic shortcut (see Part 6).
+
+*** Performance idioms you'll see
+
+- =remember(configVersion) { config[Keys.X] }=: read a setting once per settings change, not
+  on every frame.
+- =derivedStateOf { version.value; config.display(key) }= in the Settings rows: each row redraws
+  only when /its own/ value changes ([[src:ui/SettingsScreen.kt::val value by remember(key)][SettingItem]]).
+- =@Immutable= on =LogEntry=, =LogContext= and =LogRow=, and stable =key= values for
+  =LazyColumn= items, so Compose can skip lines that didn't change.
+- Expensive menus are built off the main thread: =showMenu(...)= in =TerminalScreen=.
+
+** Navigation without a navigation library
+
+- [[src:terminal/TerminalUi.kt::enum class Screen][Screen]] is an enum of pages; =TerminalViewModel.screen= says which one is showing.
+- =openScreen(x)= pushes the current page on a small =backStack=; =closeScreen()= pops it.
+- Each page installs a =BackHandler= that calls =vm.closeScreen()=. On the terminal, Back
+  does nothing: a launcher never "goes back" off home.
+- The script editor isn't a =Screen=: it's an overlay shown whenever =vm.editing= is non-null.
+- =HomePager= (bottom of =MainActivity.kt=) puts the optional widgets page beside the terminal.
+
+** Two processes
+
+Kolahal runs in /two/ Linux processes:
+
+| Process                       | Runs                                                     | Why                                                              |
+|-------------------------------+----------------------------------------------------------+------------------------------------------------------------------|
+| =com.mtwabpin.kolahal= (main) | the UI, all repositories, feeds, notifications, triggers | the normal app process                                           |
+| =com.mtwabpin.kolahal:script= | user scripts (Lua and JavaScript) inside =ScriptWorker=  | a crash in native script engines can't take down the home screen |
+
+How they cooperate:
+
+- The manifest runs WorkManager's =RemoteWorkerService= in =:script=; [[src:script/ScriptWorker.kt::class ScriptWorker][ScriptWorker]] extends
+  =RemoteCoroutineWorker=, so its =doRemoteWork()= runs there.
+- [[src:LauncherApp.kt::class LauncherApp][LauncherApp.onCreate]] runs in /both/ processes; it returns early in =:script=, which
+  only needs the database and notifications.
+- Both processes open the same =kolahal.db=. WAL mode plus SQLite's file locking make that safe.
+- A singleton is per /process/: =:script= has its own =LogRepository= instance. When it writes a
+  line, [[src:data/LogRepository.kt::private fun changed(][LogRepository.changed()]] sends a package-private broadcast, =ACTION_LOGS_CHANGED=.
+  =LauncherApp= in the main process receives it and bumps its own =version=, and the main
+  process's ViewModel reloads.
+
+Keep this in mind when you add state: an in-memory singleton field written in =:script= is
+invisible to the UI. Shared state has to go through the database.
+
+** Background work at a glance
+
+| What                             | Mechanism                                                    | Code                                         |
+|----------------------------------+--------------------------------------------------------------+----------------------------------------------|
+| scripts on a timer               | WorkManager periodic and daily work → =ScriptWorker=         | [[src:script/ScriptScheduler.kt::object ScriptScheduler][script/ScriptScheduler.kt]]                    |
+| scripts on device events (=@on=) | runtime receivers in the UI process → one-off =ScriptWorker= | [[src:script/TriggerDispatcher.kt::class TriggerDispatcher][script/TriggerDispatcher.kt]]                  |
+| feed refresh                     | WorkManager → =FeedWorker= (main process)                    | [[src:feeds/FeedScheduler.kt::object FeedScheduler][feeds/FeedScheduler.kt]]                       |
+| reminders                        | AlarmManager → =ReminderReceiver=; re-armed after boot       | [[src:productivity/Reminders.kt::object ReminderScheduler][productivity/Reminders.kt]]                    |
+| notifications in the log         | =NotificationListenerService=                                | [[src:notifications/KolahalNotificationListener.kt::class KolahalNotificationListener][notifications/KolahalNotificationListener.kt]] |
+| installs and uninstalls          | package callbacks, settle-and-diff                           | [[src:apps/PackageEvents.kt::class PackageEvents][apps/PackageEvents.kt]]                        |
+| calls in the log                 | call-log observer                                            | [[src:calls/CallEvents.kt::class CallEvents][calls/CallEvents.kt]]                          |
+
+All of them report the same way: by writing log lines.
+
+* Part 4: Follow the data: five traces
+
+Open each linked function as you read. These five cover most of what the app does.
+
+** Trace 1: typing =echo hi= and pressing Enter
+
+1. *Each keystroke.* The prompt's =BasicTextField= calls [[src:terminal/TerminalViewModel.kt::fun onInputChange][vm.onInputChange()]], which
+   stores the new =input= (Compose redraws the field) and checks =instantRun=. =echo= is in
+   =InstantRun.SENSITIVE=, so it waits for Enter. The suggestion list recomputes from
+   =vm.suggestions(text)= in =TerminalScreen=.
+2. *Enter.* =onGo= calls [[src:terminal/TerminalViewModel.kt::fun submit][vm.submit()]]: it clears the prompt, collapses the header, queues
+   =processor.run(line)= on the serial =io { }= lane, and emits =UiEvent.ScrollToBottom=.
+3. *Parse.* [[src:terminal/CommandProcessor.kt::fun run(line: String][CommandProcessor.run()]] logs the command itself as a =COMMAND= line, expands
+   aliases, splits pipes (=help | grep feed=), and calls =execute()=.
+4. *Dispatch.* [[src:terminal/CommandProcessor.kt::private fun execute][execute()]] is one big =when (name)=. ="echo" -> out(rest)= writes an
+   =OUTPUT= line =hi=. Anything not matched falls through to "is it a script command?" and then
+   "is it an app name?" (=fallbackLaunch=).
+5. *Write.* [[src:data/LogRepository.kt::fun add(][LogRepository.add()]] inserts the row and calls =changed()=, which bumps =version=.
+6. *React.* The ViewModel's pipeline sees the new version, waits 40 ms (so the command line and
+   its output usually arrive as one update), and runs =reload()=: reads the two new rows, builds
+   =LogRow=s, sets =_rows=.
+7. *Draw.* =TerminalScreen= is collecting =vm.rows=; Compose recomposes the =LazyColumn=, and
+   a =LaunchedEffect= keyed on the newest row scrolls to it.
+
+Notice that the ViewModel never "receives" =hi=. Steps 3 to 5 write to the database; steps 6 to
+7 read from it. The two halves only meet through =version=.
+
+** Trace 2: tapping a log line
+
+1. =LogLine= in =ui/LogView.kt= gets =onTap = vm::onTap=.
+2. =vm.onTap(entry)= hands off to [[src:terminal/LogLineActions.kt::fun onTap(entry: LogEntry)][LogLineActions.onTap()]].
+3. That's a =when= over the line's =LogContext=: a script error line opens the editor at the
+   line, a =run= key runs that command, a =COMMAND= line is put back in the prompt (or re-run,
+   with =launch.instant all=), a notification line opens the notification, an app line
+   launches the app, ...
+4. A long-press calls =showMenu(...) { vm.actionsFor(e) }=: the ViewModel returns a list of
+   =LogAction=s (label + lambda), and the View draws them as an =ActionSheet=. The ViewModel
+   decides /what/ actions exist; the View decides /how/ they look.
+
+This is why the =LogContext= written in step 5 of Trace 1 matters: it is how a line remembers
+what it's about, long after the command that wrote it has finished.
+
+** Trace 3: a timer script prints a line (across processes)
+
+1. When a script is switched on or its timer changes, =ScriptScheduler.sync()= (re)schedules
+   WorkManager work for it. On app start, =LauncherApp= calls =ScriptScheduler.syncAll()=.
+2. At the scheduled time, WorkManager starts [[src:script/ScriptWorker.kt::override suspend fun doRemoteWork][ScriptWorker.doRemoteWork()]] in the
+   =:script= process.
+3. The worker builds a [[src:script/HostApi.kt::class HostApi][HostApi]] (everything a script may call: =log=, =notify=, =http=,
+   =store=, ...) and runs the code with =ScriptEngine.forLang(lang)=: =LuaEngine= or
+   =JsEngine=, with a 60-second timeout.
+4. The script calls =log("...")=. [[src:script/HostApi.kt::fun log(text: String][HostApi.log()]] buffers the line (plus a =── name · time ──=
+   header line for the run) and flushes to =LogRepository.add()=.
+5. This =LogRepository= instance lives in =:script=, so =changed()= broadcasts
+   =ACTION_LOGS_CHANGED=.
+6. In the main process, the receiver registered in =LauncherApp.onCreate= calls
+   =logs.onExternalChange()=, which bumps =version=, and from here on it's steps 6 and 7 of
+   Trace 1.
+7. If the script throws, the worker writes an =ERROR= line whose context includes =script= and
+   =line=, so tapping it opens the editor at the failing line (Trace 2, first branch).
+
+** Trace 4: a command needs a permission
+
+Type =contacts= without having granted the permission:
+
+1. =CommandProcessor= → [[src:terminal/PeopleCommands.kt::ui.requestContactsPermission()][PeopleCommands]] sees the permission is missing and calls
+   =ui.requestContactsPermission()=. =ui= is the =TerminalUi= interface; at runtime, the
+   ViewModel.
+2. [[src:terminal/TerminalViewModel.kt::override fun requestContactsPermission][TerminalViewModel.requestContactsPermission()]] emits
+   =UiEvent.RequestContactsPermission=.
+3. =MainActivity= is collecting =vm.events= and calls =contactsPermission.launch(READ_CONTACTS)=.
+   Android shows its dialog.
+4. The result arrives at the callback registered at the top of =MainActivity=, which calls
+   [[src:terminal/TerminalViewModel.kt::fun onContactsPermission][vm.onContactsPermission(granted)]].
+5. That refreshes the contacts and writes "Contacts allowed" (or an error) to the log, which
+   shows up through the usual pipeline.
+
+Four layers took part, and none of them reached past its neighbour.
+
+** Trace 5: changing a setting in the Settings screen
+
+1. A switch in [[src:ui/SettingsScreen.kt::onCheckedChange = { vm.setConfig][SettingItem]] calls =vm.setConfig(key, "on")=.
+2. [[src:terminal/TerminalViewModel.kt::fun setConfig][setConfig()]] calls =config.set()=, which validates the value, saves it to
+   =SharedPreferences=, and bumps =Config.version=.
+3. Three observers react:
+   - the Settings row, through its =derivedStateOf=, redraws with the new value;
+   - =MainActivity= collects =config.version= and calls =applyTheme()=, which updates =Term=
+     (so a theme or font change repaints everything);
+   - =TerminalScreen='s =remember(configVersion) { ... }= blocks re-read their settings.
+
+The same =config.set()= runs when you type =config set theme amber= at the prompt; both paths
+end in one place.
+
+* Part 5: Package map
+
+All app code is under =app/src/main/java/com/mtwabpin/kolahal/=.
+
+| Package               | What's inside                                                                      | Start with                     |
+|-----------------------+------------------------------------------------------------------------------------+--------------------------------|
+| (root)                | =LauncherApp= (process start-up), =MainActivity= (host and router)                 | [[src:LauncherApp.kt::class LauncherApp][LauncherApp.kt]]                 |
+| =terminal/=           | the ViewModel, command parsing and dispatch, suggestions, log row building         | [[src:terminal/TerminalViewModel.kt::class TerminalViewModel][TerminalViewModel.kt]]           |
+| =ui/=                 | every Compose screen and widget, theme, fonts                                      | [[src:ui/TerminalScreen.kt::fun TerminalScreen][TerminalScreen.kt]]              |
+| =data/=               | the database, the log, settings, scripts table, key/value store, backups           | [[src:data/LogRepository.kt::class LogRepository][LogRepository.kt]]               |
+| =apps/=               | installed apps across profiles, search ranking, per-app prefs, install events      | [[src:apps/AppRepository.kt::class AppRepository][AppRepository.kt]]               |
+| =script/=             | Lua and JS engines, =HostApi=, scheduling, the worker, =@on= triggers, the library | [[src:script/ScriptWorker.kt::class ScriptWorker][ScriptWorker.kt]]                |
+| =feeds/=              | RSS/Atom: database, fetcher, worker, scheduler, OPML                               | [[src:feeds/FeedRepository.kt::class FeedRepository][FeedRepository.kt]]              |
+| =widgets/=            | hosting other apps' home-screen widgets                                            | [[src:widgets/WidgetModel.kt::object WidgetLocation][WidgetModel.kt]] (pure, tested)  |
+| =notifications/=      | the notification listener and its in-memory store                                  | [[src:notifications/KolahalNotificationListener.kt::class KolahalNotificationListener][KolahalNotificationListener.kt]] |
+| =control/=            | media and device toggles (torch, volume, dnd, ...)                                 | [[src:control/ControlCommands.kt::class ControlCommands][ControlCommands.kt]]             |
+| =productivity/=       | todo, notes, reminders, agenda, time parsing                                       | [[src:productivity/TimeSpec.kt][TimeSpec.kt]] (pure, tested)     |
+| =status/=             | battery, network and alarm state for the header                                    | [[src:status/DeviceStatus.kt::class DeviceStatus][DeviceStatus.kt]]                |
+| =unlock/=             | the unlock counter                                                                 | [[src:unlock/UnlockCounter.kt::class UnlockCounter][UnlockCounter.kt]]               |
+| =contacts/=, =calls/= | contacts for =call= / =sms=, calls in the log                                      |                                |
+| =gesture/=            | the lock-only accessibility service, the notification-shade helper                 |                                |
+| =notify/=             | notification channels and posting                                                  |                                |
+
+Outside =main=:
+
+| Path                               | What                                                                             |
+|------------------------------------+----------------------------------------------------------------------------------|
+| =app/src/test/=                    | about 170 JVM unit tests: fast, no phone needed                                  |
+| =app/src/androidTest/=             | 29 on-device tests (commands, script engines, backup)                            |
+| =app/src/lite/AndroidManifest.xml= | removes the accessibility service and notification listener for the =lite= build |
+| =app/src/release/generated/=       | baseline profiles (pre-compiled start-up code)                                   |
+| =baselineprofile/=                 | the module that generates those profiles                                         |
+| =app/src/main/assets/library/=     | the ready-made scripts of the script library, listed in =index.json=             |
+| =docs/=                            | the user documentation site (Astro + Starlight); this file sits beside it        |
+
+* Part 6: Where Kolahal bends textbook MVVM (and why)
+
+Tutorials show a tidy version of MVVM. Real apps bend it. Knowing where this one does keeps you
+from "fixing" deliberate choices, and from copying shortcuts where they don't fit.
+
+1. *One ViewModel for every screen.* The textbook gives each screen its own. Here, the
+   terminal, Settings, Scripts and Feeds pages share =TerminalViewModel=. The upside is that
+   shared state (config, scripts, the notice line, the back stack) needs no plumbing; the cost
+   is a 1100-line file. The helpers with narrow interfaces (Part 3) are how it stays readable.
+
+2. *Some screens reach the Model directly.* [[src:ui/FeedsScreen.kt::val repo = remember { FeedRepository.get(context) }][FeedsScreen]] uses =FeedRepository= itself and
+   loads its lists with =produceState=; =TerminalScreen= calls =config.set(...)= directly for
+   the key-bar toggle. Strict MVVM would route these through a ViewModel. It works because
+   those repositories are already observable, but it means not every write goes through the
+   ViewModel.
+
+3. *Singletons instead of dependency injection.* =Thing.get(context)= is simple and has no
+   framework, but you can't easily swap a fake repository into a test. Kolahal's answer is to
+   pull logic into pure functions and objects that need no Android at all (=buildRows=,
+   =InstantRun=, =Pipes=, =Units=, =TimeSpec=, =WidgetModel=, the =AppRail= maths) and test
+   those on the JVM, and to test the rest on a device with real singletons.
+
+4. *Commands write to the database instead of returning.* Unusual, but it's the design (Part 3),
+   not an accident. When you add a command, print with =logs.add(...)= / =out(...)= like the
+   others do.
+
+5. *A global theme object.* =Term= is set by =MainActivity= rather than flowing from the
+   ViewModel. It keeps every composable from having to take a theme parameter.
+
+When you add code, follow the conventions of the file you're in.
+
+* Part 7: Build, run, test
+
+From the repository root:
+
+#+begin_src sh
+./gradlew assembleDebug                 # debug APK (package com.mtwabpin.kolahal.debug)
+./gradlew installDebug                  # build and install on the connected device
+./gradlew assembleRelease               # R8-minified release, signed with the debug key
+./gradlew assembleLite                  # release without accessibility service / notification listener
+./gradlew :app:testDebugUnitTest        # the JVM unit tests (fast)
+ANDROID_SERIAL=emulator-5554 ./gradlew connectedDebugAndroidTest   # on-device tests
+./gradlew :app:lintRelease              # Android lint
+#+end_src
+
+Set =ANDROID_SERIAL= for the on-device tests; without it, Gradle runs them on every connected
+device, your own phone included.
+
+| Build type | Package suffix | Minified | Differences                                                                                  |
+|------------+----------------+----------+----------------------------------------------------------------------------------------------|
+| =debug=    | =.debug=       | no       | installs beside a release build                                                              |
+| =release=  | none           | yes      | =isMinifyEnabled= and =isShrinkResources=                                                    |
+| =lite=     | none           | yes      | =BuildConfig.LOCK_SERVICE= and =NOTIFICATION_ACCESS= are false; manifest drops both services |
+
+Code checks =BuildConfig.LOCK_SERVICE= / =BuildConfig.NOTIFICATION_ACCESS= wherever behaviour
+differs in =lite=.
+
+** How the tests are organised
+
+- Pure logic has a JVM test with the same name plus =Test=: [[repo:app/src/test/java/com/mtwabpin/kolahal/terminal/LogRowsTest.kt::class LogRowsTest][LogRowsTest]] for =buildRows=,
+  =InstantRunTest=, =PipesTest=, =UnitsTest=, =TimeSpecTest=, =EditorLogicTest=,
+  =SelectorMathTest=, =WidgetModelTest=, ...
+- Anything that needs Android (the database, real apps, script engines) is in =androidTest=.
+- =LogRowsTest= is a good first read: small, and it shows how a pure function makes UI
+  behaviour ("a command and its output are one group") testable without a screen.
+
+* Part 8: A hands-on path into the code
+
+** Reading order
+
+Tick these off as you go (=C-c C-c= on a checkbox).
+
+- [ ] [[src:data/LogEntry.kt::enum class LogKind][data/LogEntry.kt]]: the data everything revolves around (5 min)
+- [ ] [[src:data/Config.kt::sealed class ConfigKey][data/Config.kt]]: a complete small Model (10 min)
+- [ ] [[src:terminal/TerminalModels.kt::sealed interface UiEvent][terminal/TerminalModels.kt]] and [[src:terminal/TerminalUi.kt::enum class Screen][terminal/TerminalUi.kt]]: events, screens, the UI port
+- [ ] [[src:LauncherApp.kt::override fun onCreate][LauncherApp.onCreate]]: what starts when the process starts
+- [ ] [[src:MainActivity.kt::override fun onCreate][MainActivity.onCreate]]: the host, the router, the permission plumbing
+- [ ] [[src:terminal/TerminalViewModel.kt::class TerminalViewModel][TerminalViewModel]], up to and including =reload()=: the pipeline
+- [ ] [[src:terminal/LogRows.kt::fun buildRows][terminal/LogRows.kt]] and its test
+- [ ] [[src:terminal/CommandProcessor.kt::fun run(line: String][CommandProcessor.run]] and =execute=: skim the =when=, it's the command index
+- [ ] [[src:ui/TerminalScreen.kt::fun TerminalScreen][ui/TerminalScreen.kt]]: the first 150 lines, then the =LazyColumn=
+- [ ] [[src:terminal/LogLineActions.kt::fun onTap(entry: LogEntry)][LogLineActions.onTap]]: what tapping does
+- [ ] [[src:script/ScriptWorker.kt::override suspend fun doRemoteWork][ScriptWorker.doRemoteWork]] and [[src:script/HostApi.kt::class HostApi][HostApi]]: the scripting side
+- [ ] [[src:data/LogRepository.kt::class LogRepository][data/LogRepository.kt]] in full: clear, hide, trim, and the cross-process broadcast
+
+** Watch it run
+
+Put breakpoints in Android Studio on =TerminalViewModel.submit=, =CommandProcessor.execute=,
+=LogRepository.add= and =TerminalViewModel.reload=, run the debug build, and type =echo hi=.
+Watch Trace 1 happen, including the switch from the main thread to the IO thread. Then step
+into =buildRows= to see the rows being built.
+
+** Exercise 1: add a command
+
+Add =hello [name]=, which prints =Hello, name!=.
+
+1. In =CommandProcessor='s =companion object=, add a =CommandSpec("hello", "hello [name]", "Say hello")=
+   to the [[src:terminal/CommandProcessor.kt::val COMMANDS = listOf(][COMMANDS]] list. That alone puts it in =help=, in suggestions (=Completer= reads
+   =COMMAND_NAMES= and =COMMAND_USAGES=), and protects the name from being used as an alias.
+2. In =execute()=, add a branch: ="hello" -> out("Hello, ${args.firstOrNull() ?: "world"}!")=.
+3. Build, install, type =hello=. Then ask: =hello= isn't in =InstantRun.SENSITIVE=, so with
+   =launch.instant all=, does typing =hello= run it before you get the chance to add a name?
+   Check your answer against =InstantRun.canRun=, and then think about what changes if its
+   usage line were just ="hello"=.
+4. User-facing commands are documented in =docs/src/content/docs/reference/commands.md=.
+
+Then find a command that /opens a page/ (=settings=) and one that /asks a permission/
+(=contacts=), and see how each reaches the UI through =TerminalUi=.
+
+** Exercise 2: add a setting
+
+1. Declare a =ConfigKey= in =object Keys= and add it to =Keys.ALL=.
+2. Read it where you need it: =config[Keys.YOUR_KEY]=.
+3. Open the Settings screen: a key that isn't listed in a category in
+   [[src:ui/SettingsCatalog.kt::private val CATEGORIES][ui/SettingsCatalog.kt]] appears under "More" automatically. Add it to a category and a
+   human title in =TITLES=.
+4. =config set your.key on= at the prompt works too, with no extra code. Why? Follow
+   =ConfigCommands=.
+
+** Exercise 3: write a unit test
+
+Add a case to =LogRowsTest=, e.g. "an =ERROR= line gets the error gutter even inside a script
+run", and run =./gradlew :app:testDebugUnitTest --tests '*LogRowsTest'=. Writing tests for pure
+functions is the quickest way to learn what they promise.
+
+** Questions to test your understanding
+
+1. Why can't =CommandProcessor= request a permission itself? Which interface solves that?
+2. A script in =:script= sets a field on a singleton. Will the home screen ever see it? Why not?
+3. Why is =UiEvent.ScrollToBottom= an event and not a =StateFlow<Boolean>=?
+4. Ten log lines are written in 20 ms. How many times does =reload()= run, and which operator decides?
+5. Is =pinned= (in =TerminalScreen=) ViewModel state or View state? Why?
+
+* Glossary of Kolahal terms
+
+| Term           | Meaning                                                                                       |
+|----------------+-----------------------------------------------------------------------------------------------|
+| log            | the =logs= table and the scrolling list on home                                               |
+| line / entry   | one row of the log (=LogEntry=); its =LogContext= says what tapping it does                   |
+| row            | what the list draws (=LogRow=): an entry plus extras such as day separators                   |
+| prompt         | the input line at the bottom                                                                  |
+| chip           | a tappable suggestion or app in a grid                                                        |
+| profile        | Android user profile: personal =[P]=, work =[W]=, private space =[S]=, clone =[C]=            |
+| quiet          | a paused work profile or a locked private space                                               |
+| script command | a user script marked =@command=, runnable from the prompt by name                             |
+| =@on=, =@uses= | script directives: run on a device event; declare access to private data or the local network |
+| fresh screen   | =log.fresh=: home hides old output after a while away (hidden, not deleted)                   |
+| instant run    | =launch.instant=: run without Enter once the input can only mean one thing                    |
+| lite           | the build without the accessibility service and the notification listener                     |
