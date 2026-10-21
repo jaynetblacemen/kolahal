@@ -561,7 +561,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("system", "system", "Android system settings"),
             CommandSpec("config", "config [ls|set|get|reset] <key> <v>", "Settings (no args opens the settings page)"),
             CommandSpec("theme", "theme <name>", "Themes: green amber mono dracula solarized gruvbox gruvbox-material"),
-            CommandSpec("font", "font [<name>|import]", "Terminal font: system jetbrains-mono fira-code ibm-plex-mono source-code-pro custom (no args: list)"),
+            CommandSpec("font", "font [<name>|import|sans [off|prompt|all]]", "Terminal font: system jetbrains-mono fira-code ibm-plex-mono source-code-pro custom (no args: list); sans: the phone's font for the prompt or everything"),
             CommandSpec("date", "date", "Current date and time"),
             CommandSpec("echo", "echo <text>", "Print text"),
             CommandSpec("alias", "alias [name = command]", "List or define aliases"),

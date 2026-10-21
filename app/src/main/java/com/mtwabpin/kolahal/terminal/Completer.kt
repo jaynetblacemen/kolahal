@@ -175,8 +175,12 @@ class Completer(private val context: Context, private val data: Data) {
             }
             "theme" -> Keys.THEME.choices.filter { it.startsWith(arg) && it != arg }
                 .map { Suggestion.Completion(it, "theme $it") }
-            "font" -> (TermFonts.names + "import").filter { it.startsWith(arg) && it != arg }
-                .map { Suggestion.Completion(it, "font $it") }
+            "font" -> if (parts.size == 3 && parts[1] == "sans") {
+                Keys.FONT_SANS.choices.filter { it.startsWith(last) && it != last }.map { Suggestion.Completion(it, "font sans $it") }
+            } else {
+                (TermFonts.names + "import" + "sans").filter { it.startsWith(arg) && it != arg }
+                    .map { Suggestion.Completion(it, if (it == "sans") "font sans " else "font $it") }
+            }
             "call", "dial", "sms", "text", "contacts", "contact" -> contactSuggestions(head, parts)
             "work", "private" -> listOf("on", "off", "status")
                 .filter { it.startsWith(arg) && it != arg }

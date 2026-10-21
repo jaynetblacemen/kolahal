@@ -73,6 +73,12 @@ class CompleterTest {
         assertTrue(labels("config set no.such.key ").isEmpty())
     }
 
+    @Test fun fontOffersSansAndItsModes() {
+        assertTrue(lines("font s").toString(), "font sans" in lines("font s"))
+        assertTrue(lines("font sans p").toString(), "font sans prompt" in lines("font sans p"))
+        assertTrue(lines("font sans ").containsAll(listOf("font sans off", "font sans prompt", "font sans all")))
+    }
+
     @Test fun historyContinuesTheLine() {
         history = listOf("search kotlin flow", "search compose", "note buy milk")
         assertTrue(lines("search ko").toString(), "search kotlin flow" in lines("search ko"))

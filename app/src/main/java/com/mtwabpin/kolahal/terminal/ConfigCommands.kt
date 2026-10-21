@@ -48,7 +48,7 @@ class ConfigCommands(private val context: Context, private val ui: TerminalUi) {
         }
     }
 
-    /** `font` lists (tap applies), `font <name>` sets, `font import` opens the file picker. */
+    /** `font` lists (tap applies), `font <name>` sets, `font import` opens the file picker, `font sans <mode>` sets font.sans. */
     fun font(args: List<String>) {
         val sub = args.firstOrNull()?.lowercase()
         val hasCustom = TermFonts.customFile(context) != null
@@ -61,8 +61,11 @@ class ConfigCommands(private val context: Context, private val ui: TerminalUi) {
                     out("$mark ${name.padEnd(16)} ${TermFonts.label(name)}", LogContext.of(LogContext.RUN to "font $name") + LogContext.ALIGNED)
                 }
                 info("Tap a font to use it · 'font import' adds your own .ttf/.otf · size: config font.size")
+                info("The phone's font: ${conf[Keys.FONT_SANS]} · font sans prompt uses it for the prompt, font sans all for everything")
             }
             sub == "import" -> ui.requestFontImport()
+            sub == "sans" -> args.getOrNull(1)?.let { setKey(Keys.FONT_SANS.key, it, "") }
+                ?: info("font.sans = ${conf.display(Keys.FONT_SANS)} · font sans off|prompt|all")
             sub == TermFonts.CUSTOM && !hasCustom ->
                 logs.add(LogKind.ERROR, "No custom font yet — tap to import a .ttf/.otf", ctx = LogContext.of(LogContext.RUN to "font import"))
             else -> setKey(Keys.FONT.key, sub, "")

@@ -143,7 +143,9 @@ cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
 - Fonts :: =font= switches the terminal font (log, prompt, header, suggestions, key bar, editor):
   the system monospace or the bundled JetBrains Mono, Fira Code, IBM Plex Mono and Source Code Pro
   (all SIL Open Font License 1.1; licence texts in =app/src/main/assets/licenses/=). =font import=
-  (or the settings screen) loads your own .ttf/.otf (up to 10 MB) as =custom=.
+  (or the settings screen) loads your own .ttf/.otf (up to 10 MB) as =custom=. =font sans prompt|all=
+  (=font.sans=) uses the phone's own font for the prompt or the whole terminal; column-aligned lists
+  and the script editor stay monospace.
 - Hardware keyboard ::
   - Prompt: =↑/↓= history, =Tab= complete, =Esc= clear, =Enter= run, =Ctrl+L= clear screen,
     =Ctrl+U= kill line, =Ctrl+A/E= start/end.
@@ -173,7 +175,7 @@ profiles  work [on|off|status]   private [on|off|status]
 scripts   scripts (manager)   script ls|lib|install|new|edit|run|cat|rm|on|off|every|at|notify|triggers|dir|export|import
           lua <code>   js <code>   = <expression>   status [clear <name|all>]
 terminal  help  history  clear [history|all]  restart [scripts]  alias [name = command]  unalias  config  theme <name>
-          font [<name>|import]  echo  date
+          font [<name>|import|sans [off|prompt|all]]  echo  date
 widgets   widgets (page)   widgets ls   widget add [home]
 device    settings  setup  unlocks [<days>]  notifications  usage-access  local-network  crashes [share|clear] [<n>]
           battery  home  system

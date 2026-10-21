@@ -122,6 +122,15 @@ class CommandFamiliesTest {
         assertTrue(run("config set no.such.key 1").single().startsWith("Unknown setting"))
     }
 
+    @Test fun fontSansSetsTheMode() {
+        assertEquals(listOf("font.sans = prompt"), run("font sans prompt"))
+        assertEquals("prompt", config[Keys.FONT_SANS])
+        assertTrue(run("font sans bogus").single().startsWith("Invalid value"))
+        assertEquals("prompt", config[Keys.FONT_SANS])
+        assertTrue(run("font sans").single().startsWith("font.sans = prompt"))
+        assertTrue(run("font").any { it.startsWith("The phone's font: prompt") })
+    }
+
     @Test fun historyAndClear() {
         run("echo cptest-one")
         assertTrue(run("history").contains("echo cptest-one"))

@@ -36,6 +36,7 @@ integer in the range shown; **choice** takes one of the listed values; **text** 
 | `gui.colors` | choice: `theme` `system` | `theme` | settings screens follow the terminal theme or the system (Material You) colours |
 | `statusbar` | choice: `show` `hide` `immersive` | `immersive` | full screen: hide the status bar, or both system bars (immersive); swipe from the edge to peek |
 | `font` | choice: `system` `jetbrains-mono` `fira-code` `ibm-plex-mono` `source-code-pro` `custom` | `jetbrains-mono` | terminal font (also `font <name>`); `custom` is a .ttf/.otf imported with `font import` |
+| `font.sans` | choice: `off` `prompt` `all` | `off` | <span class="k-new">new</span> the phone's own font instead of the terminal font: for the prompt, or for all of the terminal (also `font sans <mode>`); lists that line up columns and the script editor stay in the terminal font |
 | `font.size` | number 10–24 | `14` | terminal font size (sp); pinching the log changes it too |
 
 ## Log
