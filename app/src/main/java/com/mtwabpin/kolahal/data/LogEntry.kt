@@ -78,8 +78,13 @@ data class LogContext(val values: Map<String, String> = emptyMap()) {
         const val EVENT = "event"
         const val BEGIN = "begin"
         const val END = "end"
+        /** The line lines columns up with spaces: drawn in the terminal font even with `font.sans all`. */
+        const val MONO = "mono"
 
         val EMPTY = LogContext()
+
+        /** [MONO], to add to a line's context. */
+        val ALIGNED = mapOf(MONO to "1")
 
         fun of(vararg pairs: Pair<String, String?>) =
             LogContext(pairs.mapNotNull { (k, v) -> v?.let { k to it } }.toMap())

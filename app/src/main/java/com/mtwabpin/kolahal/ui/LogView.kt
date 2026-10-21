@@ -137,7 +137,7 @@ fun LogLine(
     dim: Boolean,
     topGap: Dp,
     gutter: Boolean = true,
-    charWidth: TextUnit,
+    indents: LineIndents,
     highlighted: Boolean,
     apps: (LogEntry) -> List<AppEntry>,
     onTap: (LogEntry) -> Unit,
@@ -240,10 +240,10 @@ fun LogLine(
                 isGrid -> AppGrid(remember(entry.id, entry.ctx) { apps(entry) }, onAppTap, onAppLongPress)
                 desc != null -> TwoColumns(entry, desc)
                 else -> {
-                    val text = remember(entry, Term.palette, charWidth, row.unread, iconKey) { renderLine(entry, charWidth, row.unread, iconKey != null) }
-                    if (image == null) Text(text, style = Term.text, inlineContent = inline)
+                    val text = remember(entry, Term.palette, indents, row.unread, iconKey) { renderLine(entry, indents, row.unread, iconKey != null) }
+                    if (image == null) Text(text, style = entry.style(), inlineContent = inline)
                     else Column {
-                        if (entry.text.isNotEmpty()) Text(text, style = Term.text, inlineContent = inline)
+                        if (entry.text.isNotEmpty()) Text(text, style = entry.style(), inlineContent = inline)
                         LogImage(image, Modifier.padding(vertical = 4.dp))
                     }
                 }
@@ -273,7 +273,7 @@ private fun TwoColumns(entry: LogEntry, desc: String) {
     Row(Modifier.fillMaxWidth()) {
         Text(
             entry.text,
-            style = Term.text.copy(color = Term.fg, fontWeight = FontWeight.Bold),
+            style = entry.style().copy(color = Term.fg, fontWeight = FontWeight.Bold),
             modifier = Modifier.weight(0.46f).padding(end = 8.dp),
         )
         Text(desc, style = Term.text.copy(color = Term.dim), modifier = Modifier.weight(0.54f))
@@ -341,8 +341,8 @@ private fun androidx.compose.ui.text.AnnotatedString.Builder.appendTagged(text: 
 }
 
 /**
- * Styles one log line. Wrapped continuation lines are indented past the prefix (`$ `, `[hn] `) so
- * each item reads as one block; [charWidth] is the monospace advance.
+ * Styles one log line. Wrapped continuation lines are indented past the prefix (`$ `, `• `) so
+ * each item reads as one block; the widths are measured ([LineIndents]), so this holds in any font.
  */
 private const val NOTIF_ICON = "notif-icon"
 
@@ -360,14 +360,20 @@ private fun NotifIcon(key: String) {
     icon?.let { Image(it, contentDescription = null, colorFilter = ColorFilter.tint(Term.dim), modifier = Modifier.fillMaxSize()) }
 }
 
+/** The terminal's text style, or always the terminal font for a line that lines columns up ([LogContext.MONO]). */
+private fun LogEntry.style() = if (ctx.values.containsKey(LogContext.MONO)) Term.code else Term.text
+
+/** How far wrapped and detail lines are indented: the width of `$ ` in the log's font, and of `• `. */
+@androidx.compose.runtime.Immutable
+data class LineIndents(val text: TextUnit, val code: TextUnit, val bullet: TextUnit)
+
 /** [icon]: end a script line with its notification icon instead of `· app`. */
-private fun renderLine(entry: LogEntry, charWidth: TextUnit, unread: Boolean, icon: Boolean = false) = buildAnnotatedString {
-    val prefixLen = when (entry.kind) {
-        LogKind.COMMAND -> 2
-        LogKind.SCRIPT -> if (unread) 2 else 0
-        else -> 2
+private fun renderLine(entry: LogEntry, indents: LineIndents, unread: Boolean, icon: Boolean = false) = buildAnnotatedString {
+    val indent = when (entry.kind) {
+        LogKind.SCRIPT -> if (unread) indents.bullet else 0.sp
+        else -> if (entry.ctx.values.containsKey(LogContext.MONO)) indents.code else indents.text
     }
-    withStyle(ParagraphStyle(textIndent = TextIndent(restLine = charWidth * prefixLen))) {
+    withStyle(ParagraphStyle(textIndent = TextIndent(restLine = indent))) {
         when (entry.kind) {
             LogKind.COMMAND -> {
                 withStyle(SpanStyle(color = Term.prompt)) { append("$ ") }
@@ -380,7 +386,6 @@ private fun renderLine(entry: LogEntry, charWidth: TextUnit, unread: Boolean, ic
                 // Lines after the first are details (e.g. a package name under an app event): dimmed.
                 val first = entry.text.substringBefore('\n')
                 appendTagged(first, color, if (header) FontWeight.Bold else null)
-                if (first.length < entry.text.length) withStyle(SpanStyle(color = Term.dim)) { append(detailLines(entry.text.substring(first.length + 1), prefixLen)) }
             }
             LogKind.SCRIPT -> {
                 if (unread) withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("• ") }
@@ -402,8 +407,15 @@ private fun renderLine(entry: LogEntry, charWidth: TextUnit, unread: Boolean, ic
             LogKind.OUTPUT -> {
                 val first = entry.text.substringBefore('\n')
                 appendTagged(first, if (entry.ctx.url != null) Term.link else Term.fg)
-                if (first.length < entry.text.length) withStyle(SpanStyle(color = Term.dim)) { append(detailLines(entry.text.substring(first.length + 1), prefixLen)) }
             }
+        }
+        Unit
+    }
+    // Lines after the first (details, dimmed) are paragraphs of their own, indented by layout to line
+    // up with the text after the prefix: padding with spaces only lines up in a monospace font.
+    if ((entry.kind == LogKind.INFO || entry.kind == LogKind.OUTPUT) && '\n' in entry.text) {
+        withStyle(ParagraphStyle(textIndent = TextIndent(firstLine = indent, restLine = indent))) {
+            withStyle(SpanStyle(color = Term.dim)) { append(entry.text.substringAfter('\n')) }
         }
     }
 }
@@ -492,8 +504,3 @@ fun ActionSheet(menu: ActionMenu, onDismiss: () -> Unit) {
     }
 }
 
-/** Detail lines under a line's first one, indented to line up with its text after the prefix. */
-private fun detailLines(rest: String, indent: Int): String {
-    val pad = " ".repeat(indent)
-    return rest.lines().joinToString("") { "\n$pad$it" }
-}

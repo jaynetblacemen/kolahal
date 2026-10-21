@@ -372,7 +372,7 @@ class ControlCommands(private val context: Context) {
     /** One line per toggle; tapping a line toggles it (or opens its panel). */
     private fun toggles() {
         fun row(name: String, value: String, run: String, hint: String) =
-            out(name.padEnd(15) + value, LogContext.of(LogContext.RUN to run, LogContext.DESC to hint))
+            out(name.padEnd(15) + value, LogContext.of(LogContext.RUN to run, LogContext.DESC to hint) + LogContext.ALIGNED)
 
         val torch = Torch.get(context)
         if (torch.cameraId != null) {

@@ -176,11 +176,15 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     menu?.let { ActionSheet(it, onDismiss = { menu = null }) }
     val commandGap = remember(configVersion) { config[Keys.LOG_SPACING].dp }
     val showGutter = remember(configVersion) { config[Keys.LOG_GUTTER] }
-    // Monospace advance, used to indent wrapped lines past their prefix.
+    // Wrapped and detail lines are indented past `$ ` (or `• `) as wide as it is in the log's font.
+    // Measured with a letter after it: a trailing space alone may not count towards the width.
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val charWidth = remember(Term.fontSize, Term.fontFamily, density) {
-        with(density) { (measurer.measure("0000000000", Term.text).size.width / 10f).toSp() }
+    val indents = remember(Term.fontSize, Term.fontFamily, Term.sans, density) {
+        fun width(prefix: String, style: androidx.compose.ui.text.TextStyle) = with(density) {
+            (measurer.measure("${prefix}0", style).size.width - measurer.measure("0", style).size.width).toSp()
+        }
+        LineIndents(text = width("$ ", Term.text), code = width("$ ", Term.code), bullet = width("• ", Term.text))
     }
     val lineTimeFormat = remember(configVersion) {
         SimpleDateFormat(if (config[Keys.CLOCK_24H]) "HH:mm" else "h:mm", Locale.getDefault())
@@ -313,7 +317,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                         dim = dimOld,
                         topGap = if (row.blockStart) commandGap else 0.dp,
                         gutter = showGutter,
-                        charWidth = charWidth,
+                        indents = indents,
                         highlighted = menu?.entryId == row.entry.id,
                         apps = vm::appsOf,
                         onTap = vm::onTap,

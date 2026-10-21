@@ -178,7 +178,7 @@ class ScriptCommands(
                 info("Deleted ${s.name}")
             }
             "cat", "show" -> withScript(target) { s ->
-                s.code.lines().forEachIndexed { i, l -> out("${(i + 1).toString().padStart(3)}  $l", LogContext.of(LogContext.COPY to s.code)) }
+                s.code.lines().forEachIndexed { i, l -> out("${(i + 1).toString().padStart(3)}  $l", LogContext.of(LogContext.COPY to s.code) + LogContext.ALIGNED) }
             }
             else -> error("Usage: script [ls|new|edit|run|every|at|notify|on|off|triggers|rm|cat] <name>")
         }

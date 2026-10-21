@@ -150,7 +150,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
             LogContext.TODO to t.id.toString(),
             LogContext.TODO_DONE to if (t.done) "1" else "0",
             LogContext.COPY to t.text,
-        )
+        ) + LogContext.ALIGNED
         if (info) info(text, ctx) else out(text, ctx)
     }
 
@@ -193,7 +193,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
             shown++
             out(
                 "${(i + 1).toString().padStart(2)}. ${n.text}",
-                noteCtx(n.id, n.text) + mapOf(LogContext.DESC to fmt.format(Instant.ofEpochMilli(n.created).atZone(zone))),
+                noteCtx(n.id, n.text) + mapOf(LogContext.DESC to fmt.format(Instant.ofEpochMilli(n.created).atZone(zone))) + LogContext.ALIGNED,
             )
         }
         info(
@@ -254,7 +254,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
                 "${(i + 1).toString().padStart(2)}. ${r.text}",
                 reminderCtx(r) + mapOf(
                     LogContext.DESC to "${whenLabel(r.at)} · in ${TimeSpec.formatDuration(((r.at - nowMs) / 1000).coerceAtLeast(0))}",
-                ),
+                ) + LogContext.ALIGNED,
             )
         }
         info("Tap puts 'remind rm' in the prompt · long-press → Cancel reminder")
@@ -353,7 +353,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
                         LogContext.BEGIN to e.begin.toString(),
                         LogContext.END to e.end.toString(),
                         LogContext.COPY to e.title,
-                    ),
+                    ) + LogContext.ALIGNED,
                 )
             }
         }

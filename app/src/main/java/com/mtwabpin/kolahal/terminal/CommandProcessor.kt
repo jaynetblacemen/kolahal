@@ -262,7 +262,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val labelWidth = rows.maxOf { it.first.length }
         val countWidth = rows.maxOf { it.second.toString().length }
         rows.forEach { (label, count) ->
-            out("${label.padEnd(labelWidth)}  ${count.toString().padStart(countWidth)} ${if (count == 1) "unlock" else "unlocks"}")
+            out("${label.padEnd(labelWidth)}  ${count.toString().padStart(countWidth)} ${if (count == 1) "unlock" else "unlocks"}", LogContext(LogContext.ALIGNED))
         }
     }
 

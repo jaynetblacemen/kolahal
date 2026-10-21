@@ -58,7 +58,7 @@ class ConfigCommands(private val context: Context, private val ui: TerminalUi) {
                 TermFonts.names.forEach { name ->
                     if (name == TermFonts.CUSTOM && !hasCustom) return@forEach
                     val mark = if (name == current) "*" else " "
-                    out("$mark ${name.padEnd(16)} ${TermFonts.label(name)}", LogContext.of(LogContext.RUN to "font $name"))
+                    out("$mark ${name.padEnd(16)} ${TermFonts.label(name)}", LogContext.of(LogContext.RUN to "font $name") + LogContext.ALIGNED)
                 }
                 info("Tap a font to use it · 'font import' adds your own .ttf/.otf · size: config font.size")
             }
