@@ -228,17 +228,6 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                 }
             }
         }
-        viewModelScope.launch(Dispatchers.IO) {
-            // A persistent flag, so `clear all` doesn't look like a first run.
-            val prefs = context.getSharedPreferences("launcher", android.content.Context.MODE_PRIVATE)
-            val firstRun = !prefs.getBoolean("intro_shown", false) && logs.recent(1).isEmpty()
-            prefs.edit { putBoolean("intro_shown", true) }
-            if (firstRun) {
-                logs.add(LogKind.INFO, "Kolahal — a terminal launcher. type 'help' or start typing an app name.")
-                logs.add(LogKind.INFO, "↑/↓ recall commands · tap a line to reuse/open it · long-press for actions")
-                openScreen(Screen.SETUP) // first run: show the setup checklist
-            }
-        }
     }
 
     /** How many log lines are loaded; grows as the user scrolls up (older lines load on demand). */
@@ -1123,4 +1112,21 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     @Volatile private var arrival: Arrival? = null
 
     fun consumeArrival(): Arrival? = arrival.also { arrival = null }
+
+    // Keep this last in the class. The first-run check runs on another thread straight away and
+    // opens the setup screen, which reads fields declared above; started from an earlier init it
+    // could find them still unset and crash the first start (seen as a crash soon after install).
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            // A persistent flag, so `clear all` doesn't look like a first run.
+            val prefs = context.getSharedPreferences("launcher", android.content.Context.MODE_PRIVATE)
+            val firstRun = !prefs.getBoolean("intro_shown", false) && logs.recent(1).isEmpty()
+            prefs.edit { putBoolean("intro_shown", true) }
+            if (firstRun) {
+                logs.add(LogKind.INFO, "Kolahal — a terminal launcher. type 'help' or start typing an app name.")
+                logs.add(LogKind.INFO, "↑/↓ recall commands · tap a line to reuse/open it · long-press for actions")
+                openScreen(Screen.SETUP) // first run: show the setup checklist
+            }
+        }
+    }
 }
