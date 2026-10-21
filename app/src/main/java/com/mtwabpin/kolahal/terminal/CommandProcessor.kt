@@ -15,12 +15,9 @@ import com.mtwabpin.kolahal.data.KvStore
 import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.apps.ProfileKind
 import com.mtwabpin.kolahal.data.Config
-import com.mtwabpin.kolahal.data.ConfigKey
 import com.mtwabpin.kolahal.data.Keys
-import com.mtwabpin.kolahal.ui.TermFonts
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
-import com.mtwabpin.kolahal.calls.CallEvents
 import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.data.ScriptRepository
@@ -50,6 +47,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private val controls by lazy { com.mtwabpin.kolahal.control.ControlCommands(context) }
     private val productivity = ProductivityCommands(context, ui)
     private val scriptCommands = ScriptCommands(context, ui, ::background)
+    private val configCommands = ConfigCommands(context, ui)
+    private val people = PeopleCommands(context, ui)
 
     private fun background(label: String, block: () -> Unit) {
         backgroundScope.launch {
@@ -126,11 +125,11 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "play", "store" -> if (rest.isBlank()) fallbackLaunch(trimmed) else openUri("market://search?q=" + Uri.encode(rest), "play store: $rest")
                 "usage", "screentime" -> usage(args)
                 "installs", "updates" -> installs(args)
-                "calls" -> calls(args)
+                "calls" -> people.calls(args)
                 "shortcuts" -> withApp(args) { app -> listShortcuts(app) }
-                "call", "dial" -> call(rest)
-                "sms", "text" -> sms(args)
-                "contacts", "contact" -> listContacts(rest)
+                "call", "dial" -> people.call(rest)
+                "sms", "text" -> people.sms(args)
+                "contacts", "contact" -> people.listContacts(rest)
                 "notifications" -> notifications(args)
                 "setup" -> if (args.firstOrNull() == "text") setupText() else ui.openScreen(Screen.SETUP)
                 "status" -> scriptCommands.status(args)
@@ -149,9 +148,9 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "shade" -> com.mtwabpin.kolahal.gesture.Gestures.expandShade(context)
                 "date", "time" -> out(DateFormat.getDateTimeInstance().format(Date()))
                 "echo" -> out(rest)
-                "config", "set" -> if (name == "config" && args.isEmpty()) ui.openScreen(Screen.SETTINGS) else config(args, rest)
-                "theme" -> config(listOf("set", "theme") + args)
-                "font" -> font(args)
+                "config", "set" -> if (name == "config" && args.isEmpty()) ui.openScreen(Screen.SETTINGS) else configCommands.config(args, rest)
+                "theme" -> configCommands.config(listOf("set", "theme") + args)
+                "font" -> configCommands.font(args)
                 in com.mtwabpin.kolahal.control.ControlCommands.NAMES -> controls.run(name, args)
                 in PRODUCTIVITY -> productivity.run(name, rest)
                 else -> scriptCommands.runCommand(name, args) ?: fallbackLaunch(trimmed)
@@ -211,22 +210,6 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         if (list.isEmpty()) return info("No app installs, updates or uninstalls recorded yet")
         val fmt = java.text.SimpleDateFormat("EEE d MMM HH:mm", java.util.Locale.getDefault())
         list.forEach { (t, text) -> out(text, LogContext.of(LogContext.DESC to fmt.format(Date(t)))) }
-    }
-
-    /** `calls [n]`: the newest calls from Android's call log, in the same form as the live lines. */
-    private fun calls(args: List<String>) {
-        when (args.firstOrNull()) {
-            "--allow" -> return if (CallEvents.hasPermission(context)) info("Call log is allowed") else ui.requestCallLogPermission()
-            "--settings" -> return startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
-        }
-        if (!CallEvents.hasPermission(context)) {
-            logs.add(LogKind.ERROR, "Calls need call log access — tap to allow", ctx = LogContext.of(LogContext.RUN to "calls --allow"))
-            return
-        }
-        val n = args.firstOrNull()?.toIntOrNull()?.coerceIn(1, 200) ?: 20
-        val list = CallEvents.recent(context, n)
-        if (list.isEmpty()) return info("No calls in the call log")
-        list.reversed().forEach { out(CallEvents.line(it, conf, withDay = true), CallEvents.ctx(it)) }
     }
 
     private fun listPinned() {
@@ -765,58 +748,6 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         }
     }
 
-    // ---- contacts ---------------------------------------------------------------------------
-
-    private val contacts = com.mtwabpin.kolahal.contacts.ContactsRepository.get(context)
-
-    /** Resolves a name to one contact; null (with a message) when permission is missing or ambiguous. */
-    private fun resolveContact(query: String): com.mtwabpin.kolahal.contacts.Contact? {
-        if (!contacts.hasPermission()) {
-            logs.add(LogKind.ERROR, "Contacts permission needed — tap to allow", ctx = LogContext.of(LogContext.RUN to "contacts --allow"))
-            ui.requestContactsPermission()
-            return null
-        }
-        val matches = contacts.search(query)
-        if (matches.isEmpty()) { error("No contact matches '$query'"); return null }
-        if (matches.size > 1 && !matches[0].name.equals(query, ignoreCase = true)) {
-            matches.take(8).forEach(::contactLine)
-            info("${matches.size} contacts match — tap one to call, long-press for more")
-            return null
-        }
-        return matches[0]
-    }
-
-    private fun contactLine(c: com.mtwabpin.kolahal.contacts.Contact) = out(
-        c.name + if (c.starred) " ★" else "",
-        LogContext.of(LogContext.PHONE to c.number, LogContext.CONTACT to c.lookupUri.toString(), LogContext.DESC to "${c.number} · ${c.label}"),
-    )
-
-    private fun call(rest: String) {
-        if (rest.isBlank()) return error("Usage: call <name|number>")
-        val number = if (com.mtwabpin.kolahal.contacts.ContactsRepository.looksLikeNumber(rest)) rest else resolveContact(rest)?.number ?: return
-        startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", number, null)))
-        info("Dialing $number", LogContext.of(LogContext.PHONE to number))
-    }
-
-    private fun sms(args: List<String>) {
-        val who = args.firstOrNull() ?: return error("Usage: sms <name|number> [message]")
-        val number = if (com.mtwabpin.kolahal.contacts.ContactsRepository.looksLikeNumber(who)) who else resolveContact(who)?.number ?: return
-        val body = args.drop(1).joinToString(" ")
-        startActivity(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", number, null)).putExtra("sms_body", body))
-        info("Message to $number", LogContext.of(LogContext.PHONE to number))
-    }
-
-    private fun listContacts(query: String) {
-        if (query == "--allow" || !contacts.hasPermission()) {
-            if (contacts.hasPermission()) return info("Contacts are allowed")
-            ui.requestContactsPermission()
-            return
-        }
-        val list = if (query.isBlank()) contacts.contacts.value.filter { it.starred }.ifEmpty { contacts.contacts.value.take(20) } else contacts.search(query, 20)
-        if (list.isEmpty()) return info(if (query.isBlank()) "No contacts" else "No contact matches '$query'")
-        list.forEach(::contactLine)
-    }
-
     // ---- screen time ------------------------------------------------------------------------
 
     /** `usage [days]`: foreground time per app from UsageStats (needs Usage Access). */
@@ -950,81 +881,6 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         }
         info("Anything else is matched against app names · tap a line to act · long-press for more")
         info("Pipes: help | grep feed · history | tail 5 · contacts | count  (grep [-v], head, tail, sort, uniq, count)")
-    }
-
-    // ---- config ---------------------------------------------------------------------------
-
-    /** [raw] is the untokenized argument text, so free-text values (e.g. a key bar with quotes) survive. */
-    private fun config(args: List<String>, raw: String = "") {
-        val sub = args.firstOrNull()
-        when {
-            sub == null || sub == "ls" || sub == "list" -> {
-                Keys.ALL.forEach { k ->
-                    val marker = if (conf.isDefault(k)) "" else " *"
-                    out(
-                        "${k.key} = ${conf.display(k)}$marker",
-                        LogContext.of(LogContext.COMMAND to "config set ${k.key} ", LogContext.DESC to k.help),
-                    )
-                }
-                info("Tap a line to edit it · * = changed from default · 'config reset <key|all>'")
-            }
-            sub == "get" -> withKey(args.getOrNull(1)) { out("${it.key} = ${conf.display(it)}") }
-            sub == "reset" -> {
-                if (args.getOrNull(1) == "all") {
-                    Keys.ALL.forEach(conf::reset)
-                    info("All settings reset")
-                } else withKey(args.getOrNull(1)) {
-                    conf.reset(it)
-                    info("${it.key} = ${conf.display(it)} (default)")
-                }
-            }
-            sub == "set" -> setKey(args.getOrNull(1), args.drop(2).joinToString(" "), raw)
-            Keys.byName(sub) != null -> setKey(sub, args.drop(1).joinToString(" "), raw)
-            else -> error("Usage: config [ls|get|set|reset] <key> [value]")
-        }
-    }
-
-    /** `font` lists (tap applies), `font <name>` sets, `font import` opens the file picker. */
-    private fun font(args: List<String>) {
-        val sub = args.firstOrNull()?.lowercase()
-        val hasCustom = TermFonts.customFile(context) != null
-        when {
-            sub == null || sub == "ls" || sub == "list" -> {
-                val current = conf[Keys.FONT]
-                TermFonts.names.forEach { name ->
-                    if (name == TermFonts.CUSTOM && !hasCustom) return@forEach
-                    val mark = if (name == current) "*" else " "
-                    out("$mark ${name.padEnd(16)} ${TermFonts.label(name)}", LogContext.of(LogContext.RUN to "font $name"))
-                }
-                info("Tap a font to use it · 'font import' adds your own .ttf/.otf · size: config font.size")
-            }
-            sub == "import" -> ui.requestFontImport()
-            sub == TermFonts.CUSTOM && !hasCustom ->
-                logs.add(LogKind.ERROR, "No custom font yet — tap to import a .ttf/.otf", ctx = LogContext.of(LogContext.RUN to "font import"))
-            else -> setKey(Keys.FONT.key, sub, "")
-        }
-    }
-
-    private inline fun withKey(name: String?, action: (ConfigKey<*>) -> Unit) {
-        val key = name?.let(Keys::byName)
-        if (key == null) error("Unknown setting '${name.orEmpty()}' — run 'config'") else action(key)
-    }
-
-    private fun setKey(name: String?, parsed: String, raw: String) = withKey(name) { key ->
-        val value = if (key is ConfigKey.Text && raw.contains(key.key)) raw.substringAfter(key.key).trim() else parsed
-        if (value.isBlank()) return error("${key.key} = ${conf.display(key)}  (${hint(key)})")
-        if (conf.set(key, value)) {
-            info("${key.key} = ${conf.display(key)}")
-            if (key == Keys.FEEDS_WIFI) runCatching { com.mtwabpin.kolahal.feeds.FeedScheduler.sync(context) }
-        }
-        else error("Invalid value for ${key.key}: ${hint(key)}")
-    }
-
-    private fun hint(key: ConfigKey<*>) = when (key) {
-        is ConfigKey.Bool -> "on|off"
-        is ConfigKey.Num -> "${key.range.first}..${key.range.last}"
-        is ConfigKey.Choice -> key.choices.joinToString("|")
-        is ConfigKey.Text -> key.help
     }
 
     companion object {
