@@ -62,7 +62,7 @@ internal fun CompactHeader(status: Status, statusCount: Int, config: Config, ver
     }
     val is24h = remember(version) { config[Keys.CLOCK_24H] }
     val timeFmt = remember(is24h) { SimpleDateFormat(if (is24h) "HH:mm" else "h:mm a", Locale.getDefault()) }
-    val small = Term.mono.copy(fontSize = (Term.fontSize - 1).sp)
+    val small = Term.text.copy(fontSize = (Term.fontSize - 1).sp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -157,7 +157,7 @@ internal fun Header(
     val timeFmt = remember(is24h) { SimpleDateFormat(if (is24h) "HH:mm" else "h:mm a", Locale.getDefault()) }
     val dateFmt = remember { SimpleDateFormat("EEE d MMM", Locale.getDefault()) }
     val alarmFmt = remember(is24h) { SimpleDateFormat(if (is24h) "EEE HH:mm" else "EEE h:mm a", Locale.getDefault()) }
-    val small = Term.mono.copy(fontSize = (Term.fontSize - 1).sp)
+    val small = Term.text.copy(fontSize = (Term.fontSize - 1).sp)
 
     val useIcons = config[Keys.HEADER_ICONS]
     val iconSize = (Term.fontSize + 3).dp
@@ -231,7 +231,7 @@ internal fun Header(
         ) {
             Text(
                 timeFmt.format(now),
-                style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize + 6).sp),
+                style = Term.text.copy(color = Term.fg, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize + 6).sp),
             )
             if (config[Keys.HEADER_DATE]) {
                 Text(

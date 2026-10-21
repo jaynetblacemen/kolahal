@@ -58,7 +58,7 @@ import com.mtwabpin.kolahal.script.ApiDocs
 internal fun EditorButton(label: String, onClick: () -> Unit) {
     Text(
         "[$label]",
-        style = Term.mono.copy(color = Term.fg),
+        style = Term.code.copy(color = Term.fg),
         modifier = Modifier
             .clickable(onClick = onClick)
             .heightIn(min = 48.dp)
@@ -76,7 +76,7 @@ private fun BarButton(label: String, color: Color = Term.fg, description: String
             .clickable(onClickLabel = description, onClick = onClick)
             .padding(horizontal = 8.dp),
     ) {
-        Text(label, style = Term.mono.copy(color = color, fontWeight = FontWeight.Bold))
+        Text(label, style = Term.code.copy(color = color, fontWeight = FontWeight.Bold))
     }
 }
 
@@ -94,7 +94,7 @@ private fun BarField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
-        textStyle = Term.mono,
+        textStyle = Term.code,
         cursorBrush = SolidColor(Term.prompt),
         keyboardOptions = KeyboardOptions(
             autoCorrectEnabled = false,
@@ -105,7 +105,7 @@ private fun BarField(
         keyboardActions = KeyboardActions(onSearch = { onAction() }, onDone = { onAction() }),
         decorationBox = { inner ->
             Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.heightIn(min = 48.dp)) {
-                if (value.text.isEmpty()) Text(placeholder, style = Term.mono.copy(color = Term.dim))
+                if (value.text.isEmpty()) Text(placeholder, style = Term.code.copy(color = Term.dim))
                 inner()
             }
         },
@@ -151,7 +151,7 @@ internal fun FindBar(
                 },
                 modifier = Modifier.weight(1f).focusRequester(focusRequester).testTag("find"),
             )
-            Text(count, style = Term.mono.copy(color = if (noMatch) Term.error else Term.dim), modifier = Modifier.padding(horizontal = 4.dp))
+            Text(count, style = Term.code.copy(color = if (noMatch) Term.error else Term.dim), modifier = Modifier.padding(horizontal = 4.dp))
             BarButton("↑", description = "Previous match", onClick = onPrev)
             BarButton("↓", description = "Next match", onClick = onNext)
             BarButton("⇄", if (replaceOpen) Term.prompt else Term.fg, "Replace", onToggleReplace)
@@ -230,7 +230,7 @@ internal fun ApiReferenceSheet(lang: ScriptLang, onDismiss: () -> Unit, onPick: 
             item {
                 Text(
                     "API reference · ${if (lang == ScriptLang.LUA) "Lua" else "JavaScript"}",
-                    style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold),
+                    style = Term.code.copy(color = Term.prompt, fontWeight = FontWeight.Bold),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
@@ -242,14 +242,14 @@ internal fun ApiReferenceSheet(lang: ScriptLang, onDismiss: () -> Unit, onPick: 
                         .clickable { onPick(d) }
                         .padding(horizontal = 16.dp, vertical = 6.dp)
                 ) {
-                    Text(d.signature, style = Term.mono.copy(color = if (d.kind == ApiDoc.Kind.NAMESPACE) Term.info else Term.fg))
-                    Text(d.doc, style = Term.mono.copy(color = Term.dim, fontSize = Term.mono.fontSize * 0.85f))
+                    Text(d.signature, style = Term.code.copy(color = if (d.kind == ApiDoc.Kind.NAMESPACE) Term.info else Term.fg))
+                    Text(d.doc, style = Term.code.copy(color = Term.dim, fontSize = Term.code.fontSize * 0.85f))
                 }
             }
             item {
                 Text(
                     "keywords: " + ApiDocs.keywords(lang).joinToString(" "),
-                    style = Term.mono.copy(color = Term.dim, fontSize = Term.mono.fontSize * 0.85f),
+                    style = Term.code.copy(color = Term.dim, fontSize = Term.code.fontSize * 0.85f),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }

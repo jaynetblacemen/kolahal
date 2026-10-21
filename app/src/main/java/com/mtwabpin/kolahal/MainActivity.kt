@@ -233,6 +233,7 @@ class MainActivity : ComponentActivity() {
         val family = TermFonts.family(this, font)
         if (family == null) vm.onFontUnavailable(font)
         Term.fontFamily = family ?: FontFamily.Monospace
+        Term.sans = Term.Sans.of(vm.config[Keys.FONT_SANS])
         Term.lineHeight = vm.config[Keys.LOG_LINE_HEIGHT]
         Term.chipHeight = vm.config[Keys.CHIP_HEIGHT]
         window.decorView.setBackgroundColor(Term.bg.toArgb())

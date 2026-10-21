@@ -63,7 +63,7 @@ internal fun Prompt(
 ) {
     val configVersion by vm.config.version.collectAsStateWithLifecycle()
     val swipeUpOn = remember(configVersion) { vm.config[Keys.GESTURE_SWIPE_UP_ON] }
-    val promptStyle = Term.mono.copy(fontSize = (Term.fontSize + 2).sp)
+    val promptStyle = Term.promptText.copy(fontSize = (Term.fontSize + 2).sp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier

@@ -113,7 +113,7 @@ fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppL
                                     }
                                 }
                             },
-                            style = Term.mono.copy(color = Term.fg, fontWeight = if (first) FontWeight.Bold else FontWeight.Normal),
+                            style = Term.text.copy(color = Term.fg, fontWeight = if (first) FontWeight.Bold else FontWeight.Normal),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
@@ -125,17 +125,17 @@ fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppL
                             if (s.app != null) AppIcon(s.app, iconSize) else CommandIcon(iconSize)
                             Spacer(Modifier.width(8.dp))
                         } else {
-                            Text("$ ", style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold))
+                            Text("$ ", style = Term.text.copy(color = Term.prompt, fontWeight = FontWeight.Bold))
                         }
                         Text(
                             s.label,
-                            style = Term.mono.copy(color = Term.fg, fontWeight = if (first) FontWeight.Bold else FontWeight.Normal),
+                            style = Term.text.copy(color = Term.fg, fontWeight = if (first) FontWeight.Bold else FontWeight.Normal),
                             maxLines = 1,
                         )
                         val help = completionHelp(s.label, s.replacement)
                         Text(
                             if (help != null) "  $help" else "",
-                            style = Term.mono.copy(color = Term.dim, fontSize = (Term.fontSize - 2).sp),
+                            style = Term.text.copy(color = Term.dim, fontSize = (Term.fontSize - 2).sp),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
@@ -226,13 +226,13 @@ private fun SuggestionChip(index: Int, s: Suggestion, onPick: (Suggestion) -> Un
                 // Commands carry the prompt's `$`, so "maps" (command) and "Maps" (app) read apart.
                 // (With icons on, the terminal icon above takes its place.)
                 if (s is Suggestion.Completion && !icons) {
-                    Text("$ ", style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold))
+                    Text("$ ", style = Term.text.copy(color = Term.prompt, fontWeight = FontWeight.Bold))
                 }
-                Text(s.label, style = Term.mono.copy(color = if (s is Suggestion.App) Term.fg else Term.dim))
+                Text(s.label, style = Term.text.copy(color = if (s is Suggestion.App) Term.fg else Term.dim))
                 // The profile tag follows the name, as in the log.
                 if (tag != null && tag != ProfileKind.PERSONAL.tag) {
                     Spacer(Modifier.width(6.dp))
-                    Text(tag, style = Term.mono.copy(color = color, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp))
+                    Text(tag, style = Term.text.copy(color = color, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp))
                 }
             }
         }

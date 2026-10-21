@@ -11,6 +11,7 @@ internal val TITLES = mapOf(
     "gui.colors" to "Settings colours",
     "statusbar" to "Full screen",
     "font" to "Font",
+    "font.sans" to "Phone's font",
     "font.size" to "Text size",
     "header.date" to "Date",
     "clock.24h" to "24-hour clock",
@@ -89,7 +90,7 @@ private val CATEGORIES = listOf(
     Category(
         "look", "Look & feel", "Theme, font, text size, full screen", R.drawable.ic_palette,
         listOf(
-            "Terminal" to listOf(Keys.THEME, Keys.FONT, Keys.FONT_SIZE),
+            "Terminal" to listOf(Keys.THEME, Keys.FONT, Keys.FONT_SANS, Keys.FONT_SIZE),
             "Screen" to listOf(Keys.STATUS_BAR),
             "Settings pages" to listOf(Keys.GUI_COLORS),
         ),

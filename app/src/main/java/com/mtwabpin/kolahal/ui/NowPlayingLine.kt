@@ -25,7 +25,7 @@ import com.mtwabpin.kolahal.control.NowPlaying
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun NowPlayingLine(np: NowPlaying, onToggle: () -> Unit, onNext: () -> Unit) {
-    val small = Term.mono.copy(fontSize = (Term.fontSize - 1).sp)
+    val small = Term.text.copy(fontSize = (Term.fontSize - 1).sp)
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().testTag("header-media")) {
         val iconSize = (Term.fontSize + 2).dp
         Row(

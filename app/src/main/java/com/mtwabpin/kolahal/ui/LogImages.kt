@@ -164,7 +164,7 @@ fun LogImage(url: String, modifier: Modifier = Modifier) {
         if (image == null) {
             Text(
                 if (state == null) "Loading image…" else "Image unavailable",
-                style = Term.mono.copy(color = Term.dim),
+                style = Term.text.copy(color = Term.dim),
             )
         } else {
             var w = min(widthPx.toFloat(), image.width * 2f)

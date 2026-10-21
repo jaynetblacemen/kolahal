@@ -180,7 +180,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
     val charWidth = remember(Term.fontSize, Term.fontFamily, density) {
-        with(density) { (measurer.measure("0000000000", Term.mono).size.width / 10f).toSp() }
+        with(density) { (measurer.measure("0000000000", Term.text).size.width / 10f).toSp() }
     }
     val lineTimeFormat = remember(configVersion) {
         SimpleDateFormat(if (config[Keys.CLOCK_24H]) "HH:mm" else "h:mm", Locale.getDefault())
@@ -297,7 +297,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                     Text(
                         "type an app name or a command · help lists everything · ↑ recalls history · " +
                             "Tap a line to act, long-press for more · ⚙ settings",
-                        style = Term.mono.copy(color = Term.dim),
+                        style = Term.text.copy(color = Term.dim),
                         modifier = Modifier.padding(vertical = 12.dp),
                     )
                 }
@@ -330,7 +330,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 item(key = "hidden-lines") {
                     Text(
                         "▴ $hiddenLines earlier lines · tap to show",
-                        style = Term.mono.copy(color = Term.dim),
+                        style = Term.text.copy(color = Term.dim),
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable(onClickLabel = "show earlier output") { vm.showHidden() }
@@ -385,10 +385,10 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth().background(Term.surface).heightIn(min = 44.dp).padding(start = 12.dp),
             ) {
-                Text("Line deleted", style = Term.mono.copy(color = Term.dim), modifier = Modifier.weight(1f))
+                Text("Line deleted", style = Term.text.copy(color = Term.dim), modifier = Modifier.weight(1f))
                 Text(
                     "Undo",
-                    style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold),
+                    style = Term.text.copy(color = Term.prompt, fontWeight = FontWeight.Bold),
                     modifier = Modifier.clickable(onClick = vm::undoSwipeDelete).heightIn(min = 44.dp).wrapContentHeight().padding(horizontal = 16.dp),
                 )
             }

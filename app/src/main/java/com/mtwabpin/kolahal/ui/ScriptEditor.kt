@@ -412,7 +412,7 @@ fun ScriptEditor(
         ) {
             Text(
                 "${script.name}.${script.lang.ext}" + if (dirty) " *" else "",
-                style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold),
+                style = Term.code.copy(color = Term.prompt, fontWeight = FontWeight.Bold),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -471,7 +471,7 @@ fun ScriptEditor(
                 // Line numbers share the field's style, so they stay aligned while scrolling.
                 Text(
                     numbers,
-                    style = Term.mono.copy(color = Term.dim, textAlign = TextAlign.End),
+                    style = Term.code.copy(color = Term.dim, textAlign = TextAlign.End),
                     modifier = Modifier.widthIn(min = 28.dp).padding(start = 6.dp, end = 10.dp),
                 )
                 Box(
@@ -483,7 +483,7 @@ fun ScriptEditor(
                     BasicTextField(
                         value = value,
                         onValueChange = ::edit,
-                        textStyle = Term.mono,
+                        textStyle = Term.code,
                         cursorBrush = SolidColor(Term.prompt),
                         visualTransformation = highlighter,
                         onTextLayout = { layout = it },
@@ -514,7 +514,7 @@ fun ScriptEditor(
         if (shown != null) {
             Text(
                 shown.text,
-                style = Term.mono.copy(
+                style = Term.code.copy(
                     color = when (shown.kind) {
                         EditorMessage.Kind.OK -> Term.prompt
                         EditorMessage.Kind.ERROR -> Term.error
@@ -535,7 +535,7 @@ fun ScriptEditor(
         } else if (inlineDoc != null) {
             Text(
                 "${inlineDoc.signature}  ${inlineDoc.doc}",
-                style = Term.mono.copy(color = Term.dim, fontSize = Term.mono.fontSize * 0.85f),
+                style = Term.code.copy(color = Term.dim, fontSize = Term.code.fontSize * 0.85f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
@@ -564,7 +564,7 @@ fun ScriptEditor(
                     ) {
                         Text(
                             label,
-                            style = Term.mono.copy(
+                            style = Term.code.copy(
                                 color = if (d.kind == ApiDoc.Kind.KEYWORD) Term.prompt else Term.fg,
                                 fontWeight = if (i == 0) FontWeight.Bold else FontWeight.Normal,
                             ),
@@ -595,7 +595,7 @@ fun ScriptEditor(
                         .padding(horizontal = 12.dp),
                 ) {
                     val idle = (s == "↶" && !canUndo) || (s == "↷" && !canRedo)
-                    Text(if (s == "  ") "⇥" else s, style = Term.mono.copy(color = if (idle) Term.dim else Term.fg, fontWeight = FontWeight.Bold))
+                    Text(if (s == "  ") "⇥" else s, style = Term.code.copy(color = if (idle) Term.dim else Term.fg, fontWeight = FontWeight.Bold))
                 }
             }
         }

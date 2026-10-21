@@ -118,24 +118,47 @@ object Term {
         ProfileKind.CLONE -> palette.info
     }
 
-    private class MonoCache(val palette: Palette, val size: Int, val family: FontFamily, val style: TextStyle)
+    /** `font.sans`: the phone's own (sans-serif) font for nothing, the prompt, or the whole terminal. */
+    var sans by mutableStateOf(Sans.OFF)
 
-    private var monoCache: MonoCache? = null
+    enum class Sans {
+        OFF, PROMPT, ALL;
 
-    /** Base terminal text style, rebuilt only when the palette, font size or font changes. */
-    val mono: TextStyle
-        get() {
-            val p = palette
-            val size = fontSize
-            val family = fontFamily
-            monoCache?.let { if (it.palette === p && it.size == size && it.family === family) return it.style }
-            return TextStyle(
-                fontFamily = family,
-                fontSize = size.sp,
-                lineHeight = (size * 1.36f).sp,
-                color = p.fg,
-            ).also { monoCache = MonoCache(p, size, family, it) }
+        companion object {
+            fun of(value: String) = when (value) {
+                "prompt" -> PROMPT
+                "all" -> ALL
+                else -> OFF
+            }
         }
+    }
+
+    /** The terminal's text: [fontFamily], or the phone's font with `font.sans all`. */
+    val text: TextStyle get() = style(if (sans == Sans.ALL) FontFamily.Default else fontFamily)
+
+    /** Always [fontFamily]: the script editor, and lists that line columns up with spaces. */
+    val code: TextStyle get() = style(fontFamily)
+
+    /** The prompt line: the phone's font from `font.sans prompt` on. */
+    val promptText: TextStyle get() = style(if (sans == Sans.OFF) fontFamily else FontFamily.Default)
+
+    private var cachedPalette: Palette? = null
+    private var cachedSize = 0
+    private val styles = HashMap<FontFamily, TextStyle>()
+
+    /** Base text style in [family], rebuilt only when the palette or font size changes. */
+    private fun style(family: FontFamily): TextStyle {
+        val p = palette
+        val size = fontSize
+        if (cachedPalette !== p || cachedSize != size) {
+            styles.clear()
+            cachedPalette = p
+            cachedSize = size
+        }
+        return styles.getOrPut(family) {
+            TextStyle(fontFamily = family, fontSize = size.sp, lineHeight = (size * 1.36f).sp, color = p.fg)
+        }
+    }
 }
 
 @Composable

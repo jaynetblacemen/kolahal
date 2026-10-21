@@ -126,7 +126,7 @@ fun HomeWidgets(vm: TerminalViewModel, visible: Boolean) {
                     ) { why ->
                         Text(
                             "[$why] ${w.packageName}",
-                            style = Term.mono.copy(color = Term.dim),
+                            style = Term.text.copy(color = Term.dim),
                             modifier = Modifier.fillMaxWidth().alpha(0.7f).padding(vertical = 6.dp, horizontal = 4.dp),
                         )
                     }
@@ -156,10 +156,10 @@ fun WidgetPanel(vm: TerminalViewModel) {
             .navigationBarsPadding(),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-            Text("Widgets", style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold), modifier = Modifier.weight(1f))
+            Text("Widgets", style = Term.text.copy(color = Term.prompt, fontWeight = FontWeight.Bold), modifier = Modifier.weight(1f))
             Text(
                 "+ Add",
-                style = Term.mono.copy(color = Term.prompt),
+                style = Term.text.copy(color = Term.prompt),
                 modifier = Modifier
                     .clickable { widgets.addLocation = WidgetLocation.PANEL; vm.openScreen(Screen.WIDGET_PICKER) }
                     .heightIn(min = 48.dp)
@@ -168,7 +168,7 @@ fun WidgetPanel(vm: TerminalViewModel) {
             )
             Text(
                 "Edit",
-                style = Term.mono.copy(color = Term.dim),
+                style = Term.text.copy(color = Term.dim),
                 modifier = Modifier
                     .clickable { vm.openScreen(Screen.WIDGETS) }
                     .heightIn(min = 48.dp)
@@ -179,7 +179,7 @@ fun WidgetPanel(vm: TerminalViewModel) {
         if (panel.isEmpty()) {
             Text(
                 "No widgets here yet · tap + Add, or long-press a widget on home and move it to this page",
-                style = Term.mono.copy(color = Term.dim),
+                style = Term.text.copy(color = Term.dim),
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp),
             )
             return@Column
@@ -198,7 +198,7 @@ fun WidgetPanel(vm: TerminalViewModel) {
                     ) { why ->
                         Text(
                             "[$why] ${w.packageName}",
-                            style = Term.mono.copy(color = Term.dim),
+                            style = Term.text.copy(color = Term.dim),
                             modifier = Modifier.fillMaxWidth().alpha(0.7f).padding(vertical = 6.dp, horizontal = 4.dp),
                         )
                     }

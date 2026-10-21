@@ -151,7 +151,7 @@ private fun KeyRow(spec: String, rowHeight: Dp, onKey: (KeyBarKey) -> Unit, onTe
             } else {
                 Text(
                     named?.label ?: token,
-                    style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold),
+                    style = Term.text.copy(color = Term.fg, fontWeight = FontWeight.Bold),
                     modifier = Modifier.padding(horizontal = 8.dp),
                 )
             }

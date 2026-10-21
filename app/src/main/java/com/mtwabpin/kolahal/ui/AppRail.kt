@@ -394,7 +394,7 @@ fun AppSelector(
             ) {
                 Text(
                     letter.toString(),
-                    style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize + 8).sp),
+                    style = Term.text.copy(color = Term.prompt, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize + 8).sp),
                 )
             }
         }
@@ -549,7 +549,7 @@ fun AppSelector(
                         alpha = if (open && !touching) 0.35f else 1f
                     },
             ) {
-                val small = Term.mono.copy(color = Term.dim.copy(alpha = 0.45f), fontSize = 8.sp, lineHeight = 9.sp)
+                val small = Term.text.copy(color = Term.dim.copy(alpha = 0.45f), fontSize = 8.sp, lineHeight = 9.sp)
                 if (!touching) Text("A", style = small)
                 Box(
                     Modifier
@@ -609,20 +609,20 @@ private fun SelectorRow(
     ) {
         Text(
             if (entry.sectionStart) entry.section.toString() else "",
-            style = Term.mono.copy(color = if (entry.favourite) Term.prompt.copy(alpha = 0.7f) else Term.dim.copy(alpha = 0.7f), fontSize = (Term.fontSize - 3).sp),
+            style = Term.text.copy(color = if (entry.favourite) Term.prompt.copy(alpha = 0.7f) else Term.dim.copy(alpha = 0.7f), fontSize = (Term.fontSize - 3).sp),
             modifier = Modifier.width(26.dp).padding(start = 10.dp),
             maxLines = 1,
         )
         if (app.profile.kind != ProfileKind.PERSONAL) {
             Text(
                 "[${app.profile.kind.tag}] ",
-                style = Term.mono.copy(color = Term.profileColor(app.profile.kind), fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp),
+                style = Term.text.copy(color = Term.profileColor(app.profile.kind), fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp),
             )
         }
-        if (pinned && !entry.favourite) Text("★ ", style = Term.mono.copy(color = Term.prompt.copy(alpha = 0.7f)))
+        if (pinned && !entry.favourite) Text("★ ", style = Term.text.copy(color = Term.prompt.copy(alpha = 0.7f)))
         Text(
             app.label,
-            style = Term.mono.copy(
+            style = Term.text.copy(
                 color = if (focused) Term.prompt else Term.fg,
                 fontWeight = if (focused) FontWeight.Bold else FontWeight.Normal,
             ),

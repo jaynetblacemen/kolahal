@@ -101,7 +101,7 @@ fun DayDivider(row: LogRow.Day) {
     }
     Text(
         "── $label ──",
-        style = Term.mono.copy(color = Term.dim, fontSize = (Term.fontSize - 1).sp),
+        style = Term.text.copy(color = Term.dim, fontSize = (Term.fontSize - 1).sp),
         modifier = Modifier.padding(top = 14.dp, bottom = 4.dp),
     )
 }
@@ -111,7 +111,7 @@ fun DayDivider(row: LogRow.Day) {
 fun UnreadDivider(row: LogRow.Unread) {
     Text(
         "── ${row.count} new since you left ──",
-        style = Term.mono.copy(color = Term.prompt, fontSize = (Term.fontSize - 1).sp, fontWeight = FontWeight.Bold),
+        style = Term.text.copy(color = Term.prompt, fontSize = (Term.fontSize - 1).sp, fontWeight = FontWeight.Bold),
         modifier = Modifier.padding(top = 14.dp, bottom = 2.dp),
     )
 }
@@ -179,7 +179,7 @@ fun LogLine(
     if (swipe.value != 0f) {
         Text(
             if (swipe.value > 0) "⧉ Copy" else "Delete ✕",
-            style = Term.mono.copy(color = if (swipe.value > 0) Term.prompt else Term.error),
+            style = Term.text.copy(color = if (swipe.value > 0) Term.prompt else Term.error),
             modifier = Modifier.matchParentSize().wrapContentHeight().padding(horizontal = 16.dp),
             textAlign = if (swipe.value > 0) androidx.compose.ui.text.style.TextAlign.Start else androidx.compose.ui.text.style.TextAlign.End,
         )
@@ -241,9 +241,9 @@ fun LogLine(
                 desc != null -> TwoColumns(entry, desc)
                 else -> {
                     val text = remember(entry, Term.palette, charWidth, row.unread, iconKey) { renderLine(entry, charWidth, row.unread, iconKey != null) }
-                    if (image == null) Text(text, style = Term.mono, inlineContent = inline)
+                    if (image == null) Text(text, style = Term.text, inlineContent = inline)
                     else Column {
-                        if (entry.text.isNotEmpty()) Text(text, style = Term.mono, inlineContent = inline)
+                        if (entry.text.isNotEmpty()) Text(text, style = Term.text, inlineContent = inline)
                         LogImage(image, Modifier.padding(vertical = 4.dp))
                     }
                 }
@@ -253,7 +253,7 @@ fun LogLine(
             Spacer(Modifier.width(8.dp))
             Text(
                 remember(entry.ts, timeFormat) { timeFormat.format(Date(entry.ts)) },
-                style = Term.mono.copy(color = Term.dim, fontSize = (Term.fontSize - 2).sp),
+                style = Term.text.copy(color = Term.dim, fontSize = (Term.fontSize - 2).sp),
                 // Beside the text line, not halfway down the image.
                 modifier = Modifier.then(if (image != null) Modifier.align(Alignment.Top) else Modifier).padding(top = 2.dp),
             )
@@ -273,10 +273,10 @@ private fun TwoColumns(entry: LogEntry, desc: String) {
     Row(Modifier.fillMaxWidth()) {
         Text(
             entry.text,
-            style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold),
+            style = Term.text.copy(color = Term.fg, fontWeight = FontWeight.Bold),
             modifier = Modifier.weight(0.46f).padding(end = 8.dp),
         )
-        Text(desc, style = Term.mono.copy(color = Term.dim), modifier = Modifier.weight(0.54f))
+        Text(desc, style = Term.text.copy(color = Term.dim), modifier = Modifier.weight(0.54f))
     }
 }
 
@@ -286,7 +286,7 @@ private fun TwoColumns(entry: LogEntry, desc: String) {
 private fun AppGrid(apps: List<AppEntry>, onTap: (AppEntry) -> Unit, onLongPress: (AppEntry) -> Unit) {
     val haptics = LocalHapticFeedback.current
     if (apps.isEmpty()) {
-        Text("(apps no longer installed)", style = Term.mono.copy(color = Term.dim))
+        Text("(apps no longer installed)", style = Term.text.copy(color = Term.dim))
         return
     }
     FlowRow(
@@ -314,11 +314,11 @@ private fun AppGrid(apps: List<AppEntry>, onTap: (AppEntry) -> Unit, onLongPress
                 if (app.profile.kind != ProfileKind.PERSONAL) {
                     Text(
                         app.profile.kind.tag + if (app.profile.quiet) "⏸" else "",
-                        style = Term.mono.copy(color = color, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp),
+                        style = Term.text.copy(color = color, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp),
                     )
                     Spacer(Modifier.width(6.dp))
                 }
-                Text(app.label, style = Term.mono)
+                Text(app.label, style = Term.text)
             }
         }
     }
@@ -422,7 +422,7 @@ fun ActionSheet(menu: ActionMenu, onDismiss: () -> Unit) {
     ) {
         Column(Modifier.navigationBarsPadding().padding(vertical = 8.dp)) {
             // Sized with the terminal's text either way, like the icons.
-            val textStyle = if (!menu.systemFont) Term.mono else MaterialTheme.typography.bodyLarge.copy(
+            val textStyle = if (!menu.systemFont) Term.text else MaterialTheme.typography.bodyLarge.copy(
                 fontSize = (Term.fontSize + 2).sp,
                 lineHeight = ((Term.fontSize + 2) * 1.4f).sp,
             )
