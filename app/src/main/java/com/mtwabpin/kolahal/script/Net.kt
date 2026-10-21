@@ -21,10 +21,17 @@ object Net {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .callTimeout(30, TimeUnit.SECONDS)
-            .socketFactory(GuardedSocketFactory)
+            .socketFactory(GuardedSocketFactory(publicOnly = false))
             .addNetworkInterceptor(reachGuard)
             .build()
     }
+
+    /**
+     * For [Reach.PUBLIC] requests (scripts without `@uses lan`, pictures in the log): refuses this
+     * phone and the local network before connecting, redirects included. The [reachGuard] only sees
+     * a hop once it is connected, which would still let a script learn which local ports are open.
+     */
+    val publicClient: OkHttpClient by lazy { client.newBuilder().socketFactory(GuardedSocketFactory(publicOnly = true)).build() }
 
     /**
      * Whether Kolahal may reach the local network: Android 17's runtime permission, set at start-up
@@ -44,23 +51,26 @@ object Net {
     }
 
     // Android lets a blocked connection hang until the connect timeout; this says why straight away.
-    private class GuardedSocket : Socket() {
+    // [publicOnly]: no connection to this phone or the local network at all.
+    private class GuardedSocket(private val publicOnly: Boolean) : Socket() {
         override fun connect(endpoint: SocketAddress?, timeout: Int) {
             val target = endpoint as? InetSocketAddress
             val address = target?.address
+            if (publicOnly && address != null && isLocal(address)) throw IOException("${target.hostString} is this phone or the local network: not allowed here")
             if (address != null && needsPermission(address) && !localNetworkAllowed()) throw LocalNetworkBlocked(target.hostString)
             super.connect(endpoint, timeout)
         }
     }
 
-    private object GuardedSocketFactory : SocketFactory() {
-        override fun createSocket(): Socket = GuardedSocket()
-        override fun createSocket(host: String, port: Int): Socket = GuardedSocket().apply { connect(InetSocketAddress(host, port)) }
+    private class GuardedSocketFactory(private val publicOnly: Boolean) : SocketFactory() {
+        private fun socket() = GuardedSocket(publicOnly)
+        override fun createSocket(): Socket = socket()
+        override fun createSocket(host: String, port: Int): Socket = socket().apply { connect(InetSocketAddress(host, port)) }
         override fun createSocket(host: String, port: Int, localHost: InetAddress, localPort: Int): Socket =
-            GuardedSocket().apply { bind(InetSocketAddress(localHost, localPort)); connect(InetSocketAddress(host, port)) }
-        override fun createSocket(host: InetAddress, port: Int): Socket = GuardedSocket().apply { connect(InetSocketAddress(host, port)) }
+            socket().apply { bind(InetSocketAddress(localHost, localPort)); connect(InetSocketAddress(host, port)) }
+        override fun createSocket(host: InetAddress, port: Int): Socket = socket().apply { connect(InetSocketAddress(host, port)) }
         override fun createSocket(address: InetAddress, port: Int, localAddress: InetAddress, localPort: Int): Socket =
-            GuardedSocket().apply { bind(InetSocketAddress(localAddress, localPort)); connect(InetSocketAddress(address, port)) }
+            socket().apply { bind(InetSocketAddress(localAddress, localPort)); connect(InetSocketAddress(address, port)) }
     }
 
     /** How far a request may reach. Checked on every hop once connected, redirects included. */

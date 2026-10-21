@@ -105,7 +105,7 @@ object LogImages {
         val ok = runCatching {
             // A picture a script names is drawn by home: never from this phone or the local network.
             val request = Net.reach(okhttp3.Request.Builder(), Net.Reach.PUBLIC).url(httpUrl).header("User-Agent", Net.USER_AGENT).build()
-            Net.client.newCall(request).execute().use { resp ->
+            Net.publicClient.newCall(request).execute().use { resp ->
                 resp.isSuccessful && resp.body.contentLength() <= MAX_BYTES &&
                     resp.body.byteStream().use { input -> tmp.outputStream().use { out -> copyLimited(input, out) } }
             }

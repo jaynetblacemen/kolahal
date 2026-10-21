@@ -169,7 +169,7 @@ class HostApi(
             .method(m, if (m != "GET" && m != "HEAD") reqBody else null)
             .build()
         try {
-            client.newCall(request).execute().use { resp ->
+            (if (allowsLan) client else Net.publicClient).newCall(request).execute().use { resp ->
                 return mapOf(
                     "status" to resp.code,
                     "ok" to resp.isSuccessful,
