@@ -942,48 +942,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun importFont(uri: Uri?) {
         if (uri == null) return
         fileOp("font import") {
-            val resolver = context.contentResolver
-            var name: String? = null
-            var size = -1L
-            resolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME, android.provider.OpenableColumns.SIZE), null, null, null)?.use { c ->
-                if (c.moveToFirst()) {
-                    name = c.getString(0)
-                    if (!c.isNull(1)) size = c.getLong(1)
-                }
-            }
-            val named = name?.substringAfterLast('.', "")?.lowercase()
-            // Some providers give no display name; then the file's own header decides.
-            if (named != null && named != "ttf" && named != "otf") throw IllegalArgumentException("pick a .ttf or .otf file (got $name)")
-            if (size > TermFonts.MAX_BYTES) throw IllegalArgumentException("font is larger than 10 MB")
-            val dir = TermFonts.dir(context).apply { mkdirs() }
-            val tmp = java.io.File(dir, "import.tmp")
-            try {
-                val input = resolver.openInputStream(uri) ?: throw java.io.IOException("cannot open the file")
-                input.use { inp ->
-                    tmp.outputStream().use { out ->
-                        val buf = ByteArray(64 * 1024)
-                        var total = 0L
-                        while (true) {
-                            val n = inp.read(buf)
-                            if (n < 0) break
-                            total += n
-                            if (total > TermFonts.MAX_BYTES) throw IllegalArgumentException("font is larger than 10 MB")
-                            out.write(buf, 0, n)
-                        }
-                    }
-                }
-                val magic = tmp.inputStream().use { s -> ByteArray(4).also { s.read(it) } }
-                val ext = when {
-                    magic.contentEquals(byteArrayOf(0x4F, 0x54, 0x54, 0x4F)) -> "otf" // "OTTO": CFF outlines
-                    magic.contentEquals(byteArrayOf(0, 1, 0, 0)) || magic.contentEquals("true".toByteArray()) -> "ttf"
-                    else -> throw IllegalArgumentException("${name ?: "the file"} is not a TrueType/OpenType font")
-                }
-                if (TermFonts.loadTypeface(tmp) == null) throw IllegalArgumentException("${name ?: "the file"} is not a font Android can load")
-                listOf("custom.ttf", "custom.otf").forEach { java.io.File(dir, it).delete() }
-                if (!tmp.renameTo(java.io.File(dir, "custom.$ext"))) throw java.io.IOException("could not save the font")
-            } finally {
-                tmp.delete()
-            }
+            val name = TermFonts.importFrom(context, uri)
             fontErrorShown = false
             withContext(Dispatchers.Main) {
                 TermFonts.revision++

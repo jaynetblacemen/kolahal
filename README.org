@@ -344,7 +344,7 @@ kolahal/
 | Package          | What it holds                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Start with                                    |
 |------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------|
 | (root)           | =LauncherApp=: process start-up (repositories, receivers, schedulers). =MainActivity=: the HOME activity, screen switching, widgets pager, permission and file pickers                                                                                                                                                                                                                                                                                                                                                                                   | =LauncherApp.kt=, =MainActivity.kt=           |
-| =terminal/=      | The terminal's brain. =TerminalViewModel= owns UI state, suggestions, taps and long-press menus; =CommandProcessor= parses every command and runs it, itself or through a command group                                                                                                                                                                                                                                                                                                                                                                  | =TerminalViewModel.kt=, =CommandProcessor.kt= |
+| =terminal/=      | The terminal's brain. =TerminalViewModel= owns UI state, with =Completer= (suggestions) and =LogLineActions= (taps and long-press menus); =CommandProcessor= parses every command and runs it, itself or through a command group                                                                                                                                                                                                                                                                                                                         | =TerminalViewModel.kt=, =CommandProcessor.kt= |
 |                  | Command groups and helpers: =AppCommands= (apps, open, pins, profiles, usage), =ScriptCommands= (script, status), =FeedCommands= (feed, rss, notifs), =PeopleCommands= (call, sms, contacts, calls), =ConfigCommands= (config, theme, font), =ProductivityCommands= (todo, notes, remind, timer, agenda), =CommandParsing= (arguments, intervals, times), =Pipes= (shell-style filters such as grep, head and count after a command), =InstantRun= (run without Enter), =Units= (calculator), =SetupChecks=, =LogRows= (grouping, dimming, day dividers) |                                               |
 | =ui/=            | Compose screens. =TerminalScreen= (the home screen's layout; its parts are in =TerminalHeader=, =Prompt=, =KeyBar= and =SuggestionList=), =LogView= (one log line and the action sheet), =AppRail= (right-edge app selector), =SettingsScreen=, =FeedsScreen=, =ScriptsScreen= / =ScriptEditor=, =WidgetsScreen= / =WidgetPickerScreen= (=HostedWidgets=: widgets on home and the widgets page), =SetupScreen=. =Theme= is the terminal palette, =GuiTheme= the Material 3 theme for GUI screens, =GuiComponents= the pieces they share                  | =TerminalScreen.kt=                           |
 | =data/=          | Storage and settings. =Config= (every =config= key, its default and help text: =Keys=), =Db= (the shared SQLite database), =LogRepository= (the log), =ScriptRepository=, =KvStore= (a small key/value store per scope), =Backup= / =FullBackup= (export and import)                                                                                                                                                                                                                                                                                     | =Config.kt=                                   |
@@ -365,7 +365,7 @@ kolahal/
 ** How a typed line flows
 
 1. =ui/Prompt.kt= shows the prompt. Every keystroke updates =TerminalViewModel.input=, and
-   =TerminalViewModel.suggestions()= builds the suggestion list (commands, apps, then
+   =Completer.suggestions()= builds the suggestion list (commands, apps, then
    per-command arguments, usage-line options and history).
 2. Enter (or =InstantRun=, a tap on a suggestion or a log line) calls =CommandProcessor.run(line)= on
    the view model's single IO dispatcher.
@@ -375,7 +375,7 @@ kolahal/
    script command, or an app launch as the fallback.
 4. Commands write their output with =LogRepository.add= (=info=, =error=, =out= helpers). Each line
    carries a =LogContext= (package, URL, phone number, run command …) that decides what a tap or
-   long-press on it does later (=TerminalViewModel.onTap= / =actionsFor=).
+   long-press on it does later (=LogLineActions.onTap= / =actionsFor=).
 5. The repository bumps its version; the view model reloads, =LogRows.buildRows= groups and dims the
    lines off the main thread, and =LogView.LogLine= renders them.
 
@@ -404,13 +404,13 @@ A backup (=Settings → Export everything=) bundles all of the above into one JS
 - New command :: add a =CommandSpec= to =CommandProcessor.COMMANDS= (help and completion read it), a
   branch in =execute= (or in its group's =run=, such as =AppCommands.run= with its =NAMES=), and the
   name to a =HELP_SECTIONS= group. Argument completion: options in the usage line complete
-  automatically; anything smarter goes in =TerminalViewModel.argSuggestions=.
+  automatically; anything smarter goes in =Completer.argSuggestions=.
 - New setting :: define it in =Keys= (=data/Config.kt=) and add it to =Keys.ALL=. Put it in a page in
   =ui/SettingsCatalog.kt= (=CATEGORIES=) with a title in =TITLES=; unplaced keys appear under "More".
   Document it in =docs/src/content/docs/reference/config.md=.
 - New script API :: add it to =HostApi=, bind it in both =LuaEngine= and =JsEngine=, and describe it in
   =ApiDocs= (=ApiDocsTest= checks that the names match).
-- Log line behaviour :: the tap and long-press logic is in =TerminalViewModel.onTap= / =actionsFor=,
+- Log line behaviour :: the tap and long-press logic is in =LogLineActions.onTap= / =actionsFor=,
   keyed on =LogContext= values. Rendering is in =ui/LogView.kt=.
 
 * Build
