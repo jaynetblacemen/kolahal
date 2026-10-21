@@ -37,10 +37,12 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,6 +55,8 @@ import com.mtwabpin.kolahal.terminal.TerminalViewModel
 internal fun Prompt(
     vm: TerminalViewModel,
     focus: FocusRequester,
+    /** Shown read-only instead of what's typed (home seen from Settings as if typing). */
+    previewText: String? = null,
     imeSuggestions: Boolean,
     onFocus: (Boolean) -> Unit,
     height: Dp,
@@ -100,8 +104,9 @@ internal fun Prompt(
                 .wrapContentHeight(),
         )
         BasicTextField(
-            value = vm.input,
-            onValueChange = vm::onInputChange,
+            value = previewText?.let { TextFieldValue(it, TextRange(it.length)) } ?: vm.input,
+            onValueChange = if (previewText == null) vm::onInputChange else { _ -> },
+            readOnly = previewText != null,
             singleLine = true,
             textStyle = promptStyle,
             cursorBrush = SolidColor(Term.prompt),
@@ -137,7 +142,7 @@ internal fun Prompt(
         // Drawn icons like the header's: ✕ and ⌨ as text come from a fallback symbol font and look hand-drawn.
         val iconSize = (Term.fontSize + 6).dp
         // Clear: touch typing has no Esc when the key bar is hidden.
-        if (vm.input.text.isNotEmpty()) {
+        if ((previewText ?: vm.input.text).isNotEmpty()) {
             // Its target reaches left; the icon sits at its right end, close to ⌨.
             Box(
                 contentAlignment = Alignment.CenterEnd,

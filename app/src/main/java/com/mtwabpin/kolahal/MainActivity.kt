@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -154,12 +155,25 @@ class MainActivity : ComponentActivity() {
                 } else {
                     val screen by vm.screen.collectAsStateWithLifecycle()
                     when (screen) {
-                        Screen.SETTINGS -> SettingsScreen(
-                            vm,
-                            onExportBackup = { exportBackup.launch(Backup.FILE_NAME) },
-                            onImportBackup = { importBackup.launch(arrayOf("application/json", "text/*", "application/octet-stream")) },
-                            onImportFont = ::launchFontPicker,
-                        )
+                        Screen.SETTINGS -> androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                            // A look setting being changed: home is drawn underneath, as it will look, and
+                            // Settings fades away around the control. Home only looks: it takes no touches.
+                            val peek by vm.peek.collectAsStateWithLifecycle()
+                            peek?.let { p ->
+                                TerminalScreen(vm, onRequestNotifications = {}, onPickFolder = {}, preview = p)
+                                androidx.compose.foundation.layout.Box(
+                                    androidx.compose.ui.Modifier.fillMaxSize().pointerInput(Unit) {
+                                        awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
+                                    },
+                                )
+                            }
+                            SettingsScreen(
+                                vm,
+                                onExportBackup = { exportBackup.launch(Backup.FILE_NAME) },
+                                onImportBackup = { importBackup.launch(arrayOf("application/json", "text/*", "application/octet-stream")) },
+                                onImportFont = ::launchFontPicker,
+                            )
+                        }
                         Screen.SCRIPTS -> ScriptsScreen(
                             vm,
                             onImportFiles = { importScripts.launch(arrayOf("*/*")) },

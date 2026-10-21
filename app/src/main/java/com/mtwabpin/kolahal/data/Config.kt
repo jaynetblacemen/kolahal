@@ -152,10 +152,23 @@ class Config private constructor(private val prefs: SharedPreferences) {
     // change listener is only weakly referenced by Android; R8 dropped our strong reference in release
     // builds, so the listener was garbage-collected and settings changes stopped applying.)
 
+    /** Values shown but not saved: a slider being dragged in Settings, seen on home underneath. */
+    private val previews = java.util.concurrent.ConcurrentHashMap<String, String>()
+
     @Suppress("UNCHECKED_CAST")
     operator fun <T> get(key: ConfigKey<T>): T {
-        val raw = prefs.getString(key.key, null) ?: return key.default
+        val raw = previews[key.key] ?: prefs.getString(key.key, null) ?: return key.default
         return key.parse(raw) ?: key.default
+    }
+
+    /** Shows [raw] for [key] everywhere without saving it; null goes back to the saved value. */
+    fun preview(key: ConfigKey<*>, raw: String?) {
+        if (raw == null) {
+            if (previews.remove(key.key) == null) return
+        } else {
+            if (previews.put(key.key, raw) == raw) return
+        }
+        _version.update { it + 1 }
     }
 
     /** Returns false if [raw] is not a valid value for [key]. */

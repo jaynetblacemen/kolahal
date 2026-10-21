@@ -310,6 +310,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun showHidden() = io { logs.unhide() }
 
     fun onPause() {
+        _peek.value = null
         _entries.value.lastOrNull()?.let { logs.seenUpTo = it.id }
         pausedAt = System.currentTimeMillis()
     }
@@ -728,6 +729,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     override fun openScreen(screen: Screen) {
         _notice.value = null
+        _peek.value = null
         synchronized(backStack) {
             val current = _screen.value
             if (screen == Screen.TERMINAL) backStack.clear()
@@ -1084,6 +1086,20 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     private val _homePresses = MutableStateFlow(0)
     /** Bumps on every Home press while already home; the widgets pager returns to the terminal. */
     val homePresses: StateFlow<Int> = _homePresses.asStateFlow()
+
+    /**
+     * Settings showing home through it, to see a look setting while changing it: while a slider is
+     * dragged ([key] stays visible) or the page's eye button is held ([key] null). [typing]: show home
+     * as if typing, for the key bar, prompt and suggestions.
+     */
+    data class Peek(val key: String?, val typing: Boolean)
+
+    private val _peek = MutableStateFlow<Peek?>(null)
+    val peek: StateFlow<Peek?> = _peek.asStateFlow()
+
+    fun peek(value: Peek?) {
+        _peek.value = value
+    }
 
     /** The open Settings category page; kept while a manager screen opened from it is on top. */
     val settingsCategory = mutableStateOf<String?>(null)

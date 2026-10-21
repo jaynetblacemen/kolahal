@@ -68,13 +68,20 @@ import com.mtwabpin.kolahal.terminal.UiEvent
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+/** What the prompt shows when home is seen from Settings as if typing: one letter matches plenty. */
+private const val PREVIEW_INPUT = "s"
+
+/**
+ * Home. [preview]: drawn under Settings while a look setting is changed (TerminalViewModel.Peek):
+ * it doesn't take focus, the keyboard or events, and with `typing` it looks as if [PREVIEW_INPUT] were typed.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, onPickFolder: () -> Unit) {
+fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, onPickFolder: () -> Unit, preview: TerminalViewModel.Peek? = null) {
     val entries by vm.entries.collectAsStateWithLifecycle()
     val apps by vm.apps.collectAsStateWithLifecycle()
     // An install or update may change icons: suggestions.icons loads them again.
-    LaunchedEffect(apps) { AppIcons.clear() }
+    if (preview == null) LaunchedEffect(apps) { AppIcons.clear() }
     val profiles by vm.profiles.collectAsStateWithLifecycle()
     val unlocks by vm.unlocksToday.collectAsStateWithLifecycle()
     val status by vm.status.collectAsStateWithLifecycle()
@@ -94,7 +101,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     // Read through updated state so a keyboard attached later (configChanges=keyboard) is seen.
     val currentKeyboard by rememberUpdatedState(keyboard)
     val currentHasHardwareKeyboard by rememberUpdatedState(hasHardwareKeyboard)
-    LaunchedEffect(Unit) {
+    if (preview == null) LaunchedEffect(Unit) {
         // Home pressed on another page: scroll and focus now that the terminal is here.
         vm.consumeArrival()?.let { a ->
             pinned = true
@@ -145,7 +152,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         }.collect { nearTop -> if (nearTop) vm.loadOlder() }
     }
     // Keyboard-first: grab focus straight away when a physical keyboard is attached.
-    LaunchedEffect(hasHardwareKeyboard) {
+    if (preview == null) LaunchedEffect(hasHardwareKeyboard) {
         if (hasHardwareKeyboard) runCatching { focus.requestFocus() }
     }
 
@@ -153,8 +160,9 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     val commandNames by vm.commandNames.collectAsStateWithLifecycle()
     val prefsVersion by vm.appPrefsVersion.collectAsStateWithLifecycle()
     val contacts by vm.contacts.collectAsStateWithLifecycle()
-    val suggestions = remember(vm.input.text, apps, maxSuggestions, commandNames, prefsVersion, contacts) {
-        vm.suggestions(vm.input.text).take(maxSuggestions)
+    val inputText = if (preview?.typing == true) PREVIEW_INPUT else vm.input.text
+    val suggestions = remember(inputText, apps, maxSuggestions, commandNames, prefsVersion, contacts) {
+        vm.suggestions(inputText).take(maxSuggestions)
     }
     val timeMode = remember(configVersion) {
         when (config[Keys.SHOW_TIMESTAMPS]) {
@@ -170,7 +178,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     fun showMenu(title: String, id: Long?, build: () -> List<LogAction>) {
         menuScope.launch { menu = ActionMenu(title, kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { build() }, id) }
     }
-    LaunchedEffect(Unit) {
+    if (preview == null) LaunchedEffect(Unit) {
         vm.events.collect { if (it == UiEvent.ShowQuick) menu = ActionMenu("Quick actions", vm.quickActions(), null, systemFont = true) }
     }
     menu?.let { ActionSheet(it, onDismiss = { menu = null }) }
@@ -200,10 +208,10 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     ) {
         val headerCollapsed by vm.headerCollapsed.collectAsStateWithLifecycle()
         // A hardware keyboard already has these keys: the bar follows the on-screen keyboard.
-        val typing = promptFocused && WindowInsets.isImeVisible
+        val typing = if (preview != null) preview.typing else promptFocused && WindowInsets.isImeVisible
         // While searching, the header shrinks to one line: suggestions can't use the room it takes.
         // Only shown smaller; it returns as it was when the search ends.
-        val searching = typing || vm.input.text.isNotEmpty()
+        val searching = typing || inputText.isNotEmpty()
         val headerHidden by vm.headerHidden.collectAsStateWithLifecycle()
         val density = androidx.compose.ui.platform.LocalDensity.current
         val headerScroll = remember(vm, density) {
@@ -400,7 +408,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         // [selector] suggestions.style: list (default, bottom-anchored above the prompt) or chips.
         val suggestionsStyle = remember(configVersion) { config[Keys.SUGGESTIONS_STYLE] }
         val showIcons = remember(configVersion) { config[Keys.SUGGEST_ICONS] }
-        if (!suggestionsAuto || typing || vm.input.text.isNotEmpty()) {
+        if (!suggestionsAuto || typing || inputText.isNotEmpty()) {
             if (suggestionsStyle == "chips") {
                 SuggestionStrip(suggestions, rows = remember(configVersion) { config[Keys.SUGGESTION_ROWS] }, onPick = vm::onSuggestion, icons = showIcons)
             } else {
@@ -421,6 +429,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         Prompt(
             vm = vm,
             focus = focus,
+            previewText = if (preview?.typing == true) PREVIEW_INPUT else null,
             imeSuggestions = remember(configVersion) { config[Keys.IME_SUGGESTIONS] },
             onFocus = { promptFocused = it },
             // prompt.height in both states, so the line doesn't jump under the finger as the keyboard opens.

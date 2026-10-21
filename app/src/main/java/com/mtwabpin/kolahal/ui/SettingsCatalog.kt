@@ -74,6 +74,26 @@ internal val TITLES = mapOf(
 )
 
 /** A settings page: grouped keys (a null group title means no sub-header). */
+/**
+ * Sliders that show home through Settings while dragged, like the brightness slider in quick
+ * settings; the value is whether home is shown as if typing (key bar, prompt, suggestions).
+ */
+internal val PEEK_SLIDERS: Map<String, Boolean> = mapOf(
+    Keys.FONT_SIZE.key to false,
+    Keys.LOG_LINE_HEIGHT.key to false,
+    Keys.LOG_SPACING.key to false,
+    Keys.SELECTOR_HEIGHT.key to false,
+    Keys.WIDGETS_HEIGHT.key to false,
+    Keys.KEYBAR_HEIGHT.key to true,
+    Keys.PROMPT_HEIGHT_TYPING.key to true,
+    Keys.SUGGESTIONS.key to true,
+    Keys.SUGGESTION_ROWS.key to true,
+    Keys.CHIP_HEIGHT.key to true,
+)
+
+/** Pages with an eye button that shows home while held (the same typing flag as above). */
+internal val PEEK_PAGES: Map<String, Boolean> = mapOf("look" to false, "home" to false, "log" to false, "typing" to true)
+
 internal class Category(
     val id: String,
     val title: String,

@@ -4,7 +4,12 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,6 +24,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
@@ -86,6 +96,9 @@ fun SettingsScreen(
     var openId by vm.settingsCategory
     var query by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
     val open = allCategories().firstOrNull { it.id == openId }
+    // Showing home through Settings (a slider dragged, the eye held): all but that slider fades away.
+    val peek by vm.peek.collectAsStateWithLifecycle()
+    val shown by androidx.compose.animation.core.animateFloatAsState(if (peek == null) 1f else 0f, label = "peek")
     // Back closes a category page first, then the search, then Settings.
     BackHandler {
         when {
@@ -96,20 +109,27 @@ fun SettingsScreen(
     }
 
     GuiTheme(useSystemColors) {
+      Box(Modifier.fillMaxSize()) {
         val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
         val snackbar = remember { SnackbarHostState() }
         LaunchedEffect(notice) { notice?.let { snackbar.showSnackbar(it) } }
 
         Scaffold(
             modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = shown),
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
                 LargeFlexibleTopAppBar(
                     title = { Text(open?.title ?: "Settings") },
                     subtitle = { Text(open?.subtitle ?: "Kolahal") },
                     navigationIcon = { BackButton { if (open != null) openId = null else vm.closeScreen() } },
+                    actions = {
+                        PEEK_PAGES[open?.id]?.let { typing ->
+                            PeekButton { holding -> vm.peek(if (holding) TerminalViewModel.Peek(null, typing) else null) }
+                        }
+                    },
                     scrollBehavior = scroll,
+                    modifier = Modifier.graphicsLayer { alpha = shown },
                 )
             },
         ) { padding ->
@@ -123,21 +143,24 @@ fun SettingsScreen(
                 if (open != null) {
                     open.manage?.let { (title, subtitle, screen) ->
                         item(key = "manage:${open.id}") {
-                            Spacer(Modifier.height(8.dp))
-                            ActionGroup(listOf(Action(open.icon, title, subtitle, chevron = true) { vm.openScreen(screen) }))
+                            PeekFade(peek) {
+                                Spacer(Modifier.height(8.dp))
+                                ActionGroup(listOf(Action(open.icon, title, subtitle, chevron = true) { vm.openScreen(screen) }))
+                            }
                         }
                     }
                     for ((title, keys) in open.groups) {
                         if (keys.isEmpty()) continue
-                        item(key = "h:${open.id}:$title") { if (title != null) GroupHeader(title) else Spacer(Modifier.height(8.dp)) }
+                        item(key = "h:${open.id}:$title") { PeekFade(peek) { if (title != null) GroupHeader(title) else Spacer(Modifier.height(8.dp)) } }
                         keys.forEachIndexed { index, key ->
-                            item(key = key.key) { SettingItem(vm, config, key, version, index, keys.size, onImportFont) }
+                            item(key = key.key) { PeekFade(peek, keep = peek?.key == key.key) { SettingItem(vm, config, key, version, index, keys.size, onImportFont) } }
                         }
                     }
                     return@LazyColumn
                 }
 
                 item(key = "search") {
+                  PeekFade(peek) {
                     OutlinedTextField(
                         value = query,
                         onValueChange = { query = it },
@@ -151,6 +174,7 @@ fun SettingsScreen(
                         shape = MaterialTheme.shapes.extraLarge,
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
                     )
+                  }
                 }
 
                 if (query.isNotBlank()) {
@@ -165,9 +189,9 @@ fun SettingsScreen(
                         }
                     }
                     hits.groupBy({ it.first }, { it.second }).forEach { (c, keys) ->
-                        item(key = "h:hit:${c.id}") { GroupHeader(c.title) }
+                        item(key = "h:hit:${c.id}") { PeekFade(peek) { GroupHeader(c.title) } }
                         keys.forEachIndexed { index, key ->
-                            item(key = "hit:" + key.key) { SettingItem(vm, config, key, version, index, keys.size, onImportFont) }
+                            item(key = "hit:" + key.key) { PeekFade(peek, keep = peek?.key == key.key) { SettingItem(vm, config, key, version, index, keys.size, onImportFont) } }
                         }
                     }
                     return@LazyColumn
@@ -199,7 +223,52 @@ fun SettingsScreen(
                 }
             }
         }
+        if (peek != null) PeekHint(Modifier.align(Alignment.TopCenter))
+      }
     }
+}
+
+/** Fades away while Settings shows home through it, unless it is the setting being changed ([keep]). */
+@Composable
+private fun PeekFade(peek: TerminalViewModel.Peek?, keep: Boolean = false, content: @Composable () -> Unit) {
+    val alpha by androidx.compose.animation.core.animateFloatAsState(if (peek == null || keep) 1f else 0f, label = "fade")
+    Box(Modifier.graphicsLayer { this.alpha = alpha }) { content() }
+}
+
+/** The eye in the top bar: home shows while it is held. */
+@Composable
+private fun PeekButton(onHold: (Boolean) -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .semantics { contentDescription = "Hold to see home" }
+            .pointerInput(Unit) {
+                detectTapGestures(onPress = {
+                    onHold(true)
+                    tryAwaitRelease()
+                    onHold(false)
+                })
+            },
+    ) {
+        Icon(painterResource(R.drawable.ic_visibility), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+    }
+}
+
+/** Shown at the top while home shows through Settings. */
+@Composable
+private fun PeekHint(modifier: Modifier) {
+    Text(
+        "Let go to come back",
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = modifier
+            .statusBarsPadding()
+            .padding(top = 8.dp)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f), CircleShape)
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+    )
 }
 
 @Composable
@@ -283,10 +352,26 @@ private fun SettingItem(
                     supportingContent = {
                         Column {
                             supporting()
+                            // A look setting (PEEK_SLIDERS): while dragged, home shows through Settings at the
+                            // value under the finger, which is saved on release.
+                            val peekTyping = PEEK_SLIDERS[key.key]
+                            val interactions = remember { MutableInteractionSource() }
+                            val dragging by interactions.collectIsDraggedAsState()
+                            if (peekTyping != null) LaunchedEffect(dragging) {
+                                if (dragging) vm.peek(TerminalViewModel.Peek(key.key, peekTyping))
+                                else if (vm.peek.value?.key == key.key) vm.peek(null)
+                            }
                             Slider(
                                 state = slider,
-                                onValueChange = { current = it },
-                                onValueChangeFinished = { vm.setConfig(key, current.roundToInt().toString()) },
+                                onValueChange = {
+                                    current = it
+                                    if (peekTyping != null) config.preview(key, current.roundToInt().toString())
+                                },
+                                onValueChangeFinished = {
+                                    vm.setConfig(key, current.roundToInt().toString())
+                                    config.preview(key, null)
+                                },
+                                interactionSource = interactions,
                             )
                         }
                     },
