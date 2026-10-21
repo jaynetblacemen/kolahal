@@ -2,27 +2,39 @@ package com.mtwabpin.kolahal.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mtwabpin.kolahal.apps.AppEntry
@@ -134,4 +146,85 @@ fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppL
             }
         }
     }
+}
+
+@Composable
+internal fun SuggestionStrip(items: List<Suggestion>, rows: Int, onPick: (Suggestion) -> Unit, icons: Boolean = false) {
+    if (items.isEmpty()) return
+    val key = { _: Int, s: Suggestion -> s.key }
+    // Keep the first chip (what Enter / TAB take) in view when the matches change.
+    val first = items.first().key
+    // suggestions.rows 2: twice as many chips in reach before any sideways scrolling.
+    if (rows >= 2 && items.size > 3) {
+        val gridState = androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState()
+        LaunchedEffect(first) { gridState.scrollToItem(0) }
+        androidx.compose.foundation.lazy.staggeredgrid.LazyHorizontalStaggeredGrid(
+            state = gridState,
+            rows = androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells.Fixed(2),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height((Term.chipHeight * 2 + 6).dp)
+                .testTag("suggestions")
+                .padding(vertical = 2.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp),
+            horizontalItemSpacing = 8.dp,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            items(items.size, key = { key(it, items[it]) }) { index -> SuggestionChip(index, items[index], onPick, icons) }
+        }
+        return
+    }
+    val rowState = androidx.compose.foundation.lazy.rememberLazyListState()
+    LaunchedEffect(first) { rowState.scrollToItem(0) }
+    LazyRow(
+        state = rowState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("suggestions")
+            .padding(vertical = 4.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        itemsIndexed(items, key = key) { index, s -> SuggestionChip(index, s, onPick, icons) }
+    }
+}
+
+@Composable
+private fun SuggestionChip(index: Int, s: Suggestion, onPick: (Suggestion) -> Unit, icons: Boolean = false) {
+        run {
+            val (color, tag) = when (s) {
+                is Suggestion.App -> Term.profileColor(s.app.profile.kind) to s.app.profile.kind.tag
+                is Suggestion.Completion -> Term.dim to null
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .heightIn(min = Term.chipHeight.dp)
+                    .alpha(if (s is Suggestion.App && s.app.profile.quiet) 0.45f else 1f)
+                    // The first chip is what Enter / TAB act on: fill it so that is visible.
+                    .background(if (index == 0) color.copy(alpha = 0.18f) else Color.Transparent, RoundedCornerShape(4.dp))
+                    .border(1.dp, color.copy(alpha = if (index == 0) 0.9f else 0.6f), RoundedCornerShape(4.dp))
+                    .clickable { onPick(s) }
+                    .padding(horizontal = 12.dp, vertical = (if (Term.chipHeight < 40) 2 else 8).dp),
+            ) {
+                // suggestions.icons: the app's icon first (its badge marks work / private apps).
+                val iconSize = minOf(Term.fontSize + 6, Term.chipHeight - 4).dp
+                if (icons) {
+                    val app = (s as? Suggestion.App)?.app ?: (s as? Suggestion.Completion)?.app
+                    if (app != null) AppIcon(app, iconSize) else CommandIcon(iconSize)
+                    Spacer(Modifier.width(6.dp))
+                }
+                // Commands carry the prompt's `$`, so "maps" (command) and "Maps" (app) read apart.
+                // (With icons on, the terminal icon above takes its place.)
+                if (s is Suggestion.Completion && !icons) {
+                    Text("$ ", style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold))
+                }
+                Text(s.label, style = Term.mono.copy(color = if (s is Suggestion.App) Term.fg else Term.dim))
+                // The profile tag follows the name, as in the log.
+                if (tag != null && tag != ProfileKind.PERSONAL.tag) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(tag, style = Term.mono.copy(color = color, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp))
+                }
+            }
+        }
 }
