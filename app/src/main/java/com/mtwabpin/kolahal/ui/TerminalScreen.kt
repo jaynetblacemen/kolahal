@@ -58,8 +58,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.terminal.LogAction
 import com.mtwabpin.kolahal.terminal.LogRow
@@ -195,6 +195,11 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             .imePadding()
     ) {
         val headerCollapsed by vm.headerCollapsed.collectAsStateWithLifecycle()
+        // A hardware keyboard already has these keys: the bar follows the on-screen keyboard.
+        val typing = promptFocused && WindowInsets.isImeVisible
+        // While searching, the header shrinks to one line: suggestions can't use the room it takes.
+        // Only shown smaller; it returns as it was when the search ends.
+        val searching = typing || vm.input.text.isNotEmpty()
         val headerHidden by vm.headerHidden.collectAsStateWithLifecycle()
         val density = androidx.compose.ui.platform.LocalDensity.current
         val headerScroll = remember(vm, density) {
@@ -225,7 +230,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 androidx.compose.animation.slideOutVertically { -it },
         ) {
             androidx.compose.animation.AnimatedContent(
-                targetState = headerCollapsed,
+                targetState = headerCollapsed || searching,
                 transitionSpec = {
                     (androidx.compose.animation.slideInVertically { -it / 3 } + androidx.compose.animation.fadeIn())
                         .togetherWith(androidx.compose.animation.slideOutVertically { -it / 3 } + androidx.compose.animation.fadeOut())
@@ -260,10 +265,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             }
         }
         // widgets.home: widgets placed on home; they fold away with the header.
-        HomeWidgets(vm, visible = !headerCollapsed)
+        HomeWidgets(vm, visible = !headerCollapsed && !searching)
         val hiddenLines by vm.hiddenLines.collectAsStateWithLifecycle()
-        // A hardware keyboard already has these keys: the bar follows the on-screen keyboard.
-        val typing = promptFocused && WindowInsets.isImeVisible
         // The log and the suggestions share what the header, key bar and prompt leave. Those are
         // measured first, so a long suggestion list can't push the prompt off the screen.
         Column(Modifier.weight(1f).fillMaxWidth()) {
@@ -355,7 +358,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                     .border(1.dp, Term.prompt.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
                     .clickable(onClickLabel = "jump to the newest lines") { pinned = true; scope.launch { listState.animateScrollToItem(0) } },
             ) {
-                Text("↓", style = Term.mono.copy(color = Term.prompt, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize + 4).sp))
+                TintedIcon(R.drawable.ic_arrow_down, Term.prompt, 24.dp)
             }
         }
         // [selector] selector.rail: fluid full-list app selector on the log's right edge, keyboard down only.

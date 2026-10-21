@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -86,7 +85,8 @@ internal fun Prompt(
             )
             .clickable(onClick = onTapPrompt)
             // Vertical room comes from [height] (centred), so small values really shrink the line.
-            .padding(horizontal = 12.dp, vertical = 2.dp),
+            // No end padding: the ⌨ target reaches the screen edge and pads its icon itself.
+            .padding(start = 12.dp, top = 2.dp, bottom = 2.dp),
     ) {
         // Tap `$`: quick actions (settings, battery, profiles, …) within thumb reach.
         Text(
@@ -138,13 +138,14 @@ internal fun Prompt(
         val iconSize = (Term.fontSize + 6).dp
         // Clear: touch typing has no Esc when the key bar is hidden.
         if (vm.input.text.isNotEmpty()) {
+            // Its target reaches left; the icon sits at its right end, close to ⌨.
             Box(
-                contentAlignment = Alignment.Center,
+                contentAlignment = Alignment.CenterEnd,
                 modifier = Modifier
                     .testTag("prompt-clear")
-                    .widthIn(min = 44.dp)
                     .fillMaxHeight()
-                    .clickable(onClickLabel = "clear the prompt") { vm.escape() },
+                    .clickable(onClickLabel = "clear the prompt") { vm.escape() }
+                    .padding(start = 16.dp, end = 8.dp),
             ) {
                 Image(
                     painterResource(R.drawable.ic_close),
@@ -154,15 +155,15 @@ internal fun Prompt(
                 )
             }
         }
-        // Key bar toggle (keybar.show); dim while the bar is off. Flush right, in line with the log's edge;
-        // the touch target still reaches to its left.
+        // Key bar toggle (keybar.show); dim while the bar is off. The icon lines up with the log's
+        // right edge; the touch target reaches the screen edge.
         Box(
             contentAlignment = Alignment.CenterEnd,
             modifier = Modifier
                 .testTag("keybar-toggle")
-                .widthIn(min = 44.dp)
                 .fillMaxHeight()
-                .clickable(onClickLabel = "toggle key bar", onClick = onToggleKeyBar),
+                .clickable(onClickLabel = "toggle key bar", onClick = onToggleKeyBar)
+                .padding(start = 8.dp, end = 12.dp),
         ) {
             Image(
                 painterResource(R.drawable.ic_keyboard),

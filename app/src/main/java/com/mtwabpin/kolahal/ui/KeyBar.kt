@@ -1,5 +1,6 @@
 package com.mtwabpin.kolahal.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -27,16 +28,20 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.mtwabpin.kolahal.R
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** Named keys the touch key bar understands; anything else in the spec is inserted literally. */
@@ -47,6 +52,23 @@ enum class KeyBarKey(val label: String) {
     companion object {
         fun of(token: String) = entries.firstOrNull { it.name.equals(token, ignoreCase = true) }
     }
+}
+
+/**
+ * Drawn icons for the symbol keys (ESC and TAB stay words): as text, ⇤ ⏎ ⌫ and the like come from
+ * fallback fonts and look uneven. ⇤ is ⇥ mirrored.
+ */
+private fun KeyBarKey.icon(): Int? = when (this) {
+    KeyBarKey.UP -> R.drawable.ic_arrow_up
+    KeyBarKey.DOWN -> R.drawable.ic_arrow_down
+    KeyBarKey.LEFT -> R.drawable.ic_arrow_back
+    KeyBarKey.RIGHT -> R.drawable.ic_arrow_forward
+    KeyBarKey.HOME, KeyBarKey.END -> R.drawable.ic_keyboard_tab
+    KeyBarKey.ENTER -> R.drawable.ic_keyboard_return
+    KeyBarKey.KBD -> R.drawable.ic_keyboard
+    KeyBarKey.SPACE -> R.drawable.ic_space_bar
+    KeyBarKey.BKSP -> R.drawable.ic_backspace
+    KeyBarKey.ESC, KeyBarKey.TAB -> null
 }
 
 /** Marker for a cancelled key press (distinct from the timeout's null). */
@@ -115,11 +137,24 @@ private fun KeyRow(spec: String, rowHeight: Dp, onKey: (KeyBarKey) -> Unit, onTe
                 },
         ) {
             // Padding inside the touch area (after pointerInput), so the whole key is tappable.
-            Text(
-                named?.label ?: token,
-                style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold),
-                modifier = Modifier.padding(horizontal = 8.dp),
-            )
+            val icon = named?.icon()
+            if (icon != null) {
+                Image(
+                    painterResource(icon),
+                    contentDescription = named.name.lowercase(),
+                    colorFilter = ColorFilter.tint(Term.fg),
+                    modifier = Modifier
+                        .padding(horizontal = 8.dp)
+                        .size((Term.fontSize + 4).dp)
+                        .then(if (named == KeyBarKey.HOME) Modifier.scale(-1f, 1f) else Modifier),
+                )
+            } else {
+                Text(
+                    named?.label ?: token,
+                    style = Term.mono.copy(color = Term.fg, fontWeight = FontWeight.Bold),
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
+            }
         }
     }
 

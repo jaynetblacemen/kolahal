@@ -142,8 +142,16 @@ fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppL
                         )
                     }
                 }
-                if (first) Text("⏎", style = Term.mono.copy(color = Term.dim), modifier = Modifier.padding(horizontal = 12.dp))
-                else Spacer(Modifier.width(12.dp))
+                if (first) {
+                    androidx.compose.foundation.Image(
+                        androidx.compose.ui.res.painterResource(com.mtwabpin.kolahal.R.drawable.ic_keyboard_return),
+                        contentDescription = "Enter",
+                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Term.dim),
+                        modifier = Modifier.padding(horizontal = 12.dp).size((Term.fontSize + 3).dp),
+                    )
+                } else {
+                    Spacer(Modifier.width(12.dp))
+                }
             }
         }
     }

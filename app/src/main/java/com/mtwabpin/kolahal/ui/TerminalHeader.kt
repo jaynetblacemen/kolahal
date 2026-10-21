@@ -94,11 +94,32 @@ internal fun CompactHeader(status: Status, statusCount: Int, config: Config, ver
                 Text("  bat $pct%" + if (status.charging) "+" else "", style = small.copy(color = color))
             }
         }
-        if (mediaPlaying) Text("  ♪", style = small.copy(color = Term.prompt))
+        if (mediaPlaying) {
+            if (config[Keys.HEADER_ICONS]) {
+                Spacer(Modifier.width(10.dp))
+                TintedIcon(R.drawable.ic_music_note, Term.prompt, (Term.fontSize + 2).dp)
+            } else {
+                Text("  ♪", style = small.copy(color = Term.prompt))
+            }
+        }
         if (statusCount > 0) Text("  · $statusCount status", style = small.copy(color = Term.dim))
         Spacer(Modifier.weight(1f))
-        Text("▾", style = small.copy(color = Term.dim))
+        TintedIcon(R.drawable.ic_expand_more, Term.dim, (Term.fontSize + 6).dp)
     }
+}
+
+/**
+ * A Material icon from res/drawable, tinted. Icons are drawn rather than typed: symbols like ⚙, ♪
+ * or ⏭ as text come from fallback fonts and look uneven next to them.
+ */
+@Composable
+internal fun TintedIcon(res: Int, tint: Color, size: Dp, description: String? = null) {
+    androidx.compose.foundation.Image(
+        painter = androidx.compose.ui.res.painterResource(res),
+        contentDescription = description,
+        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(tint),
+        modifier = Modifier.size(size),
+    )
 }
 
 /** Height of a header row: a fair touch target that keeps the header tight. */
@@ -254,7 +275,7 @@ internal fun Header(
             if (config[Keys.HEADER_TODO] && todoCount > 0) {
                 Item("todo", todoCount.toString(), icon = { Glyph(R.drawable.ic_check) }) { onTarget(HeaderTarget.TODO) }
             }
-            Item("", "⚙", Term.dim) { onTarget(HeaderTarget.SETTINGS) }
+            Item("", if (useIcons) "" else "⚙", Term.dim, icon = { Glyph(R.drawable.ic_settings) }) { onTarget(HeaderTarget.SETTINGS) }
             if (config[Keys.HEADER_PROFILES]) {
                 profiles.filter { it.kind != ProfileKind.PERSONAL && it.kind != ProfileKind.CLONE }.forEach { p ->
                     val color = if (p.quiet) Term.dim else Term.profileColor(p.kind)
