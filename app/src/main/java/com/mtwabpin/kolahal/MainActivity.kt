@@ -159,13 +159,24 @@ class MainActivity : ComponentActivity() {
                             // A look setting being changed: home is drawn underneath, as it will look, and
                             // Settings fades away around the control. Home only looks: it takes no touches.
                             val peek by vm.peek.collectAsStateWithLifecycle()
-                            peek?.let { p ->
-                                TerminalScreen(vm, onRequestNotifications = {}, onPickFolder = {}, preview = p)
-                                androidx.compose.foundation.layout.Box(
-                                    androidx.compose.ui.Modifier.fillMaxSize().pointerInput(Unit) {
-                                        awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
-                                    },
-                                )
+                            // Kept after the peek ends, so home fades out instead of vanishing under Settings.
+                            val lastPeek = androidx.compose.runtime.remember { arrayOfNulls<com.mtwabpin.kolahal.terminal.TerminalViewModel.Peek>(1) }
+                            if (peek != null) lastPeek[0] = peek
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = peek != null,
+                                enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(com.mtwabpin.kolahal.ui.PEEK_FADE_MS)),
+                                exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(com.mtwabpin.kolahal.ui.PEEK_FADE_MS)),
+                            ) {
+                                lastPeek[0]?.let { p ->
+                                    androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                                        TerminalScreen(vm, onRequestNotifications = {}, onPickFolder = {}, preview = p)
+                                        androidx.compose.foundation.layout.Box(
+                                            androidx.compose.ui.Modifier.fillMaxSize().pointerInput(Unit) {
+                                                awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
+                                            },
+                                        )
+                                    }
+                                }
                             }
                             SettingsScreen(
                                 vm,

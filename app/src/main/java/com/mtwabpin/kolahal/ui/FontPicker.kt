@@ -8,8 +8,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -40,8 +41,10 @@ fun FontChoices(selected: String, onPick: (String) -> Unit, onImport: () -> Unit
     // Re-read when the selection changes, which is what an import does.
     val custom = remember(selected, TermFonts.revision) { TermFonts.customFamily(context) }
     val names = TermFonts.names.filter { it != TermFonts.CUSTOM || custom != null || selected == TermFonts.CUSTOM }
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        items(names) { name ->
+    // A plain scrolling row: a lazy one inside a Settings row crashed Compose when Settings measured
+    // that row ahead of time while scrolling ("LayoutNode … not found in RectList").
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        names.forEach { name ->
             val family = if (name == TermFonts.CUSTOM) custom ?: FontFamily.Monospace else TermFonts.family(context, name) ?: FontFamily.Monospace
             val on = name == selected
             Card(
@@ -66,7 +69,7 @@ fun FontChoices(selected: String, onPick: (String) -> Unit, onImport: () -> Unit
                 }
             }
         }
-        item {
+        run {
             Card(
                 onClick = onImport,
                 shape = MaterialTheme.shapes.large,

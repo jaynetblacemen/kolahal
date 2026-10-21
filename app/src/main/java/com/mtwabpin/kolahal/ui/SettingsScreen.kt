@@ -21,8 +21,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
@@ -57,6 +57,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,6 +75,7 @@ import com.mtwabpin.kolahal.data.ConfigKey
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.terminal.Screen
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
@@ -98,7 +100,10 @@ fun SettingsScreen(
     val open = allCategories().firstOrNull { it.id == openId }
     // Showing home through Settings (a slider dragged, the eye held): all but that slider fades away.
     val peek by vm.peek.collectAsStateWithLifecycle()
-    val shown by androidx.compose.animation.core.animateFloatAsState(if (peek == null) 1f else 0f, label = "peek")
+    val shown by androidx.compose.animation.core.animateFloatAsState(
+        if (peek == null) 1f else 0f, androidx.compose.animation.core.tween(PEEK_FADE_MS), label = "peek",
+    )
+    val tapScope = rememberCoroutineScope()
     // Back closes a category page first, then the search, then Settings.
     BackHandler {
         when {
@@ -125,7 +130,15 @@ fun SettingsScreen(
                     navigationIcon = { BackButton { if (open != null) openId = null else vm.closeScreen() } },
                     actions = {
                         PEEK_PAGES[open?.id]?.let { typing ->
-                            PeekButton { holding -> vm.peek(if (holding) TerminalViewModel.Peek(null, typing) else null) }
+                            PeekButton(
+                                onHold = { holding -> vm.peek(if (holding) TerminalViewModel.Peek(null, typing) else null) },
+                                onTap = {
+                                    tapScope.launch {
+                                        snackbar.currentSnackbarData?.dismiss()
+                                        snackbar.showSnackbar("Tap and hold the eye to see home")
+                                    }
+                                },
+                            )
                         }
                     },
                     scrollBehavior = scroll,
@@ -231,13 +244,22 @@ fun SettingsScreen(
 /** Fades away while Settings shows home through it, unless it is the setting being changed ([keep]). */
 @Composable
 private fun PeekFade(peek: TerminalViewModel.Peek?, keep: Boolean = false, content: @Composable () -> Unit) {
-    val alpha by androidx.compose.animation.core.animateFloatAsState(if (peek == null || keep) 1f else 0f, label = "fade")
+    val alpha by androidx.compose.animation.core.animateFloatAsState(
+        if (peek == null || keep) 1f else 0f, androidx.compose.animation.core.tween(PEEK_FADE_MS), label = "fade",
+    )
     Box(Modifier.graphicsLayer { this.alpha = alpha }) { content() }
 }
 
-/** The eye in the top bar: home shows while it is held. */
+/** How long Settings and home take to fade into each other when a peek starts or ends. */
+internal const val PEEK_FADE_MS = 220
+
+/** A press shorter than this on the eye is a tap: it says to hold instead of flashing home. */
+private const val PEEK_HOLD_MS = 150L
+
+/** The eye in the top bar: home shows while it is held; a tap ([onTap]) explains that. */
 @Composable
-private fun PeekButton(onHold: (Boolean) -> Unit) {
+private fun PeekButton(onHold: (Boolean) -> Unit, onTap: () -> Unit) {
+    val scope = rememberCoroutineScope()
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -246,9 +268,17 @@ private fun PeekButton(onHold: (Boolean) -> Unit) {
             .semantics { contentDescription = "Hold to see home" }
             .pointerInput(Unit) {
                 detectTapGestures(onPress = {
-                    onHold(true)
-                    tryAwaitRelease()
-                    onHold(false)
+                    val hold = scope.launch {
+                        kotlinx.coroutines.delay(PEEK_HOLD_MS)
+                        onHold(true)
+                    }
+                    val released = tryAwaitRelease()
+                    if (hold.isActive) {
+                        hold.cancel()
+                        if (released) onTap()
+                    } else {
+                        onHold(false)
+                    }
                 })
             },
     ) {
@@ -425,8 +455,9 @@ fun ChipChoices(choices: List<String>, selected: String, onPick: (String) -> Uni
 /** Theme picker: a preview card per palette. */
 @Composable
 private fun ThemeSwatches(selected: String, onPick: (String) -> Unit) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        items(Keys.THEME.choices) { name ->
+    // Not lazy, for the reason in FontChoices.
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Keys.THEME.choices.forEach { name ->
             val p = Palettes.named(name)
             val on = name == selected
             Card(
