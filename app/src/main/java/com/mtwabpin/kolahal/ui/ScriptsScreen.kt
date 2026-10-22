@@ -71,10 +71,12 @@ import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.script.ScriptAccess
+import com.mtwabpin.kolahal.script.ScriptCatalog
 import com.mtwabpin.kolahal.script.ScriptLibrary
 import com.mtwabpin.kolahal.script.ScriptMeta
 import com.mtwabpin.kolahal.terminal.CommandParsing
 import com.mtwabpin.kolahal.terminal.CommandProcessor
+import com.mtwabpin.kolahal.terminal.Screen
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -117,6 +119,13 @@ fun ScriptsScreen(
     }
     val libByName = remember(library) { library.orEmpty().associateBy { it.entry.name } }
     val notInstalled = remember(library) { library?.filter { it.state == ScriptLibrary.State.NOT_INSTALLED } }
+    // Shared scripts with a newer version, from the list kept by Get more scripts (no download here).
+    val sharedUpdates by produceState(emptyMap<String, ScriptCatalog.Entry>(), scripts) {
+        value = withContext(Dispatchers.IO) {
+            vm.scriptCatalog.cached().orEmpty()
+                .filter { vm.scriptCatalog.state(it, scripts) == ScriptCatalog.State.UPDATE_AVAILABLE }.associateBy { it.name }
+        }
+    }
 
     GuiTheme {
         val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -183,7 +192,7 @@ fun ScriptsScreen(
                     itemsIndexed(scripts, key = { _, s -> s.id }) { i, s ->
                         ScriptRow(
                             s, i, scripts.size,
-                            updateAvailable = libByName[s.name]?.state == ScriptLibrary.State.UPDATE_AVAILABLE,
+                            updateAvailable = libByName[s.name]?.state == ScriptLibrary.State.UPDATE_AVAILABLE || s.name in sharedUpdates,
                             onClick = { sheetId = s.id },
                             onEnabled = { setEnabled(s, it) },
                         )
@@ -199,6 +208,15 @@ fun ScriptsScreen(
                 }
 
                 item(key = "h:lib") { GroupHeader("Library") }
+                item(key = "get-more") {
+                    ActionGroup(
+                        listOf(
+                            Action(R.drawable.ic_download, "Get more scripts", "Shared by people who use Kolahal, on GitHub", chevron = true) {
+                                vm.openScreen(Screen.GET_SCRIPTS)
+                            },
+                        )
+                    )
+                }
                 val rows = notInstalled
                 when {
                     rows == null -> Unit // first load; the rows appear within a frame or two
@@ -220,7 +238,7 @@ fun ScriptsScreen(
         val sheetScript = sheetId?.let { id -> scripts.firstOrNull { it.id == id } }
         if (sheetScript != null) {
             ScriptSheet(
-                vm, sheetScript, libByName[sheetScript.name],
+                vm, sheetScript, libByName[sheetScript.name], sharedUpdates[sheetScript.name],
                 onEnabled = { setEnabled(sheetScript, it) },
                 onDismiss = { sheetId = null },
                 onEdit = { sheetId = null; vm.openEditor(sheetScript) },
@@ -229,7 +247,7 @@ fun ScriptsScreen(
         }
 
         consentFor?.let { s ->
-            ConsentDialog(s, onDismiss = { consentFor = null }) { choices ->
+            AccessDialog("Turn on ${s.name}.${s.lang.ext}?", s.grants.undecided, "Turn on", onDismiss = { consentFor = null }) { choices ->
                 consentFor = null
                 vm.enableScript(s, choices)
             }
@@ -300,6 +318,8 @@ private fun ScriptSheet(
     vm: TerminalViewModel,
     s: Script,
     lib: LibRow?,
+    /** The shared version, when it is newer than this unedited copy. */
+    sharedUpdate: ScriptCatalog.Entry?,
     onEnabled: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
@@ -430,6 +450,9 @@ private fun ScriptSheet(
 
             Spacer(Modifier.height(8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                sharedUpdate?.let { e ->
+                    FilledTonalButton(onClick = { vm.installSharedScript(e) }) { Text("Update to ${e.version}") }
+                }
                 when (lib?.state) {
                     // Unedited copy of an older library version: nothing of yours is lost.
                     ScriptLibrary.State.UPDATE_AVAILABLE ->
@@ -483,16 +506,16 @@ private fun ScriptSheet(
 }
 
 /**
- * Switching on a script that declares what nobody allowed yet: each item with a switch, all on, to
- * switch off what you don't want before saying yes. The script's Access switches change them later.
+ * Before a script may use what it declares: switching on one that declares what nobody allowed yet,
+ * or installing a shared one. Each item ([items], [ScriptAccess] names) with a switch, all on, to
+ * switch off what you don't want before [confirm]. The script's Access switches change them later.
  */
 @Composable
-private fun ConsentDialog(s: Script, onDismiss: () -> Unit, onConfirm: (Map<String, Boolean>) -> Unit) {
-    val items = remember(s.id) { s.grants.undecided }
-    val choices = remember(s.id) { mutableStateMapOf<String, Boolean>().apply { items.forEach { put(it, true) } } }
+internal fun AccessDialog(title: String, items: List<String>, confirm: String, onDismiss: () -> Unit, onConfirm: (Map<String, Boolean>) -> Unit) {
+    val choices = remember(items) { mutableStateMapOf<String, Boolean>().apply { items.forEach { put(it, true) } } }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Turn on ${s.name}.${s.lang.ext}?") },
+        title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("It asks to use:", style = MaterialTheme.typography.bodyMedium)
@@ -501,7 +524,7 @@ private fun ConsentDialog(s: Script, onDismiss: () -> Unit, onConfirm: (Map<Stri
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(choices.toMap()) }) { Text("Turn on") } },
+        confirmButton = { TextButton(onClick = { onConfirm(choices.toMap()) }) { Text(confirm) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

@@ -142,6 +142,7 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `script ls` | list scripts with timers, flags and last result (also plain `script`) |
 | `script lib` | the bundled [library](/scripting/library/) |
 | `script install <name> [--replace]` | install or update a library script; `--replace` overwrites a copy you edited |
+| `script get [<name>] [--refresh] [--replace]` | list the [shared scripts](/scripting/overview/#getting-scripts-from-others), or install or update one |
 | `script new <name>[.lua\|.js] [lua\|js] [--cmd]` | create from a template and open the editor |
 | `script edit <name>` | open the editor |
 | `script run <name>` | run now |

@@ -11,8 +11,8 @@ script lib                 # list them, with ✓ for installed ones
 script install weather     # install (or update) one
 ```
 
-More scripts, shared by people who use Kolahal, are in the
-[kolahal-scripts](https://github.com/mtwabpin/kolahal-scripts) repository.
+More scripts, shared by people who use Kolahal, are in **Scripts → Get more scripts** and
+`script get` ([getting scripts from others](/scripting/overview/#getting-scripts-from-others)).
 
 Installing sets the script's suggested timers and notification flag. They are only suggestions:
 change them with `script every`, `script at` and `script notify`, or in the script manager. After

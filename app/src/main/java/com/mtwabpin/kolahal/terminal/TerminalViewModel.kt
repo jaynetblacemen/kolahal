@@ -20,6 +20,7 @@ import com.mtwabpin.kolahal.apps.AppEntry
 import com.mtwabpin.kolahal.apps.AppPrefs
 import com.mtwabpin.kolahal.data.ConfigKey
 import com.mtwabpin.kolahal.script.ScriptAccess
+import com.mtwabpin.kolahal.script.ScriptCatalog
 import com.mtwabpin.kolahal.script.ScriptMeta
 import com.mtwabpin.kolahal.script.ScriptFolder
 import com.mtwabpin.kolahal.script.ScriptFiles
@@ -737,7 +738,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             else if (current != Screen.TERMINAL && current != screen) backStack.addLast(current)
             _screen.value = screen
         }
-        if (screen == Screen.SCRIPTS) refreshScripts()
+        if (screen == Screen.SCRIPTS || screen == Screen.GET_SCRIPTS) refreshScripts()
+        if (screen == Screen.GET_SCRIPTS) loadSharedScripts()
         if (screen == Screen.SETUP) refreshSetup()
     }
 
@@ -940,6 +942,43 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             ScriptAccess.askForNew(context, s)
             refreshScriptCaches()
             notice("Installed ${s.name}.${s.lang.ext}" + if (entry.command) " — run it as '${s.name}'" else "")
+        }
+    }
+
+    // ---- Get more scripts (kolahal-scripts) ------------------------------------------------
+
+    val scriptCatalog by lazy { ScriptCatalog(context) }
+
+    /** The shared scripts, whether they are loading, and why they couldn't be read. */
+    data class SharedScripts(val entries: List<ScriptCatalog.Entry> = emptyList(), val loading: Boolean = false, val error: String? = null)
+
+    private val _shared = MutableStateFlow(SharedScripts())
+    val sharedScripts: StateFlow<SharedScripts> = _shared.asStateFlow()
+
+    /** Reads the list: the copy kept for an hour, or GitHub when [refresh]. A failure keeps what was there. */
+    fun loadSharedScripts(refresh: Boolean = false) {
+        _shared.value = _shared.value.copy(loading = true, error = null)
+        viewModelScope.launch(Dispatchers.IO) {
+            _shared.value = runCatching { SharedScripts(scriptCatalog.entries(refresh)) }.getOrElse {
+                SharedScripts(_shared.value.entries.ifEmpty { scriptCatalog.cached().orEmpty() }, error = it.message ?: it.javaClass.simpleName)
+            }
+        }
+    }
+
+    /** Downloaded code by SHA-256: read once for a script's sheet, then installed from it. */
+    private val sharedCode = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    suspend fun sharedScriptCode(e: ScriptCatalog.Entry): String =
+        withContext(Dispatchers.IO) { sharedCode.getOrPut(e.sha256) { scriptCatalog.download(e) } }
+
+    /** Installs or updates [e]; [allow] is the answer for what it declares, [replace] overwrites your edits. */
+    fun installSharedScript(e: ScriptCatalog.Entry, allow: Map<String, Boolean> = emptyMap(), replace: Boolean = false) {
+        fileOp("install") {
+            val code = sharedScriptCode(e)
+            val update = scripts.byName(e.name) != null
+            val s = scriptCatalog.install(e, code, allow, replace)
+            refreshScriptCaches()
+            notice(if (update) "Updated ${s.name}.${s.lang.ext} to ${e.version}" else "Installed ${s.name}.${s.lang.ext}" + if (e.command) " — run it as '${s.name}'" else "")
         }
     }
 

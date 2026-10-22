@@ -10,17 +10,18 @@ settings, scripts, feeds and notifications are stored in the app's private stora
 
 ## What leaves the device
 
-Kolahal itself makes network requests in exactly three cases:
+Kolahal itself makes network requests in exactly four cases:
 
 1. **Scripts** you write or install, through `http.*` and `rss.*`. They talk only to the URLs in
    their code. The [library scripts](/scripting/library/) use wttr.in, Open-Meteo,
-   CoinGecko, open.er-api.com, api.ipify.org, Wikipedia, xkcd.com, ZenQuotes, Reddit, GitHub
-   and the feeds they list. Requests carry a `User-Agent` of `Kolahal-Launcher/0.1` unless the
+   CoinGecko, open.er-api.com, api.ipify.org, Wikipedia, xkcd.com, ZenQuotes, Reddit and
+   GitHub. Requests carry a `User-Agent` of `Kolahal-Launcher/0.1` unless the
    script sets its own. You can switch internet off for any script
    ([switching access off](/scripting/overview/#switching-access-off)).
 2. **Feeds** you subscribe to: one request per feed when it is due.
-3. **Currency conversion** with `= 100 usd in eur`: a request to open.er-api.com for the base
-   currency, cached for six hours.
+. **Getting scripts**: when you open Get more scripts, refresh it or run `script get`, the list of
+   shared scripts from mtwabpin.github.io (kept for an hour), and the file of a script you look at
+   or install.
 
 Commands like `search`, `yt`, `wiki`, `maps`, `play` and `url` don't make requests themselves. They
 hand a link to your browser or the matching app.

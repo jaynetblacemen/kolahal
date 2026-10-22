@@ -240,6 +240,22 @@ Links a script puts on a line (`url`, `image`, or a notification's link) must be
 anything else (`tel:`, `upi:`, an app's own link) is dropped. A line's `copy` must be what the line
 shows, part of it, or its link.
 
+## Getting scripts from others
+
+**Scripts → Get more scripts** lists the scripts people share in
+[kolahal-scripts](https://github.com/mtwabpin/kolahal-scripts) on GitHub. Each one is checked and
+read before it is added. Tap one to see what it does, what it uses and its code. **Install** asks
+about what it uses first (everything on, to switch off what you don't want), then switches it on
+with the timer it suggests.
+
+When a shared script you haven't edited gets a newer version, the Scripts screen says
+"update available" and its sheet has an **Update** button. Anything new it asks for starts switched
+off. A copy you edited is only replaced when you say so.
+
+In the terminal, `script get` lists them and `script get <name>` installs or updates one. The list
+is kept for an hour; `--refresh` reads it again, and `--replace` replaces a copy you edited. To
+share one of yours, see the repository's [contributing guide](https://github.com/mtwabpin/kolahal-scripts/blob/main/CONTRIBUTING.md).
+
 ## Moving scripts
 
 Scripts are part of the [backup file](/guides/backup/), and can be imported and exported as

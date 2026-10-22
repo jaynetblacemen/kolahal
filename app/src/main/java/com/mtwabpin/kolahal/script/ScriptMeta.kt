@@ -77,11 +77,14 @@ object ScriptMeta {
     fun requires(code: String): String? = value(code, "requires")
 
     /** True when [code]'s `@requires` names a newer Kolahal than [current] (a version name such as 0.4.0). */
-    fun needsNewer(code: String, current: String): Boolean {
-        val wanted = requires(code)?.let(::versionParts) ?: return false
+    fun needsNewer(code: String, current: String): Boolean = requires(code)?.let { isNewer(it, current) } == true
+
+    /** True when version [wanted] is newer than [current]; false when either isn't a version. */
+    fun isNewer(wanted: String, current: String): Boolean {
+        val want = versionParts(wanted) ?: return false
         val have = versionParts(current) ?: return false
-        for (i in 0 until maxOf(wanted.size, have.size)) {
-            val w = wanted.getOrElse(i) { 0 }
+        for (i in 0 until maxOf(want.size, have.size)) {
+            val w = want.getOrElse(i) { 0 }
             val h = have.getOrElse(i) { 0 }
             if (w != h) return w > h
         }

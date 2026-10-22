@@ -11,9 +11,11 @@ import com.mtwabpin.kolahal.data.ScriptRepository
 import com.mtwabpin.kolahal.notify.Notifier
 import com.mtwabpin.kolahal.script.HostApi
 import com.mtwabpin.kolahal.script.ScriptAccess
+import com.mtwabpin.kolahal.script.ScriptCatalog
 import com.mtwabpin.kolahal.script.ScriptFolder
 import com.mtwabpin.kolahal.script.ScriptLibrary
 import com.mtwabpin.kolahal.script.ScriptMeta
+import com.mtwabpin.kolahal.script.ScriptNames
 import com.mtwabpin.kolahal.script.ScriptScheduler
 import com.mtwabpin.kolahal.script.ScriptTemplates
 import java.text.DateFormat
@@ -175,6 +177,8 @@ class ScriptCommands(
                     info("${s.name} can use: ${uses.joinToString()} — 'script deny ${s.name} <what>' switches one off", scriptCtx(s))
                 }
             }
+            // Network: off the serial command queue.
+            "get" -> background("script get") { getShared(args.drop(1)) }
             "access" -> withScript(target) { listAccess(it) }
             "allow", "deny" -> withScript(target) { s ->
                 val items = args.drop(2).map { it.lowercase() }
@@ -191,8 +195,66 @@ class ScriptCommands(
             "cat", "show" -> withScript(target) { s ->
                 s.code.lines().forEachIndexed { i, l -> out("${(i + 1).toString().padStart(3)}  $l", LogContext.of(LogContext.COPY to s.code) + LogContext.ALIGNED) }
             }
-            else -> error("Usage: script [ls|new|edit|run|every|at|notify|on|off|access|allow|deny|triggers|rm|cat] <name>")
+            else -> error("Usage: script [ls|new|edit|run|every|at|notify|on|off|get|access|allow|deny|triggers|rm|cat] <name>")
         }
+    }
+
+    /**
+     * `script get [<name>] [--refresh] [--replace]`: the scripts shared in kolahal-scripts, or one
+     * installed (switched on, allowed what it declares, as `script on` does) or updated.
+     */
+    private fun getShared(args: List<String>) {
+        val catalog = ScriptCatalog(context)
+        val refresh = "--refresh" in args
+        val replace = "--replace" in args
+        val name = args.firstOrNull { !it.startsWith("--") }?.lowercase()?.substringBefore('.')
+        val entries = catalog.entries(refresh)
+        if (name == null) {
+            val installed = scripts.all()
+            info("Shared scripts from ${ScriptCatalog.SOURCE} — 'script get <name>' installs one")
+            if (entries.isEmpty()) info("None yet")
+            entries.forEach { e ->
+                val state = when (catalog.state(e, installed)) {
+                    ScriptCatalog.State.NOT_INSTALLED -> ""
+                    ScriptCatalog.State.INSTALLED -> " ✓"
+                    ScriptCatalog.State.UPDATE_AVAILABLE -> " (update available)"
+                    ScriptCatalog.State.MODIFIED -> " (edited)"
+                    ScriptCatalog.State.NAME_TAKEN -> " (name taken)"
+                    ScriptCatalog.State.NEEDS_NEWER -> " (needs Kolahal ${e.requires})"
+                }
+                val desc = listOfNotNull(
+                    e.title, e.version.ifBlank { null }?.let { "v$it" }, e.author.ifBlank { null }?.let { "by $it" }, e.desc.ifBlank { null },
+                )
+                out("${e.name}.${e.lang.ext}$state", LogContext.of(LogContext.COMMAND to "script get ${e.name}", LogContext.DESC to desc.joinToString(" · ")))
+            }
+            return
+        }
+        val entry = entries.firstOrNull { it.name == name }
+            ?: (if (refresh) null else catalog.entries(refresh = true).firstOrNull { it.name == name })
+            ?: return error("No shared script '$name' — 'script get' lists them")
+        when (catalog.state(entry, scripts.all())) {
+            ScriptCatalog.State.NEEDS_NEWER -> return error("${entry.name} needs Kolahal ${entry.requires} or newer")
+            ScriptCatalog.State.NAME_TAKEN -> return error(ScriptNames.clash(context, entry.name) ?: "You have your own script named ${entry.name}")
+            ScriptCatalog.State.INSTALLED -> return info("${entry.name} is installed and up to date")
+            ScriptCatalog.State.MODIFIED -> if (!replace) {
+                return error("You edited ${entry.name}: 'script get ${entry.name} --replace' replaces it (export it first to keep a copy)")
+            }
+            else -> Unit
+        }
+        val update = scripts.byName(entry.name) != null
+        val s = catalog.install(entry, catalog.download(entry), replace = replace)
+        if (update) {
+            info("Updated ${s.name}.${s.lang.ext} to ${entry.version}", scriptCtx(s))
+            return
+        }
+        val timer = listOfNotNull(
+            s.intervalMin.takeIf { it > 0 }?.let { "every ${CommandParsing.formatInterval(it)}" },
+            s.atTimes.takeIf { it.isNotEmpty() }?.let { "daily at ${it.joinToString(", ")}" },
+        )
+        info("Installed ${s.name}.${s.lang.ext} from ${ScriptCatalog.SOURCE}" + timer.joinToString("") { " · $it" }, scriptCtx(s))
+        val grants = s.grants
+        val uses = grants.declared.filter(grants::allows)
+        if (uses.isNotEmpty()) info("${s.name} can use: ${uses.joinToString()} — 'script deny ${s.name} <what>' switches one off", scriptCtx(s))
     }
 
     /** `script access <name>`: each switch, on or off, and where it comes from; tap one to change it. */
@@ -305,6 +367,6 @@ class ScriptCommands(
 
     companion object {
         /** What follows `script`, for completion. */
-        val SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "access", "allow", "deny", "triggers", "rm", "cat", "dir", "export", "import")
+        val SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "get", "access", "allow", "deny", "triggers", "rm", "cat", "dir", "export", "import")
     }
 }

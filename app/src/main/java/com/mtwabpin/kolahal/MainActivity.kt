@@ -168,6 +168,7 @@ class MainActivity : ComponentActivity() {
                                 exportScript.launch("${s.name}.${s.lang.ext}")
                             },
                         )
+                        Screen.GET_SCRIPTS -> com.mtwabpin.kolahal.ui.GetScriptsScreen(vm)
                         Screen.FEEDS -> FeedsScreen(vm, onRequestNotifications = ::requestNotifications)
                         Screen.SETUP -> SetupScreen(vm)
                         Screen.WIDGETS -> WidgetsScreen(vm, onReAdd = { entry, w -> widgetBinder.add(entry, w.key) })

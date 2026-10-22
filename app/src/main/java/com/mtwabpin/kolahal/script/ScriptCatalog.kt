@@ -1,0 +1,188 @@
+package com.mtwabpin.kolahal.script
+
+import android.content.Context
+import androidx.core.content.edit
+import com.mtwabpin.kolahal.BuildConfig
+import com.mtwabpin.kolahal.data.Script
+import com.mtwabpin.kolahal.data.ScriptLang
+import com.mtwabpin.kolahal.data.ScriptRepository
+import okhttp3.Request
+import java.io.File
+import java.io.IOException
+import java.security.MessageDigest
+
+/**
+ * Scripts shared in the kolahal-scripts repository: Scripts → Get more scripts, and `script get`.
+ * The repository's GitHub Action checks every script and publishes index.json, with each file's
+ * SHA-256, on GitHub Pages. This reads it only when asked (and keeps it for an hour), and installs a
+ * script only when the downloaded file matches the list.
+ */
+class ScriptCatalog(private val context: Context) {
+    data class Entry(
+        val name: String,
+        val lang: ScriptLang,
+        val path: String,
+        val title: String,
+        val desc: String,
+        val author: String,
+        val version: String,
+        val tags: List<String>,
+        /** What it declares with `@uses`, in [ScriptMeta.USES] order. */
+        val uses: List<String>,
+        val on: List<String>,
+        val command: Boolean,
+        val every: Int?,
+        val at: List<String>,
+        val notify: Boolean,
+        val requires: String?,
+        val size: Int,
+        val sha256: String,
+    )
+
+    enum class State {
+        NOT_INSTALLED,
+        INSTALLED,
+        /** Your copy is the one installed from here, and the repository has a newer one. */
+        UPDATE_AVAILABLE,
+        /** You edited the copy installed from here: it is never replaced without asking. */
+        MODIFIED,
+        /** One of your own scripts, a built-in command or an app already has the name. */
+        NAME_TAKEN,
+        /** Its `@requires` names a newer Kolahal. */
+        NEEDS_NEWER,
+    }
+
+    private val prefs by lazy { context.getSharedPreferences("script_catalog", Context.MODE_PRIVATE) }
+    private val cacheFile get() = File(context.filesDir, "script-catalog.json")
+
+    /** The list from the last download, or null when there is none yet. */
+    fun cached(): List<Entry>? = cacheFile.takeIf { it.exists() }?.let { runCatching { parse(it.readText()) }.getOrNull() }
+
+    /** The list: the copy kept for an hour, or downloaded now when [refresh] or there is none. */
+    fun entries(refresh: Boolean = false): List<Entry> {
+        if (!refresh && System.currentTimeMillis() - prefs.getLong("fetched", 0) < KEEP_MS) cached()?.let { return it }
+        val raw = get(INDEX_URL, MAX_INDEX).toString(Charsets.UTF_8)
+        val entries = parse(raw)
+        cacheFile.writeText(raw)
+        prefs.edit { putLong("fetched", System.currentTimeMillis()) }
+        return entries
+    }
+
+    private fun parse(raw: String): List<Entry> {
+        val root = Json.parse(raw) as? Map<*, *> ?: throw IOException("the script list isn't readable")
+        if ((root["format"] as? Number)?.toInt() != FORMAT) throw IOException("the script list is newer than this Kolahal: update it")
+        fun Map<*, *>.str(key: String) = this[key]?.toString()?.takeIf { it.isNotBlank() }
+        fun Map<*, *>.list(key: String) = (this[key] as? List<*>).orEmpty().map { it.toString() }
+        return (root["scripts"] as? List<*>).orEmpty().filterIsInstance<Map<*, *>>().mapNotNull { m ->
+            val name = m.str("name")?.takeIf(NAME::matches) ?: return@mapNotNull null
+            val lang = m.str("lang")?.let(ScriptLang::of) ?: return@mapNotNull null
+            // Only a file of its own folder: never a path that leaves scripts/.
+            val path = m.str("path")?.takeIf { it == "scripts/$name/$name.${lang.ext}" } ?: return@mapNotNull null
+            val sha = m.str("sha256")?.lowercase()?.takeIf(SHA::matches) ?: return@mapNotNull null
+            Entry(
+                name = name,
+                lang = lang,
+                path = path,
+                title = m.str("title") ?: name,
+                desc = m.str("desc").orEmpty(),
+                author = m.str("author").orEmpty(),
+                version = m.str("version").orEmpty(),
+                tags = m.list("tags"),
+                uses = ScriptMeta.USES.filter { it in m.list("uses") },
+                on = ScriptMeta.EVENTS.filter { it in m.list("on") },
+                command = m["command"] == true,
+                every = (m["every"] as? Number)?.toInt()?.takeIf { it > 0 },
+                at = m.list("at"),
+                notify = m["notify"] == true,
+                requires = m.str("requires"),
+                size = (m["size"] as? Number)?.toInt() ?: 0,
+                sha256 = sha,
+            )
+        }
+    }
+
+    /** [e]'s file, checked against the list; throws when it doesn't match (the list changed: refresh). */
+    fun download(e: Entry): String {
+        val bytes = get(BASE_URL + e.path, MAX_SCRIPT)
+        if (sha256(bytes) != e.sha256) throw IOException("${e.name} doesn't match the script list; refresh it and try again")
+        return bytes.toString(Charsets.UTF_8)
+    }
+
+    fun state(e: Entry, installed: List<Script>): State {
+        if (e.requires != null && ScriptMeta.isNewer(e.requires, BuildConfig.VERSION_NAME)) return State.NEEDS_NEWER
+        val mine = installed.firstOrNull { it.name == e.name }
+            ?: return if (ScriptNames.clash(context, e.name) != null) State.NAME_TAKEN else State.NOT_INSTALLED
+        val origin = origin(e.name) ?: return State.NAME_TAKEN
+        return when {
+            mine.code != origin.code -> State.MODIFIED
+            origin.sha256 != e.sha256 -> State.UPDATE_AVAILABLE
+            else -> State.INSTALLED
+        }
+    }
+
+    /**
+     * Installs [e] with [code] from [download]. New, it is switched on with [allow] as the answers for
+     * what it declares (anything not in it is allowed, as `script on` does) and the timers it
+     * suggests. Over the copy installed from here, it updates the code: what it newly declares
+     * starts off, with a line to allow it. [replace] lets it overwrite a copy you edited.
+     */
+    fun install(e: Entry, code: String, allow: Map<String, Boolean> = emptyMap(), replace: Boolean = false): Script {
+        val repo = ScriptRepository.get(context)
+        val existing = repo.byName(e.name)
+        val script = if (existing == null) {
+            ScriptNames.clash(context, e.name)?.let { throw IllegalStateException(it) }
+            repo.create(e.name, e.lang, code, enabled = false).also { s ->
+                repo.applySuggested(s.id, code)
+                allow.forEach { (item, on) -> repo.setAccess(s.id, item, on) }
+                repo.setEnabled(s.id, true)
+            }
+        } else {
+            val origin = origin(e.name) ?: throw IllegalStateException("you have your own script named ${e.name}")
+            if (existing.lang != e.lang) throw IllegalStateException("your ${e.name} is a ${existing.lang.ext} script")
+            if (existing.code != origin.code && !replace) throw IllegalStateException("you edited ${e.name}; replace it to take this version")
+            repo.saveCode(existing.id, code)
+            existing
+        }
+        prefs.edit { putString("installed:${e.name}", Json.stringify(mapOf("sha256" to e.sha256, "version" to e.version, "code" to code))) }
+        return repo.byId(script.id)!!.also {
+            ScriptScheduler.sync(context, it)
+            ScriptAccess.askForNew(context, it)
+        }
+    }
+
+    private class Origin(val sha256: String, val code: String)
+
+    /** What was installed from here under [name], if anything. */
+    private fun origin(name: String): Origin? {
+        val m = prefs.getString("installed:$name", null)?.let { runCatching { Json.parse(it) as? Map<*, *> }.getOrNull() } ?: return null
+        return Origin(m["sha256"]?.toString() ?: return null, m["code"]?.toString() ?: return null)
+    }
+
+    /** Public addresses only, at most [max] bytes. */
+    private fun get(url: String, max: Long): ByteArray {
+        val request = Request.Builder().url(url).header("User-Agent", "Kolahal/${BuildConfig.VERSION_NAME}").build()
+        Net.publicClient.newCall(request).execute().use { resp ->
+            if (!resp.isSuccessful) throw IOException("HTTP ${resp.code} from ${request.url.host}")
+            val bytes = resp.peekBody(max + 1).bytes()
+            if (bytes.size > max) throw IOException("${request.url.encodedPath} is too large")
+            return bytes
+        }
+    }
+
+    private fun sha256(bytes: ByteArray) =
+        MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+
+    companion object {
+        const val SOURCE = "kolahal-scripts"
+        const val BASE_URL = "https://mtwabpin.github.io/kolahal-scripts/"
+        private const val INDEX_URL = BASE_URL + "index.json"
+        /** index.json's `format` this Kolahal reads. */
+        private const val FORMAT = 1
+        private const val KEEP_MS = 60 * 60 * 1000L
+        private const val MAX_INDEX = 2L * 1024 * 1024
+        /** The repository's check allows 64 KB per script. */
+        private const val MAX_SCRIPT = 64L * 1024
+        private val NAME = Regex("^[a-z0-9_-]{1,40}$")
+        private val SHA = Regex("^[0-9a-f]{64}$")
+    }
+}
