@@ -36,6 +36,7 @@ The `theme` and `font` commands are unchanged.
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
+| `header.show` | bool | `on` | show the header; off: the log takes the whole screen (open settings with `settings`) |
 | `header.device` | bool | `off` | show `kolahal@device` in the header |
 | `header.date` | bool | `on` | show the date next to the clock |
 | `header.unlocks` | bool | `on` | show today's unlock count |

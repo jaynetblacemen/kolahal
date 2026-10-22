@@ -13,6 +13,7 @@ internal val TITLES = mapOf(
     "font.family" to "Font",
     "font.sans" to "Phone's font",
     "font.size" to "Text size",
+    "header.show" to "Show the header",
     "header.date" to "Date",
     "clock.24h" to "24-hour clock",
     "header.device" to "Device name",
@@ -109,6 +110,12 @@ private val SHOWN_WHEN: Map<ConfigKey<*>, (Config) -> Boolean> = run {
         Keys.SELECTOR_HEIGHT to on(Keys.SELECTOR_RAIL),
         Keys.FEEDS_LOG_LINES to on(Keys.FEEDS_LOG),
         Keys.FEEDS_READ_SHOWN to on(Keys.FEEDS_LOG),
+        // Without the header, only the clock's 24-hour setting still counts: the log uses it too.
+        *listOf(
+            Keys.HEADER_DATE, Keys.HEADER_DEVICE, Keys.HEADER_ICONS, Keys.HEADER_UNLOCKS, Keys.HEADER_BATTERY,
+            Keys.HEADER_NETWORK, Keys.HEADER_ALARM, Keys.HEADER_PROFILES, Keys.HEADER_MEDIA, Keys.HEADER_TODO,
+            Keys.HEADER_STATUS, Keys.HEADER_AUTOHIDE, Keys.GESTURE_SWIPE_DOWN,
+        ).map { it to on(Keys.HEADER_SHOW) }.toTypedArray(),
     )
 }
 
@@ -141,6 +148,7 @@ private val CATEGORIES = listOf(
     Category(
         "home", "Home screen", "Clock, header items, widgets", R.drawable.ic_home,
         listOf(
+            "Header" to listOf(Keys.HEADER_SHOW),
             "Clock" to listOf(Keys.HEADER_DATE, Keys.CLOCK_24H, Keys.HEADER_DEVICE),
             "Header items" to listOf(
                 Keys.HEADER_ICONS, Keys.HEADER_UNLOCKS, Keys.HEADER_BATTERY, Keys.HEADER_NETWORK, Keys.HEADER_ALARM,

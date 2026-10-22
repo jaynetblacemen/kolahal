@@ -213,6 +213,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         // Only shown smaller; it returns as it was when the search ends.
         val searching = typing || inputText.isNotEmpty()
         val headerHidden by vm.headerHidden.collectAsStateWithLifecycle()
+        // header.show off: no header at all, and the log takes its room.
+        val showHeader = remember(configVersion) { config[Keys.HEADER_SHOW] }
         val density = androidx.compose.ui.platform.LocalDensity.current
         val headerScroll = remember(vm, density) {
             val threshold = with(density) { 24.dp.toPx() }
@@ -235,7 +237,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         // Header transitions slide like scrolling: up and out when hidden, back down when it
         // returns, and full ↔ one-line morph in place. The log follows the size change smoothly.
         androidx.compose.animation.AnimatedVisibility(
-            visible = !headerHidden,
+            visible = showHeader && !headerHidden,
             enter = androidx.compose.animation.expandVertically(expandFrom = Alignment.Top) +
                 androidx.compose.animation.slideInVertically { -it },
             exit = androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Top) +

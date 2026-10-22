@@ -106,6 +106,19 @@ class HomeScreenTest {
         compose.onNodeWithTag("header").assertDoesNotExist()
     }
 
+    /** header.show off: no header, full or one-line, and it comes back when turned on. */
+    @Test fun headerCanBeTurnedOff() {
+        config.set(Keys.HEADER_SHOW, "off")
+        val vm = show(360.dp, 700.dp)
+        compose.onNodeWithTag("header").assertDoesNotExist()
+        compose.onNodeWithTag("header-compact").assertDoesNotExist()
+        // While typing it would be the one-line header: none either.
+        type(vm, "s")
+        compose.onNodeWithTag("header-compact").assertDoesNotExist()
+        compose.runOnIdle { config.set(Keys.HEADER_SHOW, "on") }
+        compose.onNodeWithTag("header-compact").assertExists()
+    }
+
     @Test fun dollarOpensQuickActions() {
         show(360.dp, 700.dp)
         compose.onNodeWithTag("prompt-quick").performClick()

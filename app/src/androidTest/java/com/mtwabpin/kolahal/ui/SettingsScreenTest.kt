@@ -176,6 +176,18 @@ class SettingsScreenTest {
         compose.onNodeWithText(Keys.KEYBAR.key, useUnmergedTree = true).assertExists()
     }
 
+    /** Without the header its settings go, but the 24-hour clock stays: the log's times use it. */
+    @Test fun headerOffHidesItsSettings() {
+        show("home")
+        scrollTo(Keys.HEADER_DATE)
+        compose.onNodeWithText(Keys.HEADER_DATE.key, useUnmergedTree = true).assertExists()
+        compose.runOnIdle { config.set(Keys.HEADER_SHOW, "off") }
+        scrollTo(Keys.CLOCK_24H)
+        compose.onNodeWithText(Keys.CLOCK_24H.key, useUnmergedTree = true).assertExists()
+        compose.onNodeWithText(Keys.HEADER_DATE.key, useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithText(Keys.HEADER_AUTOHIDE.key, useUnmergedTree = true).assertDoesNotExist()
+    }
+
     @Test fun searchSkipsSettingsThatDontApply() {
         show(null)
         compose.onNode(hasSetTextAction()).performTextInput(Keys.SEARCH_URL.key)
