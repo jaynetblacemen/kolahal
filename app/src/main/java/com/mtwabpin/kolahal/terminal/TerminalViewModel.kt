@@ -75,6 +75,10 @@ private const val MAX_PAGE = 5000
 /** The whole page is read again at least this often, catching trims by other processes. */
 private const val FULL_RELOAD_MS = 60_000L
 
+/** `/battery low` at the prompt searches the log for those words; null when the line isn't a search. */
+internal fun searchWords(text: String): List<String>? =
+    if (!text.startsWith("/")) null else text.substring(1).split(Regex("\\s+")).filter { it.isNotEmpty() }
+
 @OptIn(kotlinx.coroutines.FlowPreview::class)
 class TerminalViewModel(app: Application, private val state: SavedStateHandle) : AndroidViewModel(app), TerminalUi {
     private val context: Context get() = getApplication()
@@ -321,6 +325,54 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     fun showHidden() = io { logs.unhide() }
 
+    // ---- log search: `/words` at the prompt -------------------------------------------------
+
+    /** What `/words` found: [rows] oldest first, as the log lists them; no [words] yet shows a hint. */
+    data class LogSearch(val words: List<String>, val rows: List<LogRow>, val total: Int, val searched: Int)
+
+    private val _search = MutableStateFlow<LogSearch?>(null)
+    /** The log search while the prompt starts with `/`; null otherwise. */
+    val search: StateFlow<LogSearch?> = _search.asStateFlow()
+
+    private val _jumpTo = MutableStateFlow<Long?>(null)
+    /** A line to scroll the log to once it is loaded (a search result tapped). */
+    val jumpTo: StateFlow<Long?> = _jumpTo.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            // Typing settles before a search; leaving it is at once. The log changing searches again.
+            combine(androidx.compose.runtime.snapshotFlow { searchWords(input.text) }.distinctUntilChanged(), logs.version) { words, _ -> words }
+                .debounce { if (it.isNullOrEmpty()) 0L else 120L }
+                .collectLatest { words ->
+                    _search.value = when {
+                        words == null -> null
+                        words.isEmpty() -> LogSearch(words, emptyList(), 0, 0)
+                        else -> withContext(Dispatchers.IO) {
+                            val locked = lockedPrivate(appsRepo.profiles.value)
+                            val found = logs.search(words, skip = if (locked.isEmpty()) null else { e -> e.ctx.userSerial in locked })
+                            LogSearch(words, buildRows(found.entries.asReversed()), found.total, found.searched)
+                        }
+                    }
+                }
+        }
+    }
+
+    /** A search result tapped: the search ends and the log shows that line, loading back as far as it is. */
+    fun showInLog(entry: LogEntry) {
+        setText("")
+        _events.tryEmit(UiEvent.HideKeyboard)
+        io {
+            if (logs.isHidden(entry.id)) logs.unhide()
+            pageLimit = maxOf(pageLimit, (logs.countFrom(entry.id) + 20).coerceAtMost(MAX_PAGE))
+            _jumpTo.value = entry.id
+            requestReload()
+        }
+    }
+
+    fun jumpDone() {
+        _jumpTo.value = null
+    }
+
     fun onPause() {
         _peek.value = null
         _entries.value.lastOrNull()?.let { logs.seenUpTo = it.id }
@@ -371,7 +423,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         // A line with arguments may also end in a word the keyboard commits whole, space and all
         // (`torch on `); only a line with nothing left to choose runs then.
         val typed = value.text.length - old.length == 1 || value.composition != null
-        if (value.text.length > old.length && value.selection.collapsed && value.selection.end == value.text.length &&
+        if (searchWords(value.text) == null && value.text.length > old.length && value.selection.collapsed && value.selection.end == value.text.length &&
             (typed || value.text.trim().contains(' '))
         ) {
             instantRun(value.text)
@@ -405,6 +457,11 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     fun submit() {
         val line = input.text
+        // Enter in a log search makes room for the results: they are tapped, not run.
+        if (searchWords(line) != null) {
+            _events.tryEmit(UiEvent.HideKeyboard)
+            return
+        }
         input = TextFieldValue("")
         historyIndex = -1
         if (line.isBlank()) return
@@ -499,7 +556,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         input = TextFieldValue(text, TextRange(text.length))
     }
 
-    fun suggestions(text: String): List<Suggestion> = completer.suggestions(text)
+    fun suggestions(text: String): List<Suggestion> = if (searchWords(text) != null) emptyList() else completer.suggestions(text)
 
     // ---- log line interaction -------------------------------------------------------------
 

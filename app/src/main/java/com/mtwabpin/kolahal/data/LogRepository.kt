@@ -130,6 +130,57 @@ class LogRepository private constructor(private val context: Context) {
         return out
     }
 
+    /** [LogRepository.search]'s answer: the newest matches, how many there are, and how many lines were read. */
+    data class Found(val entries: List<LogEntry>, val total: Int, val searched: Int)
+
+    /**
+     * Lines with every one of [words] (ignoring case) in their text, source, link, script or second
+     * column, newest first: all the log keeps, lines a fresh screen hid included. At most [limit] are
+     * returned; [Found.total] counts them all. [skip] leaves lines out (a locked private space's).
+     */
+    fun search(words: List<String>, limit: Int = 500, skip: ((LogEntry) -> Boolean)? = null): Found {
+        val found = ArrayList<LogEntry>()
+        var total = 0
+        var searched = 0
+        db.readableDatabase.rawQuery(
+            "SELECT id, ts, kind, source, substr(text, 1, $MAX_FIELD), substr(ctx, 1, $MAX_FIELD) FROM logs WHERE id > ? ORDER BY id DESC",
+            arrayOf(prefs.getLong(KEY_CLEARED_UP_TO, 0L).toString()),
+        ).use { c ->
+            while (c.moveToNext()) {
+                val text = c.getString(4)
+                val source = c.getString(3)
+                // JSON escapes slashes in links; matching the raw row first spares parsing most of them.
+                val rawCtx = c.getString(5)?.replace("\\/", "/")
+                val candidate = words.all { w ->
+                    text.contains(w, ignoreCase = true) || source?.contains(w, ignoreCase = true) == true || rawCtx?.contains(w, ignoreCase = true) == true
+                }
+                if (!candidate && skip == null) {
+                    searched++
+                    continue
+                }
+                val e = LogEntry(c.getLong(0), c.getLong(1), LogKind.of(c.getString(2)), source, text, LogContext.fromJson(c.getString(5)))
+                if (skip?.invoke(e) == true) continue
+                searched++
+                if (!candidate || !words.all { w -> searchable(e).any { it.contains(w, ignoreCase = true) } }) continue
+                total++
+                if (found.size < limit) found += e
+            }
+        }
+        return Found(found, total, searched)
+    }
+
+    /** What a search looks in: what the line shows, where it came from and where it leads. */
+    private fun searchable(e: LogEntry): List<String> =
+        listOfNotNull(e.text, e.source, e.ctx.url, e.ctx.script, e.ctx.values[LogContext.DESC])
+
+    /** Whether a fresh screen ([hideScreen]) keeps line [id] out of view. */
+    fun isHidden(id: Long): Boolean = id <= prefs.getLong(KEY_HIDDEN_UP_TO, 0L) && id > prefs.getLong(KEY_CLEARED_UP_TO, 0L)
+
+    /** How many visible lines there are from [id] to the newest: the page that reaches back to it. */
+    fun countFrom(id: Long): Int = db.readableDatabase.rawQuery(
+        "SELECT COUNT(*) FROM logs WHERE id >= ? AND id > ?", arrayOf(id.toString(), visibleAfter().toString()),
+    ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+
     /** Distinct commands, most recent first, for history navigation. */
     fun commandHistory(limit: Int = 200): List<String> {
         val out = ArrayList<String>()

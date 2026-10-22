@@ -131,6 +131,22 @@ red for errors. Hide it with `log.gutter off`. Output older than the latest comm
 - `clear` clears the screen, `clear history` forgets the ↑ history but keeps the log, and
   `clear all` removes both.
 
+### Searching the log
+
+Type `/` and some words at the prompt: the log shows only the lines that have all of them, from
+everything it keeps (lines a fresh screen hid too), with the words marked and each line's time.
+Words are found in what a line says, in commands you typed, and in where a line came from and where
+it leads: `/weather` finds the weather script's lines, `/github.com` the lines that link there.
+
+```sh
+/battery              # every line about the battery
+/hacker news rust     # feed items from Hacker News that mention Rust
+```
+
+Tap a line to see it in the log, among the lines around it. `Enter` puts the keyboard away so
+more results fit; `Esc`, back or clearing the prompt ends the search. Long-press and swipes work as
+they do in the log.
+
 ### Pipes
 
 Filter a command's output like a shell:
@@ -255,7 +271,7 @@ config reset keybar.row1      # back to the default row
 | `↑` / `↓` | history |
 | `Tab` | complete with the first suggestion |
 | `Esc`, `Ctrl+U` | clear the line |
-| `Enter` | run |
+| `Enter` | run (in a [log search](#searching-the-log), put the keyboard away) |
 | `Ctrl+L` | clear the screen |
 | `Ctrl+A` / `Ctrl+E` | start / end of line |
 

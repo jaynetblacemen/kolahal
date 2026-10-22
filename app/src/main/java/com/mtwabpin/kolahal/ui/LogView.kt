@@ -61,6 +61,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -158,6 +159,8 @@ fun LogLine(
     onAppLongPress: (AppEntry) -> Unit,
     onSwipeCopy: (LogEntry) -> Unit = {},
     onSwipeDelete: (LogEntry) -> Unit = {},
+    /** Words a log search found: marked where the line shows them. */
+    marks: List<String> = emptyList(),
 ) {
     val entry = row.entry
     // Swipe right: copy. Swipe left: delete (the terminal offers Undo). Past a third of the width.
@@ -165,11 +168,7 @@ fun LogLine(
     val swipeScope = androidx.compose.runtime.rememberCoroutineScope()
     var rowWidth by remember { androidx.compose.runtime.mutableIntStateOf(1) }
     val haptics = LocalHapticFeedback.current
-    val gutterColor = when (row.gutter) {
-        Gutter.COMMAND -> Term.prompt
-        Gutter.SCRIPT -> Term.script
-        Gutter.ERROR -> Term.error
-    }.copy(alpha = 0.45f)
+    val gutterColor = gutterColor(row.gutter)
     val showTime = timeMode == TimeMode.ALL || (timeMode == TimeMode.COMMANDS && entry.kind == LogKind.COMMAND)
     val desc = entry.ctx.values[LogContext.DESC]
     val isGrid = entry.ctx.values[LogContext.APPS] != null
@@ -250,9 +249,11 @@ fun LogLine(
             when {
                 // Parsed once per entry: it decodes JSON and looks up every app.
                 isGrid -> AppGrid(remember(entry.id, entry.ctx) { apps(entry) }, onAppTap, onAppLongPress)
-                desc != null -> TwoColumns(entry, desc)
+                desc != null -> TwoColumns(entry, desc, marks)
                 else -> {
-                    val text = remember(entry, Term.palette, indents, row.unread, iconKey) { renderLine(entry, indents, row.unread, iconKey != null) }
+                    val text = remember(entry, Term.palette, indents, row.unread, iconKey, marks) {
+                        markMatches(renderLine(entry, indents, row.unread, iconKey != null), marks)
+                    }
                     if (image == null) Text(text, style = entry.style(), inlineContent = inline)
                     else Column {
                         if (entry.text.isNotEmpty()) Text(text, style = entry.style(), inlineContent = inline)
@@ -274,6 +275,13 @@ fun LogLine(
     }
 }
 
+/** The bar beside a line: commands in the prompt colour, timer output in the script colour, errors red. */
+fun gutterColor(gutter: Gutter): Color = when (gutter) {
+    Gutter.COMMAND -> Term.prompt
+    Gutter.SCRIPT -> Term.script
+    Gutter.ERROR -> Term.error
+}.copy(alpha = 0.45f)
+
 private val ACTIONABLE_KEYS = setOf(
     LogContext.URL, LogContext.PKG, LogContext.COMMAND, LogContext.RUN, LogContext.SCRIPT, LogContext.APPS, LogContext.LINE,
     LogContext.PHONE, LogContext.SHORTCUT, "notif", LogContext.NOTE, LogContext.EVENT, LogContext.REMINDER,
@@ -281,15 +289,30 @@ private val ACTIONABLE_KEYS = setOf(
 
 /** `help`, `config` and `script ls` rows: name on the left, description wrapping on the right. */
 @Composable
-private fun TwoColumns(entry: LogEntry, desc: String) {
+private fun TwoColumns(entry: LogEntry, desc: String, marks: List<String> = emptyList()) {
     Row(Modifier.fillMaxWidth()) {
         Text(
-            entry.text,
+            markMatches(AnnotatedString(entry.text), marks),
             style = entry.style().copy(color = Term.fg, fontWeight = FontWeight.Bold),
             modifier = Modifier.weight(0.46f).padding(end = 8.dp),
         )
-        Text(desc, style = Term.text.copy(color = Term.dim), modifier = Modifier.weight(0.54f))
+        Text(markMatches(AnnotatedString(desc), marks), style = Term.text.copy(color = Term.dim), modifier = Modifier.weight(0.54f))
     }
+}
+
+/** [text] with every place one of [words] appears (ignoring case) marked, as a log search shows them. */
+fun markMatches(text: AnnotatedString, words: List<String>): AnnotatedString {
+    if (words.isEmpty()) return text
+    val mark = SpanStyle(background = Term.prompt.copy(alpha = 0.35f))
+    return AnnotatedString.Builder(text).apply {
+        for (w in words) {
+            var at = text.text.indexOf(w, ignoreCase = true)
+            while (at >= 0) {
+                addStyle(mark, at, at + w.length)
+                at = text.text.indexOf(w, at + w.length, ignoreCase = true)
+            }
+        }
+    }.toAnnotatedString()
 }
 
 /** `apps` output: one line of chips instead of one line per app. */

@@ -1,6 +1,7 @@
 package com.mtwabpin.kolahal.ui
 
 import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -153,6 +154,27 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             info.totalItemsCount > 0 && (info.visibleItemsInfo.lastOrNull()?.index ?: 0) >= info.totalItemsCount - 5
         }.collect { nearTop -> if (nearTop) vm.loadOlder() }
     }
+    // `/words` at the prompt: the matching lines take the log's place until the search ends.
+    val search by vm.search.collectAsStateWithLifecycle()
+    if (preview == null) BackHandler(enabled = search != null) { vm.escape() }
+    // A result tapped: once its line is loaded, scroll to it (a few newer lines below it) and mark it a moment.
+    val jumpTo by vm.jumpTo.collectAsStateWithLifecycle()
+    var flash by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(jumpTo, reversedRows) {
+        val id = jumpTo ?: return@LaunchedEffect
+        val index = reversedRows.indexOfFirst { it is LogRow.Entry && it.entry.id == id }
+        if (index < 0) return@LaunchedEffect
+        pinned = false
+        runCatching { listState.scrollToItem((index - 3).coerceAtLeast(0)) }
+        vm.jumpDone()
+        flash = id
+    }
+    LaunchedEffect(flash) {
+        if (flash != null) {
+            kotlinx.coroutines.delay(2_500)
+            flash = null
+        }
+    }
     // Keyboard-first: grab focus straight away when a physical keyboard is attached.
     if (preview == null) LaunchedEffect(hasHardwareKeyboard) {
         if (hasHardwareKeyboard) runCatching { focus.requestFocus() }
@@ -289,7 +311,22 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         // measured first, so a long suggestion list can't push the prompt off the screen.
         Column(Modifier.weight(1f).fillMaxWidth()) {
         Box(Modifier.weight(1f).fillMaxWidth()) {
-        LazyColumn(
+        val results = search?.takeIf { it.words.isNotEmpty() }
+        if (results != null) LogSearchResults(
+            search = results,
+            timeFormat = lineTimeFormat,
+            gutter = showGutter,
+            indents = indents,
+            menuEntryId = menu?.entryId,
+            apps = vm::appsOf,
+            onOpen = vm::showInLog,
+            onLongPress = { e -> showMenu(e.text, e.id, e.ctx.url) { vm.actionsFor(e) } },
+            onAppTap = vm::launchApp,
+            onAppLongPress = { app -> showMenu(app.label, null) { vm.appActions(app) } },
+            onSwipeCopy = vm::swipeCopy,
+            onSwipeDelete = vm::swipeDelete,
+            modifier = Modifier.fillMaxSize(),
+        ) else LazyColumn(
             state = listState,
             reverseLayout = true,
             modifier = Modifier
@@ -314,7 +351,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 item(key = "empty-hint") {
                     Text(
                         "type an app name or a command · help lists everything · ↑ recalls history · " +
-                            "Tap a line to act, long-press for more · ⚙ settings",
+                            "/ searches the log · Tap a line to act, long-press for more · ⚙ settings",
                         style = Term.text.copy(color = Term.dim),
                         modifier = Modifier.padding(vertical = 12.dp),
                     )
@@ -332,7 +369,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                         topGap = if (row.blockStart) commandGap else 0.dp,
                         gutter = showGutter,
                         indents = indents,
-                        highlighted = menu?.entryId == row.entry.id,
+                        highlighted = menu?.entryId == row.entry.id || flash == row.entry.id,
                         apps = vm::appsOf,
                         onTap = vm::onTap,
                         onLongPress = { e -> showMenu(e.text, e.id, e.ctx.url) { vm.actionsFor(e) } },
@@ -361,7 +398,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         // Scrolled away from the newest lines: one tap back down.
         val awayFromBottom by remember { derivedStateOf { listState.firstVisibleItemIndex > 2 } }
         androidx.compose.animation.AnimatedVisibility(
-            visible = awayFromBottom,
+            visible = awayFromBottom && results == null,
             enter = androidx.compose.animation.fadeIn(),
             exit = androidx.compose.animation.fadeOut(),
             modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
@@ -394,6 +431,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         }
         // [/selector]
         }
+        search?.let { LogSearchSummary(it) }
         // suggestions.auto: hidden on an idle home; shown while typing, or whenever there is input
         // (so hardware-keyboard typing still gets them).
         val suggestionsAuto = remember(configVersion) { config[Keys.SUGGESTIONS_AUTO] }
