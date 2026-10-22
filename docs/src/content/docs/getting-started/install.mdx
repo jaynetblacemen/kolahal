@@ -28,9 +28,10 @@ Google Play Protect blocks sideloaded apps (installed from a browser, a messagin
 manager) that declare an accessibility service or notification access, in India and some other
 countries. The full build has both: the accessibility service only locks the screen, and
 notification access shows your notifications in the log. The lite build is the same app without
-them (its version ends in `-lite`). It has no `lock` or double-tap lock, no `notifs`, no media
-controls and now-playing line, and scripts get no `notifications.recent()` or
-`@on notification`. Everything else is the same.
+them, and without the call log (its version ends in `-lite`). It has no `lock` or double-tap lock,
+no `notifs`, no media controls and now-playing line, no calls in the log or `calls`, and scripts
+get no `notifications.recent()` or `@on notification`. Everything else is the same. The lite
+build is also the version for Google Play.
 
 To install the full build where it is blocked, turn off **Play Store → profile → Play Protect →
 ⚙︎ → Scan apps with Play Protect** while installing (and back on after), or install with
@@ -47,7 +48,7 @@ cd kolahal
 
 ./gradlew :app:assembleRelease            # R8-optimised; signed with keystore.properties or the debug key
 ./gradlew :app:assembleLite               # the lite build (see above)
-./gradlew :app:bundlePlay                # the Google Play bundle: lite, and no call log
+./gradlew :app:bundlePlay                 # the lite build as a bundle, for Google Play
 ./gradlew :app:assembleDebug              # debug APK ("Kolahal debug", package suffix .debug)
 ./gradlew :app:testDebugUnitTest          # JVM tests
 ./gradlew :app:connectedDebugAndroidTest  # on-device tests (run them on an emulator)

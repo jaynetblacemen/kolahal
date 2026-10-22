@@ -10,10 +10,10 @@ Play needs a closed test before production: 12 or more testers opted in for 14 d
 then Dashboard → Apply for production (review usually takes 7 days or less). Testers who opt out
 before day 14 don't count.
 
-* The Play build, and why it has less
+* On Play: the lite build, and why it has less
 
-=./gradlew :app:bundlePlay= builds it (the Release workflow too). It is the lite build without the
-call log as well:
+Google Play gets the lite build, the same app as =kolahal-X.Y.Z-lite.apk= on GitHub, packaged as a
+bundle: =./gradlew :app:bundlePlay= (the Release workflow too). It leaves out three things:
 
 | Left out                                      | What goes with it                                  | Play's rule                                                                                                                                                   |
 |-----------------------------------------------+----------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -29,8 +29,8 @@ status bar, uninstall requests, and the app list (Kolahal uses =<queries>=, not 
 executable code (dex, JAR, .so), not interpreted code, as long as it can't be used to break Play's
 policy.
 
-=tools/check-play-build.sh= checks the built APK: it fails if any of these appear: the call log
-or SMS permissions, =QUERY_ALL_PACKAGES=, =USE_EXACT_ALARM=, =REQUEST_INSTALL_PACKAGES=,
+=tools/check-play-build.sh= checks the lite and Play APKs: it fails if any of these appear: the
+call log or SMS permissions, =QUERY_ALL_PACKAGES=, =USE_EXACT_ALARM=, =REQUEST_INSTALL_PACKAGES=,
 =MANAGE_EXTERNAL_STORAGE=, =ACCESS_BACKGROUND_LOCATION=, an accessibility service, or a
 notification listener. Both workflows run it, so a library that adds one is caught.
 

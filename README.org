@@ -428,8 +428,8 @@ A backup (=Settings → Export everything=) bundles all of the above into one JS
 #+begin_src sh
 ./gradlew :app:assembleDebug              # debug APK ("Kolahal debug", package suffix .debug)
 ./gradlew :app:assembleRelease            # R8-optimised; signed with keystore.properties or the debug key
-./gradlew :app:assembleLite               # release without accessibility and notification access (see below)
-./gradlew :app:bundlePlay                # the Google Play bundle: the lite build without the call log too
+./gradlew :app:assembleLite               # release without accessibility, notification access and the call log
+./gradlew :app:bundlePlay                 # the lite build as a bundle, for Google Play
 ./gradlew :app:testDebugUnitTest          # JVM tests
 ./gradlew :app:connectedDebugAndroidTest  # engines, sandbox, timeouts, :script process, commands
 #+end_src

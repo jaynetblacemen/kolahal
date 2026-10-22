@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Checks that the Google Play build leaves out what Play's policy rules out, or would need
-# declarations, videos and consent screens for. A library can add a permission without anyone
-# noticing; this catches it before Play does. What the Play build leaves out, and why:
+# Checks that the lite and Google Play builds (the same app) leave out what Play's policy rules
+# out, or would need declarations, videos and consent screens for. A library can add a permission
+# without anyone noticing; this catches it before Play does. What they leave out, and why:
 # docs/release/google-play.org.
 #
 #   ./gradlew :app:assemblePlay && tools/check-play-build.sh [apk]
+#   tools/check-play-build.sh app/build/outputs/apk/lite/app-lite.apk
 #
 # The APK defaults to app/build/outputs/apk/play/app-play-unsigned.apk (unsigned without an upload
 # key; the manifest is the same).
@@ -26,7 +27,7 @@ for p in READ_CALL_LOG WRITE_CALL_LOG PROCESS_OUTGOING_CALLS READ_SMS SEND_SMS R
          QUERY_ALL_PACKAGES USE_EXACT_ALARM REQUEST_INSTALL_PACKAGES MANAGE_EXTERNAL_STORAGE \
          ACCESS_BACKGROUND_LOCATION; do
     if grep -q "name='android.permission.$p'" <<<"$permissions"; then
-        echo "The Play build asks for $p."
+        echo "$(basename "$apk") asks for $p."
         problems=1
     fi
 done
@@ -34,10 +35,10 @@ done
 # not an accessibility tool) and a notification listener.
 for s in BIND_ACCESSIBILITY_SERVICE BIND_NOTIFICATION_LISTENER_SERVICE; do
     if grep -q "\"android.permission.$s\"" <<<"$manifest"; then
-        echo "The Play build has a service bound by $s."
+        echo "$(basename "$apk") has a service bound by $s."
         problems=1
     fi
 done
 
-if [ "$problems" = 0 ]; then echo "The Play build leaves out every restricted permission and service."; fi
+if [ "$problems" = 0 ]; then echo "$(basename "$apk") leaves out every restricted permission and service."; fi
 exit "$problems"

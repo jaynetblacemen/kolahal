@@ -11,34 +11,43 @@ built from =docs/src/= only.)
   two where an app only on Play needs one, where they are used, and how to back them up.
 - [[file:github-actions.org][github-actions.org]]: the Build and Release workflows, their secrets, what a release
   run does, and what to do when one fails.
-- [[file:google-play.org][google-play.org]]: the Google Play build (what it leaves out and why), setting up
+- [[file:google-play.org][google-play.org]]: Google Play: the lite build there, the policy behind it, setting up
   Play Console, and each Play release.
 - [[file:notes/][notes/]]: the release notes, one file per version (=notes/0.3.1.md=). The Release
   workflow publishes them as the GitHub release's notes.
 
-* Three builds from one commit
+* Two apps, three files
 
-| Build | Gradle task       | File                     | Goes to         | Leaves out                                          |
-|-------+-------------------+--------------------------+-----------------+-----------------------------------------------------|
-| Full  | =assembleRelease= | =kolahal-X.Y.Z.apk=      | GitHub releases | nothing                                             |
-| Lite  | =assembleLite=    | =kolahal-X.Y.Z-lite.apk= | GitHub releases | the accessibility service, notification access      |
-| Play  | =bundlePlay=      | =kolahal-X.Y.Z-play.aab= | Google Play     | the same two, and the call log                      |
+Kolahal comes in two versions: *full* and *lite*. The lite build is also what goes on Google Play,
+so one commit makes three files:
 
-- *Full* is the app with everything.
-- *Lite* exists because Google Play Protect blocks sideloaded apps (from a browser, a chat app or
-  a file manager) that declare an accessibility service or a notification listener, in India and
-  some other countries. Same package, so either installs over the other.
-- *Play* is what Google Play's policy allows without declarations, videos and extra consent
-  screens: Play doesn't let a launcher read the call log at all, and it treats an accessibility
-  service and a notification listener as sensitive. Leaving all three out was decided on
-  22 October 2026; [[file:google-play.org][google-play.org]] has the policy behind it. Installs from Play are not hit by
-  the sideloading block, so Play needs no lite build.
+| Version | File                     | Gradle task       | Goes to         | Leaves out                                                     |
+|---------+--------------------------+-------------------+-----------------+----------------------------------------------------------------|
+| Full    | =kolahal-X.Y.Z.apk=      | =assembleRelease= | GitHub releases | nothing                                                        |
+| Lite    | =kolahal-X.Y.Z-lite.apk= | =assembleLite=    | GitHub releases | the accessibility service, notification access and the call log |
+| Lite    | =kolahal-X.Y.Z-play.aab= | =bundlePlay=      | Google Play     | the same three: it is the same app                             |
 
-What leaves a build out: =app/src/lite/AndroidManifest.xml= and =app/src/play/AndroidManifest.xml=
-remove the services and the permission, and the =BuildConfig= switches =LOCK_SERVICE=,
-=NOTIFICATION_ACCESS= and =CALL_LOG= turn the features off (=app/build.gradle.kts=). A command for
-a missing feature says "This build has no …". =tools/check-play-build.sh= fails if the Play build
-ever asks for a restricted permission again.
+- *Full* is the app with everything: the screen lock (=lock=, double-tap), notifications in the
+  log (=notifs=, media controls, scripts' notification triggers) and calls in the log (=calls=).
+- *Lite* leaves those three out, for two reasons that ask for the same thing:
+  - Google Play Protect blocks sideloaded apps (from a browser, a chat app or a file manager) that
+    declare an accessibility service or a notification listener, in India and some other
+    countries.
+  - Google Play's policy doesn't let a launcher read the call log at all, and wants declarations,
+    videos and consent screens for an accessibility service and a notification listener. Leaving
+    them out was decided on 22 October 2026; [[file:google-play.org][google-play.org]] has the policy.
+- The Play file is the lite build packaged as an app bundle and signed with the upload key; Play
+  turns it into APKs signed with the release key ([[file:signing.org][signing.org]]). The only other difference: its
+  version has no =-lite= ending.
+- All of them use the same package, so any one installs over another (once Play signs with the
+  release key), keeping the data.
+
+How: =app/src/lite/AndroidManifest.xml= removes the two services and =READ_CALL_LOG=; the =play=
+build type starts from =lite= and uses that same manifest (=app/build.gradle.kts=), so the two can't
+drift apart. The =BuildConfig= switches =LOCK_SERVICE=, =NOTIFICATION_ACCESS= and =CALL_LOG= turn
+the features off; a command for a missing feature says "This build has no …".
+=tools/check-play-build.sh= checks both APKs and fails if either ever asks for a restricted
+permission again.
 
 * How a release travels
 
@@ -77,6 +86,8 @@ version bump + notes/X.Y.Z.md ── commit, push master ── push tag vX.Y.Z
 - 0.1.0 to 0.3.0 were built on the maintainer's computer and published by hand with =gh=. Their
   APKs are signed with that computer's debug key (=~/.android/debug.keystore=).
 - 22 October 2026: the release and upload keys, the GitHub Actions workflows and the Play build.
+- 22 October 2026, later: the lite build leaves the call log out too, and becomes the version on
+  Google Play (before, lite still read the call log and Play had a build of its own).
 - The first release signed with the release key can't install over the debug-signed ones: every
   install, the maintainer's phone included, moves once by Settings → Backup → Export everything,
   uninstall, install, import. Its notes must say so. [[file:signing.org][signing.org]] explains why.

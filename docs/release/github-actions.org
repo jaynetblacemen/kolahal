@@ -28,7 +28,7 @@ looking at (the run's *Artifacts*), not for installing over a release.
    No secrets, no release: it stops and says to run =tools/make-keys.sh --secrets=.
 3. *Unit tests and signed builds*: =testDebugUnitTest=, =assembleRelease=, =assembleLite=,
    =bundlePlay=, =assemblePlay=.
-4. *The Play check*: =tools/check-play-build.sh= (see [[file:google-play.org][google-play.org]]).
+4. *The Play check*: =tools/check-play-build.sh= on the lite and Play APKs (see [[file:google-play.org][google-play.org]]).
 5. *Checks the signatures*: both APKs must be signed, with the release key when the
    =RELEASE_CERT_SHA256= variable is set ([[file:signing.org][signing.org]]); the bundle must be signed, and not with
    a debug key. The run's summary lists each file's certificate.
@@ -76,9 +76,10 @@ gh run download <run id> -n kolahal-X.Y.Z-play    # the Play bundle and its mapp
 - *The keys aren't set up*: =tools/make-keys.sh --secrets=.
 - *An APK is signed with another key*: a secret holds the wrong keystore. Store the right one
   again; never change =RELEASE_CERT_SHA256= to fit a wrong key.
-- *The Play check fails*: something added a restricted permission or service to the Play build,
-  often a new library. =aapt2 dump permissions= on the Play APK shows it; remove it in
-  =app/src/play/AndroidManifest.xml= with =tools:node="remove"=, or drop the library.
+- *The Play check fails*: something added a restricted permission or service to the lite build,
+  often a new library. =aapt2 dump permissions= on the APK shows it; remove it in
+  =app/src/lite/AndroidManifest.xml= (the Play build uses it too) with =tools:node="remove"=, or
+  drop the library.
 - *A unit test fails*: the run's failed step shows it; =./gradlew :app:testDebugUnitTest= does the
   same here.
 - A failed run publishes nothing, so after a fix just tag again.
@@ -96,6 +97,7 @@ These need an emulator or a phone, so they stay out of GitHub Actions:
 
 #+begin_src sh
 ./gradlew :app:testDebugUnitTest :app:assembleRelease :app:assembleLite :app:bundlePlay :app:assemblePlay
+tools/check-play-build.sh app/build/outputs/apk/lite/app-lite.apk
 tools/check-play-build.sh
 #+end_src
 

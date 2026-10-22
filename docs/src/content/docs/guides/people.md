@@ -26,7 +26,9 @@ contacts sam              # search (alias: contact)
 
 ## Calls in the log
 
-With **call log** access, every call gets a line in the log as it ends, the way app installs do:
+With **call log** access, every call gets a line in the log as it ends, the way app installs do
+(the full build only: the [lite build](/getting-started/install/#the-lite-build), which is also the
+Google Play version, can't read the call log):
 
 ```text
 Call from Sandhya ↙

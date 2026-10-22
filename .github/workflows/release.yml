@@ -73,8 +73,10 @@ jobs:
           KOLAHAL_UPLOAD_KEY_PASSWORD: ${{ secrets.UPLOAD_KEY_PASSWORD }}
         run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleRelease :app:assembleLite :app:bundlePlay :app:assemblePlay
 
-      - name: The Play build leaves out what Play's policy rules out
-        run: tools/check-play-build.sh
+      - name: The lite and Play builds leave out what Play's policy rules out
+        run: |
+          tools/check-play-build.sh app/build/outputs/apk/lite/app-lite.apk
+          tools/check-play-build.sh
 
       - name: Check the signatures
         env:
