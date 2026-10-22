@@ -1,0 +1,108 @@
+<!doctype html>
+<!-- A Play Store screenshot: one capture from raw/ in a phone frame, under its caption, 1080 × 1920.
+     Pick the capture with ?shot=<name> (raw/<name>.png); tools/play-graphics.sh renders them all. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kolahal screenshot</title>
+<style>
+	@font-face { font-family: 'JetBrains Mono'; font-weight: 400; src: url('../../../app/src/main/res/font/jetbrains_mono_regular.ttf'); }
+	@font-face { font-family: 'JetBrains Mono'; font-weight: 700; src: url('../../../app/src/main/res/font/jetbrains_mono_bold.ttf'); }
+	:root {
+		/* The app's default "green" theme (ui/Theme.kt). */
+		--bg: #0b0d0b;
+		--fg: #e8eee4;
+		--dim: #8f9a8b;
+		--prompt: #8fd18a;
+		--bezel: #20251f;
+		--edge: #3a423a;
+	}
+	* { margin: 0; box-sizing: border-box; }
+	html, body { width: 1080px; height: 1920px; overflow: hidden; }
+	body {
+		font-family: 'JetBrains Mono', monospace;
+		color: var(--fg);
+		background:
+			radial-gradient(ellipse 70% 45% at 50% 72%, rgb(143 209 138 / 0.13), transparent 70%),
+			linear-gradient(#141814, var(--bg) 45%);
+		position: relative;
+	}
+	.caption {
+		position: absolute;
+		inset: 92px 60px auto;
+		text-align: center;
+	}
+	h1 {
+		font-size: 62px;
+		font-weight: 700;
+		line-height: 1.18;
+		letter-spacing: -0.01em;
+	}
+	h1 em { font-style: normal; color: var(--prompt); }
+	p {
+		margin-top: 24px;
+		font-size: 31px;
+		line-height: 1.4;
+		color: var(--dim);
+	}
+	.phone {
+		position: absolute;
+		left: 50%;
+		bottom: 64px;
+		transform: translateX(-50%);
+		/* The screen is 1080 × 2400 scaled to 630 × 1400, in an 18 px bezel. */
+		width: 666px;
+		height: 1436px;
+		padding: 18px;
+		border-radius: 76px;
+		background: var(--bezel);
+		box-shadow:
+			inset 0 0 0 2px var(--edge),
+			0 40px 90px -30px rgb(0 0 0 / 0.8),
+			0 0 0 1px rgb(0 0 0 / 0.6);
+	}
+	.screen {
+		position: relative;
+		width: 630px;
+		height: 1400px;
+		border-radius: 58px;
+		overflow: hidden;
+		background: var(--bg);
+	}
+	.screen img { display: block; width: 100%; height: 100%; }
+	/* The front camera, over the status bar Kolahal hides. */
+	.screen::after {
+		content: '';
+		position: absolute;
+		top: 22px;
+		left: 50%;
+		width: 22px;
+		height: 22px;
+		margin-left: -11px;
+		border-radius: 50%;
+		background: #050605;
+		box-shadow: inset 0 0 0 3px #161a16;
+	}
+</style>
+</head>
+<body>
+	<div class="caption"><h1 id="title"></h1><p id="text"></p></div>
+	<div class="phone"><div class="screen"><img id="shot" alt=""></div></div>
+	<script>
+		// Captions per capture: the title (an <em> part is green) and one line under it.
+		const SHOTS = {
+			'1-home': ['Your home screen<br>is <em>a terminal</em>', 'Clock, weather and to-dos at the top,<br>every command and its answer below'],
+			'2-type': ['Type a few letters,<br>press <em>Enter</em>', 'The best match sits right above your thumb'],
+			'3-apps': ['Every app,<br><em>one tap</em> away', 'The app grid, or slide your thumb<br>along the right edge'],
+			'4-feeds': ['Your <em>feeds</em>,<br>in the log', 'A built-in RSS and Atom reader<br>with unread counts'],
+			'5-scripts': ['Scripts in <em>Lua</em><br>or <em>JavaScript</em>', 'On a timer, on an event,<br>or as commands of your own'],
+			'6-themes': ['Make it <em>yours</em>', 'Seven themes, and a theme builder<br>with a live preview'],
+		};
+		const name = new URLSearchParams(location.search).get('shot') || '1-home';
+		const [title, text] = SHOTS[name] || [name, ''];
+		document.getElementById('title').innerHTML = title;
+		document.getElementById('text').innerHTML = text;
+		document.getElementById('shot').src = 'raw/' + name + '.png';
+	</script>
+</body>
+</html>

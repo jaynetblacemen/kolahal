@@ -13,6 +13,8 @@ details are in the files beside this one. (This folder is for the maintainer; th
   run does, and what to do when one fails.
 - [[file:google-play.org][google-play.org]]: Google Play: the lite build there, the policy behind it, setting up
   Play Console, and each Play release.
+- [[file:graphics/][graphics/]]: the store icon, feature graphic and screenshots, with the sources they are
+  rendered from (=tools/play-graphics.sh=; google-play.org → Graphics).
 - [[file:notes/][notes/]]: the release notes, one file per version (=notes/0.3.1.md=). The Release
   workflow publishes them as the GitHub release's notes.
 
@@ -45,7 +47,8 @@ so one commit makes three files:
 How: =app/src/lite/AndroidManifest.xml= removes the two services and =READ_CALL_LOG=; the =play=
 build type starts from =lite= and uses that same manifest (=app/build.gradle.kts=), so the two can't
 drift apart. The =BuildConfig= switches =LOCK_SERVICE=, =NOTIFICATION_ACCESS= and =CALL_LOG= turn
-the features off; a command for a missing feature says "This build has no …".
+the features off: their commands aren't suggested or listed in =help=, and typed anyway they say
+"This build has no …".
 =tools/check-play-build.sh= checks both APKs and fails if either ever asks for a restricted
 permission again.
 

@@ -15,11 +15,11 @@ before day 14 don't count.
 Google Play gets the lite build, the same app as =kolahal-X.Y.Z-lite.apk= on GitHub, packaged as a
 bundle: =./gradlew :app:bundlePlay= (the Release workflow too). It leaves out three things:
 
-| Left out                                      | What goes with it                                  | Play's rule                                                                                                                                                   |
-|-----------------------------------------------+----------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| =READ_CALL_LOG=                               | calls in the log, =calls=                          | not allowed: Play's SMS and Call Log policy names "calls appearing in wallpaper, launcher, and other tools" as invalid, and launchers get no exception          |
-| the accessibility service (=LockService=)     | double-tap to lock, =lock=                         | Play says launchers are not accessibility tools, so it would need a declaration, an in-app disclosure with consent, and a video of it                         |
-| the notification listener                     | notifications in the log, =notifs=, media controls | personal data: it would need an in-app disclosure before Setup opens Notification access                                                                       |
+| Left out                                  | What goes with it                                  | Play's rule                                                                                                                                            |
+|-------------------------------------------+----------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| =READ_CALL_LOG=                           | calls in the log, =calls=                          | not allowed: Play's SMS and Call Log policy names "calls appearing in wallpaper, launcher, and other tools" as invalid, and launchers get no exception |
+| the accessibility service (=LockService=) | double-tap to lock, =lock=                         | Play says launchers are not accessibility tools, so it would need a declaration, an in-app disclosure with consent, and a video of it                  |
+| the notification listener                 | notifications in the log, =notifs=, media controls | personal data: it would need an in-app disclosure before Setup opens Notification access                                                               |
 
 Everything else stays, because Play doesn't restrict it or needs only a clear runtime request:
 contacts, calendar, exact alarms (=SCHEDULE_EXACT_ALARM=, the one the user grants; the restricted
@@ -51,19 +51,17 @@ Policy pages (opened 22 October 2026):
 3. *Play app signing*: give Play the release key, as in [[file:signing.org][signing.org]], before any release reaches
    open testing or production.
 4. *App content*, the answers:
-   | Form            | Answer                                                                                                                                  |
-   |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------|
-   | Privacy policy  | https://mtwabpin.github.io/kolahal/reference/privacy/ (it says what the Play build leaves out)                                          |
-   | App access      | All functionality is available without special access (no login; a reviewer needs Kolahal as the home app to see it)                     |
-   | Ads             | No                                                                                                                                      |
-   | Content rating  | All other app types; No to every content question; no user interaction; no unrestricted internet access (feeds open links in the browser) |
-   | Target audience | 18 and over                                                                                                                             |
+   | Form            | Answer                                                                                                                                                              |
+   |-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+   | Privacy policy  | https://mtwabpin.github.io/kolahal/reference/privacy/ (it says what the Play build leaves out)                                                                      |
+   | App access      | All functionality is available without special access (no login; a reviewer needs Kolahal as the home app to see it)                                                |
+   | Ads             | No                                                                                                                                                                  |
+   | Content rating  | All other app types; No to every content question; no user interaction; no unrestricted internet access (feeds open links in the browser)                           |
+   | Target audience | 18 and over                                                                                                                                                         |
    | Data safety     | No data collected or shared: nothing is sent to the developer; feeds and searches go to the sites people chose; crash reports leave only as an email the user sends |
-   | Category        | Personalization                                                                                                                         |
+   | Category        | Personalization                                                                                                                                                     |
 5. *Store listing*: paste the texts under [[*Store listing text][Store listing text]] below.
-6. *Graphics*: a 512 × 512 icon (32-bit PNG, at most 1 MB), a 1024 × 500 feature graphic (JPEG or
-   PNG without alpha), and 2 to 8 screenshots whose long side is at most twice the short side.
-   The website's 1080 × 2400 screenshots are too tall: crop to 1080 × 2160 or frame them.
+6. *Graphics*: upload the files in =graphics/=, as under [[*Graphics][Graphics]] below.
 7. *Internal testing*: upload the bundle from a Release run; install it from the test link; read
    the pre-launch report.
 8. *Closed testing*: 12 or more testers for 14 days in a row, then apply for production.
@@ -140,6 +138,45 @@ WORK PROFILE AND PRIVATE SPACE
 The guide: mtwabpin.github.io/kolahal
 The source code: github.com/mtwabpin/kolahal
 #+end_example
+
+* Graphics
+
+Ready to upload in Play Console → Grow users → Store presence → Main store listing → Graphics.
+Each is rendered from a source beside it by =tools/play-graphics.sh=, so they can be made again
+when the app changes.
+
+| Play asks for                                          | Upload                                                             | Made from                                                                         |
+|--------------------------------------------------------+--------------------------------------------------------------------+-----------------------------------------------------------------------------------|
+| App icon: 512 × 512, 32-bit PNG, at most 1 MB          | =graphics/icon.png=                                                | =icon.svg=: the launcher icon's two layers, full square (Play rounds the corners) |
+| Feature graphic: 1024 × 500, JPEG or PNG, no alpha     | =graphics/feature-graphic.png=                                     | =feature-graphic.html=, with the top of =raw/1-home.png= in the phone             |
+| Phone screenshots: 2 to 8, long side at most 2 × short | =graphics/screenshots/1-home.png= to =6-themes.png=, in that order | =screenshot.html=: each capture in =raw/= in a phone frame, under its caption     |
+
+The screenshots are 1080 × 1920 (9:16, what Play recommends): a 1080 × 2400 phone capture fits
+only inside a frame. The captions are in =screenshot.html= (=SHOTS=); the fonts are the app's own
+JetBrains Mono.
+
+** Taking the captures again
+
+They must show the lite build, since it is what Play gets: nothing about the screen lock,
+notifications in the log, media controls or the call log.
+
+1. On the emulator (never a phone you use), install the lite build:
+   =./gradlew :app:assembleLite= and =adb install -r app/build/outputs/apk/lite/app-lite.apk=.
+   Locally it is signed with the release key, so an install with another key must be removed first
+   (or re-sign a copy with the debug key to keep the emulator's data).
+2. Settings as a new install has them, plus =config set header.network on=; the =green= theme; a
+   1080 × 2400 screen (=adb shell wm size= shows it). Two feeds (Hacker News, LWN), three to-dos,
+   and the =weather= script from the library on a 30-minute timer, with =weather --default Pune=.
+3. Each capture: =adb exec-out screencap -p > docs/release/graphics/raw/<name>.png=.
+   | Capture     | What is on screen                                                                                          |
+   |-------------+------------------------------------------------------------------------------------------------------------|
+   | =1-home=    | after =clear=: =weather=, ~= 30 c in f~, ~= 5 km in mi~, ~= 100 usd in eur~, =todo=, =feed=; keyboard down |
+   | =2-type=    | =ca= typed in the prompt, keyboard up                                                                      |
+   | =3-apps=    | the app selector held on the right edge, on Messages                                                       |
+   | =4-feeds=   | =feed read 4= (LWN)                                                                                        |
+   | =5-scripts= | =script edit weather=, keyboard hidden, scrolled to the top                                                |
+   | =6-themes=  | Settings → Look & feel → Your themes → a theme, named =olive= (not saved)                                  |
+4. =tools/play-graphics.sh=, then look at the results before uploading.
 
 * Each release on Play
 

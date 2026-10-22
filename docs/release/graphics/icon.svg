@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="18 18 72 72">
+  <!-- The launcher icon (res/drawable/ic_launcher_*.xml) as Play shows it: the 72 × 72 middle of the
+       108 × 108 adaptive icon, full square (Play rounds the corners itself). -->
+  <rect x="18" y="18" width="72" height="72" fill="#101210"/>
+  <path d="M36,40 L50,54 L36,68" fill="none" stroke="#8FD18A" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M56,68 L74,68" fill="none" stroke="#8FD18A" stroke-width="6" stroke-linecap="round"/>
+</svg>
