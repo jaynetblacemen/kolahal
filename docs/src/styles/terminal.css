@@ -18,9 +18,10 @@
 	--k-work: #f2b35b;
 	--k-private: #c792ea;
 
-	--sl-font: 'JetBrains Mono', var(--sl-font-system-mono);
+	/* Reading text in the reader's own font (like the app's font.sans); code and the
+	   terminal bits stay in JetBrains Mono. */
+	--sl-font: var(--sl-font-system);
 	--sl-font-mono: 'JetBrains Mono', var(--sl-font-system-mono);
-	--sl-text-body: 0.9375rem;
 
 	--sl-color-accent-low: #1e3a1d;
 	--sl-color-accent: #8fd18a;
@@ -85,15 +86,17 @@ body {
 	font-weight: 700;
 	letter-spacing: -0.01em;
 }
+.sl-markdown-content :is(h2, h3)::before {
+	font-family: var(--sl-font-mono);
+	font-weight: 400;
+}
 .sl-markdown-content h2::before {
 	content: '$ ';
 	color: var(--sl-color-accent);
-	font-weight: 400;
 }
 .sl-markdown-content h3::before {
 	content: '› ';
 	color: var(--sl-color-gray-3);
-	font-weight: 400;
 }
 
 /* Square-ish, terminal-like blocks. */
@@ -131,6 +134,7 @@ body {
 }
 
 .site-title {
+	font-family: var(--sl-font-mono);
 	font-weight: 700;
 	letter-spacing: -0.02em;
 }
