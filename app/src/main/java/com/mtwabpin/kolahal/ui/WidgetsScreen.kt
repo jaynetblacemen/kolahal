@@ -1,8 +1,6 @@
 package com.mtwabpin.kolahal.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,9 +11,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -43,10 +44,10 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -68,10 +69,14 @@ import com.mtwabpin.kolahal.widgets.WidgetLocation
 import com.mtwabpin.kolahal.widgets.WidgetOrder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 
 /**
- * Widgets page (Material 3 Expressive): every placed widget, live, in the order of the widgets
- * page. Long-press a widget or tap Edit for its toolbar: move, resize in 48dp steps, remove.
+ * Widgets page (Material 3 Expressive): every placed widget, live, laid out as on the widgets page
+ * ([WidgetFlow]). Long-press a widget, or tap Edit and then a widget, for its toolbar at the bottom:
+ * width in twelfths of the page, height in 8dp steps (held, they repeat), square, move, remove.
  * Entries restored from a backup show an "Add again" row.
  */
 @Composable
@@ -93,6 +98,7 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
     val labels = remember(all, providersVersion) {
         all.associate { w -> w.key to (w.id?.let { widgets.info(it) }?.loadLabel(context.packageManager) ?: w.provider.substringAfterLast('.')) }
     }
+    val chosen = panel.firstOrNull { it.key == selected }
 
     GuiTheme {
         val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -117,12 +123,41 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
                     scrollBehavior = scroll,
                 )
             },
+            bottomBar = {
+                if (chosen != null) {
+                    WidgetToolbar(
+                        w = chosen,
+                        label = labels[chosen.key] ?: chosen.provider,
+                        index = panel.indexOf(chosen),
+                        count = panel.size,
+                        minHeight = remember(chosen.id, providersVersion) {
+                            chosen.id?.let { widgets.info(it) }?.let { widgets.minHeightDp(it) } ?: WidgetLayout.MIN_DP
+                        },
+                        onMove = { widgets.move(chosen.key, it) },
+                        onHeight = { widgets.resize(chosen.key, it * WidgetLayout.STEP_DP) },
+                        onWidth = { widgets.resizeWidth(chosen.key, it) },
+                        onSquare = { widgets.square(chosen.key) },
+                        onRemove = { confirmRemove = chosen },
+                        onDone = { selected = null; editing = false },
+                    )
+                } else if (editing) {
+                    Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            "Tap a widget to size or move it",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.navigationBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp),
+                        )
+                    }
+                }
+            },
             floatingActionButton = {
-                ExtendedFloatingActionButton(
-                    onClick = { vm.openScreen(Screen.WIDGET_PICKER) },
-                    icon = { Icon(painterResource(R.drawable.ic_add), null) },
-                    text = { Text("Add widget") },
-                )
+                if (!editing && chosen == null) {
+                    ExtendedFloatingActionButton(
+                        onClick = { vm.openScreen(Screen.WIDGET_PICKER) },
+                        icon = { Icon(painterResource(R.drawable.ic_add), null) },
+                        text = { Text("Add widget") },
+                    )
+                }
             },
         ) { padding ->
             Column(
@@ -130,16 +165,19 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 96.dp)
-                    .padding(horizontal = 16.dp),
+                    // The widgets as wide as on the widgets page; text keeps the usual margin.
+                    .padding(horizontal = WidgetLayout.GAP_DP.dp),
             ) {
+                val inset = Modifier.padding(horizontal = 16.dp - WidgetLayout.GAP_DP.dp)
                 if (panel.isEmpty() && pending.isEmpty()) {
                     Text(
                         "No widgets yet. They live on the widgets page beside the terminal: swipe sideways on home to reach it.",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        modifier = inset.fillMaxWidth().padding(vertical = 32.dp),
                     )
+                    Box(inset) {
                     ActionGroup(
                         listOf(
                             Action(R.drawable.ic_widgets, "Add a widget", "Clock, weather, calendar, music… from any app") {
@@ -147,34 +185,35 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
                             },
                         )
                     )
-                }
-                panel.forEachIndexed { i, w ->
-                    key(w.key) {
-                        WidgetCard(
-                            w = w,
-                            label = labels[w.key] ?: w.provider,
-                            index = i,
-                            count = panel.size,
-                            showTools = editing || selected == w.key,
-                            pausedKind = profiles.pausedKind(w.profileSerial),
-                            minHeight = remember(w.id, providersVersion) { w.id?.let { widgets.info(it) }?.let { widgets.minHeightDp(it) } ?: WidgetLayout.MIN_DP },
-                            onLongPress = { selected = if (selected == w.key) null else w.key },
-                            onMove = { widgets.move(w.key, it) },
-                            onResize = { widgets.resize(w.key, it) },
-                            onRemove = { confirmRemove = w },
-                        )
                     }
-                    Spacer(Modifier.height(12.dp))
+                }
+                WidgetFlow(panel.map { it.span }, WidgetLayout.GAP_DP.dp, Modifier.fillMaxWidth()) {
+                    panel.forEach { w ->
+                        key(w.key) {
+                            WidgetCard(
+                                w = w,
+                                label = labels[w.key] ?: w.provider,
+                                selected = selected == w.key,
+                                editing = editing,
+                                pausedKind = profiles.pausedKind(w.profileSerial),
+                                onSelect = {
+                                    selected = if (selected == w.key) null else w.key
+                                    editing = true
+                                },
+                            )
+                        }
+                    }
                 }
                 if (pending.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
                     GroupHeader("Restored from backup")
                     Text(
                         "Widgets can't be copied between installs — add each one again with one tap.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.padding(start = 16.dp, bottom = 8.dp),
+                        modifier = inset.padding(start = 16.dp, bottom = 8.dp),
                     )
-                    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+                    Column(inset, verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
                         pending.forEachIndexed { i, w ->
                             PendingRow(w, i, pending.size, providersVersion, onReAdd = onReAdd, onDismiss = { widgets.remove(w.key) })
                         }
@@ -182,10 +221,10 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
                 }
                 if (panel.isNotEmpty()) {
                     Text(
-                        "Long-press a widget for move, resize and remove. Terminal: widgets ls · widget add",
+                        "Long-press a widget, or tap ✎ and then a widget, to size and move it. Terminal: widgets ls · widget add",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
+                        modifier = inset.padding(start = 16.dp, top = 16.dp, end = 16.dp),
                     )
                 }
             }
@@ -209,59 +248,113 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
     }
 }
 
+/** One widget as it shows on the widgets page; while [editing], a tap picks it instead of reaching it. */
 @Composable
 private fun WidgetCard(
     w: PlacedWidget,
     label: String,
-    index: Int,
-    count: Int,
-    showTools: Boolean,
+    selected: Boolean,
+    editing: Boolean,
     pausedKind: ProfileKind?,
-    minHeight: Int,
-    onLongPress: () -> Unit,
-    onMove: (Int) -> Unit,
-    onResize: (Int) -> Unit,
-    onRemove: () -> Unit,
+    onSelect: () -> Unit,
 ) {
     Surface(
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier.fillMaxWidth().animateContentSize(),
+        border = if (selected) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else null,
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Column {
-            if (showTools) {
-                Column(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(horizontal = 8.dp, vertical = 4.dp)) {
-                    Text(
-                        "$label · ${w.heightDp}dp",
-                        style = MaterialTheme.typography.labelLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(start = 8.dp, top = 4.dp),
-                    )
-                    Row(horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        IconButton(onClick = { onMove(-1) }, enabled = index > 0) { Icon(painterResource(R.drawable.ic_arrow_up), "Move up") }
-                        IconButton(onClick = { onMove(1) }, enabled = index < count - 1) { Icon(painterResource(R.drawable.ic_arrow_down), "Move down") }
-                        IconButton(onClick = { onResize(-WidgetLayout.STEP_DP) }, enabled = w.heightDp > minHeight) { Icon(painterResource(R.drawable.ic_remove), "Shorter") }
-                        IconButton(onClick = { onResize(WidgetLayout.STEP_DP) }, enabled = w.heightDp < WidgetLayout.MAX_DP) { Icon(painterResource(R.drawable.ic_add), "Taller") }
-                        IconButton(onClick = onRemove) { Icon(painterResource(R.drawable.ic_delete), "Remove", tint = MaterialTheme.colorScheme.error) }
+        Box {
+            HostedWidget(w, w.heightDp.dp, pausedKind, onSelect) { why ->
+                Box(
+                    Modifier.fillMaxWidth().height(w.heightDp.dp).alpha(0.6f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(label, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(why, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                        TextButton(onClick = onSelect) { Text("Edit") }
                     }
                 }
             }
-            Box(Modifier.clip(if (showTools) RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp) else MaterialTheme.shapes.extraLarge)) {
-                HostedWidget(w, w.heightDp.dp, pausedKind, onLongPress) { why ->
-                    Box(
-                        Modifier.fillMaxWidth().height(w.heightDp.dp).alpha(0.6f),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(label, style = MaterialTheme.typography.titleSmall)
-                            Text(why, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-                            TextButton(onClick = onLongPress) { Text("Edit") }
-                        }
-                    }
+            if (editing) Box(Modifier.matchParentSize().clickable(onClickLabel = "change $label", onClick = onSelect))
+        }
+    }
+}
+
+/** The chosen widget's controls, docked at the bottom: width, height, square, move, remove. */
+@Composable
+private fun WidgetToolbar(
+    w: PlacedWidget,
+    label: String,
+    index: Int,
+    count: Int,
+    minHeight: Int,
+    onMove: (Int) -> Unit,
+    onHeight: (Int) -> Unit,
+    onWidth: (Int) -> Unit,
+    onSquare: () -> Unit,
+    onRemove: () -> Unit,
+    onDone: () -> Unit,
+) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.navigationBarsPadding().padding(horizontal = 8.dp, vertical = 4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f).padding(start = 8.dp)) {
+                    Text(label, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        "${WidgetLayout.spanLabel(w.span)} wide · ${w.heightDp}dp tall",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
+                IconButton(onClick = onRemove) { Icon(painterResource(R.drawable.ic_delete), "Remove", tint = MaterialTheme.colorScheme.error) }
+                IconButton(onClick = onDone) { Icon(painterResource(R.drawable.ic_check), "Done") }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Stepper("Width", WidgetLayout.spanLabel(w.span), w.span > WidgetLayout.MIN_SPAN, w.span < WidgetLayout.COLUMNS, onWidth)
+                Stepper("Height", "${w.heightDp}", w.heightDp > minHeight, w.heightDp < WidgetLayout.MAX_DP, onHeight)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                IconButton(onClick = { onMove(-1) }, enabled = index > 0) { Icon(painterResource(R.drawable.ic_arrow_back), "Move earlier") }
+                IconButton(onClick = { onMove(1) }, enabled = index < count - 1) { Icon(painterResource(R.drawable.ic_arrow_forward), "Move later") }
+                Spacer(Modifier.weight(1f))
+                FilledTonalButton(onClick = onSquare) { Text("Square") }
             }
         }
+    }
+}
+
+/** label − value +: each button steps once on a tap and keeps stepping while held. */
+@Composable
+private fun Stepper(label: String, value: String, canLess: Boolean, canMore: Boolean, onStep: (Int) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp))
+        RepeatingButton(R.drawable.ic_remove, "Less ${label.lowercase()}", canLess) { onStep(-1) }
+        Text(value, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center, modifier = Modifier.widthIn(min = 36.dp))
+        RepeatingButton(R.drawable.ic_add, "More ${label.lowercase()}", canMore) { onStep(1) }
+    }
+}
+
+@Composable
+private fun RepeatingButton(icon: Int, description: String, enabled: Boolean, onStep: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val step by rememberUpdatedState(onStep)
+    // Held past the long-press delay it repeats; the tap that ends a hold doesn't step again.
+    var repeated by remember { mutableStateOf(false) }
+    LaunchedEffect(pressed, enabled) {
+        if (!pressed || !enabled) return@LaunchedEffect
+        repeated = false
+        delay(400)
+        repeated = true
+        while (true) {
+            step()
+            delay(70)
+        }
+    }
+    IconButton(onClick = { if (!repeated) step(); repeated = false }, enabled = enabled, interactionSource = interaction) {
+        Icon(painterResource(icon), description)
     }
 }
 

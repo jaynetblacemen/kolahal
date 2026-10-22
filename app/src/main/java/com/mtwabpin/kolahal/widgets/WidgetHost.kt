@@ -112,7 +112,7 @@ class WidgetHost private constructor(context: Context) {
 
     /**
      * Records a bound (and configured) widget. [replacing] is the key of a pending entry it
-     * restores: that entry's height and order carry over.
+     * restores: that entry's size and order carry over.
      */
     fun place(id: Int, info: AppWidgetProviderInfo, replacing: String? = null) {
         synchronized(inFlight) { inFlight -= id }
@@ -124,13 +124,12 @@ class WidgetHost private constructor(context: Context) {
                 profileSerial = serialOf(info.profile),
                 heightDp = old?.heightDp?.coerceAtLeast(minHeightDp(info)) ?: defaultHeightDp(info),
                 order = old?.order ?: WidgetOrder.nextOrder(all),
+                span = old?.span ?: WidgetLayout.COLUMNS,
             )
             all.filterNot { it.key == old?.key } + placed
         }
-        applySize(id, defaultHeightDpFor(id))
+        _widgets.value.firstOrNull { it.id == id }?.let { applySize(id, it.heightDp, it.span) }
     }
-
-    private fun defaultHeightDpFor(id: Int) = _widgets.value.firstOrNull { it.id == id }?.heightDp ?: WidgetLayout.MIN_DP
 
     fun remove(key: String) {
         val w = _widgets.value.firstOrNull { it.key == key } ?: return
@@ -143,9 +142,26 @@ class WidgetHost private constructor(context: Context) {
 
     fun resize(key: String, deltaDp: Int) {
         val w = _widgets.value.firstOrNull { it.key == key } ?: return
+        setHeight(w, w.heightDp + deltaDp)
+    }
+
+    /** Wider or narrower by [delta] columns of the page. */
+    fun resizeWidth(key: String, delta: Int) {
+        val w = _widgets.value.firstOrNull { it.key == key } ?: return
+        val span = WidgetLayout.resizeSpan(w.span, delta)
+        if (span != w.span) update { all -> all.map { if (it.key == key) it.copy(span = span) else it } }
+    }
+
+    /** As tall as it is wide on the widgets page (or as close as the widget allows). */
+    fun square(key: String) {
+        val w = _widgets.value.firstOrNull { it.key == key } ?: return
+        setHeight(w, WidgetLayout.widthDp(pageWidthDp(), w.span))
+    }
+
+    private fun setHeight(w: PlacedWidget, heightDp: Int) {
         val min = w.id?.let { info(it) }?.let { minHeightDp(it) } ?: WidgetLayout.MIN_DP
-        val h = WidgetLayout.resize(w.heightDp, deltaDp, min)
-        if (h != w.heightDp) update { all -> all.map { if (it.key == key) it.copy(heightDp = h) else it } }
+        val h = WidgetLayout.resize(heightDp, 0, min)
+        if (h != w.heightDp) update { all -> all.map { if (it.key == w.key) it.copy(heightDp = h) else it } }
     }
 
     // ---- providers ------------------------------------------------------------------------
@@ -197,9 +213,9 @@ class WidgetHost private constructor(context: Context) {
         if (Build.VERSION.SDK_INT >= 31) info.targetCellHeight else 0,
     )
 
-    /** Size options handed to bind, so the provider lays out for the column it will live in. */
-    fun options(heightDp: Int): Bundle {
-        val widthDp = widthDp()
+    /** Size options handed to bind, so the provider lays out for the place it will live in. */
+    fun options(heightDp: Int, span: Int = WidgetLayout.COLUMNS): Bundle {
+        val widthDp = WidgetLayout.widthDp(pageWidthDp(), span)
         return Bundle().apply {
             putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, widthDp)
             putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, widthDp)
@@ -212,11 +228,12 @@ class WidgetHost private constructor(context: Context) {
         }
     }
 
-    private fun widthDp(): Int = (app.resources.configuration.screenWidthDp - 32).coerceAtLeast(120)
+    /** The widgets page's width inside its margins. */
+    private fun pageWidthDp(): Int = (app.resources.configuration.screenWidthDp - 2 * WidgetLayout.GAP_DP).coerceAtLeast(120)
 
     /** Tells the provider the size before a view exists (the view reports its real size once laid out). */
-    private fun applySize(id: Int, heightDp: Int) {
-        runCatching { manager.updateAppWidgetOptions(id, options(heightDp)) }
+    private fun applySize(id: Int, heightDp: Int, span: Int) {
+        runCatching { manager.updateAppWidgetOptions(id, options(heightDp, span)) }
     }
 
     // ---- housekeeping ---------------------------------------------------------------------
@@ -248,7 +265,7 @@ class WidgetHost private constructor(context: Context) {
 
     // ---- backup ---------------------------------------------------------------------------
 
-    /** For Backup: provider, profile serial, height and order of every placed widget. */
+    /** For Backup: provider, profile serial, size and order of every placed widget. */
     fun exportWidgets(): List<Map<String, Any?>> = WidgetCodec.export(_widgets.value)
 
     /**
@@ -282,7 +299,7 @@ fun WidgetHost.listing(context: Context): List<Pair<String, String>> {
             isPaused(w.profileSerial) -> "paused"
             else -> null
         }
-        "${i + 1}. $label" to listOfNotNull(state, "${w.heightDp}dp", w.packageName).joinToString(" · ")
+        "${i + 1}. $label" to listOfNotNull(state, "${WidgetLayout.spanLabel(w.span)} × ${w.heightDp}dp", w.packageName).joinToString(" · ")
     }
 }
 

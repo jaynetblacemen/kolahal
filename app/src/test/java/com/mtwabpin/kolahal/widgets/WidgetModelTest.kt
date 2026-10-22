@@ -78,8 +78,8 @@ class WidgetModelTest {
     }
 
     @Test fun resizeClamps() {
-        assertEquals(168, WidgetLayout.resize(120, WidgetLayout.STEP_DP, 100))
-        assertEquals(100, WidgetLayout.resize(120, -WidgetLayout.STEP_DP, 100))
+        assertEquals(168, WidgetLayout.resize(120, 48, 100))
+        assertEquals(100, WidgetLayout.resize(120, -48, 100))
         assertEquals(WidgetLayout.MAX_DP, WidgetLayout.resize(WidgetLayout.MAX_DP, 48, 48))
     }
 

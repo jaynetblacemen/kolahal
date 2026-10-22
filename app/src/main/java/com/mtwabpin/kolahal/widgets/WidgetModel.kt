@@ -24,6 +24,8 @@ data class PlacedWidget(
     val heightDp: Int,
     val order: Int,
     val location: String = WidgetLocation.PANEL,
+    /** Its width, in twelfths of the page ([WidgetLayout.COLUMNS]): narrower widgets sit side by side. */
+    val span: Int = WidgetLayout.COLUMNS,
 ) {
     val pending: Boolean get() = id == null
     /** Stable key for lists: the widget id, or provider + order for pending entries. */
@@ -33,10 +35,46 @@ data class PlacedWidget(
 }
 
 object WidgetLayout {
-    /** Resize step for the +/- buttons (one touch-target row). */
-    const val STEP_DP = 48
+    /** Height step for the − / + buttons (held, they repeat). */
+    const val STEP_DP = 8
     const val MIN_DP = 48
     const val MAX_DP = 1200
+
+    /** The page is twelve columns wide: halves, thirds, quarters and their sums all fit. */
+    const val COLUMNS = 12
+    const val MIN_SPAN = 2
+    /** Space between widgets, across and down, and on each side of the page. */
+    const val GAP_DP = 8
+
+    /** Width of a widget [span] columns wide on a page [pageDp] wide, so spans that add up to a row fill it. */
+    fun widthDp(pageDp: Int, span: Int): Int = (pageDp + GAP_DP) * span / COLUMNS - GAP_DP
+
+    fun resizeSpan(current: Int, delta: Int): Int = (current + delta).coerceIn(MIN_SPAN, COLUMNS)
+
+    /** "1/2", "2/3", "5/12" or "full". */
+    fun spanLabel(span: Int): String {
+        if (span >= COLUMNS) return "full"
+        val d = gcd(span, COLUMNS)
+        return "${span / d}/${COLUMNS / d}"
+    }
+
+    private tailrec fun gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b)
+
+    /** Rows of the page: widgets in order, a new row when the next one doesn't fit beside the others. */
+    fun rows(spans: List<Int>): List<List<Int>> {
+        val rows = ArrayList<MutableList<Int>>()
+        var used = COLUMNS
+        spans.forEachIndexed { i, span ->
+            val s = span.coerceIn(MIN_SPAN, COLUMNS)
+            if (used + s > COLUMNS) {
+                rows += ArrayList<Int>()
+                used = 0
+            }
+            rows.last() += i
+            used += s
+        }
+        return rows
+    }
 
     /** Smallest height a widget may be shrunk to: its resize minimum if it can resize vertically, else its minimum. */
     fun minHeight(minHeightDp: Int, minResizeHeightDp: Int, resizableVertically: Boolean): Int {
@@ -101,12 +139,13 @@ object WidgetOrder {
 }
 
 /**
- * One record per line in SharedPreferences: `id|provider|serial|height|order|location`, with `-`
- * for the id of a pending entry. Flattened ComponentNames never contain `|`.
+ * One record per line in SharedPreferences: `id|provider|serial|height|order|location|span`, with `-`
+ * for the id of a pending entry; lines saved before widths had no span (full width). Flattened
+ * ComponentNames never contain `|`.
  */
 object WidgetCodec {
     fun encode(all: List<PlacedWidget>): String = all.joinToString("\n") {
-        listOf(it.id?.toString() ?: "-", it.provider, it.profileSerial, it.heightDp, it.order, it.location).joinToString("|")
+        listOf(it.id?.toString() ?: "-", it.provider, it.profileSerial, it.heightDp, it.order, it.location, it.span).joinToString("|")
     }
 
     fun decode(text: String?): List<PlacedWidget> = text.orEmpty().lineSequence().mapNotNull { line ->
@@ -119,6 +158,7 @@ object WidgetCodec {
             heightDp = (f[3].toIntOrNull() ?: WidgetLayout.MIN_DP).coerceIn(WidgetLayout.MIN_DP, WidgetLayout.MAX_DP),
             order = f[4].toIntOrNull() ?: 0,
             location = WidgetLocation.of(f[5]),
+            span = f.getOrNull(6)?.toIntOrNull()?.coerceIn(WidgetLayout.MIN_SPAN, WidgetLayout.COLUMNS) ?: WidgetLayout.COLUMNS,
         )
     }.toList()
 
@@ -130,6 +170,7 @@ object WidgetCodec {
             "height" to it.heightDp,
             "location" to it.location,
             "order" to it.order,
+            "span" to it.span,
         )
     }
 
@@ -149,6 +190,7 @@ object WidgetCodec {
             heightDp = (num("height")?.toInt() ?: WidgetLayout.MIN_DP).coerceIn(WidgetLayout.MIN_DP, WidgetLayout.MAX_DP),
             order = num("order")?.toInt() ?: 0,
             location = WidgetLocation.of(m["location"]),
+            span = num("span")?.toInt()?.coerceIn(WidgetLayout.MIN_SPAN, WidgetLayout.COLUMNS) ?: WidgetLayout.COLUMNS,
         )
     }
 
