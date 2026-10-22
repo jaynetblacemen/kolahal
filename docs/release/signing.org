@@ -9,7 +9,7 @@ GitHub, signed here, so the key that signs the app has to be held here, and Play
 
 | File                             | What it is                    | Secret          | What it does                                                                                                     |
 |----------------------------------+-------------------------------+-----------------+------------------------------------------------------------------------------------------------------------------|
-| =kolahal-release.jks=            | the release key, alias =kolahal= | yes, and can't be replaced | signs every APK on GitHub (full and lite); a copy given to Play signs what people install from Play |
+| =kolahal-release.jks=            | the release key, alias =kolahal= | yes, and can't be replaced | signs every APK on GitHub; a copy given to Play signs what people install from Play |
 | =kolahal-upload.jks=             | the upload key, alias =upload= | yes             | signs the bundle uploaded to Play, so Play knows it came from you; Play can reset it                            |
 | =kolahal-upload-certificate.pem= | the upload key's certificate  | no (it's public) | what Play asks for to know the upload key: when you give Play the release key, and when you reset the upload key |
 
@@ -55,9 +55,9 @@ gh variable set RELEASE_CERT_SHA256 --body 21223ad4312a871e4a1dd16440efccac84f46
 * Where the keys are used
 
 - *On this computer*: =keystore.properties= names both keys. =./gradlew :app:assembleRelease=
-  and =:app:assembleLite= sign with the release key, =:app:bundlePlay= with the upload key.
-  Without the file, the APKs are signed with the debug key and the bundle stays unsigned (Play
-  refuses debug-signed bundles, so it is never debug-signed).
+  signs with the release key, =:app:bundlePlay= with the upload key. Without the file, the APK is
+  signed with the debug key and the bundle stays unsigned (Play refuses debug-signed bundles, so it
+  is never debug-signed).
   - A release build made here now carries the release key, so it won't install over the
     debug-signed Kolahal on a phone until that phone has moved (below).
 - *On GitHub Actions*: eight repository secrets hold both keys (=RELEASE_KEYSTORE_BASE64=,

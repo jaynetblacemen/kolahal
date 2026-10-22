@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Commands the lite and Play builds don't offer. Unit tests run on the debug build, which has every feature. */
+/** Commands the Play build doesn't offer. Unit tests run on the debug build, which has every feature. */
 class FeatureCommandsTest {
     @Test fun everyFeatureCommandIsACommand() {
         for ((_, names) in CommandProcessor.FEATURE_COMMANDS) {

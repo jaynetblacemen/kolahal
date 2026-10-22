@@ -10,10 +10,10 @@ Play needs a closed test before production: 12 or more testers opted in for 14 d
 then Dashboard → Apply for production (review usually takes 7 days or less). Testers who opt out
 before day 14 don't count.
 
-* On Play: the lite build, and why it has less
+* On Play: the Play build, and why it has less
 
-Google Play gets the lite build, the same app as =kolahal-X.Y.Z-lite.apk= on GitHub, packaged as a
-bundle: =./gradlew :app:bundlePlay= (the Release workflow too). It leaves out three things:
+Google Play gets the Play build, the full app without three things, packaged as a bundle:
+=./gradlew :app:bundlePlay= (the Release workflow too). What it leaves out:
 
 | Left out                                  | What goes with it                                  | Play's rule                                                                                                                                            |
 |-------------------------------------------+----------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -29,7 +29,7 @@ status bar, uninstall requests, and the app list (Kolahal uses =<queries>=, not 
 executable code (dex, JAR, .so), not interpreted code, as long as it can't be used to break Play's
 policy.
 
-=tools/check-play-build.sh= checks the lite and Play APKs: it fails if any of these appear: the
+=tools/check-play-build.sh= checks the Play APK: it fails if any of these appear: the
 call log or SMS permissions, =QUERY_ALL_PACKAGES=, =USE_EXACT_ALARM=, =REQUEST_INSTALL_PACKAGES=,
 =MANAGE_EXTERNAL_STORAGE=, =ACCESS_BACKGROUND_LOCATION=, an accessibility service, or a
 notification listener. Both workflows run it, so a library that adds one is caught.
@@ -69,7 +69,7 @@ Policy pages (opened 22 October 2026):
 * Store listing text
 
 Ready to paste into Play Console → Grow users → Store presence → Main store listing. It describes
-the lite build, which is what Play gets: no screen lock, no notifications in the log, no media
+the Play build: no screen lock, no notifications in the log, no media
 controls and no calls in the log, so none of those are mentioned. Play allows 4000 characters;
 this is 2967. Keep it in step with the app when features change.
 
@@ -166,12 +166,12 @@ highlighted words of its caption, over a faint dot grid. The captions and colour
 
 ** Taking the captures again
 
-They must show the lite build, since it is what Play gets: nothing about the screen lock,
+They must show the Play build: nothing about the screen lock,
 notifications in the log, media controls or the call log.
 
-1. On the emulator (never a phone you use), install the lite build:
-   =./gradlew :app:assembleLite= and =adb install -r app/build/outputs/apk/lite/app-lite.apk=.
-   Locally it is signed with the release key, so an install with another key must be removed first
+1. On the emulator (never a phone you use), install the Play build:
+   =./gradlew :app:assemblePlay= and =adb install -r app/build/outputs/apk/play/app-play.apk=.
+   Locally it is signed with the upload key, so an install with another key must be removed first
    (or re-sign a copy with the debug key to keep the emulator's data).
 2. Settings as a new install has them, plus =config set header.network on= and
    =config set theme.name gruvbox=; a 1080 × 2400 screen (=adb shell wm size= shows it); the

@@ -635,7 +635,7 @@ Outside =main=:
 |------------------------------------+----------------------------------------------------------------------------------|
 | =app/src/test/=                    | about 170 JVM unit tests: fast, no phone needed                                  |
 | =app/src/androidTest/=             | 29 on-device tests (commands, script engines, backup)                            |
-| =app/src/lite/AndroidManifest.xml= | removes the accessibility service, the notification listener and =READ_CALL_LOG= for the =lite= build (and =play=, which uses it) |
+| =app/src/play/AndroidManifest.xml= | removes the accessibility service, the notification listener and =READ_CALL_LOG= for the =play= build |
 | =app/src/release/generated/=       | baseline profiles (pre-compiled start-up code)                                   |
 | =baselineprofile/=                 | the module that generates those profiles                                         |
 | =app/src/main/assets/library/=     | the ready-made scripts of the script library, listed in =index.json=             |
@@ -681,8 +681,7 @@ From the repository root:
 ./gradlew assembleDebug                 # debug APK (package com.mtwabpin.kolahal.debug)
 ./gradlew installDebug                  # build and install on the connected device
 ./gradlew assembleRelease               # R8-minified release, signed with the debug key
-./gradlew assembleLite                  # release without accessibility service, notification listener, call log
-./gradlew bundlePlay                    # the lite build as a bundle, for Google Play
+./gradlew bundlePlay                    # Google Play: release without accessibility service, notification listener, call log
 ./gradlew :app:testDebugUnitTest        # the JVM unit tests (fast)
 ANDROID_SERIAL=emulator-5554 ./gradlew connectedDebugAndroidTest   # on-device tests
 ./gradlew :app:lintRelease              # Android lint
@@ -695,11 +694,10 @@ device, your own phone included.
 |------------+----------------+----------+----------------------------------------------------------------------------------------------|
 | =debug=    | =.debug=       | no       | installs beside a release build                                                              |
 | =release=  | none           | yes      | =isMinifyEnabled= and =isShrinkResources=                                                    |
-| =lite=     | none           | yes      | =BuildConfig.LOCK_SERVICE=, =NOTIFICATION_ACCESS= and =CALL_LOG= are false; the manifest drops both services and the call log |
-| =play=     | none           | yes      | =lite= as a bundle for Google Play, signed with the upload key; no =-lite= in its version |
+| =play=     | none           | yes      | release for Google Play, signed with the upload key: =BuildConfig.LOCK_SERVICE=, =NOTIFICATION_ACCESS= and =CALL_LOG= are false; the manifest drops both services and the call log |
 
 Code checks =BuildConfig.LOCK_SERVICE= / =NOTIFICATION_ACCESS= / =CALL_LOG= wherever behaviour
-differs in =lite=.
+differs in =play=.
 
 ** How the tests are organised
 
@@ -792,4 +790,4 @@ functions is the quickest way to learn what they promise.
 | =@on=, =@uses= | script directives: run on a device event; declare access to private data or the local network |
 | fresh screen   | =log.fresh=: home hides old output after a while away (hidden, not deleted)                   |
 | instant run    | =launch.instant=: run without Enter once the input can only mean one thing                    |
-| lite           | the build without the accessibility service, the notification listener and the call log; also the Google Play version |
+| Play build     | the build for Google Play, without the accessibility service, the notification listener and the call log |

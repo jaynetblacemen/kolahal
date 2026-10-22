@@ -1,8 +1,8 @@
 name: Build
 
-# Every push and pull request: the unit tests and all three builds (the GitHub APKs, full and lite,
-# and the Google Play bundle). No keys here: the APKs are signed with the runner's own debug key
-# and the bundle is left unsigned, so these are for checking, not for installing over a release.
+# Every push and pull request: the unit tests and both builds (the full APK for GitHub and the
+# Google Play bundle). No keys here: the APK is signed with the runner's own debug key and the
+# bundle is left unsigned, so these are for checking, not for installing over a release.
 on:
   push:
     branches: ['**']
@@ -37,12 +37,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests and builds
-        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleRelease :app:assembleLite :app:bundlePlay :app:assemblePlay
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleRelease :app:bundlePlay :app:assemblePlay
 
-      - name: The lite and Play builds leave out what Play's policy rules out
-        run: |
-          tools/check-play-build.sh app/build/outputs/apk/lite/app-lite.apk
-          tools/check-play-build.sh
+      - name: The Play build leaves out what Play's policy rules out
+        run: tools/check-play-build.sh
 
       - name: Keep the test reports
         if: failure()
@@ -58,6 +56,5 @@ jobs:
           name: kolahal-${{ github.sha }}
           path: |
             app/build/outputs/apk/release/app-release.apk
-            app/build/outputs/apk/lite/app-lite.apk
             app/build/outputs/bundle/play/app-play.aab
           retention-days: 14

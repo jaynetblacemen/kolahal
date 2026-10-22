@@ -1,15 +1,14 @@
 name: Release
 
 # Push a tag named after the version, such as v0.3.1, and this builds, signs and publishes it:
-# - kolahal-X.Y.Z.apk and kolahal-X.Y.Z-lite.apk, signed with the release key, and the mapping zip,
-#   on a GitHub release whose notes are docs/release/notes/X.Y.Z.md;
+# - kolahal-X.Y.Z.apk, signed with the release key, and the mapping zip, on a GitHub release whose notes are docs/release/notes/X.Y.Z.md;
 # - kolahal-X.Y.Z-play.aab, signed with the upload key, kept with this run for Play Console.
 #
 # Secrets (tools/make-keys.sh --secrets stores them): RELEASE_KEYSTORE_BASE64,
 # RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD, and the same four for UPLOAD_.
 # How it all fits together: docs/release/README.org.
 # Variable, optional but recommended: RELEASE_CERT_SHA256, the release key's certificate digest;
-# when set, both APKs must carry it, so a release can never go out under another key.
+# when set, the APK must carry it, so a release can never go out under another key.
 on:
   push:
     tags: ['v*']
@@ -71,12 +70,10 @@ jobs:
           KOLAHAL_UPLOAD_STORE_PASSWORD: ${{ secrets.UPLOAD_STORE_PASSWORD }}
           KOLAHAL_UPLOAD_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
           KOLAHAL_UPLOAD_KEY_PASSWORD: ${{ secrets.UPLOAD_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleRelease :app:assembleLite :app:bundlePlay :app:assemblePlay
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleRelease :app:bundlePlay :app:assemblePlay
 
-      - name: The lite and Play builds leave out what Play's policy rules out
-        run: |
-          tools/check-play-build.sh app/build/outputs/apk/lite/app-lite.apk
-          tools/check-play-build.sh
+      - name: The Play build leaves out what Play's policy rules out
+        run: tools/check-play-build.sh
 
       - name: Check the signatures
         env:
@@ -87,15 +84,14 @@ jobs:
           # keytool prints AB:CD…, apksigner abcd…: compare without colons, in lower case.
           expected=$(printf %s "$EXPECTED" | tr -d ':' | tr 'A-F' 'a-f')
           echo "### Signatures" >> "$GITHUB_STEP_SUMMARY"
-          for apk in app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/lite/app-lite.apk; do
-            digest=$("$apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
-            if [ -z "$digest" ]; then echo "::error::$apk isn't signed."; exit 1; fi
-            if [ -n "$expected" ] && [ "$digest" != "$expected" ]; then
-              echo "::error::$apk is signed with $digest, not the release key $expected."
-              exit 1
-            fi
-            echo "- $(basename "$apk"): \`$digest\`" >> "$GITHUB_STEP_SUMMARY"
-          done
+          apk=app/build/outputs/apk/release/app-release.apk
+          digest=$("$apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          if [ -z "$digest" ]; then echo "::error::$apk isn't signed."; exit 1; fi
+          if [ -n "$expected" ] && [ "$digest" != "$expected" ]; then
+            echo "::error::$apk is signed with $digest, not the release key $expected."
+            exit 1
+          fi
+          echo "- app-release.apk: \`$digest\`" >> "$GITHUB_STEP_SUMMARY"
           bundle=$(keytool -printcert -jarfile app/build/outputs/bundle/play/app-play.aab)
           if ! printf %s "$bundle" | grep -q '^Owner:'; then echo "::error::The Play bundle isn't signed."; exit 1; fi
           if printf %s "$bundle" | grep -q 'CN=Android Debug'; then echo "::error::The Play bundle is debug-signed; Play refuses it."; exit 1; fi
@@ -105,13 +101,12 @@ jobs:
         run: |
           mkdir -p out
           cp app/build/outputs/apk/release/app-release.apk "out/kolahal-$VERSION.apk"
-          cp app/build/outputs/apk/lite/app-lite.apk "out/kolahal-$VERSION-lite.apk"
           cp app/build/outputs/bundle/play/app-play.aab "out/kolahal-$VERSION-play.aab"
           # R8's names for each build, to read crash traces with retrace.
-          (cd app/build/outputs/mapping && zip -qr "$GITHUB_WORKSPACE/out/kolahal-$VERSION-mapping.zip" release lite play)
+          (cd app/build/outputs/mapping && zip -qr "$GITHUB_WORKSPACE/out/kolahal-$VERSION-mapping.zip" release play)
           cp "docs/release/notes/$VERSION.md" out/notes.md
           # shellcheck disable=SC2016  # the backticks are Markdown, not a command
-          printf '\n\nBoth APKs are built from `%s`, the commit this tag points to.\n' "${GITHUB_SHA::7}" >> out/notes.md
+          printf '\n\nThe APK and the Play bundle are built from `%s`, the commit this tag points to.\n' "${GITHUB_SHA::7}" >> out/notes.md
 
       - name: Publish the GitHub release
         env:
@@ -119,7 +114,7 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" --verify-tag --latest \
             --title "Kolahal $VERSION" --notes-file out/notes.md \
-            "out/kolahal-$VERSION.apk" "out/kolahal-$VERSION-lite.apk" "out/kolahal-$VERSION-mapping.zip"
+            "out/kolahal-$VERSION.apk" "out/kolahal-$VERSION-mapping.zip"
 
       # For Play Console (Test and release → a track → Create new release → upload).
       - name: Keep the Play bundle

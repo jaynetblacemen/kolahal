@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# Checks that the lite and Google Play builds (the same app) leave out what Play's policy rules
-# out, or would need declarations, videos and consent screens for. A library can add a permission
-# without anyone noticing; this catches it before Play does. What they leave out, and why:
+# Checks that the Google Play build leaves out what Play's policy rules out, or would need
+# declarations, videos and consent screens for. A library can add a permission without anyone
+# noticing; this catches it before Play does. What it leaves out, and why:
 # docs/release/google-play.org.
 #
 #   ./gradlew :app:assemblePlay && tools/check-play-build.sh [apk]
-#   tools/check-play-build.sh app/build/outputs/apk/lite/app-lite.apk
 #
 # The APK defaults to app/build/outputs/apk/play/app-play-unsigned.apk (unsigned without an upload
 # key; the manifest is the same).

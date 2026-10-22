@@ -5,7 +5,7 @@
  */
 import { LinkButton } from '@astrojs/starlight/components';
 import TerminalDemo from './TerminalDemo.astro';
-import { APK, LITE_APK, VERSION } from '../release';
+import { APK, VERSION } from '../release';
 
 const { data } = Astro.locals.starlightRoute.entry;
 const { title = data.title, tagline, actions = [] } = data.hero || {};
@@ -32,7 +32,7 @@ const withBase = (href: string) => (href.startsWith('/') && !href.startsWith('//
 				))}
 			</div>
 			<p class="note">
-				Kolahal {VERSION} · Android 9 or newer · the <a href={LITE_APK}>lite APK</a> if Play Protect blocks this one
+				Kolahal {VERSION} · Android 9 or newer · <a href={withBase('/getting-started/install/#if-play-protect-blocks-it')}>if Play Protect blocks it</a>
 			</p>
 		</div>
 	</div>

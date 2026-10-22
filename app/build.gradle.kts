@@ -39,7 +39,7 @@ android {
         versionName = "0.3.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // The accessibility service (double-tap / `lock`), notification listener and call log are in
-        // the manifest; the lite and play builds leave them out.
+        // the manifest; the play build leaves them out.
         buildConfigField("boolean", "LOCK_SERVICE", "true")
         buildConfigField("boolean", "NOTIFICATION_ACCESS", "true")
         buildConfigField("boolean", "CALL_LOG", "true")
@@ -80,32 +80,23 @@ android {
             enableUnitTestCoverage = coverage
             enableAndroidTestCoverage = coverage
         }
-        // The release build without the accessibility service, the notification listener and the call
-        // log (src/lite removes them): Play Protect blocks sideloaded apps that declare either service,
-        // and Google Play's policy rules out all three. No `lock` or double-tap lock, no notifications
-        // in the log, no media controls, no calls in the log.
-        create("lite") {
+        // Google Play (`bundlePlay`): the release build without the accessibility service, the
+        // notification listener and the call log (src/play removes them), which Play's policy rules out
+        // or wants declarations, videos and consent screens for. No `lock` or double-tap lock, no
+        // notifications in the log, no media controls, no calls in the log. Signed with the upload key;
+        // without one the bundle stays unsigned, never debug-signed (Play refuses those).
+        create("play") {
             initWith(getByName("release"))
             matchingFallbacks += listOf("release")
-            versionNameSuffix = "-lite"
+            signingConfig = signingConfigs.findByName("upload")
             buildConfigField("boolean", "LOCK_SERVICE", "false")
             buildConfigField("boolean", "NOTIFICATION_ACCESS", "false")
             buildConfigField("boolean", "CALL_LOG", "false")
         }
-        // Google Play: the lite build, the same app with the same manifest, as a bundle signed with
-        // the upload key (`bundlePlay`). Without an upload key the bundle stays unsigned, never
-        // debug-signed (Play refuses those).
-        create("play") {
-            initWith(getByName("lite"))
-            versionNameSuffix = null
-            signingConfig = signingConfigs.findByName("upload")
-        }
     }
 
     // The same startup profile as release.
-    sourceSets.getByName("lite").baselineProfiles.srcDir("src/release/generated/baselineProfiles")
     sourceSets.getByName("play").baselineProfiles.srcDir("src/release/generated/baselineProfiles")
-    sourceSets.getByName("play").manifest.srcFile("src/lite/AndroidManifest.xml")
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

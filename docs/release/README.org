@@ -12,46 +12,41 @@ details are in the files beside this one. (This folder is for the maintainer; th
 - [[file:play-signing.org][play-signing.org]]: giving Play the release key, once, with PEPK and Android Studio's Java.
 - [[file:github-actions.org][github-actions.org]]: the Build and Release workflows, their secrets, what a release
   run does, and what to do when one fails.
-- [[file:google-play.org][google-play.org]]: Google Play: the lite build there, the policy behind it, setting up
-  Play Console, and each Play release.
+- [[file:google-play.org][google-play.org]]: Google Play: the Play build, the policy behind it, setting up Play
+  Console, and each Play release.
 - [[file:graphics/][graphics/]]: the store icon, feature graphic and screenshots, with the sources they are
   rendered from (=tools/play-graphics.sh=; google-play.org → Graphics).
 - [[file:notes/][notes/]]: the release notes, one file per version (=notes/0.3.1.md=). The Release
   workflow publishes them as the GitHub release's notes.
 
-* Two apps, three files
+* Two builds
 
-Kolahal comes in two versions: *full* and *lite*. The lite build is also what goes on Google Play,
-so one commit makes three files:
+One commit makes two files:
 
-| Version | File                     | Gradle task       | Goes to         | Leaves out                                                     |
-|---------+--------------------------+-------------------+-----------------+----------------------------------------------------------------|
-| Full    | =kolahal-X.Y.Z.apk=      | =assembleRelease= | GitHub releases | nothing                                                        |
-| Lite    | =kolahal-X.Y.Z-lite.apk= | =assembleLite=    | GitHub releases | the accessibility service, notification access and the call log |
-| Lite    | =kolahal-X.Y.Z-play.aab= | =bundlePlay=      | Google Play     | the same three: it is the same app                             |
+| Build | File                     | Gradle task       | Goes to         | Leaves out                                                      |
+|-------+--------------------------+-------------------+-----------------+-----------------------------------------------------------------|
+| Full  | =kolahal-X.Y.Z.apk=      | =assembleRelease= | GitHub releases | nothing                                                         |
+| Play  | =kolahal-X.Y.Z-play.aab= | =bundlePlay=      | Google Play     | the accessibility service, notification access and the call log |
 
 - *Full* is the app with everything: the screen lock (=lock=, double-tap), notifications in the
   log (=notifs=, media controls, scripts' notification triggers) and calls in the log (=calls=).
-- *Lite* leaves those three out, for two reasons that ask for the same thing:
-  - Google Play Protect blocks sideloaded apps (from a browser, a chat app or a file manager) that
-    declare an accessibility service or a notification listener, in India and some other
-    countries.
-  - Google Play's policy doesn't let a launcher read the call log at all, and wants declarations,
-    videos and consent screens for an accessibility service and a notification listener. Leaving
-    them out was decided on 22 October 2026; [[file:google-play.org][google-play.org]] has the policy.
-- The Play file is the lite build packaged as an app bundle and signed with the upload key; Play
-  turns it into APKs signed with the release key ([[file:signing.org][signing.org]]). The only other difference: its
-  version has no =-lite= ending.
-- All of them use the same package, so any one installs over another (once Play signs with the
-  release key), keeping the data.
+- *Play* leaves those three out: Google Play's policy doesn't let a launcher read the call log at
+  all, and wants declarations, videos and consent screens for an accessibility service and a
+  notification listener. Leaving them out was decided on 22 October 2026; [[file:google-play.org][google-play.org]] has
+  the policy. The bundle is signed with the upload key, and Play turns it into APKs signed with the
+  release key ([[file:signing.org][signing.org]]).
+- Both use the same package and the same signing key on the phone, so either installs over the
+  other, keeping the data.
+- Where Play Protect blocks the full APK (it blocks sideloaded apps that declare an accessibility
+  service or a notification listener, in India and some other countries), people turn scanning off
+  while installing, or take the Play version. There was a lite APK on GitHub for that until 0.3.0.
 
-How: =app/src/lite/AndroidManifest.xml= removes the two services and =READ_CALL_LOG=; the =play=
-build type starts from =lite= and uses that same manifest (=app/build.gradle.kts=), so the two can't
-drift apart. The =BuildConfig= switches =LOCK_SERVICE=, =NOTIFICATION_ACCESS= and =CALL_LOG= turn
-the features off: their commands aren't suggested or listed in =help=, and typed anyway they say
-"This build has no …".
-=tools/check-play-build.sh= checks both APKs and fails if either ever asks for a restricted
-permission again.
+How: =app/src/play/AndroidManifest.xml= removes the two services and =READ_CALL_LOG=; the =play=
+build type starts from =release= (=app/build.gradle.kts=). The =BuildConfig= switches
+=LOCK_SERVICE=, =NOTIFICATION_ACCESS= and =CALL_LOG= turn the features off: their commands aren't
+suggested or listed in =help=, and typed anyway they say "This build has no …".
+=tools/check-play-build.sh= checks the Play APK (=assemblePlay=, the bundle's manifest) and fails if
+it ever asks for a restricted permission again.
 
 * How a release travels
 
@@ -61,18 +56,18 @@ version bump + notes/X.Y.Z.md ── commit, push master ── push tag vX.Y.Z
                                      Release workflow on GitHub Actions
                          (tests, builds, signs, checks, publishes)
                            │                                    │
-     GitHub release: kolahal-X.Y.Z.apk,             kolahal-X.Y.Z-play.aab, kept
-     kolahal-X.Y.Z-lite.apk, the mapping zip        with the run for 90 days
+     GitHub release: kolahal-X.Y.Z.apk              kolahal-X.Y.Z-play.aab, kept
+     and the mapping zip                            with the run for 90 days
                            │                                    │
-     the website's download buttons                 you upload it in Play Console
-     point at these (site/src/release.ts)           (internal → closed → production)
+     the website's download button                  you upload it in Play Console
+     points at it (site/src/release.ts)             (internal → closed → production)
 #+end_example
 
 * Making a release
 
 1. Bump =versionCode= (by one) and =versionName= in =app/build.gradle.kts=, and =version= in
-   =site/package.json=. The website's download buttons read that version, so they point at the
-   new APKs as soon as the site deploys: tag right after pushing.
+   =site/package.json=. The website's download button reads that version, so it points at the
+   new APK as soon as the site deploys: tag right after pushing.
 2. Write =notes/X.Y.Z.md= (see [[file:notes/README.md][notes/README.md]]) and, for Play, =notes/X.Y.Z-play.txt=.
 3. Test on the computer: the unit tests, the on-device tests on the emulator (never on a phone
    you use: they install a debug build and change its settings), the coverage tables in
@@ -83,7 +78,7 @@ version bump + notes/X.Y.Z.md ── commit, push master ── push tag vX.Y.Z
    the GitHub release by itself.
 6. Google Play: download the bundle (=gh run download <run id> -n kolahal-X.Y.Z-play=), upload it
    in Play Console, and paste =notes/X.Y.Z-play.txt= as its release notes.
-7. Check the website deployed (the Website workflow) and its download buttons work.
+7. Check the website deployed (the Website workflow) and its download button works.
 
 * History
 
@@ -92,6 +87,8 @@ version bump + notes/X.Y.Z.md ── commit, push master ── push tag vX.Y.Z
 - 22 October 2026: the release and upload keys, the GitHub Actions workflows and the Play build.
 - 22 October 2026, later: the lite build leaves the call log out too, and becomes the version on
   Google Play (before, lite still read the call log and Play had a build of its own).
+- 22 October 2026, later still: no lite APK from 0.3.1 on. The Play build is the only one
+  without the three, and starts from the release build.
 - The first release signed with the release key can't install over the debug-signed ones: every
   install, the maintainer's phone included, moves once by Settings → Backup → Export everything,
   uninstall, install, import. Its notes must say so. [[file:signing.org][signing.org]] explains why.

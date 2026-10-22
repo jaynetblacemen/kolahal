@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The lite build type, which Google Play gets too (the play build type uses this manifest):
-  the app without what Play Protect blocks in sideloaded apps and Play's policy rules out.
-  - No accessibility service: Play Protect blocks sideloaded apps that declare one, and Play
-    doesn't count a launcher as an accessibility tool. No double-tap lock, no `lock`.
-  - No notification listener: blocked the same way by Play Protect, and Play wants consent screens
-    for it. No notifications in the log, no `notifs`, no media controls.
+  The play build type, for Google Play: the app without what Play's policy rules out, or would
+  want declarations, videos and consent screens for.
+  - No accessibility service: Play doesn't count a launcher as an accessibility tool. No
+    double-tap lock, no `lock`.
+  - No notification listener: Play wants consent screens for it. No notifications in the log, no
+    `notifs`, no media controls.
   - No call log: Play allows it only to phone, SMS and assistant apps. No calls in the log, no `calls`.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"

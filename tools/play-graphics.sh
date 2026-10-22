@@ -3,7 +3,7 @@
 #   icon.svg                            -> icon.png              512 × 512, 32-bit PNG
 #   feature-graphic.html                -> feature-graphic.png   1024 × 500, no alpha
 #   screenshot.html + raw/<name>.png    -> screenshots/<name>.png 1080 × 1920, no alpha
-# The captures in raw/ come from the emulator running the lite build (what Play gets); how to take
+# The captures in raw/ come from the emulator running the Play build; how to take
 # them: docs/release/google-play.org → Graphics. Needs Google Chrome or Chromium, and ImageMagick.
 set -euo pipefail
 

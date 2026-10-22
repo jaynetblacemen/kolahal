@@ -585,8 +585,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val COMMAND_NAMES: Set<String> = COMMANDS.map { it.name }.toSet()
 
         /**
-         * The commands of each feature the lite and Play builds leave out (screen lock, notification
-         * access, call log), with whether this build has it.
+         * The commands of each feature the Play build leaves out (screen lock, notification access,
+         * call log), with whether this build has it.
          */
         internal val FEATURE_COMMANDS = listOf(
             com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE to setOf("lock", "accessibility"),
@@ -595,8 +595,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         )
 
         /**
-         * Commands whose feature this build leaves out: not suggested or listed in help, so the lite
-         * and Play builds don't offer what they can't do. Typed anyway, each says why it isn't there.
+         * Commands whose feature this build leaves out: not suggested or listed in help, so the Play
+         * build doesn't offer what it can't do. Typed anyway, each says why it isn't there.
          */
         val UNAVAILABLE: Set<String> = FEATURE_COMMANDS.filterNot { it.first }.flatMap { it.second }.toSet()
 

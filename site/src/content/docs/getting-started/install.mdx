@@ -4,23 +4,31 @@ description: Download the Kolahal APK or build it from source, then make it your
 ---
 
 import { Code, LinkButton } from '@astrojs/starlight/components';
-import { APK, LITE_APK, RELEASES, VERSION } from '../../../release';
+import { APK, RELEASES, VERSION } from '../../../release';
 
 Kolahal (package `com.mtwabpin.kolahal`) needs **Android 9 (API 28) or newer**.
 
 ## Download
 
-Every release comes with two APKs. The newest is Kolahal {VERSION}:
+Every release comes with an APK. The newest is Kolahal {VERSION}:
 
 <div class="sl-flex" style="flex-wrap: wrap; gap: 0.75rem 1rem; margin-block: 1rem;">
 	<LinkButton href={APK} icon="download" iconPlacement="start">Kolahal {VERSION}</LinkButton>
-	<LinkButton href={LITE_APK} icon="download" iconPlacement="start" variant="secondary">Kolahal {VERSION} lite</LinkButton>
 </div>
 
-Take the full one unless Play Protect won't install it; then take the lite one (below). Release
-notes and older versions are on the [releases page](https://github.com/mtwabpin/kolahal/releases).
-Both APKs use the same package, so either installs over the other or over an earlier version
-(0.3.1 or later), keeping your data. Then [sideload it](#sideload-the-apk).
+Release notes and older versions are on the [releases page](https://github.com/mtwabpin/kolahal/releases).
+A newer APK installs over an earlier one (0.3.1 or later), keeping your data. Then
+[sideload it](#sideload-the-apk).
+
+### If Play Protect blocks it
+
+Google Play Protect blocks sideloaded apps (installed from a browser, a messaging app or a file
+manager) that declare an accessibility service or notification access, in India and some other
+countries. Kolahal has both: the accessibility service only locks the screen, and notification
+access shows your notifications in the log.
+
+To install it where it is blocked, turn off **Play Store → profile → Play Protect → ⚙︎ → Scan apps
+with Play Protect** while installing (and back on after), or install with `adb install`.
 
 ### Coming from 0.3.0 or earlier
 
@@ -28,22 +36,18 @@ Versions up to 0.3.0 were signed with a different key, so later ones can't insta
 Move once, keeping everything: **Settings → Backup → Export everything**, uninstall Kolahal,
 install the new version and make it your home app, then **Settings → Backup → Import a backup**.
 Run `setup` to grant the permissions again, and add your widgets again: a backup lists them but
-can't carry them ([Backup](/guides/backup/)).
+can't carry them ([Backup](/guides/backup/)). There is no lite APK from 0.3.1 on: if you had it,
+take this one.
 
-### The lite build
+### The Google Play version
 
-Google Play Protect blocks sideloaded apps (installed from a browser, a messaging app or a file
-manager) that declare an accessibility service or notification access, in India and some other
-countries. The full build has both: the accessibility service only locks the screen, and
-notification access shows your notifications in the log. The lite build is the same app without
-them, and without the call log (its version ends in `-lite`). It has no `lock` or double-tap lock,
-no `notifs`, no media controls and now-playing line, no calls in the log or `calls`, and scripts
-get no `notifications.recent()` or `@on notification`. Everything else is the same. The lite
-build is also the version for Google Play.
-
-To install the full build where it is blocked, turn off **Play Store → profile → Play Protect →
-⚙︎ → Scan apps with Play Protect** while installing (and back on after), or install with
-`adb install`.
+Kolahal is coming to Google Play. Play's policy doesn't let a launcher read the call log, and asks
+for declarations, videos and consent screens for an accessibility service and notification access,
+so the Play version leaves those three out. It has no `lock` or double-tap lock, no `notifs`, no
+media controls and now-playing line, no calls in the log or `calls`, and scripts get no
+`notifications.recent()` or `@on notification`. Everything else is the same. It has the same
+package and is signed with the same key as the APK, so either installs over the other, keeping
+your data.
 
 ## Build from source
 
@@ -55,8 +59,7 @@ git clone https://github.com/mtwabpin/kolahal.git
 cd kolahal
 
 ./gradlew :app:assembleRelease            # R8-optimised; signed with keystore.properties or the debug key
-./gradlew :app:assembleLite               # the lite build (see above)
-./gradlew :app:bundlePlay                 # the lite build as a bundle, for Google Play
+./gradlew :app:bundlePlay                 # the Google Play version, as a bundle
 ./gradlew :app:assembleDebug              # debug APK ("Kolahal debug", package suffix .debug)
 ./gradlew :app:testDebugUnitTest          # JVM tests
 ./gradlew :app:connectedDebugAndroidTest  # on-device tests (run them on an emulator)

@@ -6,7 +6,7 @@ import org.junit.Test
 
 class CrashTextTest {
     private val report = CrashText.format(
-        app = "Kolahal 0.2.3-lite (5, lite)",
+        app = "Kolahal 0.3.1 (9, play)",
         device = "Android 16 (API 36) · samsung SM-S911B",
         time = "2026-10-21 19:55:02 +0530",
         what = "crash in com.mtwabpin.kolahal, thread main",
@@ -16,7 +16,7 @@ class CrashTextTest {
     @Test fun reportHasHeaderThenBody() {
         val lines = report.lines()
         assertEquals("Kolahal crash report", lines[0])
-        assertEquals("Kolahal 0.2.3-lite (5, lite)", lines[1])
+        assertEquals("Kolahal 0.3.1 (9, play)", lines[1])
         assertEquals("What: crash in com.mtwabpin.kolahal, thread main", lines[4])
         assertEquals("", lines[5])
         assertEquals("java.lang.IllegalStateException: boom", lines[6])
