@@ -9,13 +9,13 @@
 	@font-face { font-family: 'JetBrains Mono'; font-weight: 400; src: url('../../../app/src/main/res/font/jetbrains_mono_regular.ttf'); }
 	@font-face { font-family: 'JetBrains Mono'; font-weight: 700; src: url('../../../app/src/main/res/font/jetbrains_mono_bold.ttf'); }
 	:root {
-		/* The website's light colours (gruvbox light); the phone shows the app in gruvbox-material. */
+		/* The website's light colours (gruvbox light); the phone shows the app in gruvbox. */
 		--paper: #fbf1c7;
 		--paper-2: #f2e5bc;
 		--fg: #3c3836;
 		--dim: #7c6f64;
 		--accent: #79740e;
-		--screen: #292828;
+		--screen: #282828;
 		--bezel: #32302f;
 		--edge: #504945;
 	}
@@ -95,10 +95,9 @@
 		const SHOTS = {
 			'1-home': ['Your home screen<br>is <em>a terminal</em>', 'Clock, weather and to-dos at the top,<br>every command and its answer below'],
 			'2-type': ['Type a few letters,<br>press <em>Enter</em>', 'The best match sits right above your thumb'],
-			'3-apps': ['Every app,<br><em>one tap</em> away', 'The app grid, or slide your thumb<br>along the right edge'],
-			'4-feeds': ['Your <em>feeds</em>,<br>in the log', 'A built-in RSS and Atom reader<br>with unread counts'],
-			'5-scripts': ['Scripts in <em>Lua</em><br>or <em>JavaScript</em>', 'On a timer, on an event,<br>or as commands of your own'],
-			'6-themes': ['Make it <em>yours</em>', 'Seven themes, and a theme builder<br>with a live preview'],
+			'3-feeds': ['Your <em>feeds</em>,<br>in the log', 'A built-in RSS and Atom reader<br>with unread counts'],
+			'4-scripts': ['Scripts in <em>Lua</em><br>or <em>JavaScript</em>', 'On a timer, on an event,<br>or as commands of your own'],
+			'5-themes': ['Make it <em>yours</em>', 'Seven themes, and a theme builder<br>with a live preview'],
 		};
 		const name = new URLSearchParams(location.search).get('shot') || '1-home';
 		const [title, text] = SHOTS[name] || [name, ''];

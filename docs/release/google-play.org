@@ -149,11 +149,11 @@ when the app changes.
 |--------------------------------------------------------+--------------------------------------------------------------------+-----------------------------------------------------------------------------------|
 | App icon: 512 × 512, 32-bit PNG, at most 1 MB          | =graphics/icon.png=                                                | =icon.svg=: the launcher icon's two layers, full square (Play rounds the corners) |
 | Feature graphic: 1024 × 500, JPEG or PNG, no alpha     | =graphics/feature-graphic.png=                                     | =feature-graphic.html=, with the top of =raw/1-home.png= in the phone             |
-| Phone screenshots: 2 to 8, long side at most 2 × short | =graphics/screenshots/1-home.png= to =6-themes.png=, in that order | =screenshot.html=: each capture in =raw/= in a phone frame, under its caption     |
+| Phone screenshots: 2 to 8, long side at most 2 × short | =graphics/screenshots/1-home.png= to =5-themes.png=, in that order | =screenshot.html=: each capture in =raw/= in a phone frame, under its caption     |
 
 The screenshots are 1080 × 1920 (9:16, what Play recommends): a 1080 × 2400 phone capture fits
-only inside a frame. The frames use the website's light colours and the phones show the app in
-gruvbox-material, so the page isn't dark from edge to edge. The captions are in =screenshot.html=
+only inside a frame. The frames use the website's light colours and the phones show the app in the
+vivid gruvbox theme, so the page isn't dark from edge to edge. The captions are in =screenshot.html=
 (=SHOTS=); the font is the app's own JetBrains Mono.
 
 ** Taking the captures again
@@ -166,7 +166,7 @@ notifications in the log, media controls or the call log.
    Locally it is signed with the release key, so an install with another key must be removed first
    (or re-sign a copy with the debug key to keep the emulator's data).
 2. Settings as a new install has them, plus =config set header.network on= and
-   =config set theme.name gruvbox-material=; a 1080 × 2400 screen (=adb shell wm size= shows it).
+   =config set theme.name gruvbox=; a 1080 × 2400 screen (=adb shell wm size= shows it).
    Three feeds (Hacker News, LWN, and NASA's Image of the Day:
    https://www.nasa.gov/feeds/iotd-feed/), three to-dos, and the =weather= script from the library
    on a 30-minute timer, with =weather --default Pune=.
@@ -174,11 +174,10 @@ notifications in the log, media controls or the call log.
    | Capture     | What is on screen                                                                                          |
    |-------------+------------------------------------------------------------------------------------------------------------|
    | =1-home=    | after =clear=: =weather=, ~= 30 c in f~, ~= 5 km in mi~, ~= 100 usd in eur~, =todo=, =feed=; keyboard down |
-   | =2-type=    | =ca= typed in the prompt, keyboard up                                                                      |
-   | =3-apps=    | the app selector held on the right edge, on Messages                                                       |
-   | =4-feeds=   | =feed read 5=, NASA: live news can carry headlines a store page shouldn't                                  |
-   | =5-scripts= | =script edit weather=, keyboard hidden, scrolled to the top                                                |
-   | =6-themes=  | Settings → Look & feel → Your themes → a theme, named =olive= (not saved)                                  |
+   | =2-type=    | =ca= typed in the prompt, keyboard up; app icons on (the default)                                          |
+   | =3-feeds=   | =feed read 5=, NASA: live news can carry headlines a store page shouldn't                                  |
+   | =4-scripts= | =script edit weather=, keyboard hidden, scrolled to the top                                                |
+   | =5-themes=  | Settings → Look & feel → Your themes → a theme, named =olive= (not saved)                                  |
 4. =tools/play-graphics.sh=, then look at the results before uploading.
 
 * Each release on Play
