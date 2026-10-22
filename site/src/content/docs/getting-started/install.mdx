@@ -19,8 +19,16 @@ Every release comes with two APKs. The newest is Kolahal {VERSION}:
 
 Take the full one unless Play Protect won't install it; then take the lite one (below). Release
 notes and older versions are on the [releases page](https://github.com/mtwabpin/kolahal/releases).
-Both APKs use the same package, so either installs over the other and over earlier versions,
-keeping your data. Then [sideload it](#sideload-the-apk).
+Both APKs use the same package, so either installs over the other or over an earlier version
+(0.3.1 or later), keeping your data. Then [sideload it](#sideload-the-apk).
+
+### Coming from 0.3.0 or earlier
+
+Versions up to 0.3.0 were signed with a different key, so later ones can't install over them.
+Move once, keeping everything: **Settings → Backup → Export everything**, uninstall Kolahal,
+install the new version and make it your home app, then **Settings → Backup → Import a backup**.
+Run `setup` to grant the permissions again, and add your widgets again: a backup lists them but
+can't carry them ([Backup](/guides/backup/)).
 
 ### The lite build
 

@@ -41,11 +41,11 @@ for my $key (keys %covered) {
 }
 my ($lines, $hits) = (0, 0);
 for my $pkg (sort { $total{$b} <=> $total{$a} } keys %total) {
-    printf "| %-16s | %5d | %5.1f%% |\n", $pkg, $total{$pkg}, 100 * $hit{$pkg} / $total{$pkg};
+    printf "| %-16s | %5d | %6.1f%% |\n", $pkg, $total{$pkg}, 100 * $hit{$pkg} / $total{$pkg};
     $lines += $total{$pkg};
     $hits += $hit{$pkg};
 }
-printf "| %-16s | %5d | %5.1f%% |\n", "*All*", $lines, 100 * $hits / $lines;
+printf "| %-16s | %5d | %6.1f%% |\n", "*All*", $lines, 100 * $hits / $lines;
 
 exit unless $since;
 my ($file, $new, $newHit) = ('', 0, 0);

@@ -473,7 +473,7 @@ Coverage is measured at each release: the share of code lines that either kind o
 
 #+begin_src sh
 ./gradlew -Pcoverage :app:createDebugUnitTestCoverageReport :app:createDebugAndroidTestCoverageReport
-perl tools/coverage.pl v0.2.5   # by package, and the lines added since that release
+perl tools/coverage.pl v0.3.0   # by package, and the lines added since that release
 #+end_src
 
 ** By release
@@ -481,20 +481,21 @@ perl tools/coverage.pl v0.2.5   # by package, and the lines added since that rel
 | Release | Unit tests | On-device tests | Lines covered | Lines added since the last release, covered |
 |---------+------------+-----------------+---------------+---------------------------------------------|
 | 0.3.0   |        182 |              73 |         45.1% | 95.3% (278 lines)                           |
+| 0.3.1   |        191 |              95 |         47.9% | 86.5% (609 lines)                           |
 
-** By package, 0.3.0
+** By package, 0.3.1
 
 | Package          | Lines | Covered |
 |------------------+-------+---------|
-| =ui/=            |  4720 |   36.8% |
-| =terminal/=      |  2727 |   47.5% |
+| =ui/=            |  5094 |   44.2% |
+| =terminal/=      |  2736 |   47.8% |
 | =script/=        |  1219 |   60.2% |
-| =data/=          |   738 |   88.3% |
+| =data/=          |   779 |   88.8% |
 | =feeds/=         |   503 |   41.4% |
 | =control/=       |   459 |   19.4% |
-| =apps/=          |   405 |   75.6% |
-| (root)           |   313 |   32.9% |
-| =widgets/=       |   309 |   32.7% |
+| =apps/=          |   405 |   70.1% |
+| (root)           |   318 |   33.0% |
+| =widgets/=       |   307 |   33.6% |
 | =notifications/= |   280 |    9.6% |
 | =productivity/=  |   231 |   74.5% |
 | =calls/=         |    91 |   12.1% |
@@ -503,7 +504,7 @@ perl tools/coverage.pl v0.2.5   # by package, and the lines added since that rel
 | =status/=        |    52 |   84.6% |
 | =unlock/=        |    51 |   45.1% |
 | =gesture/=       |    16 |   18.8% |
-| *All*            | 12258 |   45.1% |
+| *All*            | 12685 |   47.9% |
 
 Low numbers are mostly code that needs the system: notification access, calls, contacts, device
 controls and gestures. Lines are lines of code the compiler emits instructions for, not lines in
