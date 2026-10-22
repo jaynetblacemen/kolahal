@@ -101,6 +101,10 @@ class LuaEngine : ScriptEngine {
             host.status(if (l.isNil(1)) null else l.toString(1))
             0
         }
+        lua.global("allowed") { l ->
+            l.push(host.allowed(l.toString(1).orEmpty()))
+            1
+        }
         lua.global("notify") { l ->
             l.push(host.notify(l.toString(1) ?: "", l.toString(2) ?: "", l.mapArg(3)))
             1

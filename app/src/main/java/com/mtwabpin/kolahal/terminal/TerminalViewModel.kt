@@ -19,6 +19,7 @@ import androidx.lifecycle.viewModelScope
 import com.mtwabpin.kolahal.apps.AppEntry
 import com.mtwabpin.kolahal.apps.AppPrefs
 import com.mtwabpin.kolahal.data.ConfigKey
+import com.mtwabpin.kolahal.script.ScriptAccess
 import com.mtwabpin.kolahal.script.ScriptMeta
 import com.mtwabpin.kolahal.script.ScriptFolder
 import com.mtwabpin.kolahal.script.ScriptFiles
@@ -571,7 +572,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         viewModelScope.launch {
             val failure = withContext(serialIo) {
                 runCatching {
-                    scripts.saveCode(script.id, code)
+                    scripts.saveCode(script.id, code, byUser = true)
                     refreshScriptCaches()
                 }.exceptionOrNull()
             }
@@ -581,7 +582,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     fun runScript(script: Script, code: String) {
         io {
-            scripts.saveCode(script.id, code)
+            scripts.saveCode(script.id, code, byUser = true)
             scripts.byId(script.id)?.let { ScriptScheduler.runNow(context, it) }
             logs.add(LogKind.INFO, "Running ${script.name}…", ctx = LogContext.of(LogContext.SCRIPT to script.name))
         }
@@ -709,7 +710,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         _editLine.value = null
         _editing.value = null
         if (script != null && unsaved != null) io {
-            scripts.saveCode(script.id, unsaved)
+            scripts.saveCode(script.id, unsaved, byUser = true)
             refreshScriptCaches()
             notice("Saved ${script.name}.${script.lang.ext}")
         }
@@ -773,6 +774,36 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     }
 
     fun setScriptEnabled(s: Script, on: Boolean) = updateScript(s) { scripts.setEnabled(s.id, on) }
+
+    /** Switches [s] on with the user's answers for what it asks to use ([choices]: item to allowed). */
+    fun enableScript(s: Script, choices: Map<String, Boolean>) = updateScript(s) {
+        choices.forEach { (item, on) -> scripts.setAccess(s.id, item, on) }
+        scripts.setEnabled(s.id, true)
+    }
+
+    /** One access switch; switching the header line off takes the line away now. */
+    fun setScriptAccess(s: Script, item: String, on: Boolean) = updateScript(s) {
+        scripts.setAccess(s.id, item, on)
+        if (item == ScriptAccess.HEADER && !on) {
+            KvStore(context, HostApi.STATUS_SCOPE).set(s.name, null)
+            logs.onStatusChanged()
+        }
+    }
+
+    /** Long-press on a script's header line: run it, hide its line, or edit it. */
+    fun statusActions(name: String): List<LogAction> {
+        val s = scripts.byName(name) ?: return listOf(
+            LogAction("Clear this line") { io { KvStore(context, HostApi.STATUS_SCOPE).set(name, null); logs.onStatusChanged() } },
+        )
+        return listOf(
+            LogAction("Run $name now") { io { ScriptScheduler.runNow(context, s) } },
+            LogAction("Hide from header") {
+                setScriptAccess(s, ScriptAccess.HEADER, false)
+                io { logs.add(LogKind.INFO, "$name: header line off — 'script allow $name header' brings it back", ctx = LogContext.of(LogContext.SCRIPT to name)) }
+            },
+            LogAction("Edit $name.${s.lang.ext}") { openEditor(s) },
+        )
+    }
     fun setScriptNotify(s: Script, on: Boolean) {
         updateScript(s) { scripts.setNotify(s.id, on) }
         if (on) _events.tryEmit(UiEvent.RequestNotificationPermission)
@@ -878,10 +909,12 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             val r = Backup(context).import(uri)
             appsRepo.refresh()
             refreshScriptCaches()
+            fun count(n: Int, one: String, many: String = one + "s") = "$n ${if (n == 1) one else many}"
             notice(
-                "imported ${r.settings} settings, ${r.aliases} aliases, ${r.scripts} scripts" +
+                "Imported ${count(r.settings, "setting")}, ${count(r.aliases, "alias", "aliases")}, ${count(r.scripts, "script")}" +
                     (if (r.full) ", ${r.restored} saved items (todos, notes, reminders, feeds, log…)" else "") +
-                    (if (r.disabled > 0) " (${r.disabled} new scripts are off — enable them in Scripts)" else "") +
+                    (if (r.disabled == 1) " (1 new script is off — switch it on in Scripts)" else "") +
+                    (if (r.disabled > 1) " (${r.disabled} new scripts are off — switch them on in Scripts)" else "") +
                     (if (r.skipped.isNotEmpty()) " · skipped ${r.skipped.joinToString()}" else "") +
                     (if (r.review.isNotEmpty()) " · check these settings from the file: ${r.review.joinToString()}" else "") +
                     if (r.full) " — restarting to load it all" else ""
@@ -904,6 +937,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun installFromLibrary(entry: ScriptLibrary.Entry) {
         fileOp("install") {
             val s = library.install(entry)
+            ScriptAccess.askForNew(context, s)
             refreshScriptCaches()
             notice("Installed ${s.name}.${s.lang.ext}" + if (entry.command) " — run it as '${s.name}'" else "")
         }

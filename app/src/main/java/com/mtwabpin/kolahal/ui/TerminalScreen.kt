@@ -268,6 +268,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                     config = config,
                     version = configVersion,
                     onStatusTap = vm::runScriptNamed,
+                    onStatusLongPress = { name -> showMenu("$name ▸ ${statuses[name].orEmpty()}", null) { vm.statusActions(name) } },
                     onSwipeDown = { vm.onGesture(Keys.GESTURE_SWIPE_DOWN) },
                     onTarget = vm::onHeaderTap,
                     onProfileTap = vm::onProfileTap,

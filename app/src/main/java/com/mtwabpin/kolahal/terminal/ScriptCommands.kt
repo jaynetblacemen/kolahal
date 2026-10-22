@@ -10,6 +10,7 @@ import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.data.ScriptRepository
 import com.mtwabpin.kolahal.notify.Notifier
 import com.mtwabpin.kolahal.script.HostApi
+import com.mtwabpin.kolahal.script.ScriptAccess
 import com.mtwabpin.kolahal.script.ScriptFolder
 import com.mtwabpin.kolahal.script.ScriptLibrary
 import com.mtwabpin.kolahal.script.ScriptMeta
@@ -105,6 +106,7 @@ class ScriptCommands(
                     )
                 }
                 val s = lib.install(entry)
+                ScriptAccess.askForNew(context, s)
                 info("Installed ${s.name}.${s.lang.ext}" + (if (entry.command) " — run it as '${s.name}'" else "") +
                     (if (s.intervalMin > 0) " · every ${CommandParsing.formatInterval(s.intervalMin)}" else ""), scriptCtx(s))
             }
@@ -166,9 +168,18 @@ class ScriptCommands(
                 scripts.setEnabled(s.id, enabled)
                 scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
                 info("${s.name}: ${if (enabled) "enabled" else "disabled"}", scriptCtx(s))
-                // Turning a script on is consent to what it declares: say what that is.
-                val uses = ScriptMeta.uses(s.code)
-                if (enabled && uses.isNotEmpty()) info("${s.name} can use: ${uses.joinToString()}")
+                // Switching a script on allows what it declares and nobody decided yet: say what it may use.
+                val grants = scripts.byId(s.id)?.grants
+                val uses = grants?.declared.orEmpty().filter { grants?.allows(it) == true }
+                if (enabled && uses.isNotEmpty()) {
+                    info("${s.name} can use: ${uses.joinToString()} — 'script deny ${s.name} <what>' switches one off", scriptCtx(s))
+                }
+            }
+            "access" -> withScript(target) { listAccess(it) }
+            "allow", "deny" -> withScript(target) { s ->
+                val items = args.drop(2).map { it.lowercase() }
+                if (items.isEmpty()) return error("Usage: script $sub <name> <what…> — 'script access ${s.name}' lists them")
+                setAccess(s, items, sub == "allow")
             }
             "rm", "delete" -> withScript(target) { s ->
                 ScriptScheduler.cancel(context, s.id)
@@ -180,8 +191,56 @@ class ScriptCommands(
             "cat", "show" -> withScript(target) { s ->
                 s.code.lines().forEachIndexed { i, l -> out("${(i + 1).toString().padStart(3)}  $l", LogContext.of(LogContext.COPY to s.code) + LogContext.ALIGNED) }
             }
-            else -> error("Usage: script [ls|new|edit|run|every|at|notify|on|off|triggers|rm|cat] <name>")
+            else -> error("Usage: script [ls|new|edit|run|every|at|notify|on|off|access|allow|deny|triggers|rm|cat] <name>")
         }
+    }
+
+    /** `script access <name>`: each switch, on or off, and where it comes from; tap one to change it. */
+    private fun listAccess(s: Script) {
+        val grants = s.grants
+        info("${s.name}.${s.lang.ext} — 'script allow|deny ${s.name} <what>'", scriptCtx(s))
+        ScriptAccess.items(s.code).forEach { item ->
+            val from = when (item) {
+                in ScriptMeta.USES -> " · @uses $item"
+                in ScriptMeta.EVENTS -> " · @on $item"
+                else -> ""
+            }
+            val on = grants.allows(item)
+            val state = if (on) "on" else if (item in grants.undecided) "off, not allowed yet" else "off"
+            out(
+                "${item.padEnd(14)}$state",
+                LogContext.of(
+                    LogContext.DESC to ScriptAccess.label(item) + from,
+                    LogContext.COMMAND to "script ${if (on) "deny" else "allow"} ${s.name} $item",
+                ) + LogContext.ALIGNED,
+            )
+        }
+        out(
+            "${"notify".padEnd(14)}${if (s.notify) "on" else "off"}",
+            LogContext.of(LogContext.DESC to "Posting notifications", LogContext.COMMAND to "script notify ${s.name} ${if (s.notify) "off" else "on"}") +
+                LogContext.ALIGNED,
+        )
+    }
+
+    /** `script allow|deny <name> <what…>`; `notify` is the notifications switch. */
+    private fun setAccess(s: Script, items: List<String>, on: Boolean) {
+        val all = ScriptAccess.items(s.code)
+        items.firstOrNull { it != "notify" && it !in all }?.let { item ->
+            return error(
+                if (item in ScriptMeta.USES) "${s.name} doesn't declare @uses $item"
+                else "No '$item' for ${s.name} — it has: ${(all + "notify").joinToString(" ")}"
+            )
+        }
+        for (item in items) {
+            if (item == "notify") scripts.setNotify(s.id, on) else scripts.setAccess(s.id, item, on)
+        }
+        // Switched off, its line leaves the header now rather than at its next run.
+        if (!on && ScriptAccess.HEADER in items) {
+            KvStore(context, HostApi.STATUS_SCOPE).set(s.name, null)
+            logs.onStatusChanged()
+        }
+        info("${s.name}: " + items.joinToString(", ") { "$it ${if (on) "on" else "off"}" }, scriptCtx(s))
+        if (on && "notify" in items && !Notifier.canPost(context)) ui.requestNotificationPermission()
     }
 
     private fun listScripts() {
@@ -246,6 +305,6 @@ class ScriptCommands(
 
     companion object {
         /** What follows `script`, for completion. */
-        val SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "triggers", "rm", "cat", "dir", "export", "import")
+        val SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "access", "allow", "deny", "triggers", "rm", "cat", "dir", "export", "import")
     }
 }

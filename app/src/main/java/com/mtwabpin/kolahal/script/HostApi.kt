@@ -35,16 +35,28 @@ class HostApi(
     private val notifyEnabled: Boolean,
     /** Started by the user from the prompt (not a timer): may drive the launcher with launcher.run. */
     private val interactive: Boolean = false,
-    /** What the script declared with `@uses` ([ScriptMeta.uses]); null for code typed at the prompt, which may use anything. */
-    private val uses: Set<String>? = null,
+    /** What the script declares and the user allows ([ScriptAccess]); null for code typed at the prompt, which may use anything. */
+    private val grants: ScriptAccess.Grants? = null,
 ) {
-    /** Private data and local-network reach are only for scripts that declare them. */
-    private fun need(what: String, call: String) {
-        if (uses != null && what !in uses) throw IllegalStateException("$call needs `@uses $what` at the top of the script")
+    /**
+     * Private data and local-network reach are only for scripts that declare them: undeclared is a
+     * mistake in the script. Declared but switched off by the user is false: the caller answers empty.
+     */
+    private fun may(what: String, call: String): Boolean {
+        val g = grants ?: return true
+        if (what !in g.declared) throw IllegalStateException("$call needs `@uses $what` at the top of the script")
+        return g.allows(what)
     }
 
+    /** `allowed(what)` for scripts: whether the user lets this script use [what]. */
+    fun allowed(what: String): Boolean = grants?.allows(what.trim().lowercase()) ?: true
+
+    /** The access item that stopped this run, switched off by the user (the worker says how to allow it). */
+    var denied: String? = null
+        private set
+
     /** May reach this device or the local network over http. */
-    val allowsLan: Boolean get() = uses == null || "lan" in uses
+    val allowsLan: Boolean get() = grants == null || grants.allows("lan")
     private val logs = LogRepository.get(context)
     private val store = KvStore(context, scriptId?.let(ScriptRepository::scopeOf) ?: "repl")
 
@@ -157,6 +169,11 @@ class HostApi(
         headers: Map<*, *>? = null,
     ): Map<String, Any?> {
         flush() // show what was logged before a slow request
+        // No made-up empty response: a script would take it for real data.
+        if (grants != null && !grants.allows(ScriptAccess.INTERNET)) {
+            denied = ScriptAccess.INTERNET
+            throw java.io.IOException("internet is switched off for this script")
+        }
         val h = Json.toStringMap(headers).toMutableMap()
         if (h.keys.none { it.equals("User-Agent", ignoreCase = true) }) h["User-Agent"] = USER_AGENT
         val m = method.uppercase()
@@ -178,7 +195,12 @@ class HostApi(
                 )
             }
         } catch (e: Net.LocalNetworkBlocked) {
-            // Without `@uses lan` the address isn't allowed at all; with it, Android's permission is what's missing.
+            // Without `@uses lan` the address isn't allowed at all; switched off, the user said no;
+            // otherwise Android's permission is what's missing.
+            if (grants != null && "lan" in grants.declared && !grants.allows("lan")) {
+                denied = "lan"
+                throw java.io.IOException("${e.host} is on your local network, switched off for this script")
+            }
             if (!allowsLan) throw java.io.IOException("${e.host} is this phone or the local network: not allowed here")
             lanBlocked = true
             throw e
@@ -232,6 +254,8 @@ class HostApi(
             log("status() only works in saved scripts (it is keyed by script name)")
             return
         }
+        // Header line switched off: the script runs on, its line just doesn't show.
+        if (grants?.allows(ScriptAccess.HEADER) == false) return
         val value = text?.lines()?.firstOrNull()?.take(STATUS_MAX)?.takeIf { it.isNotBlank() }
         KvStore(context, STATUS_SCOPE).set(scriptName, value)
         logs.onStatusChanged()
@@ -240,7 +264,7 @@ class HostApi(
     // ---- device, apps, launcher ----------------------------------------------------------
 
     fun clipboardSet(text: String) {
-        need("clipboard", "clipboard.set")
+        if (!may("clipboard", "clipboard.set")) return
         val cm = context.getSystemService(android.content.ClipboardManager::class.java)
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             cm.setPrimaryClip(android.content.ClipData.newPlainText(scriptName, text))
@@ -249,7 +273,7 @@ class HostApi(
 
     /** Android only lets the focused app read the clipboard, so this is usually null in timers. */
     fun clipboardGet(): String? {
-        need("clipboard", "clipboard.get")
+        if (!may("clipboard", "clipboard.get")) return null
         return runCatching {
             context.getSystemService(android.content.ClipboardManager::class.java)
                 .primaryClip?.getItemAt(0)?.coerceToText(context)?.toString()
@@ -281,7 +305,7 @@ class HostApi(
 
     /** Launchable apps across profiles: [{label, pkg, profile}]. */
     fun appsList(): List<Map<String, Any?>> {
-        need("apps", "apps.list")
+        if (!may("apps", "apps.list")) return emptyList()
         val la = context.getSystemService(android.content.pm.LauncherApps::class.java)
         val me = android.os.Process.myUserHandle()
         val um = context.getSystemService(android.os.UserManager::class.java)
@@ -298,7 +322,7 @@ class HostApi(
 
     /** Recent notifications (needs notification access): [{pkg, app, title, text, time}], newest first. */
     fun notificationsRecent(limit: Int): List<Any?> {
-        need("notifications", "notifications.recent")
+        if (!may("notifications", "notifications.recent")) return emptyList()
         val L = com.mtwabpin.kolahal.notifications.KolahalNotificationListener
         // Access revoked while the listener wasn't bound leaves the copy behind: drop it, share nothing.
         if (!com.mtwabpin.kolahal.notifications.NotificationActions.isEnabled(context)) {

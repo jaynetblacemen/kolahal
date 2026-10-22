@@ -22,7 +22,7 @@ class ScriptPermissionsTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
     /** A saved script's host; [uses] as its `@uses` line declares them (none: an empty line). */
-    private fun script(vararg uses: String) = HostApi(context, "permtest", scriptId = null, notifyEnabled = false, uses = uses.toSet())
+    private fun script(vararg uses: String) = HostApi(context, "permtest", scriptId = null, notifyEnabled = false, grants = com.mtwabpin.kolahal.script.ScriptAccess.Grants(uses.toSet(), uses.associateWith { true }))
 
     /** Code typed at the prompt: may use everything. */
     private fun prompt() = HostApi(context, "repl", scriptId = null, notifyEnabled = false)

@@ -104,7 +104,7 @@ class ScriptFolder(private val context: Context) {
             val script = if (existing == null) {
                 created++
                 isNew = true
-                scripts.create(name, lang, code)
+                scripts.create(name, lang, code, enabled = false)
             } else {
                 if (existing.lang != lang) {
                     skipped += fileName

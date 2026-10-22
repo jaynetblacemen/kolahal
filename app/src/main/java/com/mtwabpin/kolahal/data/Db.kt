@@ -41,7 +41,8 @@ class Db private constructor(context: Context) :
                 notify INTEGER NOT NULL DEFAULT 0,
                 last_run INTEGER,
                 last_status TEXT,
-                at_times TEXT
+                at_times TEXT,
+                access TEXT
             )
             """.trimIndent()
         )
@@ -95,11 +96,29 @@ class Db private constructor(context: Context) :
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) db.execSQL("ALTER TABLE scripts ADD COLUMN at_times TEXT")
         if (oldVersion < 3) createProductivityTables(db)
+        if (oldVersion < 4) addScriptAccess(db)
+    }
+
+    /**
+     * Per-script access switches (schema version 4, [com.mtwabpin.kolahal.script.ScriptAccess]).
+     * Before, switching a script on allowed everything it declared with `@uses`: switched-on
+     * scripts keep that; switched-off ones ask when they are switched on.
+     */
+    private fun addScriptAccess(db: SQLiteDatabase) {
+        db.execSQL("ALTER TABLE scripts ADD COLUMN access TEXT")
+        db.query("scripts", arrayOf("id", "code"), "enabled = 1", null, null, null, null).use { c ->
+            while (c.moveToNext()) {
+                val uses = com.mtwabpin.kolahal.script.ScriptMeta.uses(c.getString(1))
+                if (uses.isEmpty()) continue
+                val access = com.mtwabpin.kolahal.script.ScriptAccess.encode(uses.associateWith { true })
+                db.update("scripts", android.content.ContentValues().apply { put("access", access) }, "id = ?", arrayOf(c.getLong(0).toString()))
+            }
+        }
     }
 
     companion object {
         private const val NAME = "kolahal.db"
-        private const val VERSION = 3
+        private const val VERSION = 4
 
         @Volatile
         private var instance: Db? = null

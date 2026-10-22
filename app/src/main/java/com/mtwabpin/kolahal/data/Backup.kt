@@ -18,7 +18,8 @@ import com.mtwabpin.kolahal.script.ScriptScheduler
  *   "aliases": { "m": "open maps" },
  *   "apps":    { "hidden": ["<component>#<user>"], "labels": { "<component>#<user>": "Name" } },
  *   "scripts": [ { "name": "hn", "lang": "lua", "code": "...", "every": 30,
- *                  "at": ["08:00"], "notify": true, "enabled": true } ],
+ *                  "at": ["08:00"], "notify": true, "enabled": true,
+ *                  "access": { "header": false } } ],                     // only "false" is restored
  *   "themes":  { "mine": { "background": "#0B0D0B", ... } } }   // made in the theme builder
  * ```
  */
@@ -37,7 +38,7 @@ class Backup(private val context: Context) {
             "scripts" to all.map {
                 mapOf(
                     "name" to it.name, "lang" to it.lang.ext, "code" to it.code, "every" to it.intervalMin,
-                    "at" to it.atTimes, "notify" to it.notify, "enabled" to it.enabled,
+                    "at" to it.atTimes, "notify" to it.notify, "enabled" to it.enabled, "access" to it.access,
                 )
             },
             // Everything else: todos, notes, reminders, feeds, script stores, log, history.
@@ -126,7 +127,7 @@ class Backup(private val context: Context) {
             // New code, whether a new script or a replaced one, arrives switched off.
             var isNew = false
             val script = when {
-                existing == null -> scripts.create(name, lang, code).also { isNew = true }
+                existing == null -> scripts.create(name, lang, code, enabled = false).also { isNew = true }
                 existing.lang != lang -> { skipped += "script $name (language differs)"; return@forEach }
                 else -> existing.also { if (it.code != code) { scripts.saveCode(it.id, code); isNew = true } }
             }
@@ -138,6 +139,8 @@ class Backup(private val context: Context) {
                 scripts.setAtTimes(script.id, at.mapNotNull { ScriptScheduler.normalizeTime(it.toString()) }.distinct().sorted())
             }
             (m["notify"] as? Boolean)?.let { scripts.setNotify(script.id, it) }
+            // Access switched off travels with a backup; what a script may use is only allowed on this phone.
+            (m["access"] as? Map<*, *>)?.forEach { (item, on) -> if (on == false) scripts.setAccess(script.id, item.toString(), false) }
             // New or changed scripts from a backup arrive switched off: review them before they run.
             if (isNew) {
                 scripts.setEnabled(script.id, false)

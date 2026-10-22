@@ -39,8 +39,7 @@ class ScriptFiles(private val context: Context) {
             // turning it on is the user's go-ahead for its timers, triggers and `@uses`.
             when {
                 existing == null -> {
-                    val s = scripts.create(name, lang, code)
-                    scripts.setEnabled(s.id, false)
+                    scripts.create(name, lang, code, enabled = false)
                     created += "$name.${lang.ext}"
                 }
                 existing.lang != lang -> skipped += "$fileName (a ${existing.lang.ext} script '$name' exists)"

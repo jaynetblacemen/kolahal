@@ -5,9 +5,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -21,6 +23,7 @@ import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -98,13 +101,19 @@ private fun relativeSpan(time: Long, short: Boolean = false): String =
             (if (short) DateUtils.FORMAT_ABBREV_RELATIVE else 0),
     ).toString()
 
-/** Full-width row (≥ 56dp) whose whole surface toggles the switch. */
+/** Full-width row (≥ 56dp) whose whole surface toggles the switch; [color] is what it sits on. */
 @Composable
-internal fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+internal fun SwitchRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    color: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    onChange: (Boolean) -> Unit,
+) {
     Surface(
         onClick = { onChange(!checked) },
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = color,
         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
@@ -112,6 +121,7 @@ internal fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChan
                 Text(title, style = MaterialTheme.typography.bodyLarge)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            Spacer(Modifier.width(16.dp))
             Switch(checked = checked, onCheckedChange = null)
         }
     }

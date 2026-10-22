@@ -16,7 +16,8 @@ Kolahal itself makes network requests in exactly three cases:
    their code. The [library scripts](/scripting/library/) use wttr.in, Open-Meteo,
    CoinGecko, open.er-api.com, api.ipify.org, Wikipedia, xkcd.com, ZenQuotes, Reddit, GitHub
    and the feeds they list. Requests carry a `User-Agent` of `Kolahal-Launcher/0.1` unless the
-   script sets its own.
+   script sets its own. You can switch internet off for any script
+   ([switching access off](/scripting/overview/#switching-access-off)).
 2. **Feeds** you subscribe to: one request per feed when it is due.
 3. **Currency conversion** with `= 100 usd in eur`: a request to open.er-api.com for the base
    currency, cached for six hours.
@@ -99,4 +100,5 @@ Notification text read through notification access stays on the device: it goes 
 an in-memory list, and a copy of the 50 most recent is kept so scripts can call
 `notifications.recent()`. A script you write could send that data somewhere, the same as anything
 else it can read, so only install scripts you trust and read the code of ones you get from others.
-Scripts imported from a backup file arrive disabled for that reason.
+Scripts imported from a file or a backup arrive switched off for that reason, and each script's
+access switches take back what it may read.

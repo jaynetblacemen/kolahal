@@ -453,8 +453,8 @@ private fun FeedSheet(
             }
 
             Spacer(Modifier.height(8.dp))
-            SwitchRow("Notifications", "Post a notification for new items", feed.notify, onNotify)
-            SwitchRow("Enabled", "Fetch this feed on its schedule", feed.enabled, onEnabled)
+            SwitchRow("Notifications", "Post a notification for new items", feed.notify, onChange = onNotify)
+            SwitchRow("Enabled", "Fetch this feed on its schedule", feed.enabled, onChange = onEnabled)
 
             Spacer(Modifier.height(12.dp))
             Text("Refresh every", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)

@@ -41,7 +41,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             ctx, name, script?.id,
             notifyEnabled = script?.notify ?: true,
             interactive = repl || inputData.getBoolean(KEY_INTERACTIVE, false),
-            uses = script?.let { ScriptMeta.uses(it.code) },
+            grants = script?.grants,
         )
         val engine = ScriptEngine.forLang(lang)
         val started = System.currentTimeMillis()
@@ -68,14 +68,24 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             "timeout"
         } catch (e: Throwable) {
             host.flush()
-            val msg = e.message?.lines()?.firstOrNull { it.isNotBlank() } ?: e.javaClass.simpleName
-            val line = if (repl) null else errorLine(e, lang, name)
-            val extra = buildMap {
-                put(LogContext.COPY, e.message ?: msg)
-                line?.let { put(LogContext.LINE, it.toString()) }
+            val off = host.denied
+            if (off != null) {
+                // Stopped by a switch the user turned off: say which, with a tap to allow it.
+                logs.add(
+                    LogKind.ERROR, "$name: ${ScriptAccess.label(off).lowercase()} is switched off for this script — tap to allow", name,
+                    errorCtx + mapOf(LogContext.RUN to "script allow $name $off"),
+                )
+                "stopped: ${ScriptAccess.label(off).lowercase()} switched off"
+            } else {
+                val msg = e.message?.lines()?.firstOrNull { it.isNotBlank() } ?: e.javaClass.simpleName
+                val line = if (repl) null else errorLine(e, lang, name)
+                val extra = buildMap {
+                    put(LogContext.COPY, e.message ?: msg)
+                    line?.let { put(LogContext.LINE, it.toString()) }
+                }
+                logs.add(LogKind.ERROR, "$name: $msg" + (line?.let { " (tap to edit line $it)" } ?: ""), name, errorCtx + extra)
+                "error: $msg" + (line?.let { " (line $it)" } ?: "")
             }
-            logs.add(LogKind.ERROR, "$name: $msg" + (line?.let { " (tap to edit line $it)" } ?: ""), name, errorCtx + extra)
-            "error: $msg" + (line?.let { " (line $it)" } ?: "")
         }
         script?.let {
             scripts.recordRun(it.id, status)

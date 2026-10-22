@@ -37,6 +37,7 @@ object ApiDocs {
         ApiDoc("log", "log(text, ctx?)", "Append a line to the terminal; ctx.url makes it a tappable link, ctx.image shows an image under it"),
         ApiDoc("notify", "notify(title, body, ctx?) -> bool", "Post a notification if enabled for the script; ctx.url opens on tap"),
         ApiDoc("status", "status(text)", "Pin one header line for this script; status(nil) clears it"),
+        ApiDoc("allowed", "allowed(what) -> bool", "Whether you let this script use what: internet, header, notifications, apps, clipboard, lan or an @on event"),
         ApiDoc("sleep", "sleep(ms)", "Pause up to 5000 ms", LUA),
         ApiDoc("sleep", "await sleep(ms)", "Pause up to 5000 ms (async)", JS),
         ApiDoc("print", "print(...)", "Log the values joined by tabs", LUA),

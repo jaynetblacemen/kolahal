@@ -49,6 +49,7 @@ import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -56,6 +57,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
@@ -68,6 +70,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.data.ScriptLang
+import com.mtwabpin.kolahal.script.ScriptAccess
 import com.mtwabpin.kolahal.script.ScriptLibrary
 import com.mtwabpin.kolahal.script.ScriptMeta
 import com.mtwabpin.kolahal.terminal.CommandParsing
@@ -96,7 +99,13 @@ fun ScriptsScreen(
     val notice by vm.notice.collectAsStateWithLifecycle()
     var creating by remember { mutableStateOf(false) }
     var sheetId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var consentFor by remember { mutableStateOf<Script?>(null) }
     BackHandler { vm.closeScreen() }
+
+    // Switching on a script that declares what nobody allowed yet asks first, with everything on.
+    fun setEnabled(s: Script, on: Boolean) {
+        if (on && s.grants.undecided.isNotEmpty()) consentFor = s else vm.setScriptEnabled(s, on)
+    }
 
     // index.json and the script bodies come from assets; read them off the main thread.
     val library by produceState<List<LibRow>?>(null, vm.library, scripts) {
@@ -176,7 +185,7 @@ fun ScriptsScreen(
                             s, i, scripts.size,
                             updateAvailable = libByName[s.name]?.state == ScriptLibrary.State.UPDATE_AVAILABLE,
                             onClick = { sheetId = s.id },
-                            onEnabled = { vm.setScriptEnabled(s, it) },
+                            onEnabled = { setEnabled(s, it) },
                         )
                     }
                     item(key = "hint") {
@@ -212,10 +221,18 @@ fun ScriptsScreen(
         if (sheetScript != null) {
             ScriptSheet(
                 vm, sheetScript, libByName[sheetScript.name],
+                onEnabled = { setEnabled(sheetScript, it) },
                 onDismiss = { sheetId = null },
                 onEdit = { sheetId = null; vm.openEditor(sheetScript) },
                 onExport = { onExportScript(sheetScript) },
             )
+        }
+
+        consentFor?.let { s ->
+            ConsentDialog(s, onDismiss = { consentFor = null }) { choices ->
+                consentFor = null
+                vm.enableScript(s, choices)
+            }
         }
 
         if (creating) NewScriptDialog(scripts.map { it.name }.toSet(), onDismiss = { creating = false }) { name, lang, command ->
@@ -233,7 +250,7 @@ private fun schedule(s: Script, isCommand: Boolean, events: List<String>): Strin
     if (events.isNotEmpty()) add("on ${events.joinToString(", ")}")
 }.joinToString(" · ").ifEmpty { "run by hand" }
 
-private fun Script.failed() = lastStatus?.startsWith("error") == true || lastStatus == "timeout"
+private fun Script.failed() = lastStatus?.let { it.startsWith("error") || it.startsWith("stopped") || it == "timeout" } == true
 
 /** One line per script: name, how it runs and its last run; the switch turns it on or off. */
 @Composable
@@ -283,6 +300,7 @@ private fun ScriptSheet(
     vm: TerminalViewModel,
     s: Script,
     lib: LibRow?,
+    onEnabled: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
     onExport: () -> Unit,
@@ -294,7 +312,8 @@ private fun ScriptSheet(
     var timesError by remember(s.id) { mutableStateOf(false) }
     val isCommand = remember(s.code) { ScriptMeta.isCommand(s.code) }
     val desc = remember(s.code) { ScriptMeta.description(s.code) }
-    val events = remember(s.code) { ScriptMeta.events(s.code) }
+    val access = remember(s.code) { ScriptAccess.items(s.code) }
+    val grants = remember(s.code, s.access) { s.grants }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -349,17 +368,18 @@ private fun ScriptSheet(
                 "Enabled",
                 if (isCommand) "Runs on its timers and events, and from the prompt" else "Runs on its timers and events",
                 s.enabled,
-            ) { vm.setScriptEnabled(s, it) }
-            SwitchRow("Notifications", "Lets the script post notifications", s.notify) { vm.setScriptNotify(s, it) }
+            ) { onEnabled(it) }
 
-            if (events.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                // Set by `@on` lines in the code; edit the script to change them.
-                Text(
-                    "Also runs on ${events.joinToString(", ")} (its @on lines)",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            // What it may use: internet and its header line, notifications it posts, what it declares
+            // with @uses, and the events of its @on lines.
+            Spacer(Modifier.height(16.dp))
+            Text("Access", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(4.dp))
+            access.forEach { item ->
+                SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), grants.allows(item)) { vm.setScriptAccess(s, item, it) }
+                if (item == ScriptAccess.HEADER) {
+                    SwitchRow("Post notifications", "Lets the script notify you", s.notify) { vm.setScriptNotify(s, it) }
+                }
             }
 
             Spacer(Modifier.height(16.dp))
@@ -454,6 +474,30 @@ private fun ScriptSheet(
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
         )
     }
+}
+
+/**
+ * Switching on a script that declares what nobody allowed yet: each item with a switch, all on, to
+ * switch off what you don't want before saying yes. The script's Access switches change them later.
+ */
+@Composable
+private fun ConsentDialog(s: Script, onDismiss: () -> Unit, onConfirm: (Map<String, Boolean>) -> Unit) {
+    val items = remember(s.id) { s.grants.undecided }
+    val choices = remember(s.id) { mutableStateMapOf<String, Boolean>().apply { items.forEach { put(it, true) } } }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Turn on ${s.name}.${s.lang.ext}?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("It asks to use:", style = MaterialTheme.typography.bodyMedium)
+                items.forEach { item ->
+                    SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), choices[item] == true, color = Color.Transparent) { choices[item] = it }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onConfirm(choices.toMap()) }) { Text("Turn on") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable

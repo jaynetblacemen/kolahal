@@ -180,11 +180,35 @@ for scripts that ask, with a `@uses` line at the top:
 | `apps` | [`apps.list`](/scripting/api/#appslist) |
 | `lan` | `http` requests to this phone or your local network (192.168.…, router pages, a home server) |
 
-Without it, those calls stop the script with an error saying what to add.
+Calling one of these without its `@uses` line stops the script with an error saying what to add.
 On Android 17 and newer, reaching your local network also needs Android's
 local network permission: run `local-network` once, or tap the line a blocked request leaves in the
-log. Code you type at the prompt (`lua`, `js`, `=`) may use everything. Scripts that come from outside (a file, a backup)
-arrive **switched off**, and `script on <name>` says what the script uses as you turn it on.
+log. Code you type at the prompt (`lua`, `js`, `=`) may use everything.
+
+### Switching access off
+
+Each script has an **Access** group in its sheet (Scripts → tap the script), with a switch for
+everything it can use. Switched off, a script gets nothing where nothing is an honest answer, and
+stops where it isn't:
+
+| Switch | Switched off, the script… |
+| --- | --- |
+| Internet | stops at its first `http` or `rss` call, with a line to tap to allow it again |
+| Header line | runs as before, but its `status()` line doesn't show |
+| Post notifications | runs as before; `notify()` returns false |
+| An `@uses` item | gets nothing: `apps.list()` and `notifications.recent()` return empty lists, `clipboard.get()` returns nil and `clipboard.set()` does nothing. Switched-off `lan` requests stop the script |
+| An `@on` event | doesn't run on that event |
+
+Long-press a script's line in the header for **Hide from header**. In the terminal,
+`script access <name>` lists the switches, and `script allow <name> <what…>` and
+`script deny <name> <what…>` change them (`notify` is the notifications switch). A script can
+check with [`allowed(what)`](/scripting/api/#allowedwhat) and do something else.
+
+Scripts from outside (a file, a folder, a backup) arrive **switched off**. Switching one on asks
+about what it declares with `@uses`, all on, so you can switch off what you don't want first;
+`script on <name>` allows it all and says what that is. If a library update declares something
+more, that starts switched off and a line in the log offers to allow it. A backup carries the
+switches you turned off, never the ones you turned on.
 
 Links a script puts on a line (`url`, `image`, or a notification's link) must be web links:
 anything else (`tel:`, `upi:`, an app's own link) is dropped. A line's `copy` must be what the line

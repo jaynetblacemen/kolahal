@@ -19,6 +19,7 @@ means a table with those keys in Lua and an object with those properties in JS.
 | [`log(text, ctx?)`](#logtext-ctx) | nothing; appends a line |
 | [`notify(title, body, ctx?)`](#notifytitle-body-ctx) | `true` if a notification was posted |
 | [`status(text)`](#statustext) | nothing; pins or clears a header line |
+| [`allowed(what)`](#allowedwhat) | `true` if you let this script use `what` |
 | [`http.get(url, headers?)`](#httpgeturl-headers) | `{ status, ok, body, headers }` |
 | [`http.request(opts)`](#httprequestopts) | same as `http.get` |
 | [`http.cached(url, seconds?)`](#httpcachedurl-seconds) | same, plus `cached` |
@@ -112,6 +113,26 @@ status(nil)
 ```js
 status(`HN: ${count} new`);
 status(null);
+```
+</TabItem>
+</Tabs>
+
+### allowed(what)
+
+Whether this script may use `what`: `"internet"`, `"header"`, `"notifications"`, `"apps"`,
+`"clipboard"`, `"lan"` or an `@on` event such as `"unlock"`. You switch these per script
+([switching access off](/scripting/overview/#switching-access-off)); with one off, a script can do
+something else instead. Code typed at the prompt gets `true` for everything.
+
+<Tabs syncKey="lang">
+<TabItem label="Lua">
+```lua
+if allowed("header") then status(text) else log(text) end
+```
+</TabItem>
+<TabItem label="JavaScript">
+```js
+if (allowed("header")) status(text); else log(text);
 ```
 </TabItem>
 </Tabs>

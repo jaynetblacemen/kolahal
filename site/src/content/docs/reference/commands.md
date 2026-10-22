@@ -150,6 +150,8 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `script at <name> <HH:mm[,HH:mm…]\|off>` | daily times |
 | `script notify <name> on\|off` | allow `notify()` for this script |
 | `script on\|off <name>` | enable / disable (aliases `enable`, `disable`) |
+| `script access <name>` | each [access switch](/scripting/overview/#switching-access-off), on or off; tap one to change it |
+| `script allow\|deny <name> <what…>` | switch access on or off: `internet`, `header`, an `@uses` item, an `@on` event, or `notify` |
 | `script rm <name>` | delete it with its timers, data and status line (alias `delete`) |
 | `script dir` | pick a sync folder |
 | `script export` | write every script plus `kolahal.json` to the folder |

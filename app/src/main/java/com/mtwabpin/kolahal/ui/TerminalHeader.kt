@@ -2,6 +2,7 @@ package com.mtwabpin.kolahal.ui
 
 import android.os.Build
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -146,6 +147,8 @@ internal fun Header(
     onMediaToggle: () -> Unit = {},
     onMediaNext: () -> Unit = {},
     todoCount: Int = 0,
+    /** Long-press on a script's line: its menu (run, hide from header, edit). */
+    onStatusLongPress: (String) -> Unit = {},
 ) {
     val now by produceState(Date()) {
         while (true) {
@@ -312,7 +315,7 @@ internal fun Header(
                     // As tall as a log line (log.line-height), so a few status lines stay compact.
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onStatusTap(name) }
+                        .combinedClickable(onLongClick = { onStatusLongPress(name) }) { onStatusTap(name) }
                         .heightIn(min = Term.lineHeight.dp)
                         .wrapContentHeight(),
                 )
