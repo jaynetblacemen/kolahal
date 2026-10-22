@@ -228,8 +228,12 @@ class WidgetHost private constructor(context: Context) {
         }
     }
 
-    /** The widgets page's width inside its margins. */
-    private fun pageWidthDp(): Int = (app.resources.configuration.screenWidthDp - 2 * WidgetLayout.GAP_DP).coerceAtLeast(120)
+    /** The widgets page's width inside its margins, as last laid out (0 before it ever was). */
+    @Volatile var measuredPageDp: Int = 0
+
+    /** The widgets page's width inside its margins: as measured, else worked out from the screen. */
+    private fun pageWidthDp(): Int =
+        measuredPageDp.takeIf { it > 0 } ?: (app.resources.configuration.screenWidthDp - 2 * WidgetLayout.GAP_DP).coerceAtLeast(120)
 
     /** Tells the provider the size before a view exists (the view reports its real size once laid out). */
     private fun applySize(id: Int, heightDp: Int, span: Int) {
@@ -359,8 +363,14 @@ class KolahalWidgetView(context: Context) : AppWidgetHostView(context) {
         val d = resources.displayMetrics.density
         val wDp = w / d
         val hDp = h / d
-        post { reportSize(wDp, hDp) }
+        // Settled sizes only: holding − or + changes the size every few frames.
+        removeCallbacks(report)
+        pending = wDp to hDp
+        postDelayed(report, 150)
     }
+
+    private var pending: Pair<Float, Float>? = null
+    private val report = Runnable { pending?.let { (w, h) -> reportSize(w, h) } }
 
     private fun reportSize(wDp: Float, hDp: Float) {
         runCatching {
@@ -375,6 +385,7 @@ class KolahalWidgetView(context: Context) : AppWidgetHostView(context) {
 
     override fun onDetachedFromWindow() {
         removeCallbacks(check)
+        removeCallbacks(report)
         super.onDetachedFromWindow()
     }
 }

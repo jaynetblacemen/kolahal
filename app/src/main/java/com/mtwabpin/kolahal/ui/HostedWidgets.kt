@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -43,6 +44,7 @@ import com.mtwabpin.kolahal.widgets.WidgetLocation
 import com.mtwabpin.kolahal.widgets.WidgetOrder
 import com.mtwabpin.kolahal.widgets.WidgetLayout
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.onSizeChanged
 
 
 /** Profile state for a widget: paused/locked profiles get a placeholder instead of the widget. */
@@ -131,6 +133,7 @@ fun WidgetPanel(vm: TerminalViewModel) {
     val all by widgets.widgets.collectAsStateWithLifecycle()
     val panel = remember(all) { WidgetOrder.inLocation(all, WidgetLocation.PANEL) }
     val profiles by remember { AppRepository.get(context).profiles }.collectAsStateWithLifecycle()
+    val density = LocalDensity.current
     Column(
         Modifier
             .fillMaxSize()
@@ -170,7 +173,9 @@ fun WidgetPanel(vm: TerminalViewModel) {
         WidgetFlow(
             panel.map { it.span },
             WidgetLayout.GAP_DP.dp,
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = WidgetLayout.GAP_DP.dp, vertical = 4.dp),
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = WidgetLayout.GAP_DP.dp, vertical = 4.dp)
+                // What Square and the sizes told to widgets go by.
+                .onSizeChanged { widgets.measuredPageDp = with(density) { it.width.toDp().value.toInt() } },
         ) {
             panel.forEach { w ->
                 key(w.key) {

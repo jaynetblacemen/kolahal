@@ -13,6 +13,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.BorderStroke
@@ -45,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -72,6 +79,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import android.os.SystemClock
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 
 /**
  * Widgets page (Material 3 Expressive): every placed widget, live, laid out as on the widgets page
@@ -165,7 +177,9 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 96.dp)
-                    // The widgets as wide as on the widgets page; text keeps the usual margin.
+                    // The widgets as wide as on the widgets page (its margins and the side insets it
+                    // clears); text keeps the usual margin.
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                     .padding(horizontal = WidgetLayout.GAP_DP.dp),
             ) {
                 val inset = Modifier.padding(horizontal = 16.dp - WidgetLayout.GAP_DP.dp)
@@ -262,7 +276,7 @@ private fun WidgetCard(
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = if (selected) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else null,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().semantics { this.selected = selected },
     ) {
         Box {
             HostedWidget(w, w.heightDp.dp, pausedKind, onSelect) { why ->
@@ -311,7 +325,8 @@ private fun WidgetToolbar(
                 IconButton(onClick = onRemove) { Icon(painterResource(R.drawable.ic_delete), "Remove", tint = MaterialTheme.colorScheme.error) }
                 IconButton(onClick = onDone) { Icon(painterResource(R.drawable.ic_check), "Done") }
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            // Side by side where they fit, one under the other on a narrow screen or with large text.
+            FlowRow(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Stepper("Width", WidgetLayout.spanLabel(w.span), w.span > WidgetLayout.MIN_SPAN, w.span < WidgetLayout.COLUMNS, onWidth)
                 Stepper("Height", "${w.heightDp}", w.heightDp > minHeight, w.heightDp < WidgetLayout.MAX_DP, onHeight)
             }
@@ -331,7 +346,12 @@ private fun Stepper(label: String, value: String, canLess: Boolean, canMore: Boo
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp))
         RepeatingButton(R.drawable.ic_remove, "Less ${label.lowercase()}", canLess) { onStep(-1) }
-        Text(value, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center, modifier = Modifier.widthIn(min = 36.dp))
+        Text(
+            value,
+            style = MaterialTheme.typography.labelLarge,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.widthIn(min = 36.dp).semantics { liveRegion = LiveRegionMode.Polite },
+        )
         RepeatingButton(R.drawable.ic_add, "More ${label.lowercase()}", canMore) { onStep(1) }
     }
 }
@@ -341,19 +361,30 @@ private fun RepeatingButton(icon: Int, description: String, enabled: Boolean, on
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val step by rememberUpdatedState(onStep)
-    // Held past the long-press delay it repeats; the tap that ends a hold doesn't step again.
-    var repeated by remember { mutableStateOf(false) }
+    // Held past the long-press delay it repeats; the tap that ends such a hold doesn't step again.
+    // [heldSince] is reset whenever a press ends, so a hold that slid off or hit the limit doesn't
+    // swallow the next activation (TalkBack's has no press at all).
+    var heldSince by remember { mutableLongStateOf(0L) }
     LaunchedEffect(pressed, enabled) {
-        if (!pressed || !enabled) return@LaunchedEffect
-        repeated = false
+        if (!pressed || !enabled) {
+            heldSince = 0L
+            return@LaunchedEffect
+        }
+        heldSince = SystemClock.uptimeMillis()
         delay(400)
-        repeated = true
         while (true) {
             step()
             delay(70)
         }
     }
-    IconButton(onClick = { if (!repeated) step(); repeated = false }, enabled = enabled, interactionSource = interaction) {
+    IconButton(
+        onClick = {
+            if (heldSince == 0L || SystemClock.uptimeMillis() - heldSince < 400) step()
+            heldSince = 0L
+        },
+        enabled = enabled,
+        interactionSource = interaction,
+    ) {
         Icon(painterResource(icon), description)
     }
 }
