@@ -213,10 +213,13 @@ internal fun GotoLineDialog(lineCount: Int, onDismiss: () -> Unit, onGo: (Int) -
     )
 }
 
-/** Full API reference for the script's language; tapping an entry inserts it at the cursor. */
+/**
+ * Full API reference for the script's language, then its `@` lines (directives); tapping an entry
+ * inserts it at the cursor, a directive as a whole comment line ([onDirective]).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun ApiReferenceSheet(lang: ScriptLang, onDismiss: () -> Unit, onPick: (ApiDoc) -> Unit) {
+internal fun ApiReferenceSheet(lang: ScriptLang, onDismiss: () -> Unit, onPick: (ApiDoc) -> Unit, onDirective: (String) -> Unit) {
     val state = rememberBottomSheetState(SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
     val docs = remember(lang) { ApiDocs.forLang(lang).filter { it.kind != ApiDoc.Kind.KEYWORD } }
     ModalBottomSheet(
@@ -243,6 +246,26 @@ internal fun ApiReferenceSheet(lang: ScriptLang, onDismiss: () -> Unit, onPick: 
                         .padding(horizontal = 16.dp, vertical = 6.dp)
                 ) {
                     Text(d.signature, style = Term.code.copy(color = if (d.kind == ApiDoc.Kind.NAMESPACE) Term.info else Term.fg))
+                    Text(d.doc, style = Term.code.copy(color = Term.dim, fontSize = Term.code.fontSize * 0.85f))
+                }
+            }
+            item {
+                Text(
+                    "Directives · comment lines at the top",
+                    style = Term.code.copy(color = Term.prompt, fontWeight = FontWeight.Bold),
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
+                )
+            }
+            items(ApiDocs.directives) { d ->
+                val comment = if (lang == ScriptLang.LUA) "--" else "//"
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .clickable { onDirective("$comment @${d.name}" + if (d.args.isEmpty()) "\n" else " ") }
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                ) {
+                    Text("$comment @${d.name} ${d.args}".trimEnd(), style = Term.code.copy(color = Term.fg))
                     Text(d.doc, style = Term.code.copy(color = Term.dim, fontSize = Term.code.fontSize * 0.85f))
                 }
             }

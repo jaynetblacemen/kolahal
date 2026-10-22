@@ -608,11 +608,20 @@ fun ScriptEditor(
         }
     }
     if (referenceOpen) {
-        ApiReferenceSheet(script.lang, onDismiss = { referenceOpen = false }) { doc ->
-            referenceOpen = false
-            insert(doc.name + if (doc.kind == ApiDoc.Kind.FUNCTION) "(" else "")
-            focusEditor()
-        }
+        ApiReferenceSheet(
+            script.lang,
+            onDismiss = { referenceOpen = false },
+            onPick = { doc ->
+                referenceOpen = false
+                insert(doc.name + if (doc.kind == ApiDoc.Kind.FUNCTION) "(" else "")
+                focusEditor()
+            },
+            onDirective = { line ->
+                referenceOpen = false
+                insert(line)
+                focusEditor()
+            },
+        )
     }
 }
 

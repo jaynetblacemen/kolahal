@@ -119,4 +119,24 @@ object ApiDocs {
     fun find(name: String, lang: ScriptLang): ApiDoc? = byName.getValue(lang)[name]
 
     fun isNamespace(name: String, lang: ScriptLang) = find(name, lang)?.kind == ApiDoc.Kind.NAMESPACE
+
+    /** A comment line at the top of a script ([ScriptMeta]): [args] is what follows its name, empty when nothing does. */
+    data class Directive(val name: String, val args: String, val doc: String)
+
+    /** Every `@` line, for the editor's reference: what the script is, how it runs, what it may use. */
+    val directives: List<Directive> = listOf(
+        Directive("command", "", "Run it by its name from the prompt"),
+        Directive("desc", "<text>", "One line about it, in help, suggestions and Scripts"),
+        Directive("usage", "[<args>]", "Its arguments, like a usage line in help: [<city>|--default <city>]"),
+        Directive("on", "<event>, …", "Run when it happens: " + ScriptMeta.EVENTS.joinToString(" ")),
+        Directive("uses", "<what>, …", "What it may use, if you allow it: " + ScriptMeta.USES.joinToString(" ")),
+        Directive("every", "<15m|1h|1d>", "The timer it suggests, set when it is added"),
+        Directive("at", "<HH:mm>, …", "The daily times it suggests"),
+        Directive("notify", "", "It suggests letting it post notifications"),
+        Directive("title", "<text>", "Its name for people, shown in Scripts"),
+        Directive("author", "<name>", "Who wrote it"),
+        Directive("version", "<x.y>", "Raise it when sharing an update"),
+        Directive("tags", "<word>, …", "Words to find it by"),
+        Directive("requires", "<x.y.z>", "The oldest Kolahal it works with"),
+    )
 }

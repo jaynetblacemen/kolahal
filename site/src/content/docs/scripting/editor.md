@@ -48,6 +48,11 @@ As you type, the editor suggests [API](/scripting/api/) names such as `http.get`
 under the cursor. It's a quick reminder; the [API reference](/scripting/api/) has the full details and
 examples.
 
+**[?]** in the top bar lists the whole API, then every `@` line a script can start with
+([`@command`](/scripting/overview/#command-scripts), `@desc`, `@on`, `@uses`, `@every` and the rest, as in
+[describing a script](/scripting/overview/#describing-a-script)). Tap an entry to insert it at the
+cursor; an `@` line goes in as a whole comment line.
+
 ## Editing elsewhere
 
 For longer scripts you may prefer a computer: export a script as a file, sync a folder
