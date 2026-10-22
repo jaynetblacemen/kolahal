@@ -97,4 +97,56 @@ class WidgetModelTest {
         assertEquals("1×1", WidgetLayout.sizeLabel(10, 10))
         assertEquals("3×1", WidgetLayout.sizeLabel(250, 110, targetCellWidth = 3, targetCellHeight = 1))
     }
+
+    @Test fun widgetsSitSideBySideWhileTheyFit() {
+        assertEquals(listOf(listOf(0, 1), listOf(2)), WidgetLayout.rows(listOf(6, 6, 12)))
+        assertEquals(listOf(listOf(0, 1, 2), listOf(3)), WidgetLayout.rows(listOf(4, 4, 4, 3)))
+        // The next one doesn't fit beside the others: a new row, even with room left.
+        assertEquals(listOf(listOf(0), listOf(1), listOf(2)), WidgetLayout.rows(listOf(8, 6, 12)))
+        assertEquals(emptyList<List<Int>>(), WidgetLayout.rows(emptyList()))
+        // Out-of-range spans count as their nearest allowed width.
+        assertEquals(listOf(listOf(0), listOf(1)), WidgetLayout.rows(listOf(40, 0)))
+    }
+
+    @Test fun widthsOfARowFillThePage() {
+        val page = 395
+        assertEquals(page, WidgetLayout.widthDp(page, 12))
+        // Two halves and the gap between them make the page, give or take a dp of rounding.
+        val half = WidgetLayout.widthDp(page, 6)
+        assertTrue(2 * half + WidgetLayout.GAP_DP in page - 1..page)
+        val thirds = 3 * WidgetLayout.widthDp(page, 4) + 2 * WidgetLayout.GAP_DP
+        assertTrue(thirds in page - 2..page)
+    }
+
+    @Test fun widthLabelsAndSteps() {
+        assertEquals("full", WidgetLayout.spanLabel(12))
+        assertEquals("1/2", WidgetLayout.spanLabel(6))
+        assertEquals("2/3", WidgetLayout.spanLabel(8))
+        assertEquals("1/6", WidgetLayout.spanLabel(2))
+        assertEquals("5/12", WidgetLayout.spanLabel(5))
+        assertEquals(WidgetLayout.COLUMNS, WidgetLayout.resizeSpan(12, 1))
+        assertEquals(WidgetLayout.MIN_SPAN, WidgetLayout.resizeSpan(2, -1))
+        assertEquals(5, WidgetLayout.resizeSpan(6, -1))
+    }
+
+    @Test fun widthsAreSavedAndOlderLinesAreFullWidth() {
+        val half = w(5, 0).copy(span = 6)
+        assertEquals(listOf(half), WidgetCodec.decode(WidgetCodec.encode(listOf(half))))
+        // Saved by 0.3.1: six fields, no width.
+        assertEquals(WidgetLayout.COLUMNS, WidgetCodec.decode("3|com.a/.W|0|120|0|panel").single().span)
+        assertEquals(WidgetLayout.MIN_SPAN, WidgetCodec.decode("3|com.a/.W|0|120|0|panel|0").single().span)
+    }
+
+    @Test fun backupsCarryTheWidth() {
+        val exported = WidgetCodec.export(listOf(w(9, 0).copy(span = 4)))
+        assertEquals(4, exported.single()["span"])
+        val imported = WidgetCodec.fromExport(
+            listOf(
+                mapOf("provider" to "com.a/.W0", "span" to 4.0),
+                mapOf("provider" to "com.a/.W1"),
+                mapOf("provider" to "com.a/.W2", "span" to "99"),
+            )
+        )
+        assertEquals(listOf(4, WidgetLayout.COLUMNS, WidgetLayout.COLUMNS), imported.map { it.span })
+    }
 }
