@@ -79,11 +79,17 @@ App name (30 characters at most; this is 26):
 Kolahal: Terminal Launcher
 #+end_example
 
-Short description (80 at most; this is 73):
+Short description (80 at most; this is 74):
 
 #+begin_example
-A keyboard-first home screen: type part of an app's name and press Enter.
+A keyboard-first home screen that opens apps and runs commands as you type
 #+end_example
+
+Google flagged the first one, "A keyboard-first home screen: type part of an app's name and press
+Enter." (22 October 2026). Its [[https://support.google.com/googleplay/android-developer/answer/9866151#zippy=%2Cshort-description][short description rules]]: one sentence has no closing period
+(periods only between sentences); no colons or other special characters, emoji or symbols, only
+standard punctuation; no capitals for emphasis; no claims ("best", "new", "#1"), calls to action
+("download now") or keyword lists; and no repeating the screenshots or feature graphic.
 
 Full description:
 
