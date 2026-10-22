@@ -151,7 +151,7 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `script at <name> <HH:mm[,HH:mm…]\|off>` | daily times |
 | `script notify <name> on\|off` | allow `notify()` for this script |
 | `script on\|off <name>` | enable / disable (aliases `enable`, `disable`) |
-| `script access <name>` | each [access switch](/scripting/overview/#switching-access-off), on or off; tap one to change it |
+| `script access <name>` | each [access switch](/scripting/overview/#switching-access-off), on or off; tap one to put the command that changes it in the prompt |
 | `script allow\|deny <name> <what…>` | switch access on or off: `internet`, `header`, an `@uses` item, an `@on` event, or `notify` |
 | `script secret <name> [<NAME> [--clear]]` | its [secrets](/scripting/overview/#api-keys-and-other-secrets), set or not; with a name, a box to set it (`--clear` forgets it) |
 | `script mv <name> <new-name>` | [rename it](/scripting/overview/#renaming-a-script) (alias `rename`) |

@@ -11,7 +11,7 @@ script lib                 # list them, with ✓ for installed ones
 script install weather     # install (or update) one
 ```
 
-More scripts, shared by people who use Kolahal, are in **Scripts → Get more scripts** and
+More scripts, shared by people who use Kolahal, are in **Scripts → Add script → Get more scripts** and
 `script get` ([getting scripts from others](/scripting/overview/#getting-scripts-from-others)).
 
 Installing sets the script's suggested timers and notification flag. They are only suggestions:
@@ -40,6 +40,7 @@ None of the network scripts need an API key.
 | [quote](#quote) | JS | yes | daily 08:00 | yes |
 | [countdown](#countdown) | Lua | yes | daily 00:05 | |
 | [todo](#todo) | Lua | yes | | |
+| [charge-reminder](#charge-reminder) | Lua | | on charger and unplug | yes |
 
 ## hn
 
@@ -148,3 +149,9 @@ todo                         # list
 todo done 2
 todo clear
 ```
+
+## charge-reminder
+
+**Charging sessions.** Runs when you plug the charger in and when you unplug it, with no timer and
+no network: logs how much a session added, and notifies when you unplug below 30%. Run by hand, it
+shows the last session.

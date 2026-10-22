@@ -30,7 +30,7 @@ The picker lists every installed widget, grouped by app, with its preview and de
 ## Arrange and resize
 
 Each widget has a width and a height. The page is twelve columns wide, so a widget can take a
-quarter, a third, half, two thirds or any other twelfth of it. Narrower widgets sit side by side in
+sixth, a quarter, a third, half, two thirds or more of it, a twelfth at a time. Narrower widgets sit side by side in
 page order, and the next one starts a new row when it doesn't fit beside them.
 
 In **Settings → Widgets**, long-press a widget, or tap the edit button in the top bar and then a
@@ -39,12 +39,12 @@ widget, for its toolbar at the bottom:
 | Button | Does |
 | --- | --- |
 | Width − / + | narrower or wider, a twelfth of the page at a time |
-| Height − / + | shorter or taller, 8dp at a time; hold to keep going (never below the size the widget needs) |
-| Square | as tall as it is wide |
+| Height − / + | shorter or taller, 8dp at a time (never below the size the widget needs) |
+| Square | as tall as it is wide, or as close as the widget allows |
 | ← / → | move it earlier or later on the page |
 | delete | remove it (asks first) |
 
-The page in Settings shows the widgets as they are on the widgets page. Widgets are told their
+Hold − or + to keep going. The page in Settings shows the widgets as they are on the widgets page. Widgets are told their
 real width and height, so they lay out for the space they get.
 
 ## Uninstalled apps and updates

@@ -317,7 +317,7 @@ local r = http.get("https://api.github.com/notifications", { Authorization = "Be
 // @secret GH_TOKEN api.github.com A GitHub token with read access
 const token = secrets.get("GH_TOKEN");
 if (!token) return "set GH_TOKEN in the script's sheet";
-const r = http.get("https://api.github.com/notifications", { Authorization: "Bearer " + token });
+const r = await http.get("https://api.github.com/notifications", { Authorization: "Bearer " + token });
 ```
 </TabItem>
 </Tabs>
@@ -405,14 +405,15 @@ end
 Runs a terminal command, as if typed: another script's command too. Needs `@uses commands`.
 **Only when the script was started from the prompt** (a command script, `script run`, or a
 one-liner); in timer and event runs it logs an error and returns `false`. Sensitive commands
-(`clear`, `uninstall` and the like) must be typed.
+(`clear`, `uninstall`, `work`, `notifs`, `script` and the like) must be typed: for those it logs
+an error and returns `false`.
 
 ```lua
 -- @command
--- @desc work mode: pause notifications, open the work mail
+-- @desc morning: the weather, then the news app
 -- @uses commands
-launcher.run("work on")
-launcher.run("open gmail -w")
+launcher.run("weather")
+launcher.run("open news")
 ```
 
 ### sleep(ms)

@@ -94,6 +94,8 @@ jobs:
             certs=$("$apksigner" verify --print-certs "$apk")
             digest=$(printf %s "$certs" | sed -n 's/^.*[Ss]igner.* certificate SHA-256 digest: //p' | head -1)
             if [ -z "$digest" ]; then echo "$certs"; echo "::error::$apk isn't signed."; exit 1; fi
+            # Without the release key secrets the build falls back to the debug key: never ship that.
+            if printf %s "$certs" | grep -q 'CN=Android Debug'; then echo "::error::$apk is debug-signed."; exit 1; fi
             if [ -n "$expected" ] && [ "$digest" != "$expected" ]; then
               echo "::error::$apk is signed with $digest, not the release key $expected."
               exit 1

@@ -145,25 +145,22 @@ log(summary)
 notify("Good morning", summary)
 ```
 
-## Work mode (Lua, command driving the launcher)
+## Morning routine (Lua, command driving the launcher)
 
 `launcher.run` only works when the script is started from the prompt, which makes it a good fit
-for command scripts.
+for command scripts. Commands that change settings or data (`work`, `notifs`, `clear`, `script`
+and the like) must be typed, so they don't run from a script.
 
 ```lua
--- focus.lua
+-- morning.lua
 -- @command
--- @desc focus on|off: work profile and notification logging together
+-- @desc morning: the weather, the day's agenda, then the news app
 -- @uses commands
 
-if argline == "off" then
-  launcher.run("notifs log on")
-  launcher.run("work off")
-  return "focus off"
-end
-launcher.run("work on")
-launcher.run("notifs log off")
-return "focus on: work profile on, notifications out of the log"
+launcher.run("weather")
+launcher.run("agenda")
+launcher.run("open news")
+return "good morning"
 ```
 
 ## Charging log (Lua, event trigger)

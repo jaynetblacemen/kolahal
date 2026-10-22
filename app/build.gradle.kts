@@ -87,6 +87,10 @@ android {
         // upload key; without one it stays unsigned, never debug-signed (Play refuses those).
         // `-PplayApk` signs with the release key instead, as the full build: the Play build's APK on
         // GitHub (`assemblePlay -PplayApk`), for phones where Play Protect blocks the full one.
+        // The bundle must stay on the upload key: one run can't build it and the release-signed APK.
+        if (providers.gradleProperty("playApk").isPresent && gradle.startParameter.taskNames.any { "bundle" in it.lowercase() }) {
+            throw GradleException("-PplayApk signs the Play build with the release key: build the bundle in a run of its own")
+        }
         create("play") {
             initWith(getByName("release"))
             matchingFallbacks += listOf("release")

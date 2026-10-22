@@ -14,8 +14,8 @@ Kolahal itself makes network requests in exactly four cases:
 
 1. **Scripts** you write or install, through `http.*` and `rss.*`. They talk only to the URLs in
    their code. The [library scripts](/scripting/library/) use wttr.in, Open-Meteo,
-   CoinGecko, open.er-api.com, api.ipify.org, Wikipedia, xkcd.com, ZenQuotes, Reddit and
-   GitHub. Requests carry a `User-Agent` of `Kolahal-Launcher/0.1` unless the
+   CoinGecko, open.er-api.com, api.ipify.org, Wikipedia, xkcd.com, ZenQuotes, Reddit, GitHub
+   and hnrss.org. Requests carry a `User-Agent` of `Kolahal-Launcher/0.1` unless the
    script sets its own. You can switch internet off for any script
    ([switching access off](/scripting/overview/#switching-access-off)).
 2. **Feeds** you subscribe to: one request per feed when it is due.

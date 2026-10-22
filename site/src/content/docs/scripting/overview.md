@@ -56,7 +56,7 @@ last run's result. The script manager (`scripts`, or the **Scripts** tab in Sett
 script: its title, how it runs and how its last run went (red if it failed), **Run** for a command,
 and its on/off switch. The arrow on a card, or the one at the top for all of them, shows its details:
 its header line, next run, usage, events and what it may use. Chips filter the cards (commands,
-timers, events, in the header, failed, off, and what they use), and the search icon finds one by name.
+timers, events, in the header, failed, off, needs a key, and what they use), and the search icon finds one by name.
 Tap a card for **Run**, **Edit**, **Export**, access, notifications, timers and **Delete**.
 **Add script** writes a new one, or takes one from the library, from
 [the scripts people share](#getting-scripts-from-others) or from a file.
@@ -173,8 +173,8 @@ shows them, and the [library](/scripting/library/) scripts carry them too.
 | `@author <name>`, `@version <x.y>` | shown in its sheet in the Scripts screen |
 | `@every <15m\|1h\|1d>`, `@at <HH:mm>[, …]` | the timer it suggests, set when it is added from a file, a folder or the library |
 | `@notify` | it suggests posting notifications, switched on when it is added |
-| `@tags <word>[, …]` | words to find it by |
-| `@requires <x.y.z>` | the oldest Kolahal it works with: an older Kolahal won't import it |
+| `@tags <word>[, …]` | words to find it by in Get more scripts |
+| `@requires <x.y.z>` | the oldest Kolahal it works with: Kolahal won't add it from a file, a folder, a backup or Get more scripts until it is that new |
 
 ## Sandbox and limits
 
@@ -260,8 +260,8 @@ if not key then return "set OWM_KEY in the script's sheet" end
 local r = http.get("https://api.openweathermap.org/data/2.5/weather?q=Pune&appid=" .. key)
 ```
 
-The line gives the key's name, the site it may be sent to (several with commas, `*` for any), and
-a few words for you. Set the value in the script's sheet (Scripts → tap the script → **Secrets**),
+The line gives the key's name, the site it may be sent to (and its subdomains; several with commas,
+`*` for any), and a few words for you. Set the value in the script's sheet (Scripts → tap the script → **Secrets**),
 or with `script secret <name> <NAME>`, which opens a box the keyboard doesn't learn from. Switching
 on a script whose keys aren't set leaves a line to tap to set them.
 
@@ -281,15 +281,15 @@ on a script whose keys aren't set leaves a line to tap to set them.
 
 ## Getting scripts from others
 
-**Scripts → Get more scripts** lists the scripts people share in
+**Scripts → Add script → Get more scripts** lists the scripts people share in
 [kolahal-scripts](https://github.com/mtwabpin/kolahal-scripts) on GitHub. Each one is checked and
 read before it is added. Tap one to see what it does, what it uses and its code. **Install** asks
 about what it uses first (everything on, to switch off what you don't want), then switches it on
 with the timer it suggests.
 
-When a shared script you haven't edited gets a newer version, the Scripts screen says
-"update available" and its sheet has an **Update** button. Anything new it asks for starts switched
-off. A copy you edited is only replaced when you say so.
+When Get more scripts (or `script get`) finds a newer version of a shared script you haven't
+edited, the Scripts screen says "update available" and its sheet has an **Update to …** button.
+Anything new it asks for starts switched off. A copy you edited is only replaced when you say so.
 
 In the terminal, `script get` lists them and `script get <name>` installs or updates one. The list
 is kept for an hour; `--refresh` reads it again, and `--replace` replaces a copy you edited. To
