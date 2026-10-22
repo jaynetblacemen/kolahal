@@ -60,15 +60,86 @@ Policy pages (opened 22 October 2026):
    | Target audience | 18 and over                                                                                                                             |
    | Data safety     | No data collected or shared: nothing is sent to the developer; feeds and searches go to the sites people chose; crash reports leave only as an email the user sends |
    | Category        | Personalization                                                                                                                         |
-5. *Store listing*: name (30 characters) "Kolahal: Terminal Launcher"; short description (80) "A
-   keyboard-first home screen: type part of an app's name and press Enter."; the full
-   description from the website's "What it does", with the work profile and private space last.
+5. *Store listing*: paste the texts under [[*Store listing text][Store listing text]] below.
 6. *Graphics*: a 512 × 512 icon (32-bit PNG, at most 1 MB), a 1024 × 500 feature graphic (JPEG or
    PNG without alpha), and 2 to 8 screenshots whose long side is at most twice the short side.
    The website's 1080 × 2400 screenshots are too tall: crop to 1080 × 2160 or frame them.
 7. *Internal testing*: upload the bundle from a Release run; install it from the test link; read
    the pre-launch report.
 8. *Closed testing*: 12 or more testers for 14 days in a row, then apply for production.
+
+* Store listing text
+
+Ready to paste into Play Console → Grow users → Store presence → Main store listing. It describes
+the lite build, which is what Play gets: no screen lock, no notifications in the log, no media
+controls and no calls in the log, so none of those are mentioned. Play allows 4000 characters;
+this is 2957. Keep it in step with the app when features change.
+
+App name (30 characters at most; this is 26):
+
+#+begin_example
+Kolahal: Terminal Launcher
+#+end_example
+
+Short description (80 at most; this is 73):
+
+#+begin_example
+A keyboard-first home screen: type part of an app's name and press Enter.
+#+end_example
+
+Full description:
+
+#+begin_example
+Kolahal turns your home screen into a terminal. Type part of an app's name and press Enter, or let the app open by itself once your letters can only mean one app. Everything else is a short command away.
+
+TYPE, ENTER, DONE
+• Type any part of an app's name: the best match sits right above your thumb.
+• Instant launch opens an app as soon as the letters match only that app.
+• With an empty prompt, your most-used apps are one tap away; pin favourites to keep them first.
+• Aliases for anything you type often, app shortcuts, and every past command one ↑ away.
+• An app selector on the right edge: slide your thumb along it to glide through all your apps, no keyboard needed.
+
+A LOG YOU CAN ACT ON
+• Every command and its output is a block with a coloured line beside it.
+• Tap a line for its main action; long-press for copy, share, open, run again and more.
+• Swipe a line right to copy it, left to delete it.
+• App installs, updates and uninstalls show up as they happen.
+
+LITTLE TOOLS BUILT IN
+• A calculator with units and currencies: = 2^10, = 5 km in mi, = 100 usd in eur
+• Web search with the engine you choose
+• Call and text people by name, with contact suggestions
+• To-dos, notes, reminders that survive a restart, timers and alarms through your clock app, and your calendar's agenda
+• Screen time per app and an unlock counter
+• Torch, volume, ring mode, Do Not Disturb, brightness, rotation and screen timeout from the prompt
+
+FEEDS
+• A built-in RSS and Atom reader with unread counts, refresh intervals, optional notifications, and OPML import and export.
+
+SCRIPTS IN LUA OR JAVASCRIPT
+• Run a script on a timer, at set times, or when something happens, such as unlocking the phone or plugging it in.
+• Make a script into a command of your own that takes arguments.
+• Pin a status line in the header, post a notification, fetch from the web.
+• Start from 15 ready-made scripts (weather, Hacker News, a battery log and more) in an editor with completion.
+• Scripts run sandboxed, in a separate process.
+
+MAKE IT YOURS
+• Seven colour themes, and a theme builder for your own, with a live preview
+• Terminal fonts (JetBrains Mono, Fira Code, IBM Plex Mono, Source Code Pro, or one you import), or your phone's own font
+• A touch key bar, gestures that run any command, full screen, and a widgets page beside the terminal
+• Settings that show your home screen underneath while you drag a slider, so you see the change as you make it
+
+PRIVATE BY DESIGN
+• No account, no ads, no analytics: Kolahal sends nothing to its developer.
+• Everything stays on your phone, and backs up to one file that you keep.
+• Crash reports stay on your phone until you choose to email one.
+
+WORK PROFILE AND PRIVATE SPACE
+• If you have them, their apps sit in the same list as yours, marked [W] and [S], and you can pause or resume the work profile from the header or with a command.
+
+The guide: mtwabpin.github.io/kolahal
+The source code: github.com/mtwabpin/kolahal
+#+end_example
 
 * Each release on Play
 
