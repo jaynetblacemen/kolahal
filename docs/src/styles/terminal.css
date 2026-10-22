@@ -75,6 +75,17 @@
 	--sl-color-blue: #076678;
 	--sl-color-red: #9d0006;
 	--sl-color-green: #79740e;
+	/* Titles of notes and tips, in gruvbox's dark shades rather than Starlight's cool ones. */
+	--sl-color-orange-high: #af3a03;
+	--sl-color-purple-high: #8f3f71;
+	--sl-color-blue-high: #076678;
+	--sl-color-red-high: #9d0006;
+}
+
+/* Notes and tips on paper like the cards, not on Starlight's pastel blue or purple; the edge
+   and title keep the kind's colour. */
+:root[data-theme='light'] .starlight-aside {
+	background-color: var(--sl-color-gray-7);
 }
 
 body {
