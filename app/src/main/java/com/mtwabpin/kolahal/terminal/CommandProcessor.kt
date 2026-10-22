@@ -222,7 +222,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private fun notFound(text: String) {
         val head = text.substringBefore(' ').lowercase()
         val rest = text.substringAfter(' ', "")
-        val candidates = COMMAND_NAMES + prefs.aliases().keys +
+        val candidates = COMMAND_NAMES - UNAVAILABLE + prefs.aliases().keys +
             scripts.all().filter { ScriptMeta.isCommand(it.code) }.map { it.name }
         val best = candidates.filter { it.length > 1 }
             .map { it to CommandParsing.editDistance(head, it) }
@@ -482,7 +482,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     }
 
     private fun help() {
-        val byName = COMMANDS.associateBy { it.name }
+        val offered = COMMANDS.filter { it.name !in UNAVAILABLE }
+        val byName = offered.associateBy { it.name }
         val placed = HashSet<String>()
         for ((section, names) in HELP_SECTIONS) {
             info(section)
@@ -491,7 +492,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 out(spec.usage, LogContext.of(LogContext.COMMAND to spec.name + " ", LogContext.DESC to spec.help))
             }
         }
-        COMMANDS.filter { it.name !in placed }.forEach { spec ->
+        offered.filter { it.name !in placed }.forEach { spec ->
             out(spec.usage, LogContext.of(LogContext.COMMAND to spec.name + " ", LogContext.DESC to spec.help))
         }
         val commandScripts = scripts.all().filter { ScriptMeta.isCommand(it.code) }
@@ -582,6 +583,22 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
 
         /** Every built-in command name, for alias, script-name and typo checks. */
         val COMMAND_NAMES: Set<String> = COMMANDS.map { it.name }.toSet()
+
+        /**
+         * The commands of each feature the lite and Play builds leave out (screen lock, notification
+         * access, call log), with whether this build has it.
+         */
+        internal val FEATURE_COMMANDS = listOf(
+            com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE to setOf("lock", "accessibility"),
+            com.mtwabpin.kolahal.BuildConfig.NOTIFICATION_ACCESS to setOf("notifs", "media", "mp", "next", "prev"),
+            com.mtwabpin.kolahal.BuildConfig.CALL_LOG to setOf("calls"),
+        )
+
+        /**
+         * Commands whose feature this build leaves out: not suggested or listed in help, so the lite
+         * and Play builds don't offer what they can't do. Typed anyway, each says why it isn't there.
+         */
+        val UNAVAILABLE: Set<String> = FEATURE_COMMANDS.filterNot { it.first }.flatMap { it.second }.toSet()
 
         /** Usage line per command name, for option completion and instant runs. */
         val COMMAND_USAGES: Map<String, String> = COMMANDS.associate { it.name to it.usage }

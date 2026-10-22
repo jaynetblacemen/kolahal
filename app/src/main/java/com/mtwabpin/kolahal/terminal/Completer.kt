@@ -59,7 +59,7 @@ class Completer(private val context: Context, private val data: Data) {
         val head = parts.first().lowercase()
         val scriptList = data.scripts
         if (parts.size == 1) {
-            val names = CommandProcessor.COMMAND_NAMES +
+            val names = CommandProcessor.COMMAND_NAMES - CommandProcessor.UNAVAILABLE +
                 data.commandNames +
                 appPrefs.aliases().keys
             val cmds = names.distinct()
