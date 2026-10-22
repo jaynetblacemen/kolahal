@@ -35,6 +35,7 @@ class CommandProcessorTest {
         override fun requestContactsPermission() = Unit
         override fun requestCalendarPermission() = Unit
         override fun openEditor(script: Script) { opened += script }
+        override fun askSecret(script: Script, name: String) = Unit
         override fun requestNotificationPermission() = Unit
         override fun clearScreen() = logs.clearScreen()
     }

@@ -10,6 +10,7 @@ import com.mtwabpin.kolahal.data.ConfigKey
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.script.ScriptAccess
+import com.mtwabpin.kolahal.script.ScriptMeta
 import com.mtwabpin.kolahal.ui.TermFonts
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
@@ -147,6 +148,12 @@ class Completer(private val context: Context, private val data: Data) {
                     if (parts.size == 3 && sub != "new") {
                         scriptList.filter { it.name.startsWith(prefix) && it.name != prefix }
                             .map { Suggestion.Completion(it.name, "script $sub ${it.name} ") }
+                    } else if (parts.size == 4 && (sub == "secret" || sub == "secrets")) {
+                        // Its @secret names.
+                        val s = scriptList.firstOrNull { it.name == parts[2] }
+                        (s?.let { ScriptMeta.secrets(it.code).map { d -> d.name } }).orEmpty()
+                            .filter { it.startsWith(last) && it != last }
+                            .map { Suggestion.Completion(it, "script $sub ${parts[2]} $it") }
                     } else if (parts.size >= 4 && (sub == "allow" || sub == "deny")) {
                         // What can be switched: its access items and `notify`, each once.
                         val s = scriptList.firstOrNull { it.name == parts[2] }

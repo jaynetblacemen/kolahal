@@ -63,6 +63,8 @@ object ApiDocs {
         ApiDoc("store", "store", "Persistent per-script strings: get, set", kind = NS),
         ApiDoc("store.get", "store.get(key) -> string?", "Read a stored string"),
         ApiDoc("store.set", "store.set(key, value)", "Store a string; nil/null deletes it"),
+        ApiDoc("secrets", "secrets", "API keys and tokens you set for this script: get", kind = NS),
+        ApiDoc("secrets.get", "secrets.get(name) -> string?", "The value you set for an @secret name; nil/null until you set it"),
 
         ApiDoc("clipboard", "clipboard", "Clipboard: get, set", kind = NS),
         ApiDoc("clipboard.get", "clipboard.get() -> string?", "Clipboard text; usually nil in timers"),
@@ -130,6 +132,7 @@ object ApiDocs {
         Directive("usage", "[<args>]", "Its arguments, like a usage line in help: [<city>|--default <city>]"),
         Directive("on", "<event>, …", "Run when it happens: " + ScriptMeta.EVENTS.joinToString(" ")),
         Directive("uses", "<what>, …", "What it may use, if you allow it: " + ScriptMeta.USES.joinToString(" ")),
+        Directive("secret", "<NAME> <site> <description>", "A key you set in its sheet, never in the code; read with secrets.get, sent only to that site"),
         Directive("every", "<15m|1h|1d>", "The timer it suggests, set when it is added"),
         Directive("at", "<HH:mm>, …", "The daily times it suggests"),
         Directive("notify", "", "It suggests letting it post notifications"),

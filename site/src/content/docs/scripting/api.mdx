@@ -26,6 +26,7 @@ means a table with those keys in Lua and an object with those properties in JS.
 | [`rss.fetch(url)`](#rssfetchurl) / [`rss.parse(xml)`](#rssparsexml) | `{ title, link, items }` |
 | [`rss.fresh(url)`](#rssfreshurl) | same, only unseen items |
 | [`store.get(key)` / `store.set(key, value)`](#storegetkey--storesetkey-value) | string or nil |
+| [`secrets.get(name)`](#secretsgetname) | string or nil |
 | [`json.encode(v)` / `json.decode(s)`](#jsonencodev--jsondecodes) | Lua only |
 | [`clipboard.get()` / `clipboard.set(text)`](#clipboardget--clipboardsettext) | string or nil |
 | [`device.battery()`](#devicebattery) | `{ level, charging }` |
@@ -290,6 +291,33 @@ store.set("list", json.encode({ "a", "b" }))
 const n = Number(store.get("runs") ?? 0) + 1;
 store.set("runs", String(n));
 store.set("list", JSON.stringify(["a", "b"]));
+```
+</TabItem>
+</Tabs>
+
+### secrets.get(name)
+
+The value you set for an API key or token the script names with `@secret`, or `nil` / `null` until
+you set it. The value stays out of the code; it is masked as `••••` wherever the run shows it, and a
+request carrying it to a site the `@secret` line doesn't name stops the script
+([API keys and other secrets](/scripting/overview/#api-keys-and-other-secrets)). Reading a name
+without its `@secret` line is an error, and code typed at the prompt can't read secrets.
+
+<Tabs syncKey="lang">
+<TabItem label="Lua">
+```lua
+-- @secret GH_TOKEN api.github.com A GitHub token with read access
+local token = secrets.get("GH_TOKEN")
+if not token then return "set GH_TOKEN in the script's sheet" end
+local r = http.get("https://api.github.com/notifications", { Authorization = "Bearer " .. token })
+```
+</TabItem>
+<TabItem label="JavaScript">
+```js
+// @secret GH_TOKEN api.github.com A GitHub token with read access
+const token = secrets.get("GH_TOKEN");
+if (!token) return "set GH_TOKEN in the script's sheet";
+const r = http.get("https://api.github.com/notifications", { Authorization: "Bearer " + token });
 ```
 </TabItem>
 </Tabs>

@@ -126,6 +126,8 @@ class ScriptRepository private constructor(private val context: Context) {
     }
 
     fun delete(id: Long) {
+        // Its secrets go with it.
+        byId(id)?.let { com.mtwabpin.kolahal.script.SecretStore(context).clear(it.name) }
         db.writableDatabase.delete("scripts", "id = ?", arrayOf(id.toString()))
         db.writableDatabase.delete("kv", "scope = ?", arrayOf(scopeOf(id)))
         version.incrementAndGet()

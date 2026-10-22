@@ -36,6 +36,7 @@ class CommandFamiliesTest {
         override fun openScreen(screen: Screen) = Unit
         override fun requestContactsPermission() = Unit
         override fun openEditor(script: Script) = Unit
+        override fun askSecret(script: Script, name: String) = Unit
         override fun requestNotificationPermission() = Unit
         override fun clearScreen() { cleared++ }
     }

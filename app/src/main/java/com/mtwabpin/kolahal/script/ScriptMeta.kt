@@ -9,6 +9,7 @@ package com.mtwabpin.kolahal.script
  *                            empty when there are none. Drives suggestions and `launch.instant`
  *   -- @on <event>[, ...]  — run when a device event happens (see [EVENTS]); the payload is `event`
  *   -- @uses <what>[, ...] — private data or reach it needs (see [USES]); without it those calls fail
+ *   -- @secret <NAME> <site> <description> — a key you set, read with secrets.get, sent only to <site> ([Secret])
  *
  * And what describes it, so a script file is complete on its own (the library reads these too):
  *
@@ -52,6 +53,27 @@ object ScriptMeta {
     private fun value(code: String, name: String): String? =
         Regex("""^\s*(--|//)\s*@$name\b[ \t]*(.*)$""", RegexOption.MULTILINE).find(code)
             ?.groupValues?.get(2)?.trim()?.takeIf { it.isNotEmpty() }
+
+    /**
+     * `@secret OWM_KEY api.openweathermap.org Your OpenWeather API key`: a value you set (in the
+     * script's sheet or with `script secret`), read with `secrets.get("OWM_KEY")`, and sent only to
+     * [hosts] (or below them; `*` for any).
+     */
+    data class Secret(val name: String, val hosts: List<String>, val desc: String) {
+        fun allows(host: String): Boolean = hosts.any { it == "*" || host.equals(it, ignoreCase = true) || host.endsWith(".$it", ignoreCase = true) }
+    }
+
+    private val secretLine = Regex("""^\s*(--|//)\s*@secret\b[ \t]*(.*)$""", RegexOption.MULTILINE)
+    private val secretName = Regex("^[A-Za-z][A-Za-z0-9_]{0,39}$")
+
+    /** Every well-formed `@secret` line (a name, then its hosts); the first one of a name wins. */
+    fun secrets(code: String): List<Secret> = secretLine.findAll(code).mapNotNull { m ->
+        val parts = m.groupValues[2].trim().split(Regex("\\s+"), limit = 3)
+        val name = parts.getOrNull(0)?.takeIf(secretName::matches) ?: return@mapNotNull null
+        val hosts = parts.getOrNull(1)?.split(',')?.map { it.trim().lowercase() }?.filter { it.isNotEmpty() }?.takeIf { it.isNotEmpty() }
+            ?: return@mapNotNull null
+        Secret(name, hosts, parts.getOrNull(2).orEmpty())
+    }.distinctBy { it.name }.toList()
 
     fun title(code: String): String? = value(code, "title")
 

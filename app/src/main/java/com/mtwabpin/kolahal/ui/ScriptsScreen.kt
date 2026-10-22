@@ -75,6 +75,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -110,10 +113,14 @@ private class ScriptInfo(val script: Script) {
     val events = ScriptMeta.events(script.code)
     val uses = ScriptMeta.uses(script.code)
     val timed = script.intervalMin > 0 || script.atTimes.isNotEmpty()
+    val secrets = ScriptMeta.secrets(script.code)
 }
 
-/** A filter chip: its name and the scripts it keeps ([inHeader]: the script has a header line now). */
-private class ScriptFilter(val id: String, val label: String, val keeps: (info: ScriptInfo, inHeader: Boolean) -> Boolean)
+/** What a filter can ask about a script beyond its code: a header line now, a secret not set yet. */
+private class ScriptState(val inHeader: Boolean, val needsKey: Boolean)
+
+/** A filter chip: its name and the scripts it keeps. */
+private class ScriptFilter(val id: String, val label: String, val keeps: (info: ScriptInfo, state: ScriptState) -> Boolean)
 
 /** Short names for what scripts use, in chips. */
 private val USES_SHORT = mapOf("notifications" to "notifications", "clipboard" to "clipboard", "apps" to "apps", "lan" to "local network", "commands" to "commands")
@@ -122,7 +129,8 @@ private val SCRIPT_FILTERS = listOf(
     ScriptFilter("commands", "Commands") { s, _ -> s.isCommand },
     ScriptFilter("timers", "Timers") { s, _ -> s.timed },
     ScriptFilter("events", "Events") { s, _ -> s.events.isNotEmpty() },
-    ScriptFilter("header", "In the header") { _, line -> line },
+    ScriptFilter("header", "In the header") { _, st -> st.inHeader },
+    ScriptFilter("needs-key", "Needs a key") { _, st -> st.needsKey },
     ScriptFilter("failed", "Failed") { s, _ -> s.script.failed() },
     ScriptFilter("off", "Off") { s, _ -> !s.script.enabled },
 ) + ScriptMeta.USES.map { what -> ScriptFilter("uses:$what", "Uses ${USES_SHORT[what] ?: what}") { s, _ -> what in s.uses } }
@@ -183,16 +191,26 @@ fun ScriptsScreen(
     }
 
     val infos = remember(scripts) { scripts.map(::ScriptInfo) }
-    // Only chips something matches, with how many.
-    val chips = remember(infos, statuses) {
-        SCRIPT_FILTERS.map { f -> f to infos.count { f.keeps(it, it.script.name in statuses) } }.filter { it.second > 0 }
+    // Declared secrets with no value yet, by script name.
+    val secretsVersion by vm.secretsVersion.collectAsStateWithLifecycle()
+    val missingKeys by produceState(emptyMap<String, List<String>>(), infos, secretsVersion) {
+        value = withContext(Dispatchers.IO) {
+            infos.filter { it.secrets.isNotEmpty() }
+                .associate { i -> i.script.name to (i.secrets.map { it.name } - vm.secretsSet(i.script)) }
+                .filterValues { it.isNotEmpty() }
+        }
     }
-    val shown = remember(infos, statuses, filters, query) {
+    fun stateOf(info: ScriptInfo) = ScriptState(info.script.name in statuses, info.script.name in missingKeys)
+    // Only chips something matches, with how many.
+    val chips = remember(infos, statuses, missingKeys) {
+        SCRIPT_FILTERS.map { f -> f to infos.count { f.keeps(it, stateOf(it)) } }.filter { it.second > 0 }
+    }
+    val shown = remember(infos, statuses, missingKeys, filters, query) {
         val active = SCRIPT_FILTERS.filter { it.id in filters }
         val words = query.lowercase().split(' ').filter { it.isNotBlank() }
         infos.filter { info ->
             val text = listOfNotNull(info.script.name, info.title, info.desc).joinToString(" ").lowercase()
-            active.all { it.keeps(info, info.script.name in statuses) } && words.all { it in text }
+            active.all { it.keeps(info, stateOf(info)) } && words.all { it in text }
         }
     }
     val on = scripts.count { it.enabled }
@@ -300,6 +318,8 @@ fun ScriptsScreen(
                         ScriptCard(
                             info,
                             line = statuses[s.name],
+                            missingKeys = missingKeys[s.name].orEmpty(),
+                            secretsSet = info.secrets.map { it.name } - missingKeys[s.name].orEmpty().toSet(),
                             expanded = expandAll != (s.id in flipped),
                             updateAvailable = libByName[s.name]?.state == ScriptLibrary.State.UPDATE_AVAILABLE || s.name in sharedUpdates,
                             onExpand = { flipped = if (s.id in flipped) flipped - s.id else flipped + s.id },
@@ -402,6 +422,9 @@ private fun nextRun(s: Script, now: Long = System.currentTimeMillis()): Pair<Lon
 private fun ScriptCard(
     info: ScriptInfo,
     line: String?,
+    /** Declared secrets with no value yet, and those that have one. */
+    missingKeys: List<String>,
+    secretsSet: List<String>,
     expanded: Boolean,
     updateAvailable: Boolean,
     onExpand: () -> Unit,
@@ -415,6 +438,7 @@ private fun ScriptCard(
     val summary = buildList {
         add(schedule(s, info.isCommand, info.events))
         add(s.lastRun?.let { (if (failed) "failed " else "ran ") + relative(it, short = true) } ?: "never run")
+        if (missingKeys.isNotEmpty()) add("needs " + missingKeys.joinToString(", "))
         if (updateAvailable) add("update available")
     }.joinToString(" · ")
     Surface(
@@ -458,19 +482,19 @@ private fun ScriptCard(
             Text(
                 summary,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (failed) colors.error else if (updateAvailable) colors.primary else colors.onSurfaceVariant,
+                color = if (failed || missingKeys.isNotEmpty()) colors.error else if (updateAvailable) colors.primary else colors.onSurfaceVariant,
                 maxLines = if (expanded) 3 else 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 20.dp, end = 8.dp),
             )
-            if (expanded) ScriptDetails(info, line)
+            if (expanded) ScriptDetails(info, line, secretsSet)
         }
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ScriptDetails(info: ScriptInfo, line: String?) {
+private fun ScriptDetails(info: ScriptInfo, line: String?, secretsSet: List<String>) {
     val s = info.script
     val colors = MaterialTheme.colorScheme
     val grants = s.grants
@@ -514,6 +538,9 @@ private fun ScriptDetails(info: ScriptInfo, line: String?) {
                     }
                 }
             }
+        }
+        if (info.secrets.isNotEmpty()) {
+            Fact("Secrets", info.secrets.joinToString(", ") { d -> d.name + if (d.name in secretsSet) " (set)" else " (not set)" })
         }
         if (s.failed()) Text(s.lastStatus.orEmpty(), style = MaterialTheme.typography.bodySmall, color = colors.error)
     }
@@ -609,6 +636,10 @@ private fun ScriptSheet(
         listOfNotNull(ScriptMeta.version(s.code)?.let { "v$it" }, ScriptMeta.author(s.code)?.let { "by $it" }).joinToString(" · ").ifEmpty { null }
     }
     val access = remember(s.code) { ScriptAccess.items(s.code) }
+    val secrets = remember(s.code) { ScriptMeta.secrets(s.code) }
+    val secretsVersion by vm.secretsVersion.collectAsStateWithLifecycle()
+    val secretsSet by produceState(emptySet<String>(), s.code, s.name, secretsVersion) { value = withContext(Dispatchers.IO) { vm.secretsSet(s) } }
+    var editingSecret by remember(s.id) { mutableStateOf<ScriptMeta.Secret?>(null) }
     val grants = remember(s.code, s.access) { s.grants }
 
     ModalBottomSheet(
@@ -679,6 +710,19 @@ private fun ScriptSheet(
                 }
             }
 
+            // Keys and tokens it declares with @secret: set here, never in its code.
+            if (secrets.isNotEmpty()) {
+                Spacer(Modifier.height(16.dp))
+                Text("Secrets", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    "Keys and tokens it needs. Kept encrypted on this phone, never in its code, backups or the log.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
+                )
+                secrets.forEach { d -> SecretRow(d, isSet = d.name in secretsSet) { editingSecret = d } }
+            }
+
             Spacer(Modifier.height(16.dp))
             Text("Runs every", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(8.dp))
@@ -744,6 +788,13 @@ private fun ScriptSheet(
         }
     }
 
+    editingSecret?.let { d ->
+        SecretDialog(s.name, d, d.name in secretsSet, onDismiss = { editingSecret = null }) { value ->
+            editingSecret = null
+            vm.setSecret(s.name, d.name, value)
+        }
+    }
+
     if (confirmReplace && lib != null) {
         AlertDialog(
             onDismissRequest = { confirmReplace = false },
@@ -798,6 +849,78 @@ internal fun AccessDialog(title: String, items: List<String>, confirm: String, o
         confirmButton = { TextButton(onClick = { onConfirm(choices.toMap()) }) { Text(confirm) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+}
+
+/**
+ * Sets one of a script's secrets: a masked box (the eye shows it) that the keyboard doesn't learn
+ * from, never filled with the stored value. Clear forgets it.
+ */
+@Composable
+internal fun SecretDialog(script: String, secret: ScriptMeta.Secret, isSet: Boolean, onDismiss: () -> Unit, onSave: (String?) -> Unit) {
+    var value by remember { mutableStateOf("") }
+    var visible by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("${secret.name} for $script") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (secret.desc.isNotBlank()) Text(secret.desc, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    "Sent only to ${secret.hosts.joinToString()}. Kept encrypted on this phone: never in the script, its backups or the log.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = { value = it },
+                    singleLine = true,
+                    placeholder = { Text(if (isSet) "Set · type a new one to replace it" else "Paste the value") },
+                    visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+                    trailingIcon = {
+                        IconButton(onClick = { visible = !visible }) {
+                            Icon(
+                                painterResource(R.drawable.ic_visibility),
+                                contentDescription = if (visible) "Hide it" else "Show it",
+                                tint = if (visible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().testTag("secret-value"),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { onSave(value.trim()) }, enabled = value.isNotBlank()) { Text("Save") } },
+        dismissButton = {
+            Row {
+                if (isSet) TextButton(onClick = { onSave(null) }) { Text("Clear") }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        },
+    )
+}
+
+/** One secret in a script's sheet: its name, what it is for, where it goes, and whether it is set. */
+@Composable
+private fun SecretRow(secret: ScriptMeta.Secret, isSet: Boolean, onClick: () -> Unit) {
+    Surface(onClick = onClick, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text(secret.name, style = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace))
+                Text(
+                    listOf(secret.desc, "sent only to ${secret.hosts.joinToString()}").filter { it.isNotBlank() }.joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.width(16.dp))
+            Text(
+                if (isSet) "Set" else "Not set",
+                style = MaterialTheme.typography.labelLarge,
+                color = if (isSet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+            )
+        }
+    }
 }
 
 @Composable

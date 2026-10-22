@@ -60,6 +60,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.script.ScriptAccess
 import com.mtwabpin.kolahal.script.ScriptCatalog
+import com.mtwabpin.kolahal.script.ScriptMeta
 import com.mtwabpin.kolahal.terminal.CommandParsing
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import kotlinx.coroutines.Dispatchers
@@ -243,6 +244,9 @@ private fun SharedSheet(vm: TerminalViewModel, e: ScriptCatalog.Entry, state: Sc
             Spacer(Modifier.height(12.dp))
             Fact("Runs", runs(e).ifEmpty { "when you run it" })
             Fact("Uses", if (e.uses.isEmpty()) "nothing private" else e.uses.joinToString(", ") { ScriptAccess.label(it).lowercase() })
+            code?.getOrNull()?.let(ScriptMeta::secrets)?.takeIf { it.isNotEmpty() }?.let { keys ->
+                Fact("Keys", keys.joinToString(", ") { "${it.name} (you set it; sent only to ${it.hosts.joinToString()})" })
+            }
             if (e.tags.isNotEmpty()) Fact("Tags", e.tags.joinToString(", "))
 
             Spacer(Modifier.height(16.dp))

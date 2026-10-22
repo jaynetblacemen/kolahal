@@ -109,6 +109,9 @@ class JsEngine : ScriptEngine {
             function("get") { args -> host.storeGet(args.req(0)) }
             function("set") { args -> host.storeSet(args.req(0), args.str(1)) }
         }
+        js.define("secrets") {
+            function("get") { args -> host.secretGet(args.req(0)) }
+        }
     }
 
     /** Network calls in flight for this run: `Promise.all` over hundreds of requests waits its turn. */

@@ -1,20 +1,30 @@
 package com.mtwabpin.kolahal.ui
 
 import android.content.res.Configuration
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -22,51 +32,43 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
-import kotlin.math.roundToInt
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.ui.draw.alpha
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.size
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.animation.togetherWith
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.data.Keys
+import com.mtwabpin.kolahal.script.ScriptMeta
 import com.mtwabpin.kolahal.terminal.LogAction
 import com.mtwabpin.kolahal.terminal.LogRow
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import com.mtwabpin.kolahal.terminal.UiEvent
 import java.text.SimpleDateFormat
 import java.util.Locale
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 /** What the prompt shows when home is seen from Settings as if typing: one letter matches plenty. */
 private const val PREVIEW_INPUT = "s"
@@ -182,6 +184,9 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         vm.events.collect { if (it == UiEvent.ShowQuick) menu = ActionMenu("Quick actions", vm.quickActions(), null, systemFont = true) }
     }
     menu?.let { ActionSheet(it, onDismiss = { menu = null }) }
+    // `script secret <name> <NAME>`: the masked box for its value, over home.
+    val secretPrompt by vm.secretPrompt.collectAsStateWithLifecycle()
+    secretPrompt?.let { p -> TerminalSecretPrompt(vm, p) }
     val commandGap = remember(configVersion) { config[Keys.LOG_SPACING].dp }
     val showGutter = remember(configVersion) { config[Keys.LOG_GUTTER] }
     // Wrapped and detail lines are indented past `$ ` (or `• `) as wide as it is in the log's font.
@@ -500,5 +505,27 @@ private fun Modifier.pinchToZoomFont(onChange: (Int) -> Unit, onEnd: (Int) -> Un
             }
         } while (event.changes.any { it.pressed })
         if (changed) onEnd(Term.fontSize)
+    }
+}
+
+/** The box `script secret` opens; gone if the script or its `@secret` line is. */
+@Composable
+private fun TerminalSecretPrompt(vm: TerminalViewModel, prompt: TerminalViewModel.SecretPrompt) {
+    val scripts by vm.scriptList.collectAsStateWithLifecycle()
+    val secret = remember(scripts, prompt) {
+        scripts.firstOrNull { it.name == prompt.script }?.let { s -> ScriptMeta.secrets(s.code).firstOrNull { it.name == prompt.name } }
+    }
+    if (secret == null) {
+        LaunchedEffect(prompt) { vm.closeSecretPrompt() }
+        return
+    }
+    val isSet by produceState(false, prompt) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { vm.secretStore.isSet(prompt.script, prompt.name) }
+    }
+    GuiTheme {
+        SecretDialog(prompt.script, secret, isSet, onDismiss = vm::closeSecretPrompt) { value ->
+            vm.closeSecretPrompt()
+            vm.setSecret(prompt.script, prompt.name, value)
+        }
     }
 }

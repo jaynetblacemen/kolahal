@@ -13,6 +13,8 @@ interface TerminalUi {
     /** File picker for `font import` (a .ttf/.otf). */
     fun requestFontImport()
     fun openEditor(script: Script)
+    /** `script secret <name> <NAME>`: a masked box for that secret's value. */
+    fun askSecret(script: Script, name: String)
     fun requestNotificationPermission()
     fun clearScreen()
     /** `fresh`: hide what is on screen now, as `log.fresh` does after a while away. */

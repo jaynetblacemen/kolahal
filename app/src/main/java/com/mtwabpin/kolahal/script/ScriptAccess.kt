@@ -68,11 +68,25 @@ object ScriptAccess {
 
     fun encode(values: Map<String, Boolean>): String? = values.takeIf { it.isNotEmpty() }?.let(Json::stringify)
 
+    /** A switched-on script with an `@secret` that has no value yet: a line to set it, one per name. */
+    fun askForSecrets(context: Context, s: Script) {
+        if (!s.enabled) return
+        val store = SecretStore(context)
+        for (d in ScriptMeta.secrets(s.code)) {
+            if (store.isSet(s.name, d.name)) continue
+            LogRepository.get(context).add(
+                LogKind.INFO, "${s.name} needs ${d.name}" + (if (d.desc.isBlank()) "" else " (${d.desc})") + " — tap to set it", s.name,
+                LogContext.of(LogContext.RUN to "script secret ${s.name} ${d.name}"),
+            )
+        }
+    }
+
     /**
      * After code from outside (a library update) declares more, the new items start off: a line to
      * allow them, for a switched-on script.
      */
     fun askForNew(context: Context, s: Script) {
+        askForSecrets(context, s)
         val new = s.grants.undecided
         if (!s.enabled || new.isEmpty()) return
         LogRepository.get(context).add(

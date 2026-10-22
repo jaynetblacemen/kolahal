@@ -245,6 +245,33 @@ Links a script puts on a line (`url`, `image`, or a notification's link) must be
 anything else (`tel:`, `upi:`, an app's own link) is dropped. A line's `copy` must be what the line
 shows, part of it, or its link.
 
+## API keys and other secrets
+
+A script that needs an API key or a token doesn't keep it in its code. It names the key with an
+`@secret` line, and you set the value on the phone:
+
+```lua
+-- @secret OWM_KEY api.openweathermap.org Your OpenWeather API key
+local key = secrets.get("OWM_KEY")
+if not key then return "set OWM_KEY in the script's sheet" end
+local r = http.get("https://api.openweathermap.org/data/2.5/weather?q=Pune&appid=" .. key)
+```
+
+The line gives the key's name, the site it may be sent to (several with commas, `*` for any), and
+a few words for you. Set the value in the script's sheet (Scripts → tap the script → **Secrets**),
+or with `script secret <name> <NAME>`, which opens a box the keyboard doesn't learn from. Switching
+on a script whose keys aren't set leaves a line to tap to set them.
+
+- Values are encrypted with a key kept in Android's Keystore, and stay on this phone: they are left
+  out of the [backup file](/guides/backup/), Android's backups and exported scripts. Deleting a
+  script forgets them.
+- `secrets.get` returns nil until the value is set. Reading a name without its `@secret` line stops
+  the script with an error, and code typed at the prompt can't read secrets.
+- A value never shows: in log lines, the header, notifications, results and errors it reads `••••`.
+- A request carrying a value to a site its `@secret` line doesn't name stops the script. This
+  catches mistakes; a script written to leak a key could still find a way, so only give keys to
+  scripts you trust.
+
 ## Getting scripts from others
 
 **Scripts → Get more scripts** lists the scripts people share in

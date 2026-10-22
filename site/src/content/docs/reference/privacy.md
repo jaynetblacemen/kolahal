@@ -19,7 +19,9 @@ Kolahal itself makes network requests in exactly four cases:
    script sets its own. You can switch internet off for any script
    ([switching access off](/scripting/overview/#switching-access-off)).
 2. **Feeds** you subscribe to: one request per feed when it is due.
-. **Getting scripts**: when you open Get more scripts, refresh it or run `script get`, the list of
+3. **Currency conversion** with `= 100 usd in eur`: a request to open.er-api.com for the base
+   currency, cached for six hours.
+4. **Getting scripts**: when you open Get more scripts, refresh it or run `script get`, the list of
    shared scripts from mtwabpin.github.io (kept for an hour), and the file of a script you look at
    or install.
 
@@ -103,3 +105,7 @@ an in-memory list, and a copy of the 50 most recent is kept so scripts can call
 else it can read, so only install scripts you trust and read the code of ones you get from others.
 Scripts imported from a file or a backup arrive switched off for that reason, and each script's
 access switches take back what it may read.
+
+API keys you set for scripts ([secrets](/scripting/overview/#api-keys-and-other-secrets)) are
+encrypted with a key kept in Android's Keystore and never leave the phone except in the requests
+their script makes: they aren't in backups, exported scripts or the log.

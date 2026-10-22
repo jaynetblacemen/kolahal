@@ -17,6 +17,7 @@ import com.mtwabpin.kolahal.script.ScriptLibrary
 import com.mtwabpin.kolahal.script.ScriptMeta
 import com.mtwabpin.kolahal.script.ScriptNames
 import com.mtwabpin.kolahal.script.ScriptScheduler
+import com.mtwabpin.kolahal.script.SecretStore
 import com.mtwabpin.kolahal.script.ScriptTemplates
 import java.text.DateFormat
 import java.util.Date
@@ -176,9 +177,11 @@ class ScriptCommands(
                 if (enabled && uses.isNotEmpty()) {
                     info("${s.name} can use: ${uses.joinToString()} — 'script deny ${s.name} <what>' switches one off", scriptCtx(s))
                 }
+                if (enabled) scripts.byId(s.id)?.let { ScriptAccess.askForSecrets(context, it) }
             }
             // Network: off the serial command queue.
             "get" -> background("script get") { getShared(args.drop(1)) }
+            "secret", "secrets" -> withScript(target) { s -> secret(s, args.drop(2)) }
             "access" -> withScript(target) { listAccess(it) }
             "allow", "deny" -> withScript(target) { s ->
                 val items = args.drop(2).map { it.lowercase() }
@@ -195,7 +198,7 @@ class ScriptCommands(
             "cat", "show" -> withScript(target) { s ->
                 s.code.lines().forEachIndexed { i, l -> out("${(i + 1).toString().padStart(3)}  $l", LogContext.of(LogContext.COPY to s.code) + LogContext.ALIGNED) }
             }
-            else -> error("Usage: script [ls|new|edit|run|every|at|notify|on|off|get|access|allow|deny|triggers|rm|cat] <name>")
+            else -> error("Usage: script [ls|new|edit|run|every|at|notify|on|off|get|access|allow|deny|secret|triggers|rm|cat] <name>")
         }
     }
 
@@ -255,6 +258,45 @@ class ScriptCommands(
         val grants = s.grants
         val uses = grants.declared.filter(grants::allows)
         if (uses.isNotEmpty()) info("${s.name} can use: ${uses.joinToString()} — 'script deny ${s.name} <what>' switches one off", scriptCtx(s))
+    }
+
+    /**
+     * `script secret <name>` lists its `@secret` names; `script secret <name> <NAME>` opens a masked
+     * box for the value; `--clear` forgets it. A value typed on the line works too, but that line
+     * isn't logged ([carriesSecret]) and the keyboard may have seen it, so the box is the way.
+     */
+    private fun secret(s: Script, args: List<String>) {
+        val declared = ScriptMeta.secrets(s.code)
+        val store = SecretStore(context)
+        val name = args.firstOrNull()
+        if (name == null) {
+            if (declared.isEmpty()) return info("${s.name} declares no @secret", scriptCtx(s))
+            info("${s.name} — 'script secret ${s.name} <NAME>' sets one", scriptCtx(s))
+            declared.forEach { d ->
+                out(
+                    "${d.name.padEnd(16)}${if (store.isSet(s.name, d.name)) "set" else "not set"}",
+                    LogContext.of(
+                        LogContext.DESC to listOf(d.desc, "sent only to ${d.hosts.joinToString()}").filter { it.isNotBlank() }.joinToString(" · "),
+                        LogContext.COMMAND to "script secret ${s.name} ${d.name}",
+                    ) + LogContext.ALIGNED,
+                )
+            }
+            return
+        }
+        val d = declared.firstOrNull { it.name == name }
+            ?: return error("${s.name} has no @secret $name" + if (declared.isEmpty()) "" else " — it has: ${declared.joinToString(" ") { it.name }}")
+        val rest = args.drop(1)
+        when {
+            rest.isEmpty() -> ui.askSecret(s, d.name)
+            rest == listOf("--clear") -> {
+                store.set(s.name, d.name, null)
+                info("${s.name}: ${d.name} cleared", scriptCtx(s))
+            }
+            else -> {
+                store.set(s.name, d.name, rest.joinToString(" "))
+                info("${s.name}: ${d.name} set (that line isn't logged; next time 'script secret ${s.name} ${d.name}' opens a box the keyboard doesn't learn from)", scriptCtx(s))
+            }
+        }
     }
 
     /** `script access <name>`: each switch, on or off, and where it comes from; tap one to change it. */
@@ -366,7 +408,14 @@ class ScriptCommands(
     }
 
     companion object {
+        /** `script secret <name> <NAME> <value>`: a line holding a secret value, which is never logged. */
+        fun carriesSecret(line: String): Boolean {
+            val words = line.trim().split(Regex("\\s+"))
+            return words.size >= 5 && words[0].lowercase() in setOf("script", "scripts") &&
+                words[1].lowercase() in setOf("secret", "secrets") && words[4] != "--clear"
+        }
+
         /** What follows `script`, for completion. */
-        val SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "get", "access", "allow", "deny", "triggers", "rm", "cat", "dir", "export", "import")
+        val SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "get", "access", "allow", "deny", "secret", "triggers", "rm", "cat", "dir", "export", "import")
     }
 }

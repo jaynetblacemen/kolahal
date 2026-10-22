@@ -37,7 +37,27 @@ class HostApi(
     private val interactive: Boolean = false,
     /** What the script declares and the user allows ([ScriptAccess]); null for code typed at the prompt, which may use anything. */
     private val grants: ScriptAccess.Grants? = null,
+    /** The script's `@secret` names and the values you set for them ([SecretStore]); null for code typed at the prompt. */
+    private val secrets: Secrets? = null,
 ) {
+    class Secrets(val declared: List<ScriptMeta.Secret>, val values: Map<String, String>)
+
+    /** `secrets.get(name)`: the value you set for a declared `@secret` name, or nil until you set one. */
+    fun secretGet(name: String): String? {
+        val s = secrets ?: throw IllegalStateException("secrets.get only works in saved scripts")
+        if (s.declared.none { it.name == name }) {
+            throw IllegalStateException("secrets.get(\"$name\") needs `@secret $name <site> <description>` at the top of the script")
+        }
+        return s.values[name]
+    }
+
+    /** This script's secret values long enough to find in text, longest first. */
+    private val secretValues: List<String> =
+        secrets?.values?.values.orEmpty().filter { it.length >= 4 }.sortedByDescending { it.length }
+
+    /** [text] with each of this script's secret values masked: what a run shows never shows a key. */
+    fun redact(text: String): String = secretValues.fold(text) { t, v -> t.replace(v, "••••") }
+
     /**
      * Private data and local-network reach are only for scripts that declare them: undeclared is a
      * mistake in the script. Declared but switched off by the user is false: the caller answers empty.
@@ -107,14 +127,15 @@ class HostApi(
     /** Saved scripts get a `── name · 22:40 ──` header before their first line of a run. */
     private var headerWritten = false
 
-    fun log(text: String, ctx: Map<*, *>? = null) {
+    fun log(raw: String, ctx: Map<*, *>? = null) {
         effects++
+        val text = redact(raw)
         if (scriptId != null && !headerWritten) {
             headerWritten = true
             val time = com.mtwabpin.kolahal.data.Config.get(context).shortTime()
             buffer(LogKind.INFO, "── $scriptName · $time ──", LogContext(baseCtx + mapOf(LogContext.RUN_HEADER to "1")))
         }
-        buffer(LogKind.SCRIPT, text, LogContext(baseCtx + safeCtx(ctx, text)))
+        buffer(LogKind.SCRIPT, text, LogContext(baseCtx + safeCtx(ctx, text).mapValues { redact(it.value) }))
     }
 
     /**
@@ -147,7 +168,7 @@ class HostApi(
 
     fun logError(text: String) {
         flush()
-        logs.add(LogKind.ERROR, text, scriptName, LogContext(baseCtx))
+        logs.add(LogKind.ERROR, redact(text), scriptName, LogContext(baseCtx))
     }
 
     fun notify(title: String, body: String, ctx: Map<*, *>? = null): Boolean {
@@ -156,7 +177,7 @@ class HostApi(
         val values = Json.toStringMap(ctx)
         // With notifications off for this script, the script's own log lines already show the content.
         if (!notifyEnabled) return false
-        val posted = Notifier.post(context, scriptName, title, body, values[LogContext.URL]?.let(Net::webUrl))
+        val posted = Notifier.post(context, scriptName, redact(title), redact(body), values[LogContext.URL]?.let(Net::webUrl))
         if (!posted) notifyBlocked = true
         return posted
     }
@@ -185,6 +206,7 @@ class HostApi(
             .headers(h.toHeaders())
             .method(m, if (m != "GET" && m != "HEAD") reqBody else null)
             .build()
+        checkSecrets(request.url.host, listOf(request.url.toString(), body.orEmpty()) + h.values)
         try {
             (if (allowsLan) client else Net.publicClient).newCall(request).execute().use { resp ->
                 return mapOf(
@@ -204,6 +226,22 @@ class HostApi(
             if (!allowsLan) throw java.io.IOException("${e.host} is this phone or the local network: not allowed here")
             lanBlocked = true
             throw e
+        }
+    }
+
+    /**
+     * A secret goes only to the sites its `@secret` line names: a request carrying it ([carried]: the
+     * URL, body and headers) anywhere else stops the run. A script could still disguise a value, so
+     * this guards against mistakes more than against a script written to leak.
+     */
+    private fun checkSecrets(host: String, carried: List<String>) {
+        val s = secrets ?: return
+        for (secret in s.declared) {
+            val value = s.values[secret.name]?.takeIf { it.length >= 4 } ?: continue
+            val forms = setOf(value, java.net.URLEncoder.encode(value, "UTF-8"))
+            if (carried.any { text -> forms.any { it in text } } && !secret.allows(host)) {
+                throw java.io.IOException("${secret.name} may only be sent to ${secret.hosts.joinToString()}, not $host")
+            }
         }
     }
 
@@ -256,7 +294,7 @@ class HostApi(
         }
         // Header line switched off: the script runs on, its line just doesn't show.
         if (grants?.allows(ScriptAccess.HEADER) == false) return
-        val value = text?.lines()?.firstOrNull()?.take(STATUS_MAX)?.takeIf { it.isNotBlank() }
+        val value = text?.let(::redact)?.lines()?.firstOrNull()?.take(STATUS_MAX)?.takeIf { it.isNotBlank() }
         KvStore(context, STATUS_SCOPE).set(scriptName, value)
         logs.onStatusChanged()
     }

@@ -157,6 +157,10 @@ class LuaEngine : ScriptEngine {
             "set" to { l: Lua -> host.storeSet(l.checkString(1), if (l.isNil(2)) null else l.toString(2)); 0 },
         )
         lua.table(
+            "secrets",
+            "get" to { l: Lua -> l.pushValue(host.secretGet(l.checkString(1))); 1 },
+        )
+        lua.table(
             "json",
             "decode" to { l: Lua -> l.pushValue(Json.parse(l.checkString(1))); 1 },
             "encode" to { l: Lua -> l.push(Json.stringify(Json.normalizeLua(l.toObject(1)))); 1 },

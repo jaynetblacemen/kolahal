@@ -9,6 +9,7 @@ import androidx.core.content.edit
 import androidx.core.database.sqlite.transaction
 import com.mtwabpin.kolahal.feeds.FeedDb
 import com.mtwabpin.kolahal.notifications.KolahalNotificationListener
+import com.mtwabpin.kolahal.script.SecretStore
 
 /**
  * The raw half of a backup: every app preference file and database table, so a restore brings
@@ -53,6 +54,8 @@ object FullBackup {
                 val scope = row["scope"] as? String ?: return@filter false
                 // The copy of recent notifications kept for scripts stays on the device.
                 if (scope == KolahalNotificationListener.MIRROR_SCOPE) return@filter false
+                // Script secrets never leave the phone (and only its Keystore key can read them anyway).
+                if (scope.startsWith(SecretStore.SCOPE_PREFIX)) return@filter false
                 if (!scope.startsWith(SCRIPT_SCOPE)) return@filter true
                 // Stores of deleted scripts are dropped; the rest move under the script's name.
                 scriptNames[scope]?.let { name -> scriptKv.getOrPut(name) { LinkedHashMap() }[row["k"].toString()] = row["v"] as? String }
@@ -77,12 +80,14 @@ object FullBackup {
         var rows = 0
         val tables = data["tables"] as? Map<*, *> ?: return 0
         for (t in TABLES) {
-            val list = (tables[t.name] as? List<*>)?.filterIsInstance<Map<*, *>>() ?: continue
+            // A backup never brings secrets: only this phone's are kept.
+            val list = (tables[t.name] as? List<*>)?.filterIsInstance<Map<*, *>>()
+                ?.filterNot { t.name == "kv" && it["scope"]?.toString().orEmpty().startsWith(SecretStore.SCOPE_PREFIX) } ?: continue
             val db = t.db(context)
             db.transaction {
                 if (t.name == "kv") {
-                    // Keep this device's script stores; they are re-attached by name afterwards.
-                    db.delete("kv", "scope NOT LIKE ?", arrayOf("$SCRIPT_SCOPE%"))
+                    // Keep this device's script stores (re-attached by name afterwards) and script secrets.
+                    db.delete("kv", "scope NOT LIKE ? AND scope NOT LIKE ?", arrayOf("$SCRIPT_SCOPE%", "${SecretStore.SCOPE_PREFIX}%"))
                 } else {
                     db.delete(t.name, null, null)
                 }

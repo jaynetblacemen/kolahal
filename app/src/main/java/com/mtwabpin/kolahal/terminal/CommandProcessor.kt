@@ -64,7 +64,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         if (typed.isEmpty()) return
         // The same command again with nothing printed in between (settings, settings…) is one line.
         // `fresh` isn't logged at all: it would put a line straight back on the clean screen.
-        if (typed.lowercase() != "fresh" && logs.last() != (LogKind.COMMAND to typed)) logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
+        // Nor is a line holding a script secret's value: the log, and the history built from it, never see it.
+        if (typed.lowercase() != "fresh" && !ScriptCommands.carriesSecret(typed) && logs.last() != (LogKind.COMMAND to typed)) logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
         // Aliases first, so `alias hf = help | grep feed` pipes too.
         val stages = Pipes.split(if (expand) expandAliases(typed) else typed)
         if (stages.size > 1) {
@@ -517,7 +518,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("work", "work [on|off|status]", "Pause / resume the work profile"),
             CommandSpec("private", "private [on|off|status]", "Lock / unlock private space"),
             CommandSpec("unlocks", "unlocks [<days>]", "Unlock counts"),
-            CommandSpec("script", "script <sub> <name>", "Subcommands: ls lib install get new edit run every at notify on off access allow deny triggers rm cat dir export import"),
+            CommandSpec("script", "script <sub> <name>", "Subcommands: ls lib install get new edit run every at notify on off access allow deny secret triggers rm cat dir export import"),
             CommandSpec("=", "= <expr>", "Calculator · = 5 km in mi · = 72 f to c · = 100 usd in eur"),
             CommandSpec("lua", "lua <code>", "Evaluate Lua 5.4"),
             CommandSpec("js", "js <code>", "Evaluate JavaScript (QuickJS)"),

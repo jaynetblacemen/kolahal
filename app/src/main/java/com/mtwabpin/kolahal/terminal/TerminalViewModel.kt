@@ -26,6 +26,7 @@ import com.mtwabpin.kolahal.script.ScriptFolder
 import com.mtwabpin.kolahal.script.ScriptFiles
 import com.mtwabpin.kolahal.script.ScriptLibrary
 import com.mtwabpin.kolahal.script.ScriptTemplates
+import com.mtwabpin.kolahal.script.SecretStore
 import com.mtwabpin.kolahal.data.Backup
 import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.script.HostApi
@@ -792,12 +793,16 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         scriptCache.value = scripts.all()
     }
 
-    fun setScriptEnabled(s: Script, on: Boolean) = updateScript(s) { scripts.setEnabled(s.id, on) }
+    fun setScriptEnabled(s: Script, on: Boolean) = updateScript(s) {
+        scripts.setEnabled(s.id, on)
+        if (on) scripts.byId(s.id)?.let { ScriptAccess.askForSecrets(context, it) }
+    }
 
     /** Switches [s] on with the user's answers for what it asks to use ([choices]: item to allowed). */
     fun enableScript(s: Script, choices: Map<String, Boolean>) = updateScript(s) {
         choices.forEach { (item, on) -> scripts.setAccess(s.id, item, on) }
         scripts.setEnabled(s.id, true)
+        scripts.byId(s.id)?.let { ScriptAccess.askForSecrets(context, it) }
     }
 
     /** One access switch; switching the header line off takes the line away now. */
@@ -960,6 +965,38 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             refreshScriptCaches()
             notice("Installed ${s.name}.${s.lang.ext}" + if (entry.command) " — run it as '${s.name}'" else "")
         }
+    }
+
+    // ---- script secrets ------------------------------------------------------------------
+
+    val secretStore by lazy { SecretStore(context) }
+
+    /** Bumped when a secret is set or cleared, so sheets showing "set" or "not set" read again. */
+    private val _secretsVersion = MutableStateFlow(0)
+    val secretsVersion: StateFlow<Int> = _secretsVersion.asStateFlow()
+
+    /** The names among [s]'s `@secret` lines that have a value. */
+    fun secretsSet(s: Script): Set<String> = ScriptMeta.secrets(s.code).filter { secretStore.isSet(s.name, it.name) }.mapTo(HashSet()) { it.name }
+
+    /** Sets (or, with null, clears) [name] for [script]; the log says which, never the value. */
+    fun setSecret(script: String, name: String, value: String?) = io {
+        secretStore.set(script, name, value)
+        _secretsVersion.value++
+        logs.add(LogKind.INFO, "$script: $name " + if (value.isNullOrBlank()) "cleared" else "set", ctx = LogContext.of(LogContext.SCRIPT to script))
+    }
+
+    /** A secret to ask for from the terminal (`script secret`), shown over home. */
+    data class SecretPrompt(val script: String, val name: String)
+
+    private val _secretPrompt = MutableStateFlow<SecretPrompt?>(null)
+    val secretPrompt: StateFlow<SecretPrompt?> = _secretPrompt.asStateFlow()
+
+    override fun askSecret(script: Script, name: String) {
+        _secretPrompt.value = SecretPrompt(script.name, name)
+    }
+
+    fun closeSecretPrompt() {
+        _secretPrompt.value = null
     }
 
     // ---- Get more scripts (kolahal-scripts) ------------------------------------------------

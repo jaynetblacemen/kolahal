@@ -42,6 +42,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             notifyEnabled = script?.notify ?: true,
             interactive = repl || inputData.getBoolean(KEY_INTERACTIVE, false),
             grants = script?.grants,
+            secrets = script?.let { HostApi.Secrets(ScriptMeta.secrets(it.code), SecretStore(ctx).all(it.name)) },
         )
         val engine = ScriptEngine.forLang(lang)
         val started = System.currentTimeMillis()
@@ -54,7 +55,8 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             }
             host.flush()
             if (result != null) {
-                logs.add(LogKind.OUTPUT, result, name, LogContext.of(LogContext.COPY to result) + errorCtx.values)
+                val shown = host.redact(result)
+                logs.add(LogKind.OUTPUT, shown, name, LogContext.of(LogContext.COPY to shown) + errorCtx.values)
             } else if (repl && host.effects == 0) {
                 logs.add(LogKind.OUTPUT, "nil", name)
             }
@@ -77,10 +79,12 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
                 )
                 "stopped: ${ScriptAccess.label(off).lowercase()} switched off"
             } else {
-                val msg = e.message?.lines()?.firstOrNull { it.isNotBlank() } ?: e.javaClass.simpleName
+                // An error can quote a URL or a header: masked like everything else a run shows.
+                val message = e.message?.let(host::redact)
+                val msg = message?.lines()?.firstOrNull { it.isNotBlank() } ?: e.javaClass.simpleName
                 val line = if (repl) null else errorLine(e, lang, name)
                 val extra = buildMap {
-                    put(LogContext.COPY, e.message ?: msg)
+                    put(LogContext.COPY, message ?: msg)
                     line?.let { put(LogContext.LINE, it.toString()) }
                 }
                 logs.add(LogKind.ERROR, "$name: $msg" + (line?.let { " (tap to edit line $it)" } ?: ""), name, errorCtx + extra)
