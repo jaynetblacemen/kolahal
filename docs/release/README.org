@@ -72,9 +72,9 @@ version bump + notes/X.Y.Z.md ── commit, push master ── push tag vX.Y.Z
    new APK as soon as the site deploys: tag right after pushing.
 2. Write =notes/X.Y.Z.md= (see [[file:notes/README.md][notes/README.md]]) and, for Play, =notes/X.Y.Z-play.txt=.
 3. Test on the computer: the unit tests, the on-device tests on the emulator (never on a phone
-   you use: they install a debug build and change its settings), the coverage tables in
+   you use: they install a debug build and change its settings), the coverage figure in
    README.org → Tests, and =tools/check-play-build.sh= after =./gradlew :app:assemblePlay=.
-4. Commit =Version X.Y.Z (versionCode N)= with the notes and the coverage tables, and push
+4. Commit =Version X.Y.Z (versionCode N)= with the notes and the coverage figure, and push
    =master=.
 5. =git tag vX.Y.Z && git push origin vX.Y.Z=, then watch the run: =gh run watch=. It publishes
    the GitHub release by itself.

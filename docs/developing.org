@@ -101,7 +101,7 @@ kolahal/
 ├── docs/                       notes for the maintainer: this file, codebase-guide.org, and release/ on publishing
 ├── gradle/libs.versions.toml   every dependency version in one place
 ├── site/                       the website and user guide (Astro + Starlight, pnpm); see site/README.md
-├── tools/coverage.pl           test coverage by package, for README.org → Tests
+├── tools/coverage.pl           test coverage, in total and by package (README.org → Tests quotes the total)
 ├── tools/make-keys.sh          the release and upload keys, and the GitHub secrets for them
 ├── tools/check-play-build.sh   checks the Play build leaves out what Play's policy rules out
 ├── tools/play-graphics.sh      renders the Play store icon, feature graphic and screenshots (docs/release/graphics/)

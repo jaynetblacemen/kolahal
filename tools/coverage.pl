@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
-# Line coverage of the JVM unit tests and the on-device tests together, by package, as Org table
-# rows for README.org. A line counts as covered when either run covers it.
+# Line coverage of the JVM unit tests and the on-device tests together, by package and in total (the
+# total is the figure in README.org → Tests). A line counts as covered when either run covers it.
 #
 #   ./gradlew -Pcoverage :app:createDebugUnitTestCoverageReport :app:createDebugAndroidTestCoverageReport
 #   perl tools/coverage.pl [<tag>]

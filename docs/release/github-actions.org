@@ -90,8 +90,8 @@ gh run download <run id> -n kolahal-X.Y.Z-play    # the Play bundle and its mapp
 
 These need an emulator or a phone, so they stay out of GitHub Actions:
 
-- the on-device tests (=connectedDebugAndroidTest=, on the emulator only), and the coverage tables
-  in README.org → Tests that come from them;
+- the on-device tests (=connectedDebugAndroidTest=, on the emulator only), and the coverage figure
+  in README.org → Tests that comes from them;
 - regenerating the startup (baseline) profile;
 - installing the release on the maintainer's phone.
 
