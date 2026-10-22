@@ -1,0 +1,80 @@
+#+TITLE: Kolahal on Google Play
+#+STARTUP: showall
+
+Kolahal isn't on Google Play yet (22 October 2026). This is what is ready, what Play's policy
+asked for, and the steps left.
+
+* Before production
+
+Play needs a closed test before production: 12 or more testers opted in for 14 days in a row,
+then Dashboard → Apply for production (review usually takes 7 days or less). Testers who opt out
+before day 14 don't count.
+
+* The Play build, and why it has less
+
+=./gradlew :app:bundlePlay= builds it (the Release workflow too). It is the lite build without the
+call log as well:
+
+| Left out                                      | What goes with it                                  | Play's rule                                                                                                                                                   |
+|-----------------------------------------------+----------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| =READ_CALL_LOG=                               | calls in the log, =calls=                          | not allowed: Play's SMS and Call Log policy names "calls appearing in wallpaper, launcher, and other tools" as invalid, and launchers get no exception          |
+| the accessibility service (=LockService=)     | double-tap to lock, =lock=                         | Play says launchers are not accessibility tools, so it would need a declaration, an in-app disclosure with consent, and a video of it                         |
+| the notification listener                     | notifications in the log, =notifs=, media controls | personal data: it would need an in-app disclosure before Setup opens Notification access                                                                       |
+
+Everything else stays, because Play doesn't restrict it or needs only a clear runtime request:
+contacts, calendar, exact alarms (=SCHEDULE_EXACT_ALARM=, the one the user grants; the restricted
+one is =USE_EXACT_ALARM=), usage access, system settings, Do Not Disturb, the private space, the
+status bar, uninstall requests, and the app list (Kolahal uses =<queries>=, not the restricted
+=QUERY_ALL_PACKAGES=). Scripts in Lua and JavaScript are allowed: Play forbids downloading
+executable code (dex, JAR, .so), not interpreted code, as long as it can't be used to break Play's
+policy.
+
+=tools/check-play-build.sh= checks the built APK: it fails if any of these appear: the call log
+or SMS permissions, =QUERY_ALL_PACKAGES=, =USE_EXACT_ALARM=, =REQUEST_INSTALL_PACKAGES=,
+=MANAGE_EXTERNAL_STORAGE=, =ACCESS_BACKGROUND_LOCATION=, an accessibility service, or a
+notification listener. Both workflows run it, so a library that adds one is caught.
+
+Coming up: from 27 January 2027, Play's Contacts policy wants apps that don't need broad contact
+access to use the Contact Picker. Kolahal's =call= and =sms= name suggestions read contacts;
+decide before then whether that counts as needing broad access.
+
+Policy pages (opened 22 October 2026):
+[[https://support.google.com/googleplay/android-developer/answer/9047303][SMS and Call Log]],
+[[https://support.google.com/googleplay/android-developer/answer/10964491][AccessibilityService API]],
+[[https://support.google.com/googleplay/android-developer/answer/16558241][sensitive permissions]],
+[[https://support.google.com/googleplay/android-developer/answer/9888379][Device and Network Abuse]].
+
+* The first time in Play Console
+
+1. *Decide free or paid* first: a free app can never become paid later.
+2. *Create the app*: name "Kolahal: Terminal Launcher", default language English, App.
+3. *Play app signing*: give Play the release key, as in [[file:signing.org][signing.org]], before any release reaches
+   open testing or production.
+4. *App content*, the answers:
+   | Form            | Answer                                                                                                                                  |
+   |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------|
+   | Privacy policy  | https://mtwabpin.github.io/kolahal/reference/privacy/ (it says what the Play build leaves out)                                          |
+   | App access      | All functionality is available without special access (no login; a reviewer needs Kolahal as the home app to see it)                     |
+   | Ads             | No                                                                                                                                      |
+   | Content rating  | All other app types; No to every content question; no user interaction; no unrestricted internet access (feeds open links in the browser) |
+   | Target audience | 18 and over                                                                                                                             |
+   | Data safety     | No data collected or shared: nothing is sent to the developer; feeds and searches go to the sites people chose; crash reports leave only as an email the user sends |
+   | Category        | Personalization                                                                                                                         |
+5. *Store listing*: name (30 characters) "Kolahal: Terminal Launcher"; short description (80) "A
+   keyboard-first home screen: type part of an app's name and press Enter."; the full
+   description from the website's "What it does", with the work profile and private space last.
+6. *Graphics*: a 512 × 512 icon (32-bit PNG, at most 1 MB), a 1024 × 500 feature graphic (JPEG or
+   PNG without alpha), and 2 to 8 screenshots whose long side is at most twice the short side.
+   The website's 1080 × 2400 screenshots are too tall: crop to 1080 × 2160 or frame them.
+7. *Internal testing*: upload the bundle from a Release run; install it from the test link; read
+   the pre-launch report.
+8. *Closed testing*: 12 or more testers for 14 days in a row, then apply for production.
+
+* Each release on Play
+
+1. The Release workflow keeps =kolahal-X.Y.Z-play.aab= with its run:
+   =gh run download <run id> -n kolahal-X.Y.Z-play=.
+2. Play Console → the track → Create new release → upload the bundle, and the =mapping.txt= beside
+   it if Play doesn't show readable crash traces on its own.
+3. Paste =docs/release/notes/X.Y.Z-play.txt= (500 characters at most) as the release notes.
+4. Roll out.

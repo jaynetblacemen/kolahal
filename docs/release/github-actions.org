@@ -1,0 +1,103 @@
+#+TITLE: Building and releasing on GitHub Actions
+#+STARTUP: showall
+
+GitHub builds every push and publishes every release, so a release no longer depends on this
+computer. Three workflows live in =.github/workflows/=.
+
+| Workflow      | Runs on                                   | Does                                                                                    |
+|---------------+-------------------------------------------+-----------------------------------------------------------------------------------------|
+| =build.yml=   | every push and pull request (not docs-only) | the unit tests, all three builds, the Play check; keeps the builds for 14 days          |
+| =release.yml= | a pushed tag =v*=, such as =v0.3.1=        | the same, signed, then publishes the GitHub release and keeps the Play bundle 90 days   |
+| =docs.yml=    | a push to =master= that touches the site   | builds the website and publishes it to GitHub Pages                                     |
+
+Builds use Temurin JDK 25 (the same version as Android Studio's JDK here) and the Gradle wrapper.
+
+* What =build.yml= is for
+
+A check that the code still builds and its unit tests pass, on a clean machine. It has no keys:
+its APKs are signed with the runner's own debug key and its bundle is unsigned, so they are for
+looking at (the run's *Artifacts*), not for installing over a release.
+
+* What a release run does
+
+=release.yml=, step by step:
+
+1. *Checks the tag, the version and the notes*: the tag must be =v= + =versionName= from
+   =app/build.gradle.kts=, and =docs/release/notes/X.Y.Z.md= must exist.
+2. *Signing keys*: decodes the two keystores from the secrets into the runner's temporary folder.
+   No secrets, no release: it stops and says to run =tools/make-keys.sh --secrets=.
+3. *Unit tests and signed builds*: =testDebugUnitTest=, =assembleRelease=, =assembleLite=,
+   =bundlePlay=, =assemblePlay=.
+4. *The Play check*: =tools/check-play-build.sh= (see [[file:google-play.org][google-play.org]]).
+5. *Checks the signatures*: both APKs must be signed, with the release key when the
+   =RELEASE_CERT_SHA256= variable is set ([[file:signing.org][signing.org]]); the bundle must be signed, and not with
+   a debug key. The run's summary lists each file's certificate.
+6. *Packages*: =kolahal-X.Y.Z.apk=, =kolahal-X.Y.Z-lite.apk=, =kolahal-X.Y.Z-mapping.zip= (R8's
+   names for all three builds, for reading crash traces with =retrace=) and the notes, with a last
+   line naming the commit both APKs are built from.
+7. *Publishes the GitHub release* with the two APKs and the mapping zip, marked as the latest.
+8. *Keeps the Play bundle* and its =mapping.txt= with the run, for 90 days.
+
+* Secrets and variables
+
+Repository → Settings → Secrets and variables → Actions.
+
+| Name                     | Kind     | Holds                                                         |
+|--------------------------+----------+---------------------------------------------------------------|
+| =RELEASE_KEYSTORE_BASE64= | secret   | =kolahal-release.jks=, as base64                              |
+| =RELEASE_STORE_PASSWORD= | secret   | its password                                                  |
+| =RELEASE_KEY_ALIAS=      | secret   | =kolahal=                                                     |
+| =RELEASE_KEY_PASSWORD=   | secret   | the key's password (the same one)                            |
+| =UPLOAD_KEYSTORE_BASE64= | secret   | =kolahal-upload.jks=, as base64                               |
+| =UPLOAD_STORE_PASSWORD=  | secret   | its password                                                  |
+| =UPLOAD_KEY_ALIAS=       | secret   | =upload=                                                      |
+| =UPLOAD_KEY_PASSWORD=    | secret   | the key's password                                           |
+| =RELEASE_CERT_SHA256=    | variable | the release key's fingerprint; optional, recommended          |
+
+=tools/make-keys.sh --secrets= sets the eight secrets from =keystore.properties=; run it again
+after changing a key. Secrets can be replaced but never read back.
+
+* Cutting a release
+
+#+begin_src sh
+git push origin master                 # the version commit, with docs/release/notes/X.Y.Z.md
+git tag vX.Y.Z && git push origin vX.Y.Z
+gh run watch                           # pick the Release run
+gh run download <run id> -n kolahal-X.Y.Z-play    # the Play bundle and its mapping.txt
+#+end_src
+
+* When a run fails
+
+- *The tag doesn't match =versionName=*: delete the tag here and on GitHub, fix, tag again.
+  #+begin_src sh
+  git push --delete origin vX.Y.Z && git tag -d vX.Y.Z
+  #+end_src
+- *The notes are missing*: add =docs/release/notes/X.Y.Z.md=, commit, push, and tag again as above.
+- *The keys aren't set up*: =tools/make-keys.sh --secrets=.
+- *An APK is signed with another key*: a secret holds the wrong keystore. Store the right one
+  again; never change =RELEASE_CERT_SHA256= to fit a wrong key.
+- *The Play check fails*: something added a restricted permission or service to the Play build,
+  often a new library. =aapt2 dump permissions= on the Play APK shows it; remove it in
+  =app/src/play/AndroidManifest.xml= with =tools:node="remove"=, or drop the library.
+- *A unit test fails*: the run's failed step shows it; =./gradlew :app:testDebugUnitTest= does the
+  same here.
+- A failed run publishes nothing, so after a fix just tag again.
+
+* Still done on this computer
+
+These need an emulator or a phone, so they stay out of GitHub Actions:
+
+- the on-device tests (=connectedDebugAndroidTest=, on the emulator only), and the coverage tables
+  in README.org → Tests that come from them;
+- regenerating the startup (baseline) profile;
+- installing the release on the maintainer's phone.
+
+* The same builds here
+
+#+begin_src sh
+./gradlew :app:testDebugUnitTest :app:assembleRelease :app:assembleLite :app:bundlePlay :app:assemblePlay
+tools/check-play-build.sh
+#+end_src
+
+With =keystore.properties= present they come out signed as on GitHub; outputs are under
+=app/build/outputs/= (=apk/release/=, =apk/lite/=, =bundle/play/=, =mapping/=).

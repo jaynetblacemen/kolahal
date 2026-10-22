@@ -16,6 +16,8 @@ pnpm preview      # serve dist/
 
 ```
 docs/
+├── release/                maintainer notes on building, signing and publishing (not part of the site)
+├── codebase-guide.org      a guided tour of the app's code (not part of the site)
 ├── astro.config.mjs        site URL, base path, sidebar, theme settings
 ├── scripts/check-links.mjs post-build link and anchor checker (part of pnpm build)
 ├── public/favicon.svg

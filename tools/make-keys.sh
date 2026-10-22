@@ -12,6 +12,7 @@
 #
 # Back up both .jks files and the password together, somewhere private: without the release key,
 # GitHub installs can never be updated again.
+# Why two keys, and where each is used: docs/release/signing.org.
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/.." && pwd)

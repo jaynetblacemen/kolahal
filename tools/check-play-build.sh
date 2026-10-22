@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Checks that the Google Play build leaves out what Play's policy rules out, or would need
 # declarations, videos and consent screens for. A library can add a permission without anyone
-# noticing; this catches it before Play does.
+# noticing; this catches it before Play does. What the Play build leaves out, and why:
+# docs/release/google-play.org.
 #
 #   ./gradlew :app:assemblePlay && tools/check-play-build.sh [apk]
 #

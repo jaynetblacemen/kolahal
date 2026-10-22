@@ -2,11 +2,12 @@ name: Release
 
 # Push a tag named after the version, such as v0.3.1, and this builds, signs and publishes it:
 # - kolahal-X.Y.Z.apk and kolahal-X.Y.Z-lite.apk, signed with the release key, and the mapping zip,
-#   on a GitHub release whose notes are releases/X.Y.Z.md;
+#   on a GitHub release whose notes are docs/release/notes/X.Y.Z.md;
 # - kolahal-X.Y.Z-play.aab, signed with the upload key, kept with this run for Play Console.
 #
 # Secrets (tools/make-keys.sh --secrets stores them): RELEASE_KEYSTORE_BASE64,
 # RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD, and the same four for UPLOAD_.
+# How it all fits together: docs/release/README.org.
 # Variable, optional but recommended: RELEASE_CERT_SHA256, the release key's certificate digest;
 # when set, both APKs must carry it, so a release can never go out under another key.
 on:
@@ -41,8 +42,8 @@ jobs:
             echo "::error::The tag is $GITHUB_REF_NAME, but app/build.gradle.kts says versionName $version."
             exit 1
           fi
-          if [ ! -s "releases/$version.md" ]; then
-            echo "::error::releases/$version.md is missing; it becomes the release notes."
+          if [ ! -s "docs/release/notes/$version.md" ]; then
+            echo "::error::docs/release/notes/$version.md is missing; it becomes the release notes."
             exit 1
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
@@ -106,7 +107,7 @@ jobs:
           cp app/build/outputs/bundle/play/app-play.aab "out/kolahal-$VERSION-play.aab"
           # R8's names for each build, to read crash traces with retrace.
           (cd app/build/outputs/mapping && zip -qr "$GITHUB_WORKSPACE/out/kolahal-$VERSION-mapping.zip" release lite play)
-          cp "releases/$VERSION.md" out/notes.md
+          cp "docs/release/notes/$VERSION.md" out/notes.md
           # shellcheck disable=SC2016  # the backticks are Markdown, not a command
           printf '\n\nBoth APKs are built from `%s`, the commit this tag points to.\n' "${GITHUB_SHA::7}" >> out/notes.md
 

@@ -344,7 +344,7 @@ kolahal/
 ├── tools/coverage.pl           test coverage by package, for the table under Tests
 ├── tools/make-keys.sh          the release and upload keys, and the GitHub secrets for them
 ├── tools/check-play-build.sh   checks the Play build leaves out what Play's policy rules out
-├── releases/                   release notes, one file per version (the Release workflow publishes them)
+├── docs/release/               how releases are built, signed and published; notes/ holds each version's notes
 ├── .github/workflows/          build.yml (every push), release.yml (version tags), docs.yml (the site)
 └── README.org                  this file
 #+end_example
@@ -447,10 +447,11 @@ A backup (=Settings → Export everything=) bundles all of the above into one JS
   =KOLAHAL_RELEASE_*= and =KOLAHAL_UPLOAD_*= environment variables do the same in CI.
   =tools/make-keys.sh= makes both keys and the file; =tools/make-keys.sh --secrets= stores them for
   GitHub Actions. Without a release key the APKs are signed with the debug key; without an upload
-  key the bundle stays unsigned.
+  key the bundle stays unsigned. Why there are two keys, and the whole release setup:
+  =docs/release/README.org=.
 - GitHub Actions :: =build.yml= runs the unit tests and builds all three on every push.
   =release.yml= runs on a version tag (=v0.3.1=): it checks the tag against =versionName=, builds
-  and signs, checks the signatures, publishes the GitHub release with =releases/0.3.1.md= as its
+  and signs, checks the signatures, publishes the GitHub release with =docs/release/notes/0.3.1.md= as its
   notes, and keeps the Play bundle with the run for Play Console.
 - Use the release build day to day :: Debug Compose builds are noticeably slower to scroll.
 - Compile after sideloading :: A sideloaded APK runs without ahead-of-time compilation until Android

@@ -1,0 +1,113 @@
+#+TITLE: Signing Kolahal
+#+STARTUP: showall
+
+Kolahal has two keys and a certificate. An app that ships only through Google Play can let Google
+make and keep the key that signs it, and hold just an upload key. Kolahal also ships APKs on
+GitHub, signed here, so the key that signs the app has to be held here, and Play gets a copy of it.
+
+* The files in =~/.config/keys=
+
+| File                             | What it is                    | Secret          | What it does                                                                                                     |
+|----------------------------------+-------------------------------+-----------------+------------------------------------------------------------------------------------------------------------------|
+| =kolahal-release.jks=            | the release key, alias =kolahal= | yes, and can't be replaced | signs every APK on GitHub (full and lite); a copy given to Play signs what people install from Play |
+| =kolahal-upload.jks=             | the upload key, alias =upload= | yes             | signs the bundle uploaded to Play, so Play knows it came from you; Play can reset it                            |
+| =kolahal-upload-certificate.pem= | the upload key's certificate  | no (it's public) | what Play asks for to know the upload key: when you give Play the release key, and when you reset the upload key |
+
+Not in that folder: =~/.android/debug.keystore=, the debug key Android Studio made on this
+computer. It signed the GitHub APKs from 0.1.0 to 0.3.0, and it still signs debug builds.
+
+=tools/make-keys.sh= made the release key, the upload key and the certificate on 22 October 2026,
+with one password for both keys, and wrote =keystore.properties= (git-ignored) in the repository.
+
+* Why two keys and not one
+
+1. *Android installs an update only when it is signed with the same key as the app already
+   installed.* The APKs on GitHub are signed here, so the key that signs the app must be here.
+   An app only on Play can leave that key with Google; Kolahal can't, and still ship APKs.
+2. *Installs from GitHub and from Play should update each other.* For that, Play must sign with the
+   same key as the GitHub APKs, so Play gets a copy of the release key (Play app signing → use your
+   own key). Otherwise someone moving from a GitHub APK to Play, or back, would have to uninstall.
+3. *The key that signs the app can never change*: a new one means every install must be removed
+   and installed again. So it is used as little as possible: only for releases, never to talk to
+   Play every day. Uploads to Play are signed with a second key, the upload key. If the upload key
+   is lost or leaks, Play resets it (in Play Console → Test and release → App integrity) and
+   nothing changes for the people who have Kolahal.
+4. *The =.pem= is not a key*: it is the public half of the upload key, which Play asks for.
+
+* Fingerprints
+
+The SHA-256 of each certificate. They are public (anyone can read them from an APK) and they
+tell builds apart: =apksigner verify --print-certs kolahal-X.Y.Z.apk= prints the one that signed it.
+
+| Key                          | SHA-256                                                            |
+|------------------------------+--------------------------------------------------------------------|
+| release key (GitHub APKs, Play installs) | =21223ad4312a871e4a1dd16440efccac84f4660c56fa1e80467631062938e210= |
+| upload key (bundles sent to Play)        | =8b4f261eb974c8252d7f950d70a0070b1ea223c2c21957e4f83b044eb4d4f424= |
+| debug key (0.1.0 to 0.3.0)               | =af3bcfadc3a77c7a428693ff986a0e531f2160b4064704ea549f9d9ebbca1a6c= |
+
+To make the Release workflow refuse any APK not signed with the release key, store its
+fingerprint as a repository variable (not yet set on 22 October 2026):
+
+#+begin_src sh
+gh variable set RELEASE_CERT_SHA256 --body 21223ad4312a871e4a1dd16440efccac84f4660c56fa1e80467631062938e210
+#+end_src
+
+* Where the keys are used
+
+- *On this computer*: =keystore.properties= names both keys. =./gradlew :app:assembleRelease=
+  and =:app:assembleLite= sign with the release key, =:app:bundlePlay= with the upload key.
+  Without the file, the APKs are signed with the debug key and the bundle stays unsigned (Play
+  refuses debug-signed bundles, so it is never debug-signed).
+  - A release build made here now carries the release key, so it won't install over the
+    debug-signed Kolahal on a phone until that phone has moved (below).
+- *On GitHub Actions*: eight repository secrets hold both keys (=RELEASE_KEYSTORE_BASE64=,
+  =RELEASE_STORE_PASSWORD=, =RELEASE_KEY_ALIAS=, =RELEASE_KEY_PASSWORD=, and the same four for
+  =UPLOAD_=). =tools/make-keys.sh --secrets= stored them on 22 October 2026, from
+  =keystore.properties=. The Release workflow writes the two keystores into the runner's
+  temporary folder for one run; [[file:github-actions.org][github-actions.org]] has the rest.
+- The build reads =keystore.properties= first, then the =KOLAHAL_RELEASE_*= and
+  =KOLAHAL_UPLOAD_*= environment variables (=app/build.gradle.kts=).
+
+* Backups
+
+- Keep =kolahal-release.jks=, =kolahal-upload.jks= and the password together, somewhere private
+  and outside this computer (a password manager takes files).
+- *Losing the release key* ends updates for every install from GitHub: they would all have to
+  reinstall. Play keeps its copy, but it can't be downloaded back.
+- *Losing the upload key* only means asking Play for a reset, which takes a few days.
+- The GitHub secrets are not a backup: secrets can be replaced but never read back.
+
+* Giving Play the release key
+
+Do this when creating the app in Play Console, before any release reaches open testing or
+production (Play allows it only until then):
+
+1. Play Console → the app → Test and release → App integrity → Play app signing → choose to use
+   your own key, the option to export and upload a key from a Java keystore.
+2. Play gives its PEPK tool and an encryption key. Run PEPK on =kolahal-release.jks= (alias
+   =kolahal=) and upload the encrypted file it makes.
+3. When Play asks for the upload key, upload =kolahal-upload-certificate.pem=.
+
+From then on, Play signs Kolahal with the release key, and you upload bundles signed with the
+upload key (the Release workflow builds them that way).
+
+* Moving off the debug key, once
+
+The first release signed with the release key can't install over 0.3.0 and earlier. Everyone
+moves once, keeping their data:
+
+1. Settings → Backup → Export everything, and keep the file outside the app.
+2. Uninstall Kolahal.
+3. Install the new release (from GitHub, or later from Play).
+4. Settings → Backup → Import a backup.
+
+That release's notes must say this near the top. The maintainer's phone moves the same way.
+Debug builds from Android Studio are not affected: they have their own package
+(=com.mtwabpin.kolahal.debug=).
+
+* If a key leaks
+
+- *The upload key*: reset it in Play Console (App integrity → upload key reset), make a new one,
+  and store it again with =tools/make-keys.sh --secrets= after updating =keystore.properties=.
+- *The release key*: treat it as an emergency: whoever has it can sign an APK that installs over
+  Kolahal. Delete the copies you can, and plan a new package or a key rotation with Play.
