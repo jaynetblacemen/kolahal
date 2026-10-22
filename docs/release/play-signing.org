@@ -1,0 +1,105 @@
+#+TITLE: Giving Play the release key
+#+STARTUP: showall
+
+Do this once in Play Console, before the first bundle goes up, even to internal testing. After
+that, Play signs Kolahal with the release key, the same key as the APKs on GitHub, so an install
+from either place updates the other. [[file:signing.org][signing.org]] explains why.
+
+Where: Play Console → the app → Test and release → App integrity → Play app signing (or "Change
+app signing key" while creating the first release). Choose your own key, exported from a Java
+keystore. The page that opens, "App signing preferences", has five steps, and this file follows
+them.
+
+* What you need
+
+| What                   | Where                                                         |
+|------------------------+---------------------------------------------------------------|
+| Java                   | Android Studio's own, in its =jbr= folder (below)             |
+| PEPK                   | =pepk.jar=, from step 2 on the page                           |
+| Play's encryption key  | =docs/release/play-encryption-key.pem= (step 1, already here) |
+| The release key        | =~/.config/keys/kolahal-release.jks=, alias =kolahal=         |
+| Its password           | =keystore.properties= in the repository, =storePassword=      |
+| The upload certificate | =~/.config/keys/kolahal-upload-certificate.pem=               |
+
+* Java comes with Android Studio
+
+Android Studio carries its own Java in its =jbr= folder, so nothing else needs installing. Next
+to it is =keytool=.
+
+| System         | Java                                                                   |
+|----------------+------------------------------------------------------------------------|
+| Linux, Windows | =<Android Studio folder>/jbr/bin/java= (=java.exe= on Windows)         |
+| macOS          | =/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/java= |
+
+On 22 October 2026 PEPK ran on this Java (25.0.3, from Android Studio): it encrypted a test key
+with Play's encryption key without errors.
+
+* The five steps
+
+1. *Download encryption public key.* It is already in the repository as
+   =docs/release/play-encryption-key.pem= (downloaded on 22 October 2026). It is Google's public
+   key, not a secret: PEPK uses it to lock the release key so only Google can open it. If the
+   page ever gives a different file, save it over this one.
+2. *Download PEPK tool.* Save =pepk.jar= in the repository's =docs/= folder. It is git-ignored
+   there, so it can't be committed by mistake.
+3. *Run PEPK* from the repository folder. It asks for the keystore password: use the
+   =storePassword= in =keystore.properties= (both keys share one password). Don't use
+   =--keystore-pass=: the password would stay in the shell history.
+   #+begin_src sh
+   # Android Studio's jbr folder (on macOS, .../Contents/jbr/Contents/Home):
+   JBR="<Android Studio folder>/jbr"
+   "$JBR/bin/java" -jar docs/pepk.jar \
+       --keystore="$HOME/.config/keys/kolahal-release.jks" \
+       --alias=kolahal \
+       --output="$HOME/Downloads/kolahal-release-for-play.zip" \
+       --include-cert \
+       --rsa-aes-encryption \
+       --encryption-key-path=docs/release/play-encryption-key.pem
+   #+end_src
+   It writes =~/Downloads/kolahal-release-for-play.zip=: the release key, encrypted for Google,
+   and its certificate.
+4. *Upload generated ZIP*: =~/Downloads/kolahal-release-for-play.zip=.
+5. *The upload key.* The page calls this optional, but Kolahal needs it. The Release workflow
+   signs the bundle with the upload key, not the release key. Without this step, Play would
+   expect bundles signed with the release key and refuse Kolahal's.
+   - Skip a and b: =tools/make-keys.sh= already made the upload key and its certificate.
+   - c: upload =~/.config/keys/kolahal-upload-certificate.pem=.
+   - Should the certificate ever need making again (b), use Android Studio's =keytool=:
+     #+begin_src sh
+     "$JBR/bin/keytool" -export -rfc -keystore ~/.config/keys/kolahal-upload.jks \
+         -alias upload -file ~/.config/keys/kolahal-upload-certificate.pem
+     #+end_src
+
+Then save.
+
+* Check, then clean up
+
+App integrity → Play app signing now shows two certificates. Their SHA-256 must be:
+
+| Certificate                 | SHA-256                                                                                           |
+|-----------------------------+---------------------------------------------------------------------------------------------------|
+| App signing key certificate | =21:22:3A:D4:31:2A:87:1E:4A:1D:D1:64:40:EF:CC:AC:84:F4:66:0C:56:FA:1E:80:46:76:31:06:29:38:E2:10= |
+| Upload key certificate      | =8B:4F:26:1E:B9:74:C8:25:2D:7F:95:0D:70:A0:07:0B:1E:A2:23:C2:C2:19:57:E4:F8:3B:04:4E:B4:D4:F4:24= |
+
+These are the release and upload keys in [[file:signing.org][signing.org]] → Fingerprints, written the way Play
+Console writes them.
+
+- If the app signing key is anything else, stop and don't upload a bundle: whatever is installed
+  from Play would be signed with that key and could never update a GitHub APK, or be updated by
+  one.
+- Then delete the zip: =rm ~/Downloads/kolahal-release-for-play.zip=. Only Google can open it,
+  but there is no reason to keep another copy of the release key. =docs/pepk.jar= can go too:
+  Play gives it again whenever it's needed.
+
+After this, every bundle goes up as in [[file:google-play.org][google-play.org]] → Each release on Play.
+
+* If it goes wrong
+
+- *PEPK says the password is wrong*: check you used =storePassword=, the one for
+  =kolahal-release.jks=. The upload key has the same password, so it's =kolahal-release.jks= and
+  the =kolahal= alias that need checking.
+- *Play refuses the zip*: the encryption key may be old. Download it again from step 1, save it
+  over =docs/release/play-encryption-key.pem=, and run step 3 again.
+- *Play refuses a bundle later, signed with the wrong key*: step 5 was skipped, or a different
+  certificate went up. Play Console → App integrity → upload key reset, with
+  =kolahal-upload-certificate.pem=.

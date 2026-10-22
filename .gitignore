@@ -14,6 +14,9 @@ build/
 keystore.properties
 *.jks
 *.keystore
+# Play's key export tool and what it makes (docs/release/play-signing.org)
+/docs/pepk.jar
+kolahal-release-for-play.zip
 .claude/worktrees/
 
 # the website

@@ -79,14 +79,10 @@ gh variable set RELEASE_CERT_SHA256 --body 21223ad4312a871e4a1dd16440efccac84f46
 
 * Giving Play the release key
 
-Do this when creating the app in Play Console, before any release reaches open testing or
-production (Play allows it only until then):
-
-1. Play Console → the app → Test and release → App integrity → Play app signing → choose to use
-   your own key, the option to export and upload a key from a Java keystore.
-2. Play gives its PEPK tool and an encryption key. Run PEPK on =kolahal-release.jks= (alias
-   =kolahal=) and upload the encrypted file it makes.
-3. When Play asks for the upload key, upload =kolahal-upload-certificate.pem=.
+Do this once in Play Console, before the first bundle goes up. Play's PEPK tool encrypts
+=kolahal-release.jks= with Google's public key (=play-encryption-key.pem=, beside this file), and
+=kolahal-upload-certificate.pem= goes up as the upload key. [[file:play-signing.org][play-signing.org]] has each step and the
+commands, run with the Java that comes with Android Studio.
 
 From then on, Play signs Kolahal with the release key, and you upload bundles signed with the
 upload key (the Release workflow builds them that way).

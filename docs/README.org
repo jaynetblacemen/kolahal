@@ -7,6 +7,7 @@ website and user guide are in =site/= (https://mtwabpin.github.io/kolahal/).
 - [[file:codebase-guide.org][codebase-guide.org]]: a guided tour of the app's code, how its parts fit together and why.
 - [[file:release/README.org][release/]]: how Kolahal is built, signed and published, on GitHub and Google Play.
   - [[file:release/signing.org][signing.org]]: the keys, and why there is more than one.
+  - [[file:release/play-signing.org][play-signing.org]]: giving Play the release key, step by step, once.
   - [[file:release/github-actions.org][github-actions.org]]: the Build, Release and Website workflows.
   - [[file:release/google-play.org][google-play.org]]: the Play build, Play's policy, the store listing and its graphics.
   - [[file:release/notes/][notes/]]: the release notes, one file per version.

@@ -48,8 +48,8 @@ Policy pages (opened 22 October 2026):
 
 1. *Decide free or paid* first: a free app can never become paid later.
 2. *Create the app*: name "Kolahal: Terminal Launcher", default language English, App.
-3. *Play app signing*: give Play the release key, as in [[file:signing.org][signing.org]], before any release reaches
-   open testing or production.
+3. *Play app signing*: give Play the release key, as in [[file:play-signing.org][play-signing.org]], before the first
+   bundle goes up.
 4. *App content*, the answers:
    | Form            | Answer                                                                                                                                                              |
    |-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
