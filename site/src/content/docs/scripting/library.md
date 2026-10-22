@@ -11,6 +11,9 @@ script lib                 # list them, with ✓ for installed ones
 script install weather     # install (or update) one
 ```
 
+More scripts, shared by people who use Kolahal, are in the
+[kolahal-scripts](https://github.com/mtwabpin/kolahal-scripts) repository.
+
 Installing sets the script's suggested timers and notification flag. They are only suggestions:
 change them with `script every`, `script at` and `script notify`, or in the script manager. After
 an app update, `script lib` shows **(update available)** for scripts you haven't edited and
@@ -24,7 +27,6 @@ None of the network scripts need an API key.
 | Script | Lang | Command | Suggested timer | Notifies |
 | --- | --- | --- | --- | --- |
 | [hn](#hn) | Lua | | every 1h | yes |
-| [feeds](#feeds) | Lua | | every 1h | yes |
 | [releases](#releases) | Lua | yes | every 3h | yes |
 | [reddit](#reddit) | JS | yes | | |
 | [weather](#weather) | Lua | yes | every 1h | |
@@ -44,13 +46,6 @@ None of the network scripts need an API key.
 **Hacker News.** New front-page stories with 50+ points since the last run (via hnrss.org), up
 to 10 lines. Notifies about the top new story and pins `HN: N new` in the header. Edit the `FEED`
 line to drop the points filter.
-
-## feeds
-
-**RSS feeds.** Reads several feeds (Lobsters, LWN and Ars Technica by default; edit the `FEEDS`
-list at the top) and logs new items prefixed by feed name, at most 5 per feed, with a
-`Feeds: N new` status line. The built-in [feed reader](/guides/feeds/) does a similar job
-without code.
 
 ## releases
 
