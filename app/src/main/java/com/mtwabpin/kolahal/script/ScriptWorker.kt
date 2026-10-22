@@ -42,7 +42,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             notifyEnabled = script?.notify ?: true,
             interactive = repl || inputData.getBoolean(KEY_INTERACTIVE, false),
             grants = script?.grants,
-            secrets = script?.let { HostApi.Secrets(ScriptMeta.secrets(it.code), SecretStore(ctx).all(it.name)) },
+            secrets = script?.let { s -> ScriptMeta.secrets(s.code).let { d -> HostApi.Secrets(d, SecretStore(ctx).usable(s.name, d)) } },
         )
         val engine = ScriptEngine.forLang(lang)
         val started = System.currentTimeMillis()

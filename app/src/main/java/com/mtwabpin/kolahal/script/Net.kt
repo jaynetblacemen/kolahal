@@ -23,6 +23,7 @@ object Net {
             .callTimeout(30, TimeUnit.SECONDS)
             .socketFactory(GuardedSocketFactory(publicOnly = false))
             .addNetworkInterceptor(reachGuard)
+            .addNetworkInterceptor(hopGuard)
             .build()
     }
 
@@ -91,6 +92,17 @@ object Net {
     /** Tags [builder] with [reach]. */
     fun reach(builder: okhttp3.Request.Builder, reach: Reach): okhttp3.Request.Builder =
         builder.tag(ReachTag::class.java, ReachTag(reach))
+
+    /** A check every hop of a request must pass before it is sent, redirects included ([hopGuard]). */
+    fun interface HopCheck {
+        /** Throws (an IOException) to stop [hop]. */
+        fun check(hop: okhttp3.Request)
+    }
+
+    private val hopGuard = Interceptor { chain ->
+        chain.request().tag(HopCheck::class.java)?.check(chain.request())
+        chain.proceed(chain.request())
+    }
 
     // The address a hop actually connected to: covers names, IP literals and redirects alike.
     private val reachGuard = Interceptor { chain ->

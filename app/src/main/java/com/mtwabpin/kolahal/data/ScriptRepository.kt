@@ -59,6 +59,9 @@ class ScriptRepository private constructor(private val context: Context) {
      * declares; code from a file, a folder or a backup comes [enabled] false and asks when switched on.
      */
     fun create(name: String, lang: ScriptLang, code: String, enabled: Boolean = true): Script {
+        // Nothing of an earlier script with this name carries over: a header line a run left behind, values.
+        KvStore(context, HostApi.STATUS_SCOPE).set(name, null)
+        db.writableDatabase.delete("kv", "scope = ?", arrayOf(SecretStore.scope(name)))
         db.writableDatabase.insertOrThrow("scripts", null, ContentValues().apply {
             put("name", name)
             put("lang", lang.ext)

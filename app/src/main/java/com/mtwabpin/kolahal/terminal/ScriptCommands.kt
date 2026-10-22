@@ -288,7 +288,7 @@ class ScriptCommands(
             info("${s.name} — 'script secret ${s.name} <NAME>' sets one", scriptCtx(s))
             declared.forEach { d ->
                 out(
-                    "${d.name.padEnd(16)}${if (store.isSet(s.name, d.name)) "set" else "not set"}",
+                    "${d.name.padEnd(16)}${if (store.isSet(s.name, d)) "set" else if (store.hostsChanged(s.name, d)) "set for other sites" else "not set"}",
                     LogContext.of(
                         LogContext.DESC to listOf(d.desc, "sent only to ${d.hosts.joinToString()}").filter { it.isNotBlank() }.joinToString(" · "),
                         LogContext.COMMAND to "script secret ${s.name} ${d.name}",
@@ -303,11 +303,12 @@ class ScriptCommands(
         when {
             rest.isEmpty() -> ui.askSecret(s, d.name)
             rest == listOf("--clear") -> {
-                store.set(s.name, d.name, null)
+                store.set(s.name, d.name, null, d.hosts)
                 info("${s.name}: ${d.name} cleared", scriptCtx(s))
             }
+            rest.joinToString(" ").length < SecretStore.MIN_LENGTH -> error("${d.name}: at least ${SecretStore.MIN_LENGTH} characters")
             else -> {
-                store.set(s.name, d.name, rest.joinToString(" "))
+                store.set(s.name, d.name, rest.joinToString(" "), d.hosts)
                 info("${s.name}: ${d.name} set (that line isn't logged; next time 'script secret ${s.name} ${d.name}' opens a box the keyboard doesn't learn from)", scriptCtx(s))
             }
         }
@@ -424,7 +425,8 @@ class ScriptCommands(
     companion object {
         /** `script secret <name> <NAME> <value>`: a line holding a secret value, which is never logged. */
         fun carriesSecret(line: String): Boolean {
-            val words = line.trim().split(Regex("\\s+"))
+            // Split as the command will be, so no kind of space hides a fifth word.
+            val words = CommandParsing.tokenize(line.trim())
             return words.size >= 5 && words[0].lowercase() in setOf("script", "scripts") &&
                 words[1].lowercase() in setOf("secret", "secrets") && words[4] != "--clear"
         }

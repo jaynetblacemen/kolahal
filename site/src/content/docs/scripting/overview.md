@@ -267,10 +267,14 @@ on a script whose keys aren't set leaves a line to tap to set them.
   script forgets them.
 - `secrets.get` returns nil until the value is set. Reading a name without its `@secret` line stops
   the script with an error, and code typed at the prompt can't read secrets.
-- A value never shows: in log lines, the header, notifications, results and errors it reads `••••`.
-- A request carrying a value to a site its `@secret` line doesn't name stops the script. This
-  catches mistakes; a script written to leak a key could still find a way, so only give keys to
-  scripts you trust.
+- A value is at least 4 characters, and never shows: in log lines, the header, notifications,
+  results and errors it reads `••••`.
+- A value goes only to the sites its `@secret` line named when you set it. A request carrying it
+  anywhere else stops the script, redirects included, and so does a notification linking there or
+  `launcher.run` with it. If an update or another file names other sites for the key, it isn't
+  used until you set it again; a line in the log says so.
+- This catches mistakes; a script written to leak a key could still find a way, so only give keys
+  to scripts you trust.
 
 ## Getting scripts from others
 

@@ -558,12 +558,12 @@ private fun TerminalSecretPrompt(vm: TerminalViewModel, prompt: TerminalViewMode
         return
     }
     val isSet by produceState(false, prompt) {
-        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { vm.secretStore.isSet(prompt.script, prompt.name) }
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { vm.secretStore.isSet(prompt.script, secret) }
     }
     GuiTheme {
         SecretDialog(prompt.script, secret, isSet, onDismiss = vm::closeSecretPrompt) { value ->
             vm.closeSecretPrompt()
-            vm.setSecret(prompt.script, prompt.name, value)
+            vm.setSecret(prompt.script, secret, value)
         }
     }
 }

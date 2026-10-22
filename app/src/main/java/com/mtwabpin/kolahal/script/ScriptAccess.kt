@@ -68,16 +68,18 @@ object ScriptAccess {
 
     fun encode(values: Map<String, Boolean>): String? = values.takeIf { it.isNotEmpty() }?.let(Json::stringify)
 
-    /** A switched-on script with an `@secret` that has no value yet: a line to set it, one per name. */
+    /**
+     * A switched-on script with an `@secret` that has no value it may use: a line to set it, one per
+     * name. A value set for other sites than its line names now waits to be set again.
+     */
     fun askForSecrets(context: Context, s: Script) {
         if (!s.enabled) return
         val store = SecretStore(context)
         for (d in ScriptMeta.secrets(s.code)) {
-            if (store.isSet(s.name, d.name)) continue
-            LogRepository.get(context).add(
-                LogKind.INFO, "${s.name} needs ${d.name}" + (if (d.desc.isBlank()) "" else " (${d.desc})") + " — tap to set it", s.name,
-                LogContext.of(LogContext.RUN to "script secret ${s.name} ${d.name}"),
-            )
+            if (store.isSet(s.name, d)) continue
+            val text = if (store.hostsChanged(s.name, d)) "${s.name} now sends ${d.name} to ${d.hosts.joinToString()} — tap to set it again"
+            else "${s.name} needs ${d.name}" + (if (d.desc.isBlank()) "" else " (${d.desc})") + " — tap to set it"
+            LogRepository.get(context).add(LogKind.INFO, text, s.name, LogContext.of(LogContext.RUN to "script secret ${s.name} ${d.name}"))
         }
     }
 

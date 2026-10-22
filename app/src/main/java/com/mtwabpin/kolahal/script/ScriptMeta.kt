@@ -66,13 +66,16 @@ object ScriptMeta {
     private val secretLine = Regex("""^\s*(--|//)\s*@secret\b[ \t]*(.*)$""", RegexOption.MULTILINE)
     private val secretName = Regex("^[A-Za-z][A-Za-z0-9_]{0,39}$")
 
+    // After the name: sites joined by commas (spaces around them allowed), then the description.
+    private val secretRest = Regex("""^([^\s,]+(?:\s*,\s*[^\s,]+)*)\s*(.*)$""")
+
     /** Every well-formed `@secret` line (a name, then its hosts); the first one of a name wins. */
     fun secrets(code: String): List<Secret> = secretLine.findAll(code).mapNotNull { m ->
-        val parts = m.groupValues[2].trim().split(Regex("\\s+"), limit = 3)
+        val parts = m.groupValues[2].trim().split(Regex("\\s+"), limit = 2)
         val name = parts.getOrNull(0)?.takeIf(secretName::matches) ?: return@mapNotNull null
-        val hosts = parts.getOrNull(1)?.split(',')?.map { it.trim().lowercase() }?.filter { it.isNotEmpty() }?.takeIf { it.isNotEmpty() }
-            ?: return@mapNotNull null
-        Secret(name, hosts, parts.getOrNull(2).orEmpty())
+        val rest = secretRest.find(parts.getOrNull(1).orEmpty()) ?: return@mapNotNull null
+        val hosts = rest.groupValues[1].split(',').map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+        Secret(name, hosts, rest.groupValues[2].trim())
     }.distinctBy { it.name }.toList()
 
     fun title(code: String): String? = value(code, "title")

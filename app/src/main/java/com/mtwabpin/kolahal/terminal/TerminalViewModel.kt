@@ -1043,13 +1043,13 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     val secretsVersion: StateFlow<Int> = _secretsVersion.asStateFlow()
 
     /** The names among [s]'s `@secret` lines that have a value. */
-    fun secretsSet(s: Script): Set<String> = ScriptMeta.secrets(s.code).filter { secretStore.isSet(s.name, it.name) }.mapTo(HashSet()) { it.name }
+    fun secretsSet(s: Script): Set<String> = ScriptMeta.secrets(s.code).filter { secretStore.isSet(s.name, it) }.mapTo(HashSet()) { it.name }
 
-    /** Sets (or, with null, clears) [name] for [script]; the log says which, never the value. */
-    fun setSecret(script: String, name: String, value: String?) = io {
-        secretStore.set(script, name, value)
+    /** Sets (or, with null, clears) [secret] for [script], for the sites its line names; the log says which, never the value. */
+    fun setSecret(script: String, secret: ScriptMeta.Secret, value: String?) = io {
+        secretStore.set(script, secret.name, value, secret.hosts)
         _secretsVersion.value++
-        logs.add(LogKind.INFO, "$script: $name " + if (value.isNullOrBlank()) "cleared" else "set", ctx = LogContext.of(LogContext.SCRIPT to script))
+        logs.add(LogKind.INFO, "$script: ${secret.name} " + if (value.isNullOrBlank()) "cleared" else "set", ctx = LogContext.of(LogContext.SCRIPT to script))
     }
 
     /** A secret to ask for from the terminal (`script secret`), shown over home. */

@@ -9,6 +9,7 @@ import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.data.ScriptRepository
 import com.mtwabpin.kolahal.notify.Notifier
 import okhttp3.Headers.Companion.toHeaders
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -51,12 +52,15 @@ class HostApi(
         return s.values[name]
     }
 
-    /** This script's secret values long enough to find in text, longest first. */
-    private val secretValues: List<String> =
-        secrets?.values?.values.orEmpty().filter { it.length >= 4 }.sortedByDescending { it.length }
+    /**
+     * This script's secret values in every form a request or a line may carry them (as typed,
+     * URL-encoded, JSON-escaped), longest first. Shorter values than [SecretStore.MIN_LENGTH] can't be set.
+     */
+    private val secretForms: List<String> =
+        secrets?.values?.values.orEmpty().filter { it.length >= SecretStore.MIN_LENGTH }.flatMap(::forms).distinct().sortedByDescending { it.length }
 
     /** [text] with each of this script's secret values masked: what a run shows never shows a key. */
-    fun redact(text: String): String = secretValues.fold(text) { t, v -> t.replace(v, "••••") }
+    fun redact(text: String): String = secretForms.fold(text) { t, v -> t.replace(v, "••••") }
 
     /**
      * Private data and local-network reach are only for scripts that declare them: undeclared is a
@@ -177,7 +181,9 @@ class HostApi(
         val values = Json.toStringMap(ctx)
         // With notifications off for this script, the script's own log lines already show the content.
         if (!notifyEnabled) return false
-        val posted = Notifier.post(context, scriptName, redact(title), redact(body), values[LogContext.URL]?.let(Net::webUrl))
+        // Opening the link sends what it holds to its site: the same rule as a request.
+        val url = values[LogContext.URL]?.let(Net::webUrl)?.also { u -> u.toHttpUrlOrNull()?.let { checkSecrets(it.host, listOf(u)) } }
+        val posted = Notifier.post(context, scriptName, redact(title), redact(body), url)
         if (!posted) notifyBlocked = true
         return posted
     }
@@ -205,6 +211,10 @@ class HostApi(
             .url(url)
             .headers(h.toHeaders())
             .method(m, if (m != "GET" && m != "HEAD") reqBody else null)
+            // Redirects too: every hop is checked before it is sent, with what it carries on.
+            .tag(Net.HopCheck::class.java, Net.HopCheck { hop ->
+                checkSecrets(hop.url.host, listOf(hop.url.toString()) + hop.headers.map { it.second } + if (hop.body != null) listOf(body.orEmpty()) else emptyList())
+            })
             .build()
         checkSecrets(request.url.host, listOf(request.url.toString(), body.orEmpty()) + h.values)
         try {
@@ -237,13 +247,25 @@ class HostApi(
     private fun checkSecrets(host: String, carried: List<String>) {
         val s = secrets ?: return
         for (secret in s.declared) {
-            val value = s.values[secret.name]?.takeIf { it.length >= 4 } ?: continue
-            val forms = setOf(value, java.net.URLEncoder.encode(value, "UTF-8"))
+            val value = s.values[secret.name]?.takeIf { it.length >= SecretStore.MIN_LENGTH } ?: continue
+            val forms = forms(value)
             if (carried.any { text -> forms.any { it in text } } && !secret.allows(host)) {
                 throw java.io.IOException("${secret.name} may only be sent to ${secret.hosts.joinToString()}, not $host")
             }
         }
     }
+
+    /** How a value can appear in a URL, a body or a line: as typed, URL-encoded, and JSON-escaped (Lua's json.encode writes `\/`). */
+    private fun forms(value: String): Set<String> =
+        setOf(value, java.net.URLEncoder.encode(value, "UTF-8"), android.net.Uri.encode(value), value.replace("/", "\\/"))
+
+    /**
+     * A store key for [url] ([prefix] + the URL): one carrying a secret is hashed, so the key never
+     * sits in the script's store, and so in a backup.
+     */
+    private fun urlKey(prefix: String, url: String): String =
+        if (redact(url) == url) prefix + url
+        else prefix + "#" + java.security.MessageDigest.getInstance("SHA-256").digest(url.toByteArray()).joinToString("") { "%02x".format(it) }
 
     fun httpGet(url: String, headers: Map<*, *>? = null) = httpRequest(url, headers = headers)
 
@@ -256,7 +278,7 @@ class HostApi(
 
     fun rssFresh(url: String): Map<String, Any?> {
         val feed = fetchFeed(url)
-        val key = "rss.seen:$url"
+        val key = urlKey("rss.seen:", url)
         val seen = pendingSeen[key] ?: readSeen(key)
         val seenSet = seen.toHashSet()
         val fresh = feed.items.filter { it.id !in seenSet }
@@ -379,6 +401,11 @@ class HostApi(
             logError("launcher.run is only available when the script is run from the prompt")
             return false
         }
+        // A command goes to the terminal, its log and its history, and on to apps and sites: never a secret.
+        if (redact(command) != command) {
+            logError("launcher.run refused: the command holds one of this script's secrets")
+            return false
+        }
         // State-changing commands (clear, uninstall, notifs clear, config, …) stay with the user.
         val aliases = runCatching { com.mtwabpin.kolahal.apps.AppPrefs.get(context).aliases() }.getOrDefault(emptyMap())
         if (com.mtwabpin.kolahal.terminal.InstantRun.isSensitive(command, aliases)) {
@@ -394,7 +421,7 @@ class HostApi(
 
     /** GET with a per-script cache: returns the stored response if it is younger than [maxAgeSeconds]. */
     fun httpCached(url: String, maxAgeSeconds: Int): Map<String, Any?> {
-        val key = "http.cache:$url"
+        val key = urlKey("http.cache:", url)
         val cached = store.get(key)?.let { runCatching { Json.parse(it) as? Map<*, *> }.getOrNull() }
         val at = (cached?.get("at") as? Number)?.toLong() ?: 0L
         if (cached != null && System.currentTimeMillis() - at < maxAgeSeconds * 1000L) {

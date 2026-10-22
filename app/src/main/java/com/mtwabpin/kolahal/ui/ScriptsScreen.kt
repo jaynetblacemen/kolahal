@@ -95,6 +95,7 @@ import com.mtwabpin.kolahal.script.ScriptLibrary
 import com.mtwabpin.kolahal.script.ScriptMeta
 import com.mtwabpin.kolahal.script.ScriptNames
 import com.mtwabpin.kolahal.script.ScriptScheduler
+import com.mtwabpin.kolahal.script.SecretStore
 import com.mtwabpin.kolahal.terminal.CommandParsing
 import com.mtwabpin.kolahal.terminal.CommandProcessor
 import com.mtwabpin.kolahal.terminal.Screen
@@ -801,7 +802,7 @@ private fun ScriptSheet(
     editingSecret?.let { d ->
         SecretDialog(s.name, d, d.name in secretsSet, onDismiss = { editingSecret = null }) { value ->
             editingSecret = null
-            vm.setSecret(s.name, d.name, value)
+            vm.setSecret(s.name, d, value)
         }
     }
 
@@ -908,7 +909,7 @@ internal fun SecretDialog(script: String, secret: ScriptMeta.Secret, isSet: Bool
                 )
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(value.trim()) }, enabled = value.isNotBlank()) { Text("Save") } },
+        confirmButton = { TextButton(onClick = { onSave(value.trim()) }, enabled = value.trim().length >= SecretStore.MIN_LENGTH) { Text("Save") } },
         dismissButton = {
             Row {
                 if (isSet) TextButton(onClick = { onSave(null) }) { Text("Clear") }

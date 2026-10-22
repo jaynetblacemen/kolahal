@@ -65,7 +65,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         // The same command again with nothing printed in between (settings, settings…) is one line.
         // `fresh` isn't logged at all: it would put a line straight back on the clean screen.
         // Nor is a line holding a script secret's value: the log, and the history built from it, never see it.
-        if (typed.lowercase() != "fresh" && !ScriptCommands.carriesSecret(typed) && logs.last() != (LogKind.COMMAND to typed)) logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
+        val secret = ScriptCommands.carriesSecret(typed) || (expand && ScriptCommands.carriesSecret(expandAliases(typed)))
+        if (typed.lowercase() != "fresh" && !secret && logs.last() != (LogKind.COMMAND to typed)) logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
         // Aliases first, so `alias hf = help | grep feed` pipes too.
         val stages = Pipes.split(if (expand) expandAliases(typed) else typed)
         if (stages.size > 1) {
