@@ -71,7 +71,7 @@ Policy pages (opened 22 October 2026):
 Ready to paste into Play Console → Grow users → Store presence → Main store listing. It describes
 the lite build, which is what Play gets: no screen lock, no notifications in the log, no media
 controls and no calls in the log, so none of those are mentioned. Play allows 4000 characters;
-this is 2957. Keep it in step with the app when features change.
+this is 2967. Keep it in step with the app when features change.
 
 App name (30 characters at most; this is 26):
 
@@ -79,14 +79,15 @@ App name (30 characters at most; this is 26):
 Kolahal: Terminal Launcher
 #+end_example
 
-Short description (80 at most; this is 74):
+Short description (80 at most; this is 75):
 
 #+begin_example
-A keyboard-first home screen that opens apps and runs commands as you type
+A keyboard-driven home screen that opens apps and runs commands as you type
 #+end_example
 
-Google flagged the first one, "A keyboard-first home screen: type part of an app's name and press
-Enter." (22 October 2026). Its [[https://support.google.com/googleplay/android-developer/answer/9866151#zippy=%2Cshort-description][short description rules]]: one sentence has no closing period
+Google flagged "A keyboard-first home screen: type part of an app's name and press Enter."
+(22 October 2026), and its checks seem to match words: "keyboard-first" can read as "first", a
+ranking claim, so the word "first" stays out of the store texts. Its [[https://support.google.com/googleplay/android-developer/answer/9866151#zippy=%2Cshort-description][short description rules]]: one sentence has no closing period
 (periods only between sentences); no colons or other special characters, emoji or symbols, only
 standard punctuation; no capitals for emphasis; no claims ("best", "new", "#1"), calls to action
 ("download now") or keyword lists; and no repeating the screenshots or feature graphic.
@@ -97,9 +98,9 @@ Full description:
 Kolahal turns your home screen into a terminal. Type part of an app's name and press Enter, or let the app open by itself once your letters can only mean one app. Everything else is a short command away.
 
 TYPE, ENTER, DONE
-• Type any part of an app's name: the best match sits right above your thumb.
+• Type any part of an app's name: the closest match sits right above your thumb.
 • Instant launch opens an app as soon as the letters match only that app.
-• With an empty prompt, your most-used apps are one tap away; pin favourites to keep them first.
+• With an empty prompt, your most-used apps are one tap away; pin favourites to keep them at the front.
 • Aliases for anything you type often, app shortcuts, and every past command one ↑ away.
 • An app selector on the right edge: slide your thumb along it to glide through all your apps, no keyboard needed.
 
