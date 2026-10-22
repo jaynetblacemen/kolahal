@@ -9,13 +9,15 @@
 	@font-face { font-family: 'JetBrains Mono'; font-weight: 400; src: url('../../../app/src/main/res/font/jetbrains_mono_regular.ttf'); }
 	@font-face { font-family: 'JetBrains Mono'; font-weight: 700; src: url('../../../app/src/main/res/font/jetbrains_mono_bold.ttf'); }
 	:root {
-		/* The app's default "green" theme (ui/Theme.kt). */
-		--bg: #0b0d0b;
-		--fg: #e8eee4;
-		--dim: #8f9a8b;
-		--prompt: #8fd18a;
-		--bezel: #20251f;
-		--edge: #3a423a;
+		/* The website's light colours (gruvbox light); the phone shows the app in gruvbox-material. */
+		--paper: #fbf1c7;
+		--paper-2: #f2e5bc;
+		--fg: #3c3836;
+		--dim: #7c6f64;
+		--accent: #79740e;
+		--screen: #292828;
+		--bezel: #32302f;
+		--edge: #504945;
 	}
 	* { margin: 0; box-sizing: border-box; }
 	html, body { width: 1080px; height: 1920px; overflow: hidden; }
@@ -23,8 +25,8 @@
 		font-family: 'JetBrains Mono', monospace;
 		color: var(--fg);
 		background:
-			radial-gradient(ellipse 70% 45% at 50% 72%, rgb(143 209 138 / 0.13), transparent 70%),
-			linear-gradient(#141814, var(--bg) 45%);
+			radial-gradient(ellipse 70% 45% at 50% 70%, rgb(255 255 255 / 0.45), transparent 70%),
+			linear-gradient(var(--paper), var(--paper-2));
 		position: relative;
 	}
 	.caption {
@@ -38,7 +40,7 @@
 		line-height: 1.18;
 		letter-spacing: -0.01em;
 	}
-	h1 em { font-style: normal; color: var(--prompt); }
+	h1 em { font-style: normal; color: var(--accent); }
 	p {
 		margin-top: 24px;
 		font-size: 31px;
@@ -58,8 +60,8 @@
 		background: var(--bezel);
 		box-shadow:
 			inset 0 0 0 2px var(--edge),
-			0 40px 90px -30px rgb(0 0 0 / 0.8),
-			0 0 0 1px rgb(0 0 0 / 0.6);
+			0 40px 80px -30px rgb(60 56 54 / 0.55),
+			0 0 0 1px rgb(40 40 40 / 0.5);
 	}
 	.screen {
 		position: relative;
@@ -67,7 +69,7 @@
 		height: 1400px;
 		border-radius: 58px;
 		overflow: hidden;
-		background: var(--bg);
+		background: var(--screen);
 	}
 	.screen img { display: block; width: 100%; height: 100%; }
 	/* The front camera, over the status bar Kolahal hides. */

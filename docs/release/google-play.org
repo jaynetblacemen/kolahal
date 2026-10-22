@@ -152,8 +152,9 @@ when the app changes.
 | Phone screenshots: 2 to 8, long side at most 2 × short | =graphics/screenshots/1-home.png= to =6-themes.png=, in that order | =screenshot.html=: each capture in =raw/= in a phone frame, under its caption     |
 
 The screenshots are 1080 × 1920 (9:16, what Play recommends): a 1080 × 2400 phone capture fits
-only inside a frame. The captions are in =screenshot.html= (=SHOTS=); the fonts are the app's own
-JetBrains Mono.
+only inside a frame. The frames use the website's light colours and the phones show the app in
+gruvbox-material, so the page isn't dark from edge to edge. The captions are in =screenshot.html=
+(=SHOTS=); the font is the app's own JetBrains Mono.
 
 ** Taking the captures again
 
@@ -164,16 +165,18 @@ notifications in the log, media controls or the call log.
    =./gradlew :app:assembleLite= and =adb install -r app/build/outputs/apk/lite/app-lite.apk=.
    Locally it is signed with the release key, so an install with another key must be removed first
    (or re-sign a copy with the debug key to keep the emulator's data).
-2. Settings as a new install has them, plus =config set header.network on=; the =green= theme; a
-   1080 × 2400 screen (=adb shell wm size= shows it). Two feeds (Hacker News, LWN), three to-dos,
-   and the =weather= script from the library on a 30-minute timer, with =weather --default Pune=.
+2. Settings as a new install has them, plus =config set header.network on= and
+   =config set theme.name gruvbox-material=; a 1080 × 2400 screen (=adb shell wm size= shows it).
+   Three feeds (Hacker News, LWN, and NASA's Image of the Day:
+   https://www.nasa.gov/feeds/iotd-feed/), three to-dos, and the =weather= script from the library
+   on a 30-minute timer, with =weather --default Pune=.
 3. Each capture: =adb exec-out screencap -p > docs/release/graphics/raw/<name>.png=.
    | Capture     | What is on screen                                                                                          |
    |-------------+------------------------------------------------------------------------------------------------------------|
    | =1-home=    | after =clear=: =weather=, ~= 30 c in f~, ~= 5 km in mi~, ~= 100 usd in eur~, =todo=, =feed=; keyboard down |
    | =2-type=    | =ca= typed in the prompt, keyboard up                                                                      |
    | =3-apps=    | the app selector held on the right edge, on Messages                                                       |
-   | =4-feeds=   | =feed read 4= (LWN)                                                                                        |
+   | =4-feeds=   | =feed read 5=, NASA: live news can carry headlines a store page shouldn't                                  |
    | =5-scripts= | =script edit weather=, keyboard hidden, scrolled to the top                                                |
    | =6-themes=  | Settings → Look & feel → Your themes → a theme, named =olive= (not saved)                                  |
 4. =tools/play-graphics.sh=, then look at the results before uploading.
