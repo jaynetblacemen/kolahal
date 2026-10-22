@@ -8,9 +8,6 @@ This is the full list from `help`, in the same groups. Anything that isn't a com
 is matched against app names. Arguments in `<angle brackets>` are required, `[square brackets]`
 optional, and `a|b` means one of.
 
-Profile flags for app commands: `-w` work, `-p` personal, `-s` private space, `-c` clone. See
-[Profiles](/guides/profiles/).
-
 ## apps
 
 | Usage | Aliases | Description |
@@ -36,7 +33,7 @@ Profile flags for app commands: `-w` work, `-p` personal, `-s` private space, `-
 | `call <name\|number>` | `dial` | dial a contact or number |
 | `sms <name\|number> [<text>]` | `text` | start a text message |
 | `contacts [<query>]` | `contact` | find contacts (favourites when empty) |
-| `calls [<n>]` | | <span class="k-new">new</span> recent calls, incoming, outgoing and missed (20 by default; `calls --allow` asks for call log access) |
+| `calls [<n>]` | | recent calls, incoming, outgoing and missed (20 by default; `calls --allow` asks for call log access) |
 
 ## web
 
@@ -72,7 +69,7 @@ Profile flags for app commands: `-w` work, `-p` personal, `-s` private space, `-
 | `feed every <id> <30m\|2h\|…>` | check interval (minimum 15m) |
 | `feed on\|off <id>` | enable or pause a feed |
 
-<span class="k-new">new</span> `feeds` with no arguments opens the [Feeds screen](/guides/feeds/#feeds-screen).
+`feeds` with no arguments opens the [Feeds screen](/guides/feeds/#feeds-screen).
 
 `notifs` subcommands: `notifs` (active), `notifs all` (including dismissed), `notifs enable`
 (notification access settings), `notifs mute <app>`, `notifs unmute <app>`, `notifs muted`,
@@ -167,13 +164,13 @@ Script names use lowercase letters, digits, `-` and `_` (up to 40), and can't be
 | `help` | `?` | show the command list |
 | `history` | | recent commands (tap to reuse) |
 | `clear [history\|all]` | `cls` | clear the screen, the ↑ history, or both |
-| `fresh` | | <span class="k-new">new</span> a clean screen now, like `log.fresh`: nothing is deleted, "▴ N earlier lines" brings it back. Not logged |
+| `fresh` | | a clean screen now, like `log.fresh`: nothing is deleted, "▴ N earlier lines" brings it back. Not logged |
 | `restart [scripts]` | `reboot` | restart the launcher, or stop running scripts |
 | `alias [name = command]` | | list or define aliases |
 | `unalias <name>` | | remove an alias |
 | `config [ls\|set\|get\|reset] <key> <v>` | `set` | settings (no args opens the settings page) |
 | `theme <name>` | | `green` `amber` `mono` `dracula` `solarized` `gruvbox` `gruvbox-material` |
-| `font [<name>\|import\|sans [off\|prompt\|all]]` | | terminal font: `system` `jetbrains-mono` `fira-code` `ibm-plex-mono` `source-code-pro` `custom`; no args lists them (tap to apply), `import` picks a .ttf/.otf; <span class="k-new">new</span> `sans prompt` or `sans all` uses the phone's font for the prompt or everything (`font.sans`) |
+| `font [<name>\|import\|sans [off\|prompt\|all]]` | | terminal font: `system` `jetbrains-mono` `fira-code` `ibm-plex-mono` `source-code-pro` `custom`; no args lists them (tap to apply), `import` picks a .ttf/.otf; `sans prompt` or `sans all` uses the phone's font for the prompt or everything (`font.sans`) |
 | `echo <text>` | | print text |
 | `date` | `time` | current date and time |
 
@@ -196,11 +193,17 @@ See [Widgets](/guides/widgets/).
 | `unlocks [<days>]` | | unlock counts (1–30 days) |
 | `notifications [settings]` | | allow script notifications |
 | `usage-access` | | grant usage access (unlock count) |
-| `local-network [--settings]` | | <span class="k-new">new</span> let scripts (`@uses lan`) and feeds reach your local network (Android 17+); `--settings` opens app settings after a denial |
-| `crashes [share\|clear] [<n>]` | | <span class="k-new">new</span> crash reports kept on this phone, newest first (tap one to share it); `share` opens the share sheet with report `n` (default: the newest), `clear` deletes them all. See [Privacy](/reference/privacy/#crash-reports) |
+| `local-network [--settings]` | | let scripts (`@uses lan`) and feeds reach your local network (Android 17+); `--settings` opens app settings after a denial |
+| `crashes [share\|clear] [<n>]` | | crash reports kept on this phone, newest first (tap one to share it); `share` opens the share sheet with report `n` (default: the newest), `clear` deletes them all. See [Privacy](/reference/privacy/#crash-reports) |
 | `battery` | | battery optimization settings |
 | `home` | | choose the default launcher |
 | `lock` | | lock the screen (needs the accessibility service) |
 | `shade` | | pull down the notification shade |
 | `accessibility` | | enable the screen-lock service for double-tap |
 | `system` | | Android system settings |
+
+## Profile flags
+
+If you have a work profile, a private space or cloned apps, app commands take a flag to pick one:
+`-w` work, `-p` personal, `-s` private space, `-c` clone. See
+[Work profile & private space](/guides/profiles/).

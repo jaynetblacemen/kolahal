@@ -5,6 +5,7 @@
  */
 import { LinkButton } from '@astrojs/starlight/components';
 import TerminalDemo from './TerminalDemo.astro';
+import { APK, LITE_APK, VERSION } from '../release';
 
 const { data } = Astro.locals.starlightRoute.entry;
 const { title = data.title, tagline, actions = [] } = data.hero || {};
@@ -21,17 +22,19 @@ const withBase = (href: string) => (href.startsWith('/') && !href.startsWith('//
 			<h1 id="_top" data-page-title set:html={title} />
 			{tagline && <div class="tagline" set:html={tagline} />}
 		</div>
-		{
-			actions.length > 0 && (
-				<div class="actions">
-					{actions.map(({ attrs: { class: className, ...attrs } = {}, icon, link: href, text, variant }) => (
-						<LinkButton href={withBase(href)} {variant} icon={icon?.name} class:list={[className]} {...attrs}>
-							{text}
-						</LinkButton>
-					))}
-				</div>
-			)
-		}
+		<div class="get">
+			<div class="actions">
+				<LinkButton href={APK} icon="download" iconPlacement="start">Download the APK</LinkButton>
+				{actions.map(({ attrs: { class: className, ...attrs } = {}, icon, link: href, text, variant }) => (
+					<LinkButton href={withBase(href)} {variant} icon={icon?.name} class:list={[className]} {...attrs}>
+						{text}
+					</LinkButton>
+				))}
+			</div>
+			<p class="note">
+				Kolahal {VERSION} · Android 9 or newer · the <a href={LITE_APK}>lite APK</a> if Play Protect blocks this one
+			</p>
+		</div>
 	</div>
 </div>
 
@@ -79,6 +82,19 @@ const withBase = (href: string) => (href.startsWith('/') && !href.startsWith('//
 		gap: 1rem 1.5rem;
 		flex-wrap: wrap;
 		justify-content: center;
+	}
+	.get {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+	.note {
+		font-size: var(--sl-text-sm);
+		color: var(--sl-color-gray-3);
+		margin: 0;
+	}
+	.note a {
+		color: var(--sl-color-accent);
 	}
 	.demo {
 		order: 2;

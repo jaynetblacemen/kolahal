@@ -58,7 +58,7 @@ The `theme` and `font` commands are unchanged.
 | `theme.settings-colors` | choice: `theme` `system` | `theme` | settings screens follow the terminal theme or the system (Material You) colours |
 | `screen.bars` | choice: `show` `hide` `immersive` | `immersive` | full screen: hide the status bar, or both system bars (immersive); swipe from the edge to peek |
 | `font.family` | choice: `system` `jetbrains-mono` `fira-code` `ibm-plex-mono` `source-code-pro` `custom` | `jetbrains-mono` | terminal font (also `font <name>`); `custom` is a .ttf/.otf imported with `font import` |
-| `font.sans` | choice: `off` `prompt` `all` | `off` | <span class="k-new">new</span> the phone's own font instead of the terminal font: for the prompt, or for all of the terminal (also `font sans <mode>`); lists that line up columns and the script editor stay in the terminal font |
+| `font.sans` | choice: `off` `prompt` `all` | `off` | the phone's own font instead of the terminal font: for the prompt, or for all of the terminal (also `font sans <mode>`); lists that line up columns and the script editor stay in the terminal font |
 | `font.size` | number 10–24 | `14` | terminal font size (sp); pinching the log changes it too |
 
 ## Log
@@ -91,7 +91,7 @@ The `theme` and `font` commands are unchanged.
 | `launch.instant-letters` | number 1–6 | `2` | letters to type before an instant launch |
 | `suggestions.idle` | bool | `off` | show most-used apps when the prompt is empty |
 | `suggestions.icons` | bool | `off` | show app icons next to app suggestions, in the list and on chips |
-| `suggestions.wrap` | bool | `off` | <span class="k-new">new</span> show a command's or setting's whole description in the suggestion list, over more lines (off: one line, cut short) |
+| `suggestions.wrap` | bool | `off` | show a command's or setting's whole description in the suggestion list, over more lines (off: one line, cut short) |
 | `suggestions.auto` | bool | `on` | show suggestions only while typing (keyboard up or text in the prompt) |
 | `suggestions.style` | choice: `list` `chips` | `list` | while typing: a list above the prompt (best match at the bottom, nearest the thumb, with command descriptions) or a strip of chips |
 | `suggestions.rows` | number 1–2 | `2` | rows of suggestion chips while typing (`suggestions.style chips`) |

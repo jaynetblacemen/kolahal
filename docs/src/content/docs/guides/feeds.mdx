@@ -17,7 +17,7 @@ feed add lwn.net/headlines/rss       # https:// is assumed; feed:// links work t
 
 Adding a feed fetches it right away. The address is normalised, so adding the same feed twice
 returns the existing subscription. `feed://` links open as `https://`. A feed on your own network
-(a home server) works (<span class="k-new">new</span> on Android 17 and newer, once you allow it with
+(a home server) works (on Android 17 and newer, once you allow it with
 `local-network`); a public feed can't redirect into your network. The newest 300 items of a feed
 are read.
 
@@ -59,7 +59,7 @@ appear after you subscribed are unread.
 
 ### Feeds screen
 
-<span class="k-new">new</span> `feeds` opens a GUI screen for managing subscriptions: adding, removing and toggling feeds, intervals
+`feeds` opens a GUI screen for managing subscriptions: adding, removing and toggling feeds, intervals
 and notifications, without typing ids. Tap a feed for its items (tap one to open it and mark it read).
 The top bar refreshes everything and imports or exports **OPML**, so you can move subscriptions from
 or to another feed reader. The `feed …` subcommands keep working as before.
@@ -80,7 +80,7 @@ feed rm 2                # unsubscribe and delete its items
 
 ## How fetching works
 
-- One background job fetches the feeds that are due by their own interval. <span class="k-new">new</span> It
+- One background job fetches the feeds that are due by their own interval. It
   wakes only as often as your most frequent feed needs (every 15 minutes at most), and only when there
   is a network, or only on Wi-Fi with `feeds.wifi on`.
 - Requests are conditional (ETag / Last-Modified), so an unchanged feed costs a `304` and no parsing.

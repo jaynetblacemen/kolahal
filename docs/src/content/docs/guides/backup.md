@@ -14,7 +14,7 @@ the system file picker. It contains:
 - aliases,
 - hidden apps, custom labels and pinned favourites,
 - every script with its code, timers, notification flag and enabled state,
-- <span class="k-new">new</span> **everything else** under `data`: todos, notes, reminders, feed subscriptions
+- **everything else** under `data`: todos, notes, reminders, feed subscriptions
   with their items and read state, each script's `store` values, the whole log and ↑ history,
   app launch history (frecency), unlock history, notification and trigger settings.
 
@@ -41,11 +41,11 @@ On import:
 - Aliases that would shadow a built-in command are skipped.
 - **New scripts arrive switched off**, so you can review them before they run on a timer. Scripts
   that already exist (same name and language) keep their `enabled` flag only if their code is
-  unchanged: <span class="k-new">new</span> new code arrives switched off too. Scripts named like a built-in
+  unchanged: new code arrives switched off too. Scripts named like a built-in
   command or one of your apps are skipped.
-- <span class="k-new">new</span> Restored log lines keep their text but can't run commands or app shortcuts
+- Restored log lines keep their text but can't run commands or app shortcuts
   when tapped, and keep only web, map and store links.
-- <span class="k-new">new</span> The result names the settings worth a look: a custom search address and
+- The result names the settings worth a look: a custom search address and
   gesture commands.
 - A script whose language differs from an existing script of the same name is skipped.
 - Intervals under 15 minutes are raised to 15 (Android's minimum).
@@ -55,7 +55,7 @@ where those match.
 
 Not included, because they can't move between phones: the folder picked with `script dir` (a
 storage permission you grant again) and home-screen widgets' live ids (widgets are listed so
-they can be added again). <span class="k-new">new</span> Notification and call lines, and the copy of recent
+they can be added again). Notification and call lines, and the copy of recent
 notifications kept for scripts, stay on the phone. The file can still contain private things
 (notes, the rest of the log), so keep it somewhere safe.
 

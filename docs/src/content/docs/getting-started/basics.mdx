@@ -24,14 +24,14 @@ Type a command, or any part of an app name, and press Enter.
   - if only one app matches, it launches (`launch.single`);
   - if the top match starts with what you typed, it launches (`launch.top`);
   - otherwise you get a grid of up to 12 matching apps to tap.
-- <span class="k-new">new</span> **Instant launch** (`launch.instant`, default `all`): as soon as what you typed
+- **Instant launch** (`launch.instant`, default `all`): as soon as what you typed
   can only mean one app, it opens without Enter. With apps *Groww* and *Grove*, `grov` opens Grove and
   `grow` opens Groww. The same app in several profiles counts as one match (the copy you use most opens),
   unless two of those profiles are on: with the work profile running, `gm` opens nothing and
   suggests both Gmails (Gmail and Gmail [W]) for you to pick.
   `launch.instant all` also runs commands that take no arguments, and aliases, this way (`setti`
   opens settings; `contacts` waits for Enter so you can still type `contacts bob`), and makes a
-  tapped history line run immediately. <span class="k-new">new</span> A line with arguments runs too once there is
+  tapped history line run immediately. A line with arguments runs too once there is
   nothing left to choose, whether typed, picked from the suggestions or tapped in the log: `torch on`, `dnd off`, `ring silent`, `media pause`. `torch o`, `volume up`
   (a number could go there instead) and `apps work` (`-l` could follow) wait for Enter.
   Sensitive commands never run without Enter: `call`, `sms`,
@@ -74,7 +74,7 @@ of chips is `suggestions.max` (default 30).
 By default (`suggestions.style list`) the suggestions are a **list** stacked directly above the
 prompt instead of chips: the best match sits at the bottom, nearest your thumb, highlighted with
 a ⏎ because it is what Enter and Tab act on. Command rows show `$ name` and the command's short
-description, cut to one line (<span class="k-new">new</span> `suggestions.wrap on` shows all of it, over more lines); app rows show the profile tag. The list takes at most about 40% of the screen, and
+description, cut to one line (`suggestions.wrap on` shows all of it, over more lines); app rows show the profile tag. The list takes at most about 40% of the screen, and
 never more than the room above the prompt, so the prompt stays in view; it scrolls beyond that. Long-press an app row for its actions. `config set suggestions.style chips`
 brings back the chip strip (`suggestions.rows` applies to chips only). Turn on **Show app icons**
 (`suggestions.icons`, off by default) for each app's icon in front of its name, in both styles (commands get a
@@ -122,7 +122,7 @@ red for errors. Hide it with `log.gutter off`. Output older than the latest comm
 - Each script run gets a `── hn · 22:40 ──` header and a stable per-script colour. Script, feed and
   notification lines name their source at the end, muted (`Show HN: … · Hacker News`). Lines that
   arrived while you were away are marked `•` under a "N new since you left" divider.
-- <span class="k-new">new</span> **Fresh screen** (`log.fresh`, 10 minutes): come back to home after a while and it
+- **Fresh screen** (`log.fresh`, 10 minutes): come back to home after a while and it
   starts clean, so old output and app grids are not under your thumb. Nothing is deleted: tap
   "▴ N earlier lines" to bring it back. `fresh` does the same on demand (and isn't logged itself). Script lines that arrived while you were away stay visible.
 - When you scroll up, a ↓ button jumps back to the newest lines. Repeating a command with nothing
@@ -133,7 +133,7 @@ red for errors. Hide it with `log.gutter off`. Output older than the latest comm
 
 ### Pipes
 
-<span class="k-new">new</span> Filter a command's output like a shell:
+Filter a command's output like a shell:
 
 ```sh
 help | grep feed              # rows mentioning "feed" (the description column counts too)
@@ -196,12 +196,12 @@ text labels (`bat`, `net`, …). Every item is tappable:
 | ⚙ | the [settings screen](/guides/themes-and-settings/) | |
 | Script status lines | runs that script | `header.status` |
 
-<span class="k-new">new</span> **Auto-hide** (`header.autohide`, on by default): while you scroll back through older output the header
+**Auto-hide** (`header.autohide`, on by default): while you scroll back through older output the header
 disappears entirely; scrolling toward the newest lines (or running a command) brings it back as one
 line with the time, battery and the number of hidden status lines. Tap it or swipe down on it to expand it; pressing Home, coming back from an app or `clear`
 also brings it back.
 
-<span class="k-new">new</span> While you type (the keyboard is up, or there is text in the prompt), the header shrinks
+While you type (the keyboard is up, or there is text in the prompt), the header shrinks
 to that one line and home-screen widgets fold away, so the suggestions get the room. It comes back
 as it was when you're done.
 
@@ -211,7 +211,7 @@ notification shade (a [gesture](/guides/gestures/) you can change).
 ## The key bar
 
 The bar appears only while the on-screen keyboard is up for the prompt, so an idle home screen
-shows more of the log (`keybar.auto off` keeps it always visible). <span class="k-new">new</span> It sits
+shows more of the log (`keybar.auto off` keeps it always visible). It sits
 below the prompt, right on top of the keyboard, so the best suggestion stays just above what you type.
 The ⌨ button at the right end of the prompt line turns the bar on or off (`keybar.show`, off by default); it is
 green while the bar is on.

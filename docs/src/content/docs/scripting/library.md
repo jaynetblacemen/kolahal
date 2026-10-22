@@ -15,7 +15,7 @@ Installing sets the script's suggested timers and notification flag. They are on
 change them with `script every`, `script at` and `script notify`, or in the script manager. After
 an app update, `script lib` shows **(update available)** for scripts you haven't edited and
 **(edited)** for ones you have. Installing again updates a copy you haven't edited.
-<span class="k-new">new</span> A copy you edited, or your own script with the same name, is only replaced
+A copy you edited, or your own script with the same name, is only replaced
 when you ask: `script install weather --replace`, or **Replace with library version** in its sheet
 in the script manager. Export it first to keep your version.
 

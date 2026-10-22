@@ -35,7 +35,7 @@ means a table with those keys in Lua and an object with those properties in JS.
 | [`launcher.run(command)`](#launcherruncommand) | `true` if sent |
 | [`sleep(ms)`](#sleepms) | nothing |
 | [`args`, `argline`](#args-and-argline) | arguments of a command run |
-| [`event`](#event) <span class="k-new">new</span> | what triggered an event run |
+| [`event`](#event) | what triggered an event run |
 
 ## Output
 
@@ -50,7 +50,7 @@ the end, muted (`… · weather`).
 | `url` | tap opens the link; long-press offers open, share and copy |
 | `copy` | text that "Copy text" copies instead of the visible line |
 | `phone` | tap dials the number; long-press offers call, message and copy |
-| `image` <span class="k-new">new</span> | an image URL (http or https): the picture shows under the line, as wide as the log; long-press offers "Open image" |
+| `image` | an image URL (http or https): the picture shows under the line, as wide as the log; long-press offers "Open image" |
 
 Other keys are kept with the line. Keys the launcher uses internally (commands, script identity,
 app references and the like) are dropped, so a script can't plant a line that runs a command when
@@ -127,7 +127,7 @@ Responses are `{ status, ok, body, headers }`: the numeric status, `ok` for 2xx,
 (read up to 4 MB) and response headers with lowercase names. A `User-Agent` of
 `Kolahal-Launcher/0.1` is sent unless you set your own. Network errors raise an error (Lua) or
 reject the promise (JS). An HTTP error status does **not**, so check `ok`. Plain `http://` URLs are
-allowed. <span class="k-new">new</span> Requests to this phone or your local network (a router, a home
+allowed. Requests to this phone or your local network (a router, a home
 server, a VPN address like Tailscale's 100.x) need `@uses lan`; without it they fail, even after a
 redirect. A JavaScript run makes at most 4 requests at a time; more wait their turn.
 
@@ -381,7 +381,7 @@ return `hello, ${argline || "world"} (${args.length} args)`;
 
 ### event
 
-<span class="k-new">new</span> In a run started by an [`@on` trigger](/scripting/overview/#event-triggers), `event` describes what
+In a run started by an [`@on` trigger](/scripting/overview/#event-triggers), `event` describes what
 happened. It always carries the event's type (one of `unlock`, `charger`, `unplug`, `wifi`,
 `offline`, `notification`, `boot`, `headset`); events such as `notification` add details about the
 notification. Outside event runs, don't rely on it being set. The editor's inline docs list the

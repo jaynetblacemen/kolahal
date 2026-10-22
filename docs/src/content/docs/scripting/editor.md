@@ -9,13 +9,13 @@ JavaScript, in the terminal theme.
 
 - The title shows `name.lua`, with `*` while there are unsaved changes.
 - **[save]**, **[run]** and **[close]** sit next to it. Run saves first.
-- <span class="k-new">new</span> A message line above the symbol bar says what a button did: **Saved** (or
+- A message line above the symbol bar says what a button did: **Saved** (or
   **No changes to save**), **Saved · running…** and then the run's result (`Ran in 812ms · its
   output is in the log`), how many **[all]** replaced. A failed run stays there, red, as
   `Line 13: attempt to …`; tap it to go to that line. Tap any other message to dismiss it.
 - Opened from an error, the editor selects the failing line and highlights it for a few seconds.
 - Nothing is lost by leaving: closing, pressing Back and switching away from the app all save.
-  <span class="k-new">new</span> Closing with unsaved changes logs `Saved name.lua`.
+  Closing with unsaved changes logs `Saved name.lua`.
 
 ## Symbol bar
 
@@ -37,13 +37,13 @@ Above the keyboard there's a row of keys that soft keyboards hide:
 | `Ctrl+Shift+Z`, `Ctrl+Y` | redo |
 | `Tab` | insert two spaces |
 | `Esc`, Back | save and close |
-| `Ctrl+F` <span class="k-new">new</span> | find |
-| `Ctrl+H` <span class="k-new">new</span> | find and replace |
-| `Ctrl+G` <span class="k-new">new</span> | go to line |
+| `Ctrl+F` | find |
+| `Ctrl+H` | find and replace |
+| `Ctrl+G` | go to line |
 
 ## Autocomplete and inline docs
 
-<span class="k-new">new</span> As you type, the editor suggests [API](/scripting/api/) names such as `http.get`, `rss.fresh`,
+As you type, the editor suggests [API](/scripting/api/) names such as `http.get`, `rss.fresh`,
 `store.set` and `device.battery`, and shows a short description with the signature of the call
 under the cursor. It's a quick reminder; the [API reference](/scripting/api/) has the full details and
 examples.

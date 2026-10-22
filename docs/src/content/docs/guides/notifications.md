@@ -11,8 +11,8 @@ There are two separate things here:
 ## Notifications in the log
 
 Grant access with `notifs enable` (or **setup → Notification access**). From then on, new
-notifications appear in the log as `title — text`, ending in the app's status-bar icon, muted
-(<span class="k-new">new</span>). A line whose icon isn't saved (older lines, or an app that draws its icon at
+notifications appear in the log as `title — text`, ending in the app's status-bar icon, muted.
+A line whose icon isn't saved (older lines, or an app that draws its icon at
 run time) ends in the app's name instead, `· Mail`. Notifications an app marks secret are left out.
 Copying a notification line marks the copy as sensitive, so keyboards don't show it in their
 clipboard previews.

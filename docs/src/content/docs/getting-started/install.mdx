@@ -1,0 +1,104 @@
+---
+title: Install
+description: Download the Kolahal APK or build it from source, then make it your home app.
+---
+
+import { Code, LinkButton } from '@astrojs/starlight/components';
+import { APK, LITE_APK, RELEASES, VERSION } from '../../../release';
+
+Kolahal (package `com.mtwabpin.kolahal`) needs **Android 9 (API 28) or newer**.
+
+## Download
+
+Every release comes with two APKs. The newest is Kolahal {VERSION}:
+
+<div class="sl-flex" style="flex-wrap: wrap; gap: 0.75rem 1rem; margin-block: 1rem;">
+	<LinkButton href={APK} icon="download" iconPlacement="start">Kolahal {VERSION}</LinkButton>
+	<LinkButton href={LITE_APK} icon="download" iconPlacement="start" variant="secondary">Kolahal {VERSION} lite</LinkButton>
+</div>
+
+Take the full one unless Play Protect won't install it; then take the lite one (below). Release
+notes and older versions are on the [releases page](https://github.com/mtwabpin/kolahal/releases).
+Both APKs use the same package, so either installs over the other and over earlier versions,
+keeping your data. Then [sideload it](#sideload-the-apk).
+
+### The lite build
+
+Google Play Protect blocks sideloaded apps (installed from a browser, a messaging app or a file
+manager) that declare an accessibility service or notification access, in India and some other
+countries. The full build has both: the accessibility service only locks the screen, and
+notification access shows your notifications in the log. The lite build is the same app without
+them (its version ends in `-lite`). It has no `lock` or double-tap lock, no `notifs`, no media
+controls and now-playing line, and scripts get no `notifications.recent()` or
+`@on notification`. Everything else is the same.
+
+To install the full build where it is blocked, turn off **Play Store → profile → Play Protect →
+⚙ → Scan apps with Play Protect** while installing (and back on after), or install with
+`adb install`.
+
+## Build from source
+
+You need a JDK and the Android SDK. The project's toolchain is AGP 9.4.1, Gradle 9.8.2 (through the
+wrapper), Kotlin 2.4.21, compileSdk 37 and targetSdk 37.
+
+```sh
+git clone https://github.com/mtwabpin/kolahal.git
+cd kolahal
+
+./gradlew :app:assembleRelease            # R8-optimised; signed with keystore.properties or the debug key
+./gradlew :app:assembleLite               # the lite build (see above)
+./gradlew :app:assembleDebug              # debug APK ("Kolahal debug", package suffix .debug)
+./gradlew :app:testDebugUnitTest          # JVM tests
+./gradlew :app:connectedDebugAndroidTest  # on-device tests (run them on an emulator)
+```
+
+The APKs end up in `app/build/outputs/apk/<variant>/`.
+
+:::tip[Use the release build day to day]
+Debug Compose builds are noticeably slower to scroll. The debug build installs next to the release
+one (it has a `.debug` package suffix), so you can keep both.
+:::
+
+### Signing
+
+The APKs on the releases page are signed with the project's debug key, as there is no release key
+yet. Without configuration, your own release build is signed with your debug key, so it won't
+install over a downloaded one (uninstall first). To sign with your own key, create
+`keystore.properties` in the repository root (it is git-ignored) with these keys:
+
+```properties
+storeFile=/path/to/release.jks
+storePassword=…
+keyAlias=…
+keyPassword=…
+```
+
+## Sideload the APK
+
+Open the downloaded APK on the phone; Android asks once to let your browser or file manager install
+apps. Or install over USB:
+
+<Code lang="sh" code={`adb install -r kolahal-${VERSION}.apk                         # a download
+adb install -r app/build/outputs/apk/release/app-release.apk  # your own build`} />
+
+A sideloaded APK runs without ahead-of-time compilation until Android compiles it during idle
+maintenance, so it can feel laggy at first. To compile it right away:
+
+```sh
+adb shell cmd package compile -m speed -f com.mtwabpin.kolahal
+```
+
+## Make it your home app
+
+Press Home and pick Kolahal, or run `home` at the prompt to open Android's default home app
+setting. Being the default launcher matters: only the default launcher can list an app's shortcuts
+(in its long-press menu).
+
+Then run [`setup`](/getting-started/setup/) and work through the checklist.
+
+## Work profile and private space
+
+Only if you use them: a work profile (apps your employer manages, shown with a briefcase) or
+Android 15's private space. Kolahal lists their apps next to your own, and as the default launcher
+it can pause and resume the work profile (Android 10 and newer) and see the private space
+(Android 15 and newer). See [Work profile & private space](/guides/profiles/).

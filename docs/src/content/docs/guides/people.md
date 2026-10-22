@@ -26,7 +26,7 @@ contacts sam              # search (alias: contact)
 
 ## Calls in the log
 
-<span class="k-new">new</span> With **call log** access, every call gets a line in the log as it ends, the way app installs do:
+With **call log** access, every call gets a line in the log as it ends, the way app installs do:
 
 ```text
 Call from Sandhya ↙

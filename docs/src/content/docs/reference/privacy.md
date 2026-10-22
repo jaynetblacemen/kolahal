@@ -28,7 +28,7 @@ Plain `http://` is allowed, because many feeds are still served without TLS.
 
 ## Crash reports
 
-<span class="k-new">new</span> If Kolahal stops unexpectedly, it keeps a report on the phone: the app version and
+If Kolahal stops unexpectedly, it keeps a report on the phone: the app version and
 build, the Android version, the phone model, which part of Kolahal stopped, and the error with
 its stack trace (the code that was running). On Android 11 and newer it also notes when Kolahal
 froze ("not responding") or crashed inside native code such as the script engines, from what
@@ -55,7 +55,7 @@ Declared in the manifest:
 | Permission | Why |
 | --- | --- |
 | `INTERNET` | scripts, feeds and currency rates (see above) |
-| `ACCESS_LOCAL_NETWORK` | <span class="k-new">new</span> Android 17 and newer: scripts with `@uses lan` and feeds on your own network (a home server, a router page). Asked for with `local-network`; optional |
+| `ACCESS_LOCAL_NETWORK` | Android 17 and newer: scripts with `@uses lan` and feeds on your own network (a home server, a router page). Asked for with `local-network`; optional |
 | `ACCESS_NETWORK_STATE` | the `net` item in the header and `device.network()` |
 | `READ_CONTACTS` | `call`, `sms` and `contacts` name matching. Asked for on first use; optional |
 | `READ_CALENDAR` | `agenda` lists upcoming events. Asked for on first use; optional; nothing leaves the device |

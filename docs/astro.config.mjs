@@ -72,7 +72,6 @@ export default defineConfig({
 				{
 					label: 'Guides',
 					items: [
-						{ slug: 'guides/profiles' },
 						{ slug: 'guides/apps' },
 						{ slug: 'guides/notifications' },
 						{ slug: 'guides/media-and-controls' },
@@ -84,6 +83,7 @@ export default defineConfig({
 						{ slug: 'guides/gestures' },
 						{ slug: 'guides/themes-and-settings' },
 						{ slug: 'guides/backup' },
+						{ slug: 'guides/profiles' },
 					],
 				},
 				{

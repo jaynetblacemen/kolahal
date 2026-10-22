@@ -1,15 +1,15 @@
 ---
 title: Kolahal
-description: A keyboard-first terminal launcher for Android, with work profile support and scripts in Lua 5.4 or JavaScript.
+description: A keyboard-first terminal launcher for Android, with scripts in Lua 5.4 or JavaScript.
 template: splash
 hero:
   title: Your home screen is a terminal.
-  tagline: Kolahal is a keyboard-first Android launcher. Type part of an app name and press Enter. Work, private and clone profiles sit side by side, and you can script the rest in Lua 5.4 or JavaScript.
+  tagline: Kolahal is a keyboard-first Android launcher. Type part of an app name and press Enter, and script the rest in Lua 5.4 or JavaScript.
   actions:
-    - text: Install
+    - text: Install guide
       link: /getting-started/install/
       icon: right-arrow
-      variant: primary
+      variant: secondary
     - text: Command reference
       link: /reference/commands/
       variant: secondary
@@ -32,10 +32,6 @@ import setup from '../../assets/setup.png';
 		Any text that isn't a command is matched against app names. Enter launches the highlighted best
 		match. With an empty prompt you see your most-used apps, ranked by frecency.
 	</Card>
-	<Card title="Every profile, one list" icon="seti:lock">
-		Personal, work, Android 15+ private space and clone profiles appear together, tagged `[W]`
-		`[S]` `[C]`. Pause or resume the work profile from the header or with `work off`.
-	</Card>
 	<Card title="A log you can act on" icon="list-format">
 		Every command and its output is a block with a coloured gutter. Tap a line for its main action.
 		Long-press for an action sheet with copy, share, open, rerun and more.
@@ -52,6 +48,10 @@ import setup from '../../assets/setup.png';
 		`= 2^10`, `= 5 km in mi`, `= 100 usd in eur`, web search, `call`, `sms`, app shortcuts, screen
 		time and an unlock counter.
 	</Card>
+	<Card title="Work profile and private space" icon="seti:lock">
+		If you have them, their apps sit in the same list as yours, tagged `[W]` and `[S]` (`[C]` for
+		clones). Pause or resume the work profile from the header or with `work off`.
+	</Card>
 </CardGrid>
 
 ## Screens
@@ -63,7 +63,7 @@ import setup from '../../assets/setup.png';
 	</figure>
 	<figure>
 		<Image src={grid} alt="App grid with personal and work apps as chips" class="shot" width={360} />
-		<figcaption>`apps`: personal and `W` work chips</figcaption>
+		<figcaption>`apps`: every app as a chip (work apps marked `W`)</figcaption>
 	</figure>
 	<figure>
 		<Image src={setup} alt="Setup checklist with fix buttons" class="shot" width={360} />
@@ -80,7 +80,7 @@ This site uses the green palette in dark mode and gruvbox light in light mode.
 
 <CardGrid>
 	<Card title="Get it running" icon="rocket">
-		[Build and install](/getting-started/install/), then go through the [setup checklist](/getting-started/setup/).
+		[Download and install](/getting-started/install/), then go through the [setup checklist](/getting-started/setup/).
 	</Card>
 	<Card title="Learn the prompt" icon="open-book">
 		[Basics](/getting-started/basics/): suggestions, the key bar, tap and long-press, and keyboard shortcuts.

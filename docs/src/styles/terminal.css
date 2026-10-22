@@ -178,17 +178,3 @@ body {
 	max-width: 18rem;
 	margin-inline: auto;
 }
-
-/* "new" marker for recently added features */
-.k-new {
-	display: inline-block;
-	font-size: 0.7em;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	padding: 0.05em 0.45em;
-	border-radius: 0.2rem;
-	vertical-align: 0.15em;
-	color: var(--k-bg);
-	background: var(--k-work);
-}

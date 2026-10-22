@@ -44,7 +44,7 @@ Toggling profiles needs **Android 10+** and Kolahal set as the **default home ap
   tap, so you can't turn work off by accident.
 - Apps in a paused profile are faded. Opening one prints a line offering to resume the profile and
   launch the app; tap it and Kolahal turns the profile on, waits for it (up to 20 s) and opens the app.
-- <span class="k-new">new</span> While the private space is locked, its lines in the log (launches, notifications)
+- While the private space is locked, its lines in the log (launches, notifications)
   are hidden too, and come back when you unlock it.
 
 ## Private space

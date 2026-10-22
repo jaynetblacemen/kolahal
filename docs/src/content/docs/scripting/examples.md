@@ -167,7 +167,7 @@ return "focus on: work profile on, notifications out of the log"
 
 ## Charging log (Lua, event trigger)
 
-<span class="k-new">new</span> Uses the new [`@on` triggers](/scripting/overview/#event-triggers) to run when the charger is connected or
+Uses the new [`@on` triggers](/scripting/overview/#event-triggers) to run when the charger is connected or
 removed.
 
 ```lua

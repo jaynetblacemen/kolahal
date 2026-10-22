@@ -17,7 +17,7 @@ Every row is optional. Kolahal works without any of them, with the limits listed
 
 | Row | Fix command | Why |
 | --- | --- | --- |
-| **Default home app** | `home` | Kolahal opens on Home. Android only lets the default launcher pause or resume the work profile, read app shortcuts and see the private space. |
+| **Default home app** | `home` | Kolahal opens on Home. Android only lets the default launcher read app shortcuts and, if you have them, pause or resume the work profile and see the private space. |
 | **Usage access** | `usage-access` | Accurate unlock counts (from `KEYGUARD_HIDDEN` usage events), including unlocks while the launcher wasn't running, and `usage` screen time. Without it, unlocks are counted with an `ACTION_USER_PRESENT` receiver, which misses unlocks while the launcher isn't running. |
 | **Notifications** | `notifications` | Lets scripts and feeds post notifications (Android 13+ asks at runtime). |
 | **Notification access** | `notifs enable` | Shows your notifications in the terminal (`notifs`) and gives scripts `notifications.recent()`. |
@@ -27,7 +27,7 @@ Every row is optional. Kolahal works without any of them, with the limits listed
 | **Contacts** | `contacts --allow` | Optional. `call`, `sms` and `contacts` find people by name, with your contacts as suggestions. See [People](/guides/people/). |
 | **Calendar** | `agenda --allow` | Optional. Upcoming events with `agenda`. See [Productivity](/guides/productivity/). |
 | **Call log** | `calls --allow` | Optional. Your incoming, outgoing and missed calls appear in the log, and `calls` lists them. See [People](/guides/people/#calls-in-the-log). |
-| **Local network** | `local-network` | <span class="k-new">new</span> Optional, Android 17 and newer only. Lets scripts with `@uses lan` and feeds on your own network (a home server, a router page) reach it. |
+| **Local network** | `local-network` | Optional, Android 17 and newer only. Lets scripts with `@uses lan` and feeds on your own network (a home server, a router page) reach it. |
 | **Battery unrestricted** | `battery` | Timer scripts and feeds run on schedule instead of being deferred by battery optimisation. |
 | **Work / private profiles** | (none) | Information only: lists the work, private space and clone profiles found and whether each is on or paused. |
 

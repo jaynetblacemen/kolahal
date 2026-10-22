@@ -5,14 +5,13 @@
  */
 ---
 
-<div class="term" role="img" aria-label="Kolahal home screen: clock header, commands and their output, key bar and prompt">
+<div class="term" role="img" aria-label="Kolahal home screen: clock header, commands and their output, suggestions and the prompt">
 	<div class="term-header">
 		<div class="clock"><span class="time">00:14</span><span class="date">Sat 17 Oct</span></div>
 		<div class="items">
 			<span>unlocks <b>3</b></span>
 			<span>bat <b class="ok">82%</b></span>
 			<span>net <b>wifi</b></span>
-			<span>work <b class="work">on</b></span>
 			<span class="gear">⚙</span>
 		</div>
 		<div class="status"><span class="dim">weather ▸</span> Pune: ☀️ +27°C</div>
@@ -34,13 +33,13 @@
 			<div class="two"><span>#2 LWN.net</span><span class="dim">3/40 unread · notify</span></div>
 		</div>
 		<div class="block">
-			<div class="cmd"><span class="p">$</span> open gmail -w<span class="ts">00:14</span></div>
-			<div class="out">launched <span class="work">[W]</span> Gmail</div>
+			<div class="cmd"><span class="p">$</span> open gmail<span class="ts">00:14</span></div>
+			<div class="out">launched Gmail</div>
 		</div>
 	</div>
 
 	<div class="term-chips">
-		<span class="chip hl">Maps</span><span class="chip">maps</span><span class="chip">Messages</span><span class="chip w">W Meet</span>
+		<span class="chip hl">Maps</span><span class="chip">maps</span><span class="chip">Messages</span><span class="chip">Gmail</span>
 	</div>
 	<div class="term-prompt"><span class="p">$</span> ma<span class="cursor"></span></div>
 </div>
@@ -56,7 +55,6 @@
 		--k-info: #9db8a0;
 		--k-link: #7fb8f0;
 		--k-script: #b5cea8;
-		--k-work: #f2b35b;
 		font-family: var(--sl-font-mono);
 		font-size: 0.8rem;
 		line-height: 1.45;
@@ -99,9 +97,6 @@
 	}
 	.items b.ok {
 		color: var(--k-prompt);
-	}
-	.work {
-		color: var(--k-work) !important;
 	}
 	.gear {
 		margin-inline-start: auto;
@@ -168,9 +163,6 @@
 	.chip.hl {
 		outline: 1px solid var(--k-prompt);
 		color: var(--k-prompt);
-	}
-	.chip.w {
-		color: var(--k-work);
 	}
 	.term-prompt {
 		margin-top: 0.5rem;

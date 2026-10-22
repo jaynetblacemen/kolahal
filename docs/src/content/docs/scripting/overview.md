@@ -46,13 +46,13 @@ A script runs:
 - **on an interval**: `script every <name> 30m` (`15m`, `2h`, `1d`, a number of minutes, or `off`),
 - **at daily times**: `script at <name> 08:00,18:30` (or `off`),
 - **as a command**, if it is marked [`@command`](#command-scripts),
-- **on an event** <span class="k-new">new</span>, if it declares [`@on`](#event-triggers).
+- **on an event**, if it declares [`@on`](#event-triggers).
 
 Intervals have Android's 15-minute minimum. An interval and daily times can be combined. Setting a
 timer turns a disabled script back on; `script off <name>` disables it without losing the timers.
 
 `script ls` shows every script with its timers, whether it is a command, notification state and the
-last run's result. The script manager shows the same: <span class="k-new">new</span> one line per script
+last run's result. The script manager shows the same: one line per script
 (how it runs and when it last ran, red if that failed) with its on/off switch; tap a script for
 **Run**, **Edit**, **Export**, notifications, timers and **Delete**.
 
@@ -99,7 +99,7 @@ Tapping a status line runs its script again. `header.status off` hides them all.
 
 Add `@command` in a comment and the script becomes a terminal command named after the script.
 `@desc` gives it a one-line description in `help` and in suggestions.
-<span class="k-new">new</span> `@usage` lists its arguments, written like the usage lines in `help`: `[a|b]` is a
+`@usage` lists its arguments, written like the usage lines in `help`: `[a|b]` is a
 choice, `<city>` a value you type. The words in it are suggested as you type (`xkcd` offers
 `xkcd random`), and `help` shows the line.
 
@@ -127,7 +127,7 @@ reads `args` or `argline`. A script that reads them but has no `@usage` line alw
 
 ## Event triggers
 
-<span class="k-new">new</span> A script can also run when something happens on the device, by declaring one or more `@on`
+A script can also run when something happens on the device, by declaring one or more `@on`
 directives:
 
 ```lua
@@ -150,7 +150,7 @@ status((b.charging and "charging " or "on battery ") .. tostring(b.level) .. "%"
 
 Scripts run in a separate `:script` process, so a crashing engine can't take down the home screen.
 
-- **60 seconds** per run, and a **64 MB** memory cap. <span class="k-new">new</span> In Lua, `string.rep`
+- **60 seconds** per run, and a **64 MB** memory cap. In Lua, `string.rep`
   refuses results over 16 MB, and a run whose memory grows past 256 MB between checks is stopped
   (the script process is restarted).
 - At most **500 log lines** per run; past that one line says the rest weren't logged.
@@ -166,7 +166,7 @@ Scripts run in a separate `:script` process, so a crashing engine can't take dow
 
 ## What a script may use
 
-<span class="k-new">new</span> Your notifications, the clipboard, the list of your apps and your local network are only
+Your notifications, the clipboard, the list of your apps and your local network are only
 for scripts that ask, with a `@uses` line at the top:
 
 ```lua
@@ -181,7 +181,7 @@ for scripts that ask, with a `@uses` line at the top:
 | `lan` | `http` requests to this phone or your local network (192.168.…, router pages, a home server) |
 
 Without it, those calls stop the script with an error saying what to add.
-<span class="k-new">new</span> On Android 17 and newer, reaching your local network also needs Android's
+On Android 17 and newer, reaching your local network also needs Android's
 local network permission: run `local-network` once, or tap the line a blocked request leaves in the
 log. Code you type at the prompt (`lua`, `js`, `=`) may use everything. Scripts that come from outside (a file, a backup)
 arrive **switched off**, and `script on <name>` says what the script uses as you turn it on.
