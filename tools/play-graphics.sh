@@ -35,17 +35,17 @@ check() {
 }
 
 render icon.svg 512 512 "$tmp/icon.png"
-magick "$tmp/icon.png" PNG32:icon.png
+magick "$tmp/icon.png" -strip PNG32:icon.png
 check icon.png 512x512 1048576
 
 render feature-graphic.html 1024 500 "$tmp/feature.png"
-magick "$tmp/feature.png" -alpha off PNG24:feature-graphic.png
+magick "$tmp/feature.png" -strip -alpha off PNG24:feature-graphic.png
 check feature-graphic.png 1024x500 15728640
 
 mkdir -p screenshots
 for raw in raw/*.png; do
   name=$(basename "$raw" .png)
   render "screenshot.html?shot=$name" 1080 1920 "$tmp/$name.png"
-  magick "$tmp/$name.png" -alpha off PNG24:"screenshots/$name.png"
+  magick "$tmp/$name.png" -strip -alpha off PNG24:"screenshots/$name.png"
   check "screenshots/$name.png" 1080x1920 8388608
 done
