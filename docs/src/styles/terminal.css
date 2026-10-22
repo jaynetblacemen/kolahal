@@ -75,11 +75,21 @@
 	--sl-color-blue: #076678;
 	--sl-color-red: #9d0006;
 	--sl-color-green: #79740e;
-	/* Titles of notes and tips, in gruvbox's dark shades rather than Starlight's cool ones. */
+	/* Starlight's light shades are cool pastels and blue-greys; these are gruvbox's, mixed into the
+	   paper: dark ones for titles, tints for backgrounds (badges, icons), a warm dim for overlays. */
 	--sl-color-orange-high: #af3a03;
 	--sl-color-purple-high: #8f3f71;
 	--sl-color-blue-high: #076678;
 	--sl-color-red-high: #9d0006;
+	--sl-color-green-high: #4f4c08;
+	--sl-color-orange-low: color-mix(in srgb, var(--sl-color-orange) 18%, var(--sl-color-black));
+	--sl-color-purple-low: color-mix(in srgb, var(--sl-color-purple) 18%, var(--sl-color-black));
+	--sl-color-blue-low: color-mix(in srgb, var(--sl-color-blue) 18%, var(--sl-color-black));
+	--sl-color-red-low: color-mix(in srgb, var(--sl-color-red) 18%, var(--sl-color-black));
+	--sl-color-green-low: color-mix(in srgb, var(--sl-color-green) 18%, var(--sl-color-black));
+	--sl-color-backdrop-overlay: rgb(60 56 54 / 0.6);
+	--sl-shadow-lg: 0px 25px 7px rgb(40 32 20 / 0.01), 0px 16px 6px rgb(40 32 20 / 0.03),
+		0px 9px 5px rgb(40 32 20 / 0.08), 0px 4px 4px rgb(40 32 20 / 0.16), 0px 4px 2px rgb(40 32 20 / 0.04);
 }
 
 /* Notes and tips on paper like the cards, not on Starlight's pastel blue or purple; the edge
@@ -130,11 +140,20 @@ body {
 	color: var(--sl-color-accent);
 }
 
-/* Cards get the log's coloured gutter. */
+/* Cards get the log's coloured gutter, and their icon its colour (not Starlight's rotating
+   pastels), large enough to read. */
 .card {
+	--sl-card-border: var(--sl-color-accent);
+	--sl-card-bg: var(--sl-color-accent-low);
 	border-radius: 0.25rem;
 	border-inline-start: 3px solid var(--sl-color-accent) !important;
 	background: var(--sl-color-gray-6);
+}
+.card .icon {
+	font-size: 1.75em;
+	padding: 0.25em;
+	border-radius: 0.375rem;
+	color: var(--sl-color-accent-high);
 }
 :root[data-theme='light'] .card {
 	background: var(--sl-color-gray-7);
