@@ -75,6 +75,25 @@ class BackupAndLibraryTest {
         file.delete()
     }
 
+    /** Themes made in the theme builder travel in backups, ahead of settings: the one in use comes back in use. */
+    @Test fun themesTravelInBackups() {
+        val colours = com.mtwabpin.kolahal.ui.Palettes.colorsOf(com.mtwabpin.kolahal.ui.Palettes.gruvbox)
+        CustomThemes.save(context, "bk-theme", colours)
+        config.set(Keys.THEME, "bk-theme")
+        val file = File(context.cacheDir, "kolahal-backup-themes.json")
+        try {
+            Backup(context).export(Uri.fromFile(file))
+            CustomThemes.delete(context, "bk-theme")
+            config.reset(Keys.THEME)
+            Backup(context).import(Uri.fromFile(file))
+            assertEquals(colours, CustomThemes.colors("bk-theme"))
+            assertEquals("bk-theme", config[Keys.THEME])
+        } finally {
+            CustomThemes.delete(context, "bk-theme")
+            file.delete()
+        }
+    }
+
     @Test fun backupRoundTrip() {
         config.set(Keys.THEME, "gruvbox")
         config.set(Keys.LOG_SPACING, "20")

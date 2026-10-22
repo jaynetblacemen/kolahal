@@ -149,8 +149,12 @@ fun SettingsScreen(
     // Look & feel → Your themes.
     val ownThemes = CustomThemes.themes.collectAsStateWithLifecycle().value.keys.sorted()
     val themeInUse by remember { derivedStateOf { version.value; config[Keys.THEME] } }
+    val inUse = themeInUse
     // Settings another one turns off (the key bar's rows while the key bar is off) show once it is on.
     val applicable by remember { derivedStateOf { version.value; Keys.ALL.filterTo(HashSet()) { applies(it, config) } } }
+    // Read here, not in the list's content below: a derived value read while the list measures can
+    // deadlock with a snapshot applied from another thread (Compose tests do that).
+    val applicableKeys = applicable
     val context = LocalContext.current
     // About → Crash reports: read off the main thread, and again after they are deleted.
     var crashReads by remember { mutableIntStateOf(0) }
@@ -158,6 +162,7 @@ fun SettingsScreen(
     val crashes by produceState<List<CrashRow>?>(null, crashReads) {
         value = withContext(Dispatchers.IO) { crashRows(context) }
     }
+    val crashList = crashes
     // Showing home through Settings (a slider dragged, the eye held): all but that slider fades away.
     val peek by vm.peek.collectAsStateWithLifecycle()
     val shown by androidx.compose.animation.core.animateFloatAsState(
@@ -223,7 +228,7 @@ fun SettingsScreen(
                         }
                     }
                     for ((title, all) in open.groups) {
-                        val keys = all.filter { it in applicable }
+                        val keys = all.filter { it in applicableKeys }
                         if (keys.isEmpty()) continue
                         item(key = "h:${open.id}:$title") {
                             PeekFade(peek, modifier = Modifier.animateItem()) { if (title != null) GroupHeader(title) else Spacer(Modifier.height(8.dp)) }
@@ -242,7 +247,7 @@ fun SettingsScreen(
                             PeekFade(peek) {
                                 ActionGroup(
                                     ownThemes.map { name ->
-                                        Action(R.drawable.ic_palette, name, if (name == themeInUse) "In use · tap to change it" else "Tap to change it", chevron = true) {
+                                        Action(R.drawable.ic_palette, name, if (name == inUse) "In use · tap to change it" else "Tap to change it", chevron = true) {
                                             vm.openThemeBuilder(name)
                                         }
                                     } + Action(R.drawable.ic_add, "Create a theme", "Start from the theme in use and pick any colour", chevron = true) {
@@ -257,7 +262,7 @@ fun SettingsScreen(
 
                 if (crashPage) {
                     crashReportsPage(
-                        crashes,
+                        crashList,
                         onOpen = { openCrash = it },
                         onDeleteAll = {
                             val n = com.mtwabpin.kolahal.CrashReports.clear(context)
@@ -287,7 +292,7 @@ fun SettingsScreen(
                 }
 
                 if (query.isNotBlank()) {
-                    val hits = allCategories().flatMap { c -> c.keys.filter { it in applicable && matches(it, query.trim()) }.map { c to it } }
+                    val hits = allCategories().flatMap { c -> c.keys.filter { it in applicableKeys && matches(it, query.trim()) }.map { c to it } }
                     if (hits.isEmpty()) {
                         item(key = "nohits") {
                             Text(
@@ -332,7 +337,7 @@ fun SettingsScreen(
                 }
                 item(key = "h:about") { GroupHeader("About") }
                 item(key = "about") {
-                    val kept = when (val n = crashes?.size) {
+                    val kept = when (val n = crashList?.size) {
                         null -> "Reports kept on this phone"
                         0 -> "None so far"
                         1 -> "1 report kept on this phone"

@@ -97,6 +97,23 @@ class CommandProcessorTest {
         assertTrue(config.isDefault(Keys.GESTURE_SWIPE_UP))
     }
 
+    /** Settings that are gone (0.3.1) say where their job went. */
+    @Test fun removedSettingsSayWhereTheyWent() {
+        assertTrue(run("config set widgets.home on").single().startsWith("widgets.home is gone: widgets live on the widgets page"))
+        assertTrue(run("config set theme.settings-colors system").single().startsWith("theme.settings-colors is gone: Settings always use"))
+    }
+
+    @Test fun themeTakesAThemeYouMade() {
+        val themes = com.mtwabpin.kolahal.data.CustomThemes
+        themes.save(context, "cptest-theme", com.mtwabpin.kolahal.ui.Palettes.colorsOf(com.mtwabpin.kolahal.ui.Palettes.mono))
+        try {
+            run("theme cptest-theme")
+            assertEquals("cptest-theme", config[Keys.THEME])
+        } finally {
+            themes.delete(context, "cptest-theme")
+        }
+    }
+
     @Test fun scriptLifecycle() {
         run("script new cptest --cmd")
         val script = ScriptRepository.get(context).byName("cptest")

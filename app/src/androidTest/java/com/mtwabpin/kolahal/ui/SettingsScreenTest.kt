@@ -15,6 +15,7 @@ import androidx.compose.ui.test.hasScrollToKeyAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -26,8 +27,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.mtwabpin.kolahal.CrashReports
 import com.mtwabpin.kolahal.data.Config
 import com.mtwabpin.kolahal.data.ConfigKey
+import com.mtwabpin.kolahal.data.CustomThemes
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.terminal.Screen
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
@@ -40,6 +43,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
+private const val TEST_THEME = "tb-test"
+
 /** Settings: home showing through while a look setting changes, and the setting rows. */
 @RunWith(AndroidJUnit4::class)
 class SettingsScreenTest {
@@ -48,7 +53,20 @@ class SettingsScreenTest {
     private val config = Config.get(app)
     private lateinit var vm: TerminalViewModel
 
-    @After fun tearDown() = Keys.ALL.forEach(config::reset)
+    @After fun tearDown() {
+        Keys.ALL.forEach(config::reset)
+        CrashReports.clear(app)
+        CustomThemes.delete(app, TEST_THEME)
+    }
+
+    private fun crashReport(id: String, error: String) {
+        val dir = java.io.File(app.filesDir, "crash").apply { mkdirs() }
+        java.io.File(dir, "$id-crash.txt").writeText("Kolahal crash report\nKolahal\nAndroid\nWhen: x\nWhat: crash in test, thread main\n\n$error\n\tat a.b(c:1)\n")
+    }
+
+    /** Waits for text that appears after a read off the main thread (crash reports). */
+    private fun waitForText(text: String, substring: Boolean = false) =
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(text, substring).fetchSemanticsNodes().isNotEmpty() }
 
     /** Settings open on [page] (null: the main page), on a phone-sized frame, as MainActivity shows it. */
     private fun show(page: String?) {
@@ -146,6 +164,61 @@ class SettingsScreenTest {
         compose.waitForIdle()
         assertNull(vm.peek.value)
         assertEquals(Keys.PROMPT_HEIGHT_TYPING.range.first, config[Keys.PROMPT_HEIGHT_TYPING])
+    }
+
+    /** A setting another one turns off (the key bar's rows while it is off) shows once it is on. */
+    @Test fun settingsThatDontApplyStayHidden() {
+        show("typing")
+        scrollTo(Keys.KEYBAR_SHOW)
+        compose.onNodeWithText(Keys.KEYBAR.key, useUnmergedTree = true).assertDoesNotExist()
+        compose.runOnIdle { config.set(Keys.KEYBAR_SHOW, "on") }
+        scrollTo(Keys.KEYBAR)
+        compose.onNodeWithText(Keys.KEYBAR.key, useUnmergedTree = true).assertExists()
+    }
+
+    @Test fun searchSkipsSettingsThatDontApply() {
+        show(null)
+        compose.onNode(hasSetTextAction()).performTextInput(Keys.SEARCH_URL.key)
+        val row = hasText(Keys.SEARCH_URL.key) and !hasSetTextAction()
+        compose.onNode(row, useUnmergedTree = true).assertDoesNotExist()
+        compose.runOnIdle { config.set(Keys.SEARCH_ENGINE, "custom") }
+        compose.onNode(row, useUnmergedTree = true).assertExists()
+    }
+
+    /** About lists the crash reports kept on the phone; a tap offers email or delete, and delete takes that one. */
+    @Test fun aboutCrashReportsCanBeDeletedOneByOne() {
+        CrashReports.clear(app)
+        crashReport("20261022-090000", "IllegalStateException: first sttest")
+        crashReport("20261022-100000", "IllegalStateException: second sttest")
+        show(null)
+        compose.onNode(hasScrollToKeyAction()).performScrollToKey("about")
+        compose.onNodeWithText(VERSION_TEXT, substring = true).assertExists()
+        waitForText("2 reports kept on this phone")
+        compose.onNode(hasText("Crash reports") and hasText("2 reports kept on this phone")).performClick()
+        waitForText("second sttest", substring = true)
+
+        compose.onNodeWithText("second sttest", substring = true).performClick()
+        compose.onNodeWithText("Email the developer").assertIsDisplayed()
+        compose.onNodeWithText("Delete").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("second sttest", substring = true).fetchSemanticsNodes().isEmpty() }
+        assertEquals(listOf("IllegalStateException: first sttest"), CrashReports.list(app).map { it.text().lines()[6] })
+        compose.onNodeWithText("first sttest", substring = true).assertExists()
+    }
+
+    /** Your themes: made themes join the theme strip and the list, and open in the builder. */
+    @Test fun yourThemesOpenInTheBuilder() {
+        CustomThemes.save(app, TEST_THEME, Palettes.colorsOf(Palettes.amber))
+        show("look")
+        compose.onNode(hasText(TEST_THEME) and hasText("\$ ls")).assertExists()
+        compose.onNode(hasScrollToKeyAction()).performScrollToKey("own-themes")
+        compose.onNode(hasText(TEST_THEME) and hasText("Tap to change it")).performClick()
+        assertEquals(Screen.THEME_BUILDER, vm.screen.value)
+        assertEquals(TEST_THEME, vm.themeBuilderName.value)
+
+        compose.runOnIdle { vm.closeScreen() }
+        compose.onNodeWithText("Create a theme").performClick()
+        assertEquals(Screen.THEME_BUILDER, vm.screen.value)
+        assertNull(vm.themeBuilderName.value)
     }
 
     /** Home must not stay drawn under whatever comes next. */

@@ -5,7 +5,7 @@ Kolahal (=com.mtwabpin.kolahal=) is a terminal-style home screen with first-clas
 profile support and scripts in *Lua 5.4* or *JavaScript (QuickJS)*.
 
 #+begin_quote
-Kolahal is developed with AI assistance. The developers review every change.
+Kolahal is developed with AI assistance. The developers review every change except the tests.
 #+end_quote
 
 * Documentation

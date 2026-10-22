@@ -34,6 +34,22 @@ class ConfigNamesTest {
         }
     }
 
+    /** Settings that are gone (0.3.1: settings colours, home widgets) leave saved values and backups. */
+    @Test fun removedSettingsAreDropped() {
+        val saved = mapOf(
+            "theme.settings-colors" to "system", "gui.colors" to "system", "widgets.home" to "on", "widgets.height" to "200",
+            "theme" to "amber",
+        )
+        assertEquals(mapOf("theme.name" to "amber"), Keys.migrate(saved))
+    }
+
+    @Test fun aRemovedNameIsNeitherASettingNorARename() {
+        for (name in Keys.REMOVED.keys) {
+            assertNull("$name is still a setting", Keys.byName(name))
+            assertTrue("$name is still a rename", name !in Keys.RENAMED)
+        }
+    }
+
     @Test fun noNameIsBothASettingAndAGroup() {
         val names = Keys.ALL.map { it.key }
         for (name in names) assertTrue("$name is also a group", names.none { it.startsWith("$name.") })
