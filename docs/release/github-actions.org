@@ -27,15 +27,16 @@ looking at (the run's *Artifacts*), not for installing over a release.
 2. *Signing keys*: decodes the two keystores from the secrets into the runner's temporary folder.
    No secrets, no release: it stops and says to run =tools/make-keys.sh --secrets=.
 3. *Unit tests and signed builds*: =testDebugUnitTest=, =assembleRelease=, =bundlePlay=,
-   =assemblePlay= (the Play build as an APK, for the check).
+   then =assemblePlay -PplayApk= in a second run (the Play build as an APK, signed with the release
+   key).
 4. *The Play check*: =tools/check-play-build.sh= on the Play APK (see [[file:google-play.org][google-play.org]]).
-5. *Checks the signatures*: the APK must be signed, with the release key when the
+5. *Checks the signatures*: both APKs must be signed, with the release key when the
    =RELEASE_CERT_SHA256= variable is set ([[file:signing.org][signing.org]]); the bundle must be signed, and not with
    a debug key. The run's summary lists each file's certificate.
 6. *Packages*: =kolahal-X.Y.Z.apk=, =kolahal-X.Y.Z-mapping.zip= (R8's names for both builds, for
-   reading crash traces with =retrace=) and the notes, with a last line naming the commit the APK
-   and the bundle are built from.
-7. *Publishes the GitHub release* with the APK and the mapping zip, marked as the latest.
+   reading crash traces with =retrace=) and the notes, with a last line naming the commit both
+   APKs and the bundle are built from.
+7. *Publishes the GitHub release* with both APKs and the mapping zip, marked as the latest.
 8. *Keeps the Play bundle* and its =mapping.txt= with the run, for 90 days.
 
 * Secrets and variables
@@ -97,7 +98,8 @@ These need an emulator or a phone, so they stay out of GitHub Actions:
 * The same builds here
 
 #+begin_src sh
-./gradlew :app:testDebugUnitTest :app:assembleRelease :app:bundlePlay :app:assemblePlay
+./gradlew :app:testDebugUnitTest :app:assembleRelease :app:bundlePlay
+./gradlew -PplayApk :app:assemblePlay
 tools/check-play-build.sh
 #+end_src
 

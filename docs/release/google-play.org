@@ -170,8 +170,8 @@ They must show the Play build: nothing about the screen lock,
 notifications in the log, media controls or the call log.
 
 1. On the emulator (never a phone you use), install the Play build:
-   =./gradlew :app:assemblePlay= and =adb install -r app/build/outputs/apk/play/app-play.apk=.
-   Locally it is signed with the upload key, so an install with another key must be removed first
+   =./gradlew -PplayApk :app:assemblePlay= and =adb install -r app/build/outputs/apk/play/app-play.apk=.
+   Locally it is signed with the release key, so an install with another key must be removed first
    (or re-sign a copy with the debug key to keep the emulator's data).
 2. Settings as a new install has them, plus =config set header.network on= and
    =config set theme.name gruvbox=; a 1080 × 2400 screen (=adb shell wm size= shows it); the

@@ -21,25 +21,27 @@ details are in the files beside this one. (This folder is for the maintainer; th
 
 * Two builds
 
-One commit makes two files:
+One commit makes three files:
 
-| Build | File                     | Gradle task       | Goes to         | Leaves out                                                      |
-|-------+--------------------------+-------------------+-----------------+-----------------------------------------------------------------|
-| Full  | =kolahal-X.Y.Z.apk=      | =assembleRelease= | GitHub releases | nothing                                                         |
-| Play  | =kolahal-X.Y.Z-play.aab= | =bundlePlay=      | Google Play     | the accessibility service, notification access and the call log |
+| Build | File                     | Gradle task                  | Signed with     | Goes to         |
+|-------+--------------------------+------------------------------+-----------------+-----------------|
+| Full  | =kolahal-X.Y.Z.apk=      | =assembleRelease=            | the release key | GitHub releases |
+| Play  | =kolahal-X.Y.Z-play.apk= | =assemblePlay -PplayApk=     | the release key | GitHub releases |
+| Play  | =kolahal-X.Y.Z-play.aab= | =bundlePlay=                 | the upload key  | Google Play     |
 
 - *Full* is the app with everything: the screen lock (=lock=, double-tap), notifications in the
   log (=notifs=, media controls, scripts' notification triggers) and calls in the log (=calls=).
-- *Play* leaves those three out: Google Play's policy doesn't let a launcher read the call log at
+- *Play* leaves out the accessibility service, notification access and the call log: Google Play's policy doesn't let a launcher read the call log at
   all, and wants declarations, videos and consent screens for an accessibility service and a
   notification listener. Leaving them out was decided on 22 October 2026; [[file:google-play.org][google-play.org]] has
   the policy. The bundle is signed with the upload key, and Play turns it into APKs signed with the
   release key ([[file:signing.org][signing.org]]).
-- Both use the same package and the same signing key on the phone, so either installs over the
-  other, keeping the data.
-- Where Play Protect blocks the full APK (it blocks sideloaded apps that declare an accessibility
-  service or a notification listener, in India and some other countries), people turn scanning off
-  while installing, or take the Play version. There was a lite APK on GitHub for that until 0.3.0.
+- The Play build's APK on GitHub is for phones where Play Protect blocks the full one (it blocks
+  sideloaded apps that declare an accessibility service or a notification listener, in India and
+  some other countries). =-PplayApk= signs it with the release key, like the full APK: one build
+  type can't carry two keys, so the Release workflow builds it in a second Gradle run.
+- All three install as the same app, signed with the same key on the phone, so any one installs
+  over another, keeping the data. (Until 0.3.0 the GitHub APK without the three was called lite.)
 
 How: =app/src/play/AndroidManifest.xml= removes the two services and =READ_CALL_LOG=; the =play=
 build type starts from =release= (=app/build.gradle.kts=). The =BuildConfig= switches

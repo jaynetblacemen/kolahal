@@ -27,8 +27,8 @@ contacts sam              # search (alias: contact)
 ## Calls in the log
 
 With **call log** access, every call gets a line in the log as it ends, the way app installs do
-(the APK only: the [Google Play version](/getting-started/install/#the-google-play-version) can't
-read the call log):
+(the full build only: the [Play build](/getting-started/install/#the-play-build) can't read the
+call log):
 
 ```text
 Call from Sandhya ↙

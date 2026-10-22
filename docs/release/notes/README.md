@@ -2,14 +2,14 @@
 
 One file per version, named after it: `0.3.1.md`. When the tag `v0.3.1` is pushed, the Release
 workflow (`.github/workflows/release.yml`) publishes it as the GitHub release's notes and adds a
-last line naming the commit the APK and the Play bundle are built from. The workflow stops if the file is missing.
+last line naming the commit both APKs and the Play bundle are built from. The workflow stops if the file is missing.
 
 What a file holds, as `0.3.0.md` does (that release was published by hand, so it still ends with
 the commit line the workflow now adds):
 
 - the package and the Android version it needs, and what it installs over;
-- the APK, with the Play Protect workaround (until 0.3.0 there was a lite APK too; 0.3.1's notes
-  say it is gone);
+- the two APKs (the full build and the Play build) and which to pick: the Play build where Play
+  Protect blocks the full one;
 - **What's new**, in plain words;
 - **Fixed**, when there is something;
 - a line saying the mapping zip is only for reading crash reports.

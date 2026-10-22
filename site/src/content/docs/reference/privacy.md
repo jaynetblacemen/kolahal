@@ -50,9 +50,9 @@ may include Kolahal's data in it, as it does for other apps. Kolahal's own
 
 ## Permissions
 
-The Google Play version leaves three of these out: `READ_CALL_LOG`, the accessibility service and
-notification access. The calls in the log, the screen lock and notifications in the log are only in
-the APK from GitHub.
+The Play build (the Google Play version, also an APK on GitHub) leaves three of these out:
+`READ_CALL_LOG`, the accessibility service and notification access. The calls in the log, the
+screen lock and notifications in the log are only in the full build.
 
 Declared in the manifest:
 

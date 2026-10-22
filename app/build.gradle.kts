@@ -83,12 +83,14 @@ android {
         // Google Play (`bundlePlay`): the release build without the accessibility service, the
         // notification listener and the call log (src/play removes them), which Play's policy rules out
         // or wants declarations, videos and consent screens for. No `lock` or double-tap lock, no
-        // notifications in the log, no media controls, no calls in the log. Signed with the upload key;
-        // without one the bundle stays unsigned, never debug-signed (Play refuses those).
+        // notifications in the log, no media controls, no calls in the log. The bundle is signed with the
+        // upload key; without one it stays unsigned, never debug-signed (Play refuses those).
+        // `-PplayApk` signs with the release key instead, as the full build: the Play build's APK on
+        // GitHub (`assemblePlay -PplayApk`), for phones where Play Protect blocks the full one.
         create("play") {
             initWith(getByName("release"))
             matchingFallbacks += listOf("release")
-            signingConfig = signingConfigs.findByName("upload")
+            if (!providers.gradleProperty("playApk").isPresent) signingConfig = signingConfigs.findByName("upload")
             buildConfigField("boolean", "LOCK_SERVICE", "false")
             buildConfigField("boolean", "NOTIFICATION_ACCESS", "false")
             buildConfigField("boolean", "CALL_LOG", "false")
