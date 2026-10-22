@@ -92,11 +92,13 @@ class ScriptRepository private constructor(private val context: Context) {
 
     /** Switching a script on allows what it declares and nobody decided yet: the Scripts screen asks first. */
     fun setEnabled(id: Long, enabled: Boolean) {
-        val s = if (enabled) byId(id) else null
+        val s = byId(id) ?: return
         update(id) {
             put("enabled", if (enabled) 1 else 0)
-            if (s != null) put("access", ScriptAccess.encode(ScriptAccess.allowUndecided(s.code, s.access)))
+            if (enabled) put("access", ScriptAccess.encode(ScriptAccess.allowUndecided(s.code, s.access)))
         }
+        // Switched off, its header line goes too, rather than coming back stale when it is switched on.
+        if (!enabled) KvStore(context, com.mtwabpin.kolahal.script.HostApi.STATUS_SCOPE).set(s.name, null)
     }
 
     /** The timers and notifications [code] suggests (`@every`, `@at`, `@notify`), for a script just added. */

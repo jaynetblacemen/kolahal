@@ -62,6 +62,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -120,9 +122,16 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** Bumps when aliases, hidden apps or labels change. */
     val appPrefsVersion: StateFlow<Int> get() = appPrefs.version
 
+    /** Every stored `status(text)` line, keyed by script name. */
     private val _statuses = MutableStateFlow<Map<String, String>>(emptyMap())
-    /** Header lines pinned by scripts with `status(text)`, keyed by script name. */
-    val statuses: StateFlow<Map<String, String>> = _statuses.asStateFlow()
+    /**
+     * Header lines pinned by scripts with `status(text)`: only those of scripts that are switched on and
+     * allowed a header line, whichever way they were switched off.
+     */
+    val statuses: StateFlow<Map<String, String>> = combine(_statuses, scriptCache) { lines, list ->
+        val shown = list.filter { it.enabled && it.grants.allows(ScriptAccess.HEADER) }.mapTo(HashSet()) { it.name }
+        lines.filterKeys { it in shown }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     private val _entries = MutableStateFlow<List<LogEntry>>(emptyList())
     val entries: StateFlow<List<LogEntry>> = _entries.asStateFlow()
