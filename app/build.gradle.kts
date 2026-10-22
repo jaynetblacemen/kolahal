@@ -48,6 +48,11 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug"
+            // -Pcoverage: JaCoCo for the test runs (tools/coverage.pl reads the reports). Off by
+            // default: it instruments the debug build and slows it down.
+            val coverage = providers.gradleProperty("coverage").isPresent
+            enableUnitTestCoverage = coverage
+            enableAndroidTestCoverage = coverage
         }
         // The release build without the accessibility service and notification listener (src/lite
         // removes them): Play Protect blocks sideloaded apps that declare either. No `lock` or

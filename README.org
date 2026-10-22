@@ -334,10 +334,11 @@ kolahal/
 │       │   └── res/                  icons, fonts, XML config (accessibility service, backup rules, network security)
 │       ├── release/generated/baselineProfiles/   AOT profile for fast start (generated, committed)
 │       ├── test/               JVM unit tests (pure logic: parsing, ranking, layout math, formats)
-│       └── androidTest/        on-device tests (script engines, sandbox, :script process, commands)
+│       └── androidTest/        on-device tests (script engines, sandbox, commands, backup, home and settings screens)
 ├── baselineprofile/            macrobenchmark module that generates the baseline profile
 ├── docs/                       documentation site (Astro + Starlight, pnpm); see docs/README.md
 ├── gradle/libs.versions.toml   every dependency version in one place
+├── tools/coverage.pl           test coverage by package, for the table under Tests
 ├── .github/workflows/docs.yml  builds and publishes the docs to GitHub Pages
 └── README.org                  this file
 #+end_example
@@ -441,3 +442,51 @@ A backup (=Settings → Export everything=) bundles all of the above into one JS
   =adb shell cmd package compile -m speed -f com.mtwabpin.kolahal=.
 - After installing :: Run =setup=. It checks the default launcher, Usage Access, notifications and
   battery optimisation, and each unchecked line fixes itself when tapped.
+
+* Tests
+
+JVM unit tests (=app/src/test=) cover pure logic: parsing, ranking, layout maths and formats.
+On-device tests (=app/src/androidTest=) cover the script engines and sandbox, commands, storage and
+backup, and the home and settings screens. The on-device ones install the debug build (package
+suffix =.debug=) and change its settings; run them on an emulator.
+
+Coverage is measured at each release: the share of code lines that either kind of test runs
+(JaCoCo, on an Android 16 emulator).
+
+#+begin_src sh
+./gradlew -Pcoverage :app:createDebugUnitTestCoverageReport :app:createDebugAndroidTestCoverageReport
+perl tools/coverage.pl v0.2.5   # by package, and the lines added since that release
+#+end_src
+
+** By release
+
+| Release | Unit tests | On-device tests | Lines covered | Lines added since the last release, covered |
+|---------+------------+-----------------+---------------+---------------------------------------------|
+| 0.3.0   |        182 |              73 |         45.1% | 95.3% (278 lines)                           |
+
+** By package, 0.3.0
+
+| Package          | Lines | Covered |
+|------------------+-------+---------|
+| =ui/=            |  4720 |   36.8% |
+| =terminal/=      |  2727 |   47.5% |
+| =script/=        |  1219 |   60.2% |
+| =data/=          |   738 |   88.3% |
+| =feeds/=         |   503 |   41.4% |
+| =control/=       |   459 |   19.4% |
+| =apps/=          |   405 |   75.6% |
+| (root)           |   313 |   32.9% |
+| =widgets/=       |   309 |   32.7% |
+| =notifications/= |   280 |    9.6% |
+| =productivity/=  |   231 |   74.5% |
+| =calls/=         |    91 |   12.1% |
+| =contacts/=      |    83 |   12.0% |
+| =notify/=        |    61 |   29.5% |
+| =status/=        |    52 |   84.6% |
+| =unlock/=        |    51 |   45.1% |
+| =gesture/=       |    16 |   18.8% |
+| *All*            | 12258 |   45.1% |
+
+Low numbers are mostly code that needs the system: notification access, calls, contacts, device
+controls and gestures. Lines are lines of code the compiler emits instructions for, not lines in
+the files.

@@ -12,6 +12,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasScrollToKeyAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -19,6 +20,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToKey
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
@@ -48,8 +50,8 @@ class SettingsScreenTest {
 
     @After fun tearDown() = Keys.ALL.forEach(config::reset)
 
-    /** Settings open on [page], on a phone-sized frame, as MainActivity shows it. */
-    private fun show(page: String) {
+    /** Settings open on [page] (null: the main page), on a phone-sized frame, as MainActivity shows it. */
+    private fun show(page: String?) {
         compose.runOnUiThread {
             vm = TerminalViewModel(app, SavedStateHandle())
             vm.settingsCategory.value = page
@@ -126,6 +128,24 @@ class SettingsScreenTest {
         assertEquals(72, config[Keys.PROMPT_HEIGHT_TYPING])
         // The "s" was only drawn: nothing was typed into the real prompt.
         assertEquals("", vm.input.text)
+    }
+
+    /** A slider found by searching peeks too, and the search results fade around it. */
+    @Test fun aSliderFoundBySearchShowsHome() {
+        show(null)
+        compose.onNode(hasSetTextAction()).performTextInput(Keys.PROMPT_HEIGHT_TYPING.key)
+        val slider = compose.onNodeWithTag("slider ${Keys.PROMPT_HEIGHT_TYPING.key}")
+        slider.performTouchInput {
+            down(center)
+            repeat(8) { moveBy(Offset(-width / 4f, 0f)) }
+        }
+        compose.waitForIdle()
+        assertEquals(TerminalViewModel.Peek(Keys.PROMPT_HEIGHT_TYPING.key, typing = true), vm.peek.value)
+        home.assertExists()
+        slider.performTouchInput { up() }
+        compose.waitForIdle()
+        assertNull(vm.peek.value)
+        assertEquals(Keys.PROMPT_HEIGHT_TYPING.range.first, config[Keys.PROMPT_HEIGHT_TYPING])
     }
 
     /** Home must not stay drawn under whatever comes next. */
