@@ -1,6 +1,7 @@
 package com.mtwabpin.kolahal.ui
 
 import com.mtwabpin.kolahal.R
+import com.mtwabpin.kolahal.data.Config
 import com.mtwabpin.kolahal.data.ConfigKey
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.terminal.Screen
@@ -90,6 +91,34 @@ internal val PEEK_SLIDERS: Map<String, Boolean> = mapOf(
     Keys.SUGGESTION_ROWS.key to true,
     Keys.CHIP_HEIGHT.key to true,
 )
+
+/**
+ * Settings that only matter while another one allows them, such as the key bar's rows while the
+ * key bar is off. Settings hides them until then; `config` still reaches every setting.
+ */
+private val SHOWN_WHEN: Map<ConfigKey<*>, (Config) -> Boolean> = run {
+    fun on(switch: ConfigKey.Bool): (Config) -> Boolean = { it[switch] }
+    fun choice(key: ConfigKey.Choice, test: (String) -> Boolean): (Config) -> Boolean = { test(it[key]) }
+    mapOf(
+        Keys.SEARCH_URL to choice(Keys.SEARCH_ENGINE) { it == "custom" },
+        Keys.LAUNCH_INSTANT_MIN to choice(Keys.LAUNCH_INSTANT) { it != "off" },
+        Keys.SUGGESTION_ROWS to choice(Keys.SUGGESTIONS_STYLE) { it == "chips" },
+        // Only the list shows descriptions.
+        Keys.SUGGESTIONS_WRAP to choice(Keys.SUGGESTIONS_STYLE) { it != "chips" },
+        Keys.KEYBAR_AUTO to on(Keys.KEYBAR_SHOW),
+        Keys.KEYBAR_HEIGHT to on(Keys.KEYBAR_SHOW),
+        Keys.KEYBAR to on(Keys.KEYBAR_SHOW),
+        Keys.KEYBAR2 to on(Keys.KEYBAR_SHOW),
+        Keys.SELECTOR_HANDLE to on(Keys.SELECTOR_RAIL),
+        Keys.SELECTOR_HEIGHT to on(Keys.SELECTOR_RAIL),
+        Keys.WIDGETS_HEIGHT to on(Keys.WIDGETS_HOME),
+        Keys.FEEDS_LOG_LINES to on(Keys.FEEDS_LOG),
+        Keys.FEEDS_READ_SHOWN to on(Keys.FEEDS_LOG),
+    )
+}
+
+/** Whether Settings shows [key] with the other settings as they are ([SHOWN_WHEN]). */
+internal fun applies(key: ConfigKey<*>, config: Config): Boolean = SHOWN_WHEN[key]?.invoke(config) ?: true
 
 /** Pages with an eye button that shows home while held (the same typing flag as above). */
 internal val PEEK_PAGES: Map<String, Boolean> = mapOf("look" to false, "home" to false, "log" to false, "typing" to true)

@@ -60,13 +60,16 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
@@ -80,7 +83,9 @@ import com.mtwabpin.kolahal.data.ConfigKey
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.terminal.Screen
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 /**
@@ -140,6 +145,15 @@ fun SettingsScreen(
     var openId by vm.settingsCategory
     var query by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
     val open = allCategories().firstOrNull { it.id == openId }
+    val crashPage = openId == CRASHES_PAGE
+    // Settings another one turns off (the key bar's rows while the key bar is off) show once it is on.
+    val applicable by remember { derivedStateOf { version.value; Keys.ALL.filterTo(HashSet()) { applies(it, config) } } }
+    val context = LocalContext.current
+    // About → Crash reports: read off the main thread, and again after they are deleted.
+    var crashReads by remember { mutableIntStateOf(0) }
+    val crashes by produceState<List<CrashRow>?>(null, crashReads) {
+        value = withContext(Dispatchers.IO) { crashRows(context) }
+    }
     // Showing home through Settings (a slider dragged, the eye held): all but that slider fades away.
     val peek by vm.peek.collectAsStateWithLifecycle()
     val shown by androidx.compose.animation.core.animateFloatAsState(
@@ -149,7 +163,7 @@ fun SettingsScreen(
     // Back closes a category page first, then the search, then Settings.
     BackHandler {
         when {
-            open != null -> openId = null
+            open != null || crashPage -> openId = null
             query.isNotEmpty() -> query = ""
             else -> vm.closeScreen()
         }
@@ -167,9 +181,9 @@ fun SettingsScreen(
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
                 LargeFlexibleTopAppBar(
-                    title = { Text(open?.title ?: "Settings") },
-                    subtitle = { Text(open?.subtitle ?: "Kolahal") },
-                    navigationIcon = { BackButton { if (open != null) openId = null else vm.closeScreen() } },
+                    title = { Text(open?.title ?: if (crashPage) "Crash reports" else "Settings") },
+                    subtitle = { Text(open?.subtitle ?: if (crashPage) "Kept on this phone" else "Kolahal") },
+                    navigationIcon = { BackButton { if (open != null || crashPage) openId = null else vm.closeScreen() } },
                     actions = {
                         PEEK_PAGES[open?.id]?.let { typing ->
                             PeekButton(
@@ -204,13 +218,37 @@ fun SettingsScreen(
                             }
                         }
                     }
-                    for ((title, keys) in open.groups) {
+                    for ((title, all) in open.groups) {
+                        val keys = all.filter { it in applicable }
                         if (keys.isEmpty()) continue
-                        item(key = "h:${open.id}:$title") { PeekFade(peek) { if (title != null) GroupHeader(title) else Spacer(Modifier.height(8.dp)) } }
+                        item(key = "h:${open.id}:$title") {
+                            PeekFade(peek, modifier = Modifier.animateItem()) { if (title != null) GroupHeader(title) else Spacer(Modifier.height(8.dp)) }
+                        }
                         keys.forEachIndexed { index, key ->
-                            item(key = key.key) { PeekFade(peek, keep = peek?.key == key.key) { SettingItem(vm, config, key, version, index, keys.size, onImportFont) } }
+                            item(key = key.key) {
+                                PeekFade(peek, keep = peek?.key == key.key, modifier = Modifier.animateItem()) {
+                                    SettingItem(vm, config, key, version, index, keys.size, onImportFont)
+                                }
+                            }
                         }
                     }
+                    return@LazyColumn
+                }
+
+                if (crashPage) {
+                    crashReportsPage(
+                        crashes,
+                        onSend = { c ->
+                            if (!emailDeveloper(context, "$VERSION_TEXT: ${c.title}", c.report.text())) {
+                                tapScope.launch { snackbar.showSnackbar("No app on this phone can send email") }
+                            }
+                        },
+                        onDeleteAll = {
+                            val n = com.mtwabpin.kolahal.CrashReports.clear(context)
+                            crashReads++
+                            tapScope.launch { snackbar.showSnackbar(if (n == 1) "Deleted 1 crash report" else "Deleted $n crash reports") }
+                        },
+                    )
                     return@LazyColumn
                 }
 
@@ -233,7 +271,7 @@ fun SettingsScreen(
                 }
 
                 if (query.isNotBlank()) {
-                    val hits = allCategories().flatMap { c -> c.keys.filter { matches(it, query.trim()) }.map { c to it } }
+                    val hits = allCategories().flatMap { c -> c.keys.filter { it in applicable && matches(it, query.trim()) }.map { c to it } }
                     if (hits.isEmpty()) {
                         item(key = "nohits") {
                             Text(
@@ -276,6 +314,34 @@ fun SettingsScreen(
                         )
                     )
                 }
+                item(key = "h:about") { GroupHeader("About") }
+                item(key = "about") {
+                    val kept = when (val n = crashes?.size) {
+                        null -> "Reports kept on this phone"
+                        0 -> "None so far"
+                        1 -> "1 report kept on this phone"
+                        else -> "$n reports kept on this phone"
+                    }
+                    ActionGroup(
+                        listOf(
+                            Action(R.drawable.ic_book, "Guide", "How everything works, on the Kolahal website") {
+                                if (!openGuide(context)) tapScope.launch { snackbar.showSnackbar("No browser to open $GUIDE_URL") }
+                            },
+                            Action(R.drawable.ic_bug, "Crash reports", kept, chevron = true) { openId = CRASHES_PAGE },
+                            Action(R.drawable.ic_mail, "Email the developer", DEVELOPER_EMAIL) {
+                                if (!emailDeveloper(context, VERSION_TEXT, aboutThisPhone())) {
+                                    tapScope.launch { snackbar.showSnackbar("No app on this phone can send email") }
+                                }
+                            },
+                            Action(R.drawable.ic_info, "Version", "$VERSION_TEXT · tap to copy") {
+                                context.getSystemService(android.content.ClipboardManager::class.java)
+                                    ?.setPrimaryClip(android.content.ClipData.newPlainText("Kolahal version", VERSION_TEXT))
+                                // Android 13 and later confirm a copy themselves.
+                                if (android.os.Build.VERSION.SDK_INT < 33) tapScope.launch { snackbar.showSnackbar("Copied") }
+                            },
+                        )
+                    )
+                }
             }
         }
         if (peek != null) PeekHint(Modifier.align(Alignment.TopCenter))
@@ -285,11 +351,16 @@ fun SettingsScreen(
 
 /** Fades away while Settings shows home through it, unless it is the setting being changed ([keep]). */
 @Composable
-private fun PeekFade(peek: TerminalViewModel.Peek?, keep: Boolean = false, content: @Composable () -> Unit) {
+private fun PeekFade(
+    peek: TerminalViewModel.Peek?,
+    keep: Boolean = false,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
     val alpha by androidx.compose.animation.core.animateFloatAsState(
         if (peek == null || keep) 1f else 0f, androidx.compose.animation.core.tween(PEEK_FADE_MS), label = "fade",
     )
-    Box(Modifier.graphicsLayer { this.alpha = alpha }) { content() }
+    Box(modifier.graphicsLayer { this.alpha = alpha }) { content() }
 }
 
 /** How long Settings and home take to fade into each other when a peek starts or ends. */
