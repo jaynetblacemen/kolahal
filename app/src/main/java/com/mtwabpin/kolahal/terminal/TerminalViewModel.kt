@@ -1104,6 +1104,14 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** The open Settings category page; kept while a manager screen opened from it is on top. */
     val settingsCategory = mutableStateOf<String?>(null)
 
+    /** The custom theme the theme builder edits; null while it makes a new one. */
+    val themeBuilderName = mutableStateOf<String?>(null)
+
+    fun openThemeBuilder(name: String?) {
+        themeBuilderName.value = name
+        openScreen(Screen.THEME_BUILDER)
+    }
+
     fun onHomePressed() {
         settingsCategory.value = null
         _homePresses.value++

@@ -12,8 +12,8 @@ class WidgetModelTest {
     @Test fun codecRoundTrips() {
         val all = listOf(
             w(5, 0),
-            w(7, 1, WidgetLocation.HOME, "com.example.clock/com.example.clock.ClockWidget\$Big"),
-            w(null, 2, WidgetLocation.HOME),
+            w(7, 1, WidgetLocation.OLD_HOME, "com.example.clock/com.example.clock.ClockWidget\$Big"),
+            w(null, 2, WidgetLocation.OLD_HOME),
         ).map { it.copy(profileSerial = 10L) }
         assertEquals(all, WidgetCodec.decode(WidgetCodec.encode(all)))
     }
@@ -30,7 +30,7 @@ class WidgetModelTest {
     }
 
     @Test fun exportDropsIdsAndImportMakesPending() {
-        val exported = WidgetCodec.export(listOf(w(9, 1, WidgetLocation.HOME, height = 200), w(3, 0)))
+        val exported = WidgetCodec.export(listOf(w(9, 1, WidgetLocation.OLD_HOME, height = 200), w(3, 0)))
         assertEquals(listOf("com.a/.W0", "com.a/.W1"), exported.map { it["provider"] })
         assertTrue(exported.none { it.containsKey("id") })
         // JSON round trips may turn numbers into Double / String.
@@ -45,7 +45,7 @@ class WidgetModelTest {
         assertNull(p.id)
         assertTrue(p.pending)
         assertEquals(200, p.heightDp)
-        assertEquals(WidgetLocation.HOME, p.location)
+        assertEquals(WidgetLocation.OLD_HOME, p.location)
     }
 
     @Test fun importTwiceDoesNotDuplicate() {
@@ -56,7 +56,7 @@ class WidgetModelTest {
     }
 
     @Test fun moveStaysWithinLocation() {
-        val all = listOf(w(1, 0), w(2, 1), w(3, 2), w(4, 0, WidgetLocation.HOME))
+        val all = listOf(w(1, 0), w(2, 1), w(3, 2), w(4, 0, WidgetLocation.OLD_HOME))
         val moved = WidgetOrder.move(all, "w3", -1)
         assertEquals(listOf(1, 3, 2), WidgetOrder.inLocation(moved, WidgetLocation.PANEL).map { it.id })
         assertEquals(0, moved.first { it.id == 4 }.order)
@@ -65,11 +65,16 @@ class WidgetModelTest {
         assertEquals(all, WidgetOrder.move(all, "w4", 1))
     }
 
-    @Test fun relocateAppendsAtEnd() {
-        val all = listOf(w(1, 0), w(2, 1), w(4, 0, WidgetLocation.HOME))
-        val moved = WidgetOrder.relocate(all, "w1", WidgetLocation.HOME)
-        assertEquals(listOf(4, 1), WidgetOrder.inLocation(moved, WidgetLocation.HOME).map { it.id })
-        assertEquals(listOf(2), WidgetOrder.inLocation(moved, WidgetLocation.PANEL).map { it.id })
+    /** Widgets placed on home before 0.3.1 join the widgets page after its own, keeping their order. */
+    @Test fun homeWidgetsMoveOntoThePage() {
+        val all = listOf(w(1, 1), w(2, 0), w(4, 1, WidgetLocation.OLD_HOME), w(5, 0, WidgetLocation.OLD_HOME), w(null, 3, WidgetLocation.OLD_HOME))
+        val page = WidgetOrder.onePage(all)
+        assertTrue(page.all { it.location == WidgetLocation.PANEL })
+        assertEquals(listOf(2, 1, 5, 4), WidgetOrder.inLocation(page, WidgetLocation.PANEL).map { it.id })
+        assertEquals(listOf(0, 1, 2, 3), WidgetOrder.inLocation(page, WidgetLocation.PANEL).map { it.order })
+        assertEquals(3, page.single { it.pending }.order)
+        val onlyPage = listOf(w(1, 0), w(2, 1))
+        assertEquals(onlyPage, WidgetOrder.onePage(onlyPage))
     }
 
     @Test fun resizeClamps() {

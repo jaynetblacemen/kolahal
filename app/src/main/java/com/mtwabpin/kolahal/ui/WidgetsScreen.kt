@@ -20,7 +20,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
@@ -37,7 +36,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -60,7 +58,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.apps.ProfileKind
-import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.terminal.Screen
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import com.mtwabpin.kolahal.widgets.PlacedWidget
@@ -73,9 +70,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Widgets page (Material 3 Expressive): every placed widget, live, in two groups (on home / page
- * only). Long-press a widget or tap Edit for its toolbar: move, resize in 48dp steps, move to or
- * from home, remove. Entries restored from a backup show an "Add again" row.
+ * Widgets page (Material 3 Expressive): every placed widget, live, in the order of the widgets
+ * page. Long-press a widget or tap Edit for its toolbar: move, resize in 48dp steps, remove.
+ * Entries restored from a backup show an "Add again" row.
  */
 @Composable
 fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) -> Unit) {
@@ -84,9 +81,6 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
     val all by widgets.widgets.collectAsStateWithLifecycle()
     val providersVersion by widgets.providersVersion.collectAsStateWithLifecycle()
     val profiles by remember { AppRepository.get(context).profiles }.collectAsStateWithLifecycle()
-    val configVersion = vm.config.version.collectAsStateWithLifecycle()
-    val useSystemColors by remember { derivedStateOf { configVersion.value; vm.config[Keys.GUI_COLORS] == "system" } }
-    val homeOn by remember { derivedStateOf { configVersion.value; vm.config[Keys.WIDGETS_HOME] } }
     var editing by rememberSaveable { mutableStateOf(false) }
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmRemove by remember { mutableStateOf<PlacedWidget?>(null) }
@@ -94,14 +88,13 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
     LaunchedEffect(Unit) { widgets.messages.collect { snackbar.showSnackbar(it) } }
     BackHandler { if (editing || selected != null) { editing = false; selected = null } else vm.closeScreen() }
 
-    val home = remember(all) { WidgetOrder.inLocation(all, WidgetLocation.HOME) }
     val panel = remember(all) { WidgetOrder.inLocation(all, WidgetLocation.PANEL) }
     val pending = remember(all) { WidgetOrder.sorted(all.filter { it.pending }) }
     val labels = remember(all, providersVersion) {
         all.associate { w -> w.key to (w.id?.let { widgets.info(it) }?.loadLabel(context.packageManager) ?: w.provider.substringAfterLast('.')) }
     }
 
-    GuiTheme(useSystemColors) {
+    GuiTheme {
         val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
         Scaffold(
             modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
@@ -111,12 +104,11 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
                 LargeFlexibleTopAppBar(
                     title = { Text("Widgets") },
                     subtitle = {
-                        val n = home.size + panel.size
-                        Text(if (n == 0) "Home-screen widgets" else "$n placed · ${home.size} on home")
+                        Text(if (panel.isEmpty()) "On the widgets page beside the terminal" else "${panel.size} on the widgets page")
                     },
                     navigationIcon = { BackButton(vm::closeScreen) },
                     actions = {
-                        if (home.isNotEmpty() || panel.isNotEmpty()) {
+                        if (panel.isNotEmpty()) {
                             IconToggleButton(checked = editing, onCheckedChange = { editing = it; selected = null }) {
                                 Icon(painterResource(if (editing) R.drawable.ic_check else R.drawable.ic_edit), if (editing) "Done" else "Edit widgets")
                             }
@@ -127,7 +119,7 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
             },
             floatingActionButton = {
                 ExtendedFloatingActionButton(
-                    onClick = { widgets.addLocation = WidgetLocation.PANEL; vm.openScreen(Screen.WIDGET_PICKER) },
+                    onClick = { vm.openScreen(Screen.WIDGET_PICKER) },
                     icon = { Icon(painterResource(R.drawable.ic_add), null) },
                     text = { Text("Add widget") },
                 )
@@ -140,9 +132,9 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
                     .padding(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 96.dp)
                     .padding(horizontal = 16.dp),
             ) {
-                if (home.isEmpty() && panel.isEmpty() && pending.isEmpty()) {
+                if (panel.isEmpty() && pending.isEmpty()) {
                     Text(
-                        "No widgets yet. Add one here, then long-press it to move it onto the home screen under the clock.",
+                        "No widgets yet. They live on the widgets page beside the terminal: swipe sideways on home to reach it.",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -151,44 +143,28 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
                     ActionGroup(
                         listOf(
                             Action(R.drawable.ic_widgets, "Add a widget", "Clock, weather, calendar, music… from any app") {
-                                widgets.addLocation = WidgetLocation.PANEL
                                 vm.openScreen(Screen.WIDGET_PICKER)
                             },
                         )
                     )
                 }
-                val groups = listOf(
-                    Triple("On home", home, if (homeOn) "Shown under the header; hidden while the log is in use" else "widgets.home is off — they only show here"),
-                    Triple("Widgets page", panel, null),
-                )
-                for ((title, list, note) in groups) {
-                    if (list.isEmpty()) continue
-                    GroupHeader(title)
-                    if (note != null) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)) {
-                            Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, modifier = Modifier.weight(1f))
-                            if (!homeOn) TextButton(onClick = { vm.setConfig(Keys.WIDGETS_HOME, "on") }) { Text("Turn on") }
-                        }
+                panel.forEachIndexed { i, w ->
+                    key(w.key) {
+                        WidgetCard(
+                            w = w,
+                            label = labels[w.key] ?: w.provider,
+                            index = i,
+                            count = panel.size,
+                            showTools = editing || selected == w.key,
+                            pausedKind = profiles.pausedKind(w.profileSerial),
+                            minHeight = remember(w.id, providersVersion) { w.id?.let { widgets.info(it) }?.let { widgets.minHeightDp(it) } ?: WidgetLayout.MIN_DP },
+                            onLongPress = { selected = if (selected == w.key) null else w.key },
+                            onMove = { widgets.move(w.key, it) },
+                            onResize = { widgets.resize(w.key, it) },
+                            onRemove = { confirmRemove = w },
+                        )
                     }
-                    list.forEachIndexed { i, w ->
-                        key(w.key) {
-                            WidgetCard(
-                                w = w,
-                                label = labels[w.key] ?: w.provider,
-                                index = i,
-                                count = list.size,
-                                showTools = editing || selected == w.key,
-                                pausedKind = profiles.pausedKind(w.profileSerial),
-                                minHeight = remember(w.id, providersVersion) { w.id?.let { widgets.info(it) }?.let { widgets.minHeightDp(it) } ?: WidgetLayout.MIN_DP },
-                                onLongPress = { selected = if (selected == w.key) null else w.key },
-                                onMove = { widgets.move(w.key, it) },
-                                onResize = { widgets.resize(w.key, it) },
-                                onToggleHome = { widgets.setLocation(w.key, if (w.onHome) WidgetLocation.PANEL else WidgetLocation.HOME) },
-                                onRemove = { confirmRemove = w },
-                            )
-                        }
-                        Spacer(Modifier.height(12.dp))
-                    }
+                    Spacer(Modifier.height(12.dp))
                 }
                 if (pending.isNotEmpty()) {
                     GroupHeader("Restored from backup")
@@ -204,9 +180,9 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
                         }
                     }
                 }
-                if (home.isNotEmpty() || panel.isNotEmpty()) {
+                if (panel.isNotEmpty()) {
                     Text(
-                        "Long-press a widget for move, resize and remove. Terminal: widgets ls · widget add home",
+                        "Long-press a widget for move, resize and remove. Terminal: widgets ls · widget add",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
@@ -245,7 +221,6 @@ private fun WidgetCard(
     onLongPress: () -> Unit,
     onMove: (Int) -> Unit,
     onResize: (Int) -> Unit,
-    onToggleHome: () -> Unit,
     onRemove: () -> Unit,
 ) {
     Surface(
@@ -268,11 +243,6 @@ private fun WidgetCard(
                         IconButton(onClick = { onMove(1) }, enabled = index < count - 1) { Icon(painterResource(R.drawable.ic_arrow_down), "Move down") }
                         IconButton(onClick = { onResize(-WidgetLayout.STEP_DP) }, enabled = w.heightDp > minHeight) { Icon(painterResource(R.drawable.ic_remove), "Shorter") }
                         IconButton(onClick = { onResize(WidgetLayout.STEP_DP) }, enabled = w.heightDp < WidgetLayout.MAX_DP) { Icon(painterResource(R.drawable.ic_add), "Taller") }
-                        if (w.onHome) {
-                            FilledTonalIconButton(onClick = onToggleHome) { Icon(painterResource(R.drawable.ic_home), "Remove from home") }
-                        } else {
-                            IconButton(onClick = onToggleHome) { Icon(painterResource(R.drawable.ic_home), "Show on home") }
-                        }
                         IconButton(onClick = onRemove) { Icon(painterResource(R.drawable.ic_delete), "Remove", tint = MaterialTheme.colorScheme.error) }
                     }
                 }

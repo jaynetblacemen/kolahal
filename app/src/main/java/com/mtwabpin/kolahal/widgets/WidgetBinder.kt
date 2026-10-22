@@ -21,7 +21,7 @@ class WidgetBinder(private val activity: ComponentActivity, private val onAdded:
     // Lazy: the binder is created before the activity has a context.
     private val widgets by lazy { WidgetHost.get(activity) }
 
-    private data class Request(val id: Int, val info: AppWidgetProviderInfo, val location: String, val replacing: String?)
+    private data class Request(val id: Int, val info: AppWidgetProviderInfo, val replacing: String?)
 
     private var pending: Request? = null
 
@@ -31,11 +31,10 @@ class WidgetBinder(private val activity: ComponentActivity, private val onAdded:
     }
 
     /** Starts adding [entry]; [replacing] is the key of a pending (restored) entry it fills in. */
-    fun add(entry: ProviderEntry, location: String = widgets.addLocation, replacing: String? = null) {
-        widgets.addLocation = WidgetLocation.PANEL
+    fun add(entry: ProviderEntry, replacing: String? = null) {
         pending?.let { widgets.discard(it.id) }
         val id = widgets.allocate()
-        val req = Request(id, entry.info, location, replacing)
+        val req = Request(id, entry.info, replacing)
         pending = req
         val options = widgets.options(widgets.defaultHeightDp(entry.info))
         val bound = runCatching { widgets.manager.bindAppWidgetIdIfAllowed(id, entry.user, entry.info.provider, options) }.getOrDefault(false)
@@ -68,7 +67,7 @@ class WidgetBinder(private val activity: ComponentActivity, private val onAdded:
 
     private fun finish(req: Request) {
         pending = null
-        widgets.place(req.id, req.info, req.location, req.replacing)
+        widgets.place(req.id, req.info, req.replacing)
         widgets.widgets.value.firstOrNull { it.id == req.id }?.let(onAdded)
         widgets.message("added ${req.info.loadLabel(activity.packageManager)}")
     }

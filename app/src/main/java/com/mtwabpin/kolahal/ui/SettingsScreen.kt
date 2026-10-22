@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.data.Config
+import com.mtwabpin.kolahal.data.CustomThemes
 import com.mtwabpin.kolahal.data.ConfigKey
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.terminal.Screen
@@ -139,13 +140,15 @@ fun SettingsScreen(
 ) {
     val config = vm.config
     val version = vm.config.version.collectAsStateWithLifecycle()
-    val useSystemColors by remember { derivedStateOf { version.value; config[Keys.GUI_COLORS] == "system" } }
     val notice by vm.notice.collectAsStateWithLifecycle()
     // Held by the view model, so returning from a manager screen (Feeds, Widgets) reopens this page.
     var openId by vm.settingsCategory
     var query by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
     val open = allCategories().firstOrNull { it.id == openId }
     val crashPage = openId == CRASHES_PAGE
+    // Look & feel → Your themes.
+    val ownThemes = CustomThemes.themes.collectAsStateWithLifecycle().value.keys.sorted()
+    val themeInUse by remember { derivedStateOf { version.value; config[Keys.THEME] } }
     // Settings another one turns off (the key bar's rows while the key bar is off) show once it is on.
     val applicable by remember { derivedStateOf { version.value; Keys.ALL.filterTo(HashSet()) { applies(it, config) } } }
     val context = LocalContext.current
@@ -170,7 +173,7 @@ fun SettingsScreen(
         }
     }
 
-    GuiTheme(useSystemColors) {
+    GuiTheme {
       Box(Modifier.fillMaxSize()) {
         val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
         val snackbar = remember { SnackbarHostState() }
@@ -230,6 +233,22 @@ fun SettingsScreen(
                                 PeekFade(peek, keep = peek?.key == key.key, modifier = Modifier.animateItem()) {
                                     SettingItem(vm, config, key, version, index, keys.size, onImportFont)
                                 }
+                            }
+                        }
+                    }
+                    if (open.id == "look") {
+                        item(key = "h:own-themes") { PeekFade(peek) { GroupHeader("Your themes") } }
+                        item(key = "own-themes") {
+                            PeekFade(peek) {
+                                ActionGroup(
+                                    ownThemes.map { name ->
+                                        Action(R.drawable.ic_palette, name, if (name == themeInUse) "In use · tap to change it" else "Tap to change it", chevron = true) {
+                                            vm.openThemeBuilder(name)
+                                        }
+                                    } + Action(R.drawable.ic_add, "Create a theme", "Start from the theme in use and pick any colour", chevron = true) {
+                                        vm.openThemeBuilder(null)
+                                    },
+                                )
                             }
                         }
                     }
@@ -596,8 +615,10 @@ fun ChipChoices(choices: List<String>, selected: String, onPick: (String) -> Uni
 @Composable
 private fun ThemeSwatches(selected: String, onPick: (String) -> Unit) {
     // Not lazy, for the reason in FontChoices.
+    // The built-in themes, then the ones made in the theme builder (they come and go).
+    val own = CustomThemes.themes.collectAsStateWithLifecycle().value.keys.sorted()
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Keys.THEME.choices.forEach { name ->
+        (Keys.BUILT_IN_THEMES + own).forEach { name ->
             val p = Palettes.named(name)
             val on = name == selected
             Card(

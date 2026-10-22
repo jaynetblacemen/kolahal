@@ -26,8 +26,12 @@ sealed class ConfigKey<T>(val key: String, val default: T, val help: String) {
         override fun parse(raw: String) = raw.toIntOrNull()?.takeIf { it in range }
     }
 
-    class Choice(key: String, default: String, val choices: List<String>, help: String) :
-        ConfigKey<String>(key, default, help) {
+    /** One of [fixed], or of [added]: values that come and go while the app runs (custom themes). */
+    class Choice(
+        key: String, default: String, private val fixed: List<String>, help: String,
+        private val added: () -> List<String> = { emptyList() },
+    ) : ConfigKey<String>(key, default, help) {
+        val choices: List<String> get() = fixed + added()
         override fun parse(raw: String) = raw.lowercase().takeIf { it in choices }
     }
 
@@ -59,12 +63,9 @@ object Keys {
     val KEYBAR_AUTO = ConfigKey.Bool("keybar.auto", true, "Show the key bar only while the on-screen keyboard is up for the prompt (off: always)")
     val KEYBAR_HEIGHT = ConfigKey.Num("keybar.height", 40, 20..64, "Key bar row height (dp); smaller leaves more room for the log")
     val PROMPT_HEIGHT_TYPING = ConfigKey.Num("prompt.height", 40, 20..72, "Prompt line height (dp); it never gets shorter than its text")
-    val THEME = ConfigKey.Choice(
-        "theme.name", "green",
-        listOf("green", "amber", "mono", "dracula", "solarized", "gruvbox", "gruvbox-material"),
-        "Colour theme",
-    )
-    val GUI_COLORS = ConfigKey.Choice("theme.settings-colors", "theme", listOf("theme", "system"), "Settings screens follow the terminal theme or the system (Material You) colours")
+    /** The themes that come with Kolahal; [CustomThemes] holds the ones people make. */
+    val BUILT_IN_THEMES = listOf("green", "amber", "mono", "dracula", "solarized", "gruvbox", "gruvbox-material")
+    val THEME = ConfigKey.Choice("theme.name", "green", BUILT_IN_THEMES, "Colour theme: a built-in one or one you made", added = { CustomThemes.names })
     val STATUS_BAR = ConfigKey.Choice("screen.bars", "immersive", listOf("show", "hide", "immersive"), "Full screen: hide the status bar, or both system bars (immersive); swipe from the edge to peek")
     val FONT = ConfigKey.Choice(
         "font.family", "jetbrains-mono",
@@ -120,9 +121,7 @@ object Keys {
         "Prompt keyboard suggestions (off uses a password-type field: no autocorrect, but Latin-only on some keyboards)",
     )
 
-    val WIDGETS_HOME = ConfigKey.Bool("widgets.home", false, "Show widgets placed on home under the header (they hide with it while the log is in use)")
     val WIDGETS_PAGE = ConfigKey.Choice("widgets.page", "left", listOf("left", "right", "off"), "A widgets page beside the terminal: swipe sideways on home to reach it")
-    val WIDGETS_HEIGHT = ConfigKey.Num("widgets.height", 180, 60..480, "Max height (dp) of the home widget area; it scrolls when widgets need more")
 
     val GESTURE_DOUBLE_TAP = ConfigKey.Text("gesture.double-tap", if (com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE) "lock" else "none", "Double-tap empty log space: a command, lock, shade, quick (quick actions) or none")
     val GESTURE_SWIPE_DOWN = ConfigKey.Text("gesture.swipe-down", "shade", "Swipe down on the header: a command, lock, shade, quick or none")
@@ -130,11 +129,11 @@ object Keys {
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
-        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, GUI_COLORS, STATUS_BAR, FONT, FONT_SANS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGEST_ICONS, SUGGESTIONS_WRAP, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_HANDLE, SELECTOR_HEIGHT, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
+        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, STATUS_BAR, FONT, FONT_SANS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGEST_ICONS, SUGGESTIONS_WRAP, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_HANDLE, SELECTOR_HEIGHT, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_GUTTER, LOG_LINE_HEIGHT, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_FRESH, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP,
         FEEDS_LOG, FEEDS_LOG_LINES, FEEDS_READ_SHOWN, FEEDS_BACKLOG_READ, FEEDS_INTERVAL, FEEDS_NOTIFY, FEEDS_WIFI,
-        HEADER_TODO, WIDGETS_HOME, WIDGETS_PAGE, WIDGETS_HEIGHT,
+        HEADER_TODO, WIDGETS_PAGE,
     )
 
     /** A setting by name; an old name ([RENAMED]) finds the setting under its new one. */
@@ -149,7 +148,6 @@ object Keys {
      */
     val RENAMED: Map<String, String> = mapOf(
         "theme" to "theme.name",
-        "gui.colors" to "theme.settings-colors",
         "font" to "font.family",
         "statusbar" to "screen.bars",
         "suggestions" to "suggestions.max",
@@ -171,14 +169,26 @@ object Keys {
     const val OLD_SWIPE_UP_ON = "gesture.swipeup.on"
 
     /**
+     * Settings that are gone, with where their job went (what `config` says when given one). Saved
+     * values are dropped ([migrate]); backups that still have them import without them.
+     */
+    val REMOVED: Map<String, String> = mapOf(
+        OLD_SWIPE_UP_ON to "set gesture.swipe-up to an action to turn swiping up on, or none to turn it off",
+        "theme.settings-colors" to "Settings always use the theme's colours",
+        "gui.colors" to "Settings always use the theme's colours",
+        "widgets.home" to "widgets live on the widgets page (widgets.page)",
+        "widgets.height" to "widgets live on the widgets page (widgets.page)",
+    )
+
+    /**
      * Saved settings ([saved]: name to raw value) under today's names. A value already saved under
-     * the new name wins. The swipe-up switch (off by default, with `apps` as its action) folds into
-     * `gesture.swipe-up`.
+     * the new name wins, and settings that are gone ([REMOVED]) are left out. The swipe-up switch (off
+     * by default, with `apps` as its action) folds into `gesture.swipe-up`.
      */
     fun migrate(saved: Map<String, String>): Map<String, String> {
         val out = LinkedHashMap<String, String>()
         for ((name, value) in saved) {
-            if (name == OLD_SWIPE_UP_ON) continue
+            if (name in REMOVED) continue
             val new = RENAMED[name] ?: name
             if (new != name && new in saved) continue
             out[new] = value
@@ -203,10 +213,10 @@ class Config private constructor(private val prefs: SharedPreferences) {
         migrate()
     }
 
-    /** Settings saved under names from before 0.3.0 ([Keys.RENAMED]) move to today's names. */
+    /** Settings saved under names from before 0.3.0 ([Keys.RENAMED]) move to today's names; ones that are gone ([Keys.REMOVED]) are dropped. */
     fun migrate() {
         val saved = prefs.all.mapNotNull { (k, v) -> (v as? String)?.let { k to it } }.toMap()
-        if (saved.keys.none { it in Keys.RENAMED || it == Keys.OLD_SWIPE_UP_ON }) return
+        if (saved.keys.none { it in Keys.RENAMED || it in Keys.REMOVED }) return
         val moved = Keys.migrate(saved)
         prefs.edit(commit = true) {
             saved.keys.filter { it !in moved }.forEach { remove(it) }

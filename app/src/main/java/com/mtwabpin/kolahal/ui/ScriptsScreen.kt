@@ -48,7 +48,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -67,7 +66,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
-import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.script.ScriptLibrary
@@ -96,8 +94,6 @@ fun ScriptsScreen(
 ) {
     val scripts by vm.scriptList.collectAsStateWithLifecycle()
     val notice by vm.notice.collectAsStateWithLifecycle()
-    val version = vm.config.version.collectAsStateWithLifecycle()
-    val useSystemColors by remember { derivedStateOf { version.value; vm.config[Keys.GUI_COLORS] == "system" } }
     var creating by remember { mutableStateOf(false) }
     var sheetId by rememberSaveable { mutableStateOf<Long?>(null) }
     BackHandler { vm.closeScreen() }
@@ -113,7 +109,7 @@ fun ScriptsScreen(
     val libByName = remember(library) { library.orEmpty().associateBy { it.entry.name } }
     val notInstalled = remember(library) { library?.filter { it.state == ScriptLibrary.State.NOT_INSTALLED } }
 
-    GuiTheme(useSystemColors) {
+    GuiTheme {
         val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
         val snackbar = remember { SnackbarHostState() }
         LaunchedEffect(notice) { notice?.let { snackbar.showSnackbar(it) } }

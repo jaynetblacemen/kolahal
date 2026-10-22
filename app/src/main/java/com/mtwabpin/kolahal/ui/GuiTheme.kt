@@ -1,30 +1,23 @@
 package com.mtwabpin.kolahal.ui
 
-import android.os.Build
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
 /**
  * Material 3 Expressive theme for the GUI screens (settings, script manager). Colours come from
- * the terminal palette so the screens match the chosen theme, or from the system (Material You)
- * when `theme.settings-colors = system` on Android 12+.
+ * the terminal palette, so the screens match the chosen theme.
  */
 @Composable
-fun GuiTheme(useSystemColors: Boolean, content: @Composable () -> Unit) {
-    val context = LocalContext.current
+fun GuiTheme(content: @Composable () -> Unit) {
     val palette = Term.palette
-    val scheme = remember(palette, useSystemColors) {
-        if (useSystemColors && Build.VERSION.SDK_INT >= 31) dynamicDarkColorScheme(context) else schemeFrom(palette)
-    }
+    val scheme = remember(palette) { schemeFrom(palette) }
     MaterialExpressiveTheme(
         colorScheme = scheme,
         motionScheme = MotionScheme.expressive(),

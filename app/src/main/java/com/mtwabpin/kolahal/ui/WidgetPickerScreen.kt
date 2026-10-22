@@ -43,7 +43,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -70,11 +69,9 @@ import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.apps.Profile
 import com.mtwabpin.kolahal.apps.ProfileKind
-import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import com.mtwabpin.kolahal.widgets.ProviderEntry
 import com.mtwabpin.kolahal.widgets.WidgetHost
-import com.mtwabpin.kolahal.widgets.WidgetLocation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -118,8 +115,6 @@ fun WidgetPickerScreen(vm: TerminalViewModel, onPick: (ProviderEntry) -> Unit) {
     val widgets = remember { WidgetHost.get(context) }
     val providersVersion by widgets.providersVersion.collectAsStateWithLifecycle()
     val profiles by remember { AppRepository.get(context).profiles }.collectAsStateWithLifecycle()
-    val configVersion = vm.config.version.collectAsStateWithLifecycle()
-    val useSystemColors by remember { derivedStateOf { configVersion.value; vm.config[Keys.GUI_COLORS] == "system" } }
     val iconPx = with(LocalDensity.current) { 40.dp.roundToPx() }
     val groups by produceState<List<ProviderGroup>?>(null, providersVersion, profiles) {
         value = withContext(Dispatchers.IO) { loadGroups(context, widgets, profiles, iconPx) }
@@ -127,10 +122,9 @@ fun WidgetPickerScreen(vm: TerminalViewModel, onPick: (ProviderEntry) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { widgets.messages.collect { snackbar.showSnackbar(it) } }
-    BackHandler { widgets.addLocation = WidgetLocation.PANEL; vm.closeScreen() }
-    val toHome = widgets.addLocation == WidgetLocation.HOME
+    BackHandler { vm.closeScreen() }
 
-    GuiTheme(useSystemColors) {
+    GuiTheme {
         val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
         Scaffold(
             modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
@@ -139,8 +133,8 @@ fun WidgetPickerScreen(vm: TerminalViewModel, onPick: (ProviderEntry) -> Unit) {
             topBar = {
                 LargeFlexibleTopAppBar(
                     title = { Text("Add widget") },
-                    subtitle = { Text(if (toHome) "Goes on home, under the header" else "Goes on the Widgets page") },
-                    navigationIcon = { BackButton { widgets.addLocation = WidgetLocation.PANEL; vm.closeScreen() } },
+                    subtitle = { Text("Goes on the widgets page") },
+                    navigationIcon = { BackButton { vm.closeScreen() } },
                     scrollBehavior = scroll,
                 )
             },

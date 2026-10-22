@@ -182,7 +182,7 @@ See [Widgets](/guides/widgets/).
 | --- | --- | --- |
 | `widgets` | | Widgets page: placed widgets, add, resize, arrange, move to / from home |
 | `widgets ls` | `widget ls` | placed widgets as text lines (tap one to open the page) |
-| `widget add [home]` | | open the widget picker (`home`: the new widget goes under the header) |
+| `widget add` | | open the widget picker; the widget goes on the widgets page |
 
 ## device
 

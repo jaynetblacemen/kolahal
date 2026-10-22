@@ -18,7 +18,8 @@ import com.mtwabpin.kolahal.script.ScriptScheduler
  *   "aliases": { "m": "open maps" },
  *   "apps":    { "hidden": ["<component>#<user>"], "labels": { "<component>#<user>": "Name" } },
  *   "scripts": [ { "name": "hn", "lang": "lua", "code": "...", "every": 30,
- *                  "at": ["08:00"], "notify": true, "enabled": true } ] }
+ *                  "at": ["08:00"], "notify": true, "enabled": true } ],
+ *   "themes":  { "mine": { "background": "#0B0D0B", ... } } }   // made in the theme builder
  * ```
  */
 class Backup(private val context: Context) {
@@ -47,6 +48,8 @@ class Backup(private val context: Context) {
                 mapOf("name" to f.name, "base64" to android.util.Base64.encodeToString(f.readBytes(), android.util.Base64.NO_WRAP))
             },
             "widgets" to runCatching { com.mtwabpin.kolahal.widgets.WidgetHost.get(context).exportWidgets() }.getOrDefault(emptyList()),
+            // Themes made in the theme builder: name to colours by role, as "#RRGGBB".
+            "themes" to CustomThemes.themes.value.mapValues { (_, colors) -> colors.mapValues { CustomThemes.hex(it.value) } },
         )
         Files.writeText(context, uri, Json.stringify(data))
         return all.size
@@ -70,6 +73,17 @@ class Backup(private val context: Context) {
         // Raw data first, so the readable sections below (which people edit by hand) win.
         val data = root["data"] as? Map<*, *>
         val restored = data?.let { FullBackup.importRaw(context, it) } ?: 0
+
+        // Themes before settings: `theme.name` may be one of them.
+        (root["themes"] as? Map<*, *>)?.forEach { (name, roles) ->
+            val colors = (roles as? Map<*, *>)?.entries?.mapNotNull { (role, hex) ->
+                hex?.toString()?.let(CustomThemes::parseHex)?.let { role.toString() to it }
+            }?.toMap()?.filterKeys { it in CustomThemes.ROLES }
+            val n = name?.toString()?.lowercase()
+            if (n != null && CustomThemes.NAME.matches(n) && n !in Keys.BUILT_IN_THEMES && colors != null && CustomThemes.ROLES.all { it in colors }) {
+                CustomThemes.save(context, n, colors)
+            } else skipped += "theme $name"
+        }
 
         var settings = 0
         // Older backups use the names settings had before 0.3.0.

@@ -17,7 +17,7 @@ work in `config` (which tells you the new name), and older backups import as bef
 | Old name | New name |
 | --- | --- |
 | `theme` | `theme.name` |
-| `gui.colors` | `theme.settings-colors` |
+| `gui.colors` | gone in 0.3.1: Settings always use the theme's colours |
 | `font` | `font.family` |
 | `statusbar` | `screen.bars` |
 | `suggestions` | `suggestions.max` |
@@ -54,8 +54,7 @@ The `theme` and `font` commands are unchanged.
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| `theme.name` | choice: `green` `amber` `mono` `dracula` `solarized` `gruvbox` `gruvbox-material` | `green` | colour theme (also `theme <name>`) |
-| `theme.settings-colors` | choice: `theme` `system` | `theme` | settings screens follow the terminal theme or the system (Material You) colours |
+| `theme.name` | choice: `green` `amber` `mono` `dracula` `solarized` `gruvbox` `gruvbox-material`, or [one you made](/guides/themes-and-settings/#your-own-themes) | `green` | colour theme (also `theme <name>`) |
 | `screen.bars` | choice: `show` `hide` `immersive` | `immersive` | full screen: hide the status bar, or both system bars (immersive); swipe from the edge to peek |
 | `font.family` | choice: `system` `jetbrains-mono` `fira-code` `ibm-plex-mono` `source-code-pro` `custom` | `jetbrains-mono` | terminal font (also `font <name>`); `custom` is a .ttf/.otf imported with `font import` |
 | `font.sans` | choice: `off` `prompt` `all` | `off` | the phone's own font instead of the terminal font: for the prompt, or for all of the terminal (also `font sans <mode>`); lists that line up columns and the script editor stay in the terminal font |
@@ -118,9 +117,7 @@ See [Widgets](/guides/widgets/).
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| `widgets.home` | bool | `off` | show widgets placed on home under the header (they hide with it while the log is in use) |
 | `widgets.page` | choice: `left` `right` `off` | `left` | a widgets page beside the terminal: swipe sideways on home to reach it |
-| `widgets.height` | number 60–480 | `180` | max height (dp) of the home widget area; it scrolls when widgets need more |
 
 ## Keyboard and key bar
 

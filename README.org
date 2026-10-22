@@ -4,6 +4,11 @@
 Kolahal (=com.mtwabpin.kolahal=) is a terminal-style home screen with first-class work
 profile support and scripts in *Lua 5.4* or *JavaScript (QuickJS)*.
 
+#+begin_quote
+*Built with AI assistance.* Much of Kolahal's code, tests and documentation is written with an AI
+coding assistant. The developers review every change before it is merged.
+#+end_quote
+
 * Documentation
 
 The full documentation (guides, command and config reference, scripting API) is at
@@ -77,8 +82,8 @@ cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
   - =status(text)= pins a line into the header.
 - GUI screens ::
   - *Settings* (=settings= or ⚙): Material 3 Expressive grouped lists with switches, connected button
-    groups, sliders, theme preview cards and backup export/import. Colours follow the terminal theme,
-    or the system (Material You) colours with =theme.settings-colors system=.
+    groups, sliders, theme preview cards and backup export/import, in the terminal theme's colours.
+    A theme builder (Look & feel → Your themes) makes your own themes, with a live preview.
   - *Script manager* (=scripts=): import =.lua= / =.js= files from the file manager, create, run,
     edit, export and delete scripts, and set timers and notifications.
 - Notifications :: With notification access (=setup= → Notification access), new notifications
@@ -99,12 +104,11 @@ cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
   notifications: =feed add <url>=, =feed= (list), =feed read [<id>]=, =feed open=, =feed every 1 2h=.
   =feeds= opens the feed manager screen: add feeds, read items (tap opens the link and marks it
   read), per-feed refresh / notifications / interval, and OPML import / export.
-- Widgets :: Host any app's home-screen widgets (work-profile ones too). =widgets= opens the
-  Widgets page (also in Settings): add from a picker grouped by app with previews and sizes,
-  long-press to move, resize in 48dp steps, remove, or place on home. Home widgets sit directly under
-  the header and fold away with it while the log is in use (=widgets.home=, max height
-  =widgets.height= 180dp). =widgets ls= lists them; =widget add [home]= opens the picker. Backups
-  keep the layout; restored widgets get a one-tap "Add again".
+- Widgets :: Host any app's home-screen widgets (work-profile ones too) on a widgets page beside
+  the terminal: swipe sideways on home. =widgets= opens their manager (also in Settings): add from a
+  picker grouped by app with previews and sizes, long-press to move, resize in 48dp steps or remove.
+  =widgets ls= lists them; =widget add= opens the picker. Backups keep the layout; restored widgets
+  get a one-tap "Add again".
 - People :: =call <name>= / =sms <name> [text]= with contact suggestions (favourites first);
   =contacts [<query>]=. Numbers in the log are tappable. With call log access, every call gets a line
   in the log as it ends (=Call from Sandhya ↙=, =Call to … ↗=, =Missed call from … ✕=); =calls [<n>]= lists them.
@@ -176,7 +180,7 @@ scripts   scripts (manager)   script ls|lib|install|new|edit|run|cat|rm|on|off|e
           lua <code>   js <code>   = <expression>   status [clear <name|all>]
 terminal  help  history  clear [history|all]  restart [scripts]  alias [name = command]  unalias  config  theme <name>
           font [<name>|import|sans [off|prompt|all]]  echo  date
-widgets   widgets (page)   widgets ls   widget add [home]
+widgets   widgets (page)   widgets ls   widget add
 device    settings  setup  unlocks [<days>]  notifications  usage-access  local-network  crashes [share|clear] [<n>]
           battery  home  system
 #+end_example

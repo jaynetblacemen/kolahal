@@ -14,10 +14,12 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
 import com.mtwabpin.kolahal.apps.ProfileKind
+import com.mtwabpin.kolahal.data.CustomThemes
 
 data class Palette(
     val bg: Color,
@@ -73,15 +75,34 @@ object Palettes {
         script = Color(0xFFD8A657), personal = Color(0xFFA9B665), work = Color(0xFFE78A4E), private = Color(0xFFD3869B),
     )
 
-    fun named(name: String) = when (name) {
+    /** A built-in theme, or one people made ([CustomThemes]); green for a name it doesn't know. */
+    fun named(name: String): Palette = when (name) {
+        "green" -> green
         "gruvbox" -> gruvbox
         "gruvbox-material" -> gruvboxMaterial
         "amber" -> amber
         "mono" -> mono
         "dracula" -> dracula
         "solarized" -> solarized
-        else -> green
+        else -> CustomThemes.colors(name)?.let(::fromColors) ?: green
     }
+
+    /** A custom theme's colours, by role ([CustomThemes.ROLES]), as a palette. */
+    fun fromColors(c: Map<String, Int>): Palette {
+        fun role(name: String) = Color(c.getValue(name))
+        return Palette(
+            bg = role("background"), surface = role("surface"), fg = role("text"), dim = role("muted"),
+            prompt = role("accent"), error = role("error"), info = role("info"), link = role("link"),
+            script = role("script"), personal = role("personal"), work = role("work"), private = role("private"),
+        )
+    }
+
+    /** A palette's colours by role: where the theme builder starts. */
+    fun colorsOf(p: Palette): Map<String, Int> = mapOf(
+        "background" to p.bg, "surface" to p.surface, "text" to p.fg, "muted" to p.dim, "accent" to p.prompt,
+        "link" to p.link, "info" to p.info, "script" to p.script, "error" to p.error,
+        "personal" to p.personal, "work" to p.work, "private" to p.private,
+    ).mapValues { it.value.toArgb() }
 }
 
 /**

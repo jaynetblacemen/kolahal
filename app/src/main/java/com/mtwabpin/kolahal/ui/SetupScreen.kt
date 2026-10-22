@@ -23,7 +23,6 @@ import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -33,7 +32,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
-import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 
 /**
@@ -43,11 +41,9 @@ import com.mtwabpin.kolahal.terminal.TerminalViewModel
 @Composable
 fun SetupScreen(vm: TerminalViewModel) {
     val checks by vm.setupChecks.collectAsStateWithLifecycle()
-    val version = vm.config.version.collectAsStateWithLifecycle()
-    val useSystemColors by remember { derivedStateOf { version.value; vm.config[Keys.GUI_COLORS] == "system" } }
     BackHandler { vm.closeScreen() }
 
-    GuiTheme(useSystemColors) {
+    GuiTheme {
         val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
         val done = checks.count { it.ok || it.fix == null }
         Scaffold(

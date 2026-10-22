@@ -347,21 +347,18 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
 
     // ---- widgets ----------------------------------------------------------------------------
 
-    /** `widgets ls` prints the placed widgets (tap opens the page); `widget add [home]` opens the picker. */
+    /** `widgets ls` prints the placed widgets (tap opens the page); `widget add` opens the picker. */
     private fun widgets(args: List<String>) {
         val host = com.mtwabpin.kolahal.widgets.WidgetHost.get(context)
         when (args.firstOrNull()) {
             null -> ui.openScreen(Screen.WIDGETS)
             "ls", "list" -> {
                 val lines = host.listing(context)
-                if (lines.isEmpty()) return info("No widgets yet — widget add (or widget add home) opens the picker", LogContext.of(LogContext.RUN to "widget add"))
+                if (lines.isEmpty()) return info("No widgets yet — widget add opens the picker", LogContext.of(LogContext.RUN to "widget add"))
                 lines.forEach { (text, desc) -> out(text, LogContext.of(LogContext.RUN to "widgets", LogContext.DESC to desc)) }
             }
-            "add" -> {
-                host.addLocation = com.mtwabpin.kolahal.widgets.WidgetLocation.of(args.getOrNull(1))
-                ui.openScreen(Screen.WIDGET_PICKER)
-            }
-            else -> error("Usage: widgets [ls] · widget add [home]")
+            "add" -> ui.openScreen(Screen.WIDGET_PICKER)
+            else -> error("Usage: widgets [ls] · widget add")
         }
     }
 
@@ -526,8 +523,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("rss", "rss <url>", "Fetch a feed into the log once"),
             CommandSpec("feed", "feed [add <url>|rm|fetch|read|open|notify|every] [<id>]", "RSS/Atom subscriptions with unread counts (no args: text list)"),
             CommandSpec("feeds", "feeds", "Feed manager screen (add, intervals, notifications, OPML)"),
-            CommandSpec("widgets", "widgets [ls]", "Home-screen widgets page (ls: text list)"),
-            CommandSpec("widget", "widget add [home]", "Pick a widget to add (home: show it under the header)"),
+            CommandSpec("widgets", "widgets [ls]", "The widgets page beside the terminal (ls: text list)"),
+            CommandSpec("widget", "widget add", "Pick a widget to add to the widgets page"),
             CommandSpec("notifs", "notifs [all|enable|mute <app>|muted|clear]", "Your notifications in the terminal"),
             CommandSpec("search", "search <query>", "Web search (engine: config search.engine)"),
             CommandSpec("yt", "yt <query>", "Search YouTube"),

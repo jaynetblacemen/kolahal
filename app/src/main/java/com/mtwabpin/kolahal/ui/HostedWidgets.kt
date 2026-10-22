@@ -1,10 +1,8 @@
 package com.mtwabpin.kolahal.ui
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -36,7 +33,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.apps.Profile
 import com.mtwabpin.kolahal.apps.ProfileKind
-import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.terminal.Screen
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import com.mtwabpin.kolahal.widgets.KolahalWidgetView
@@ -89,55 +85,6 @@ internal fun HostedWidget(
 
 
 /**
- * Widgets placed on home (`widgets.home`), directly under the header. Collapses to nothing with
- * the header ([visible] = false) so the log keeps its room; views stay alive while collapsed.
- * Long-press opens the Widgets page to edit them.
- */
-@Composable
-fun HomeWidgets(vm: TerminalViewModel, visible: Boolean) {
-    val context = LocalContext.current
-    val widgets = remember { WidgetHost.get(context) }
-    val all by widgets.widgets.collectAsStateWithLifecycle()
-    val version by vm.config.version.collectAsStateWithLifecycle()
-    val enabled = remember(version) { vm.config[Keys.WIDGETS_HOME] }
-    val cap = remember(version) { vm.config[Keys.WIDGETS_HEIGHT].dp }
-    val home = remember(all) { WidgetOrder.inLocation(all, WidgetLocation.HOME) }
-    if (!enabled || home.isEmpty()) return
-    val profiles by remember { AppRepository.get(context).profiles }.collectAsStateWithLifecycle()
-    Box(
-        Modifier
-            .fillMaxWidth()
-            // Folds and unfolds with the header animation instead of snapping.
-            .animateContentSize()
-            .then(if (visible) Modifier.heightIn(max = cap) else Modifier.height(0.dp))
-            .clipToBounds()
-    ) {
-        Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 2.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            home.forEach { w ->
-                key(w.key) {
-                    HostedWidget(
-                        w = w,
-                        height = minOf(w.heightDp.dp, cap),
-                        pausedKind = profiles.pausedKind(w.profileSerial),
-                        onLongPress = { vm.openScreen(Screen.WIDGETS) },
-                    ) { why ->
-                        Text(
-                            "[$why] ${w.packageName}",
-                            style = Term.text.copy(color = Term.dim),
-                            modifier = Modifier.fillMaxWidth().alpha(0.7f).padding(vertical = 6.dp, horizontal = 4.dp),
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-/**
  * The widgets page beside the terminal (`widgets.page`): every widget placed on the "Widgets page",
  * full width and scrolling, in the terminal's colours. Add / edit jump to the GUI pages.
  */
@@ -161,7 +108,7 @@ fun WidgetPanel(vm: TerminalViewModel) {
                 "+ Add",
                 style = Term.text.copy(color = Term.prompt),
                 modifier = Modifier
-                    .clickable { widgets.addLocation = WidgetLocation.PANEL; vm.openScreen(Screen.WIDGET_PICKER) }
+                    .clickable { vm.openScreen(Screen.WIDGET_PICKER) }
                     .heightIn(min = 48.dp)
                     .wrapContentHeight()
                     .padding(horizontal = 12.dp),

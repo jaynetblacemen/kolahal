@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontFamily
 import com.mtwabpin.kolahal.data.Keys
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import com.mtwabpin.kolahal.ui.ScriptEditor
 import com.mtwabpin.kolahal.ui.TerminalScreen
@@ -39,7 +40,6 @@ import com.mtwabpin.kolahal.ui.WidgetPickerScreen
 import com.mtwabpin.kolahal.ui.WidgetsScreen
 import com.mtwabpin.kolahal.widgets.WidgetBinder
 import com.mtwabpin.kolahal.widgets.WidgetHost
-import com.mtwabpin.kolahal.widgets.WidgetLocation
 
 class MainActivity : ComponentActivity() {
     private val vm: TerminalViewModel by viewModels()
@@ -83,10 +83,9 @@ class MainActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { vm.finishExportScript(it) }
 
     /** Add-a-widget flow (bind permission + configure activity). */
-    private val widgetBinder = WidgetBinder(this) { placed ->
-        // Back to where the picker was opened from; widgets for the page land on the page.
+    private val widgetBinder = WidgetBinder(this) { _ ->
         if (vm.screen.value == Screen.WIDGET_PICKER) vm.closeScreen()
-        if (placed.location == WidgetLocation.PANEL && vm.screen.value != Screen.WIDGETS) vm.openScreen(Screen.WIDGETS)
+        if (vm.screen.value != Screen.WIDGETS) vm.openScreen(Screen.WIDGETS)
     }
 
     override fun onStart() {
@@ -171,8 +170,9 @@ class MainActivity : ComponentActivity() {
                         )
                         Screen.FEEDS -> FeedsScreen(vm, onRequestNotifications = ::requestNotifications)
                         Screen.SETUP -> SetupScreen(vm)
-                        Screen.WIDGETS -> WidgetsScreen(vm, onReAdd = { entry, w -> widgetBinder.add(entry, w.location, w.key) })
+                        Screen.WIDGETS -> WidgetsScreen(vm, onReAdd = { entry, w -> widgetBinder.add(entry, w.key) })
                         Screen.WIDGET_PICKER -> WidgetPickerScreen(vm, onPick = { widgetBinder.add(it) })
+                        Screen.THEME_BUILDER -> com.mtwabpin.kolahal.ui.ThemeBuilderScreen(vm)
                         Screen.TERMINAL -> HomePager(vm) {
                             TerminalScreen(
                                 vm,
@@ -214,6 +214,10 @@ class MainActivity : ComponentActivity() {
         val nav = androidx.core.view.WindowInsetsCompat.Type.navigationBars()
         // A swipe from the edge shows hidden bars for a moment, then they hide again.
         controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        // Dark icons on a light theme (one people made: the built-in ones are dark).
+        val light = Term.bg.luminance() > 0.5f
+        controller.isAppearanceLightStatusBars = light
+        controller.isAppearanceLightNavigationBars = light
         when (vm.config[Keys.STATUS_BAR]) {
             "hide" -> { controller.hide(status); controller.show(nav) }
             "immersive" -> controller.hide(status or nav)

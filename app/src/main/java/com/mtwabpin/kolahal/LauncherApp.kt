@@ -41,6 +41,8 @@ class LauncherApp : Application(), Configuration.Provider {
         // The :script process only needs the database and notifications.
         if (getProcessName() != packageName) return
 
+        // Before the theme is applied: `theme.name` may be one of them.
+        com.mtwabpin.kolahal.data.CustomThemes.load(this)
         AppRepository.get(this).start()
         UnlockCounter.get(this).start()
         // Runtime receivers + network callback for `@on` scripts (charger/headset need these on Android 8+).

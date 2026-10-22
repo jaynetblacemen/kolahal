@@ -3,7 +3,7 @@ package com.mtwabpin.kolahal.terminal
 import com.mtwabpin.kolahal.data.Script
 
 /** Full-screen GUI pages besides the terminal (the script editor is separate). */
-enum class Screen { TERMINAL, SETTINGS, SCRIPTS, SETUP, FEEDS, WIDGETS, WIDGET_PICKER }
+enum class Screen { TERMINAL, SETTINGS, SCRIPTS, SETUP, FEEDS, WIDGETS, WIDGET_PICKER, THEME_BUILDER }
 
 /** UI-only operations the processor cannot do from an application context. */
 interface TerminalUi {

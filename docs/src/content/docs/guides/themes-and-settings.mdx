@@ -33,9 +33,31 @@ work and private profile tags:
   background: linear-gradient(90deg, var(--a) 0 20%, var(--b) 20% 40%, var(--c) 40% 60%, var(--d) 60% 80%, var(--e) 80%); }
 `}</style>
 
-The swatch strip shows prompt, link, work, private and error colours. The settings screens follow
-the terminal theme by default; `config set theme.settings-colors system` switches them to your wallpaper's
-Material You colours instead.
+The swatch strip shows prompt, link, work, private and error colours. The settings screens use the
+theme's colours too.
+
+### Your own themes
+
+**Settings → Look & feel → Your themes → Create a theme** opens the theme builder. It starts from
+the theme in use; **Start from** copies any other theme's colours. A small home screen at the top
+shows your colours as you change them. Tap a colour to change it: drag hue, saturation and
+lightness, type a hex code (`#8FD18A`), or tap a swatch (the same colour from the built-in themes,
+and the theme's other colours, so it is easy to match them).
+
+The colours, from the top of the builder:
+
+| Colour | Colours |
+| --- | --- |
+| Background, Surface | behind everything; chips, the key bar and raised panels |
+| Text, Muted text | commands and their output; times, hints and older output |
+| Accent | the prompt, `$` and highlights (Settings use it too) |
+| Links, Info, Script output, Errors | links and feed items; notes from Kolahal; your scripts' lines; errors |
+| Personal apps, Work apps, Private space | apps in each profile, if you have them |
+
+Give it a name (lowercase letters, digits and hyphens) and tap **Save and use**. It then sits with
+the built-in themes in the theme strip and in `theme <name>`. Tap it under **Your themes** to change
+or delete it. A light background works too: the status bar icons turn dark. Your themes are kept in
+[backups](/guides/backup/).
 
 ## Fonts
 
@@ -88,7 +110,7 @@ with the text above them.
 grouped lists: switches, connected button groups, sliders and theme preview cards. A search box at
 the top finds any setting. The pages:
 
-- **Look & feel**: theme, font, the phone's font, text size, full screen, settings colours.
+- **Look & feel**: theme, font, the phone's font, text size, full screen, and your own themes.
 - **Home screen**: clock, header items, widgets.
 - **Log**: times, dimming, spacing, line height, how long to keep the log.
 - **Feeds**: feed lines in the log, read / unread, refreshing.

@@ -9,7 +9,6 @@ import com.mtwabpin.kolahal.terminal.Screen
 /** Human titles for settings; the description comes from the key's help text. */
 internal val TITLES = mapOf(
     "theme.name" to "Theme",
-    "theme.settings-colors" to "Settings colours",
     "screen.bars" to "Full screen",
     "font.family" to "Font",
     "font.sans" to "Phone's font",
@@ -27,9 +26,7 @@ internal val TITLES = mapOf(
     "header.todo" to "Open todos",
     "header.status" to "Script status lines",
     "header.autohide" to "Shrink while using the log",
-    "widgets.home" to "Widgets on home",
     "widgets.page" to "Widgets page (swipe sideways)",
-    "widgets.height" to "Widget area height (dp)",
     "log.time" to "Times",
     "log.dim" to "Dim older output",
     "log.spacing" to "Space between output groups (dp)",
@@ -84,7 +81,6 @@ internal val PEEK_SLIDERS: Map<String, Boolean> = mapOf(
     Keys.LOG_LINE_HEIGHT.key to false,
     Keys.LOG_SPACING.key to false,
     Keys.SELECTOR_HEIGHT.key to false,
-    Keys.WIDGETS_HEIGHT.key to false,
     Keys.KEYBAR_HEIGHT.key to true,
     Keys.PROMPT_HEIGHT_TYPING.key to true,
     Keys.SUGGESTIONS.key to true,
@@ -111,7 +107,6 @@ private val SHOWN_WHEN: Map<ConfigKey<*>, (Config) -> Boolean> = run {
         Keys.KEYBAR2 to on(Keys.KEYBAR_SHOW),
         Keys.SELECTOR_HANDLE to on(Keys.SELECTOR_RAIL),
         Keys.SELECTOR_HEIGHT to on(Keys.SELECTOR_RAIL),
-        Keys.WIDGETS_HEIGHT to on(Keys.WIDGETS_HOME),
         Keys.FEEDS_LOG_LINES to on(Keys.FEEDS_LOG),
         Keys.FEEDS_READ_SHOWN to on(Keys.FEEDS_LOG),
     )
@@ -141,7 +136,6 @@ private val CATEGORIES = listOf(
         listOf(
             "Terminal" to listOf(Keys.THEME, Keys.FONT, Keys.FONT_SANS, Keys.FONT_SIZE),
             "Screen" to listOf(Keys.STATUS_BAR),
-            "Settings pages" to listOf(Keys.GUI_COLORS),
         ),
     ),
     Category(
@@ -153,7 +147,7 @@ private val CATEGORIES = listOf(
                 Keys.HEADER_PROFILES, Keys.HEADER_MEDIA, Keys.HEADER_TODO, Keys.HEADER_STATUS,
             ),
             "Behaviour" to listOf(Keys.HEADER_AUTOHIDE),
-            "Widgets" to listOf(Keys.WIDGETS_PAGE, Keys.WIDGETS_HOME, Keys.WIDGETS_HEIGHT),
+            "Widgets" to listOf(Keys.WIDGETS_PAGE),
         ),
         manage = Triple("Arrange widgets", "Add, resize and reorder widgets", Screen.WIDGETS),
     ),

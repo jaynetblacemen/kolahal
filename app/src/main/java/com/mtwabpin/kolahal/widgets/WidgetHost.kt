@@ -58,7 +58,12 @@ class WidgetHost private constructor(context: Context) {
         }
     }
 
-    private val _widgets = MutableStateFlow(WidgetCodec.decode(prefs.getString(KEY, null)))
+    private val _widgets = MutableStateFlow(
+        WidgetCodec.decode(prefs.getString(KEY, null)).let { saved ->
+            // Widgets placed on home before 0.3.1 move onto the page, once.
+            WidgetOrder.onePage(saved).also { if (it != saved) prefs.edit { putString(KEY, WidgetCodec.encode(it)) } }
+        },
+    )
     /** Every placed widget, pending re-adds included. */
     val widgets: StateFlow<List<PlacedWidget>> = _widgets.asStateFlow()
 
@@ -69,9 +74,6 @@ class WidgetHost private constructor(context: Context) {
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     /** Short results ("added Clock", errors) for the Widgets page snackbar. */
     val messages: SharedFlow<String> = _messages.asSharedFlow()
-
-    /** Where the next widget from the picker goes (`widget add home` sets it). */
-    @Volatile var addLocation: String = WidgetLocation.PANEL
 
     /** Ids allocated by a bind/configure flow that is still running; [prune] leaves them alone. */
     private val inFlight = HashSet<Int>()
@@ -110,9 +112,9 @@ class WidgetHost private constructor(context: Context) {
 
     /**
      * Records a bound (and configured) widget. [replacing] is the key of a pending entry it
-     * restores: that entry's height, order and location carry over.
+     * restores: that entry's height and order carry over.
      */
-    fun place(id: Int, info: AppWidgetProviderInfo, location: String, replacing: String? = null) {
+    fun place(id: Int, info: AppWidgetProviderInfo, replacing: String? = null) {
         synchronized(inFlight) { inFlight -= id }
         update { all ->
             val old = replacing?.let { key -> all.firstOrNull { it.key == key } }
@@ -121,8 +123,7 @@ class WidgetHost private constructor(context: Context) {
                 provider = info.provider.flattenToShortString(),
                 profileSerial = serialOf(info.profile),
                 heightDp = old?.heightDp?.coerceAtLeast(minHeightDp(info)) ?: defaultHeightDp(info),
-                order = old?.order ?: WidgetOrder.nextOrder(all.filter { it.location == location }),
-                location = old?.location ?: location,
+                order = old?.order ?: WidgetOrder.nextOrder(all),
             )
             all.filterNot { it.key == old?.key } + placed
         }
@@ -139,7 +140,6 @@ class WidgetHost private constructor(context: Context) {
 
     fun move(key: String, direction: Int) = update { WidgetOrder.move(it, key, direction) }
 
-    fun setLocation(key: String, location: String) = update { WidgetOrder.relocate(it, key, location) }
 
     fun resize(key: String, deltaDp: Int) {
         val w = _widgets.value.firstOrNull { it.key == key } ?: return
@@ -248,14 +248,14 @@ class WidgetHost private constructor(context: Context) {
 
     // ---- backup ---------------------------------------------------------------------------
 
-    /** For Backup: provider, profile serial, height, location and order of every placed widget. */
+    /** For Backup: provider, profile serial, height and order of every placed widget. */
     fun exportWidgets(): List<Map<String, Any?>> = WidgetCodec.export(_widgets.value)
 
     /**
      * For Backup: widget ids can't be restored, so imported entries become "pending re-add"
      * rows on the Widgets page, each with a one-tap "Add again".
      */
-    fun importWidgets(list: List<Map<String, Any?>>) = update { WidgetCodec.mergePending(it, WidgetCodec.fromExport(list)) }
+    fun importWidgets(list: List<Map<String, Any?>>) = update { WidgetCodec.mergePending(it, WidgetOrder.onePage(WidgetCodec.fromExport(list))) }
 
     companion object {
         /** "KO". */
@@ -271,19 +271,18 @@ class WidgetHost private constructor(context: Context) {
     }
 }
 
-/** `widgets ls`: one (text, detail) pair per widget, home ones first. */
+/** `widgets ls`: one (text, detail) pair per widget, in page order, pending re-adds last. */
 fun WidgetHost.listing(context: Context): List<Pair<String, String>> {
     val all = widgets.value
-    val ordered = WidgetOrder.inLocation(all, WidgetLocation.HOME) + WidgetOrder.inLocation(all, WidgetLocation.PANEL) +
-        WidgetOrder.sorted(all.filter { it.pending })
+    val ordered = WidgetOrder.inLocation(all, WidgetLocation.PANEL) + WidgetOrder.sorted(all.filter { it.pending })
     return ordered.mapIndexed { i, w ->
         val label = w.id?.let { info(it) }?.loadLabel(context.packageManager) ?: w.provider.substringAfterLast('.')
         val state = when {
             w.pending -> "pending re-add"
-            isPaused(w.profileSerial) -> "${w.location} · paused"
-            else -> w.location
+            isPaused(w.profileSerial) -> "paused"
+            else -> null
         }
-        "${i + 1}. $label" to "$state · ${w.heightDp}dp · ${w.packageName}"
+        "${i + 1}. $label" to listOfNotNull(state, "${w.heightDp}dp", w.packageName).joinToString(" · ")
     }
 }
 

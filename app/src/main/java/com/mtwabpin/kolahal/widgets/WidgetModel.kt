@@ -5,12 +5,12 @@ package com.mtwabpin.kolahal.widgets
  * tested. [WidgetHost] owns the Android side.
  */
 object WidgetLocation {
-    /** The Widgets page only. */
+    /** The widgets page: where every widget lives. */
     const val PANEL = "panel"
-    /** Also shown under the terminal header. */
-    const val HOME = "home"
+    /** Under the terminal header, before 0.3.1. Such entries move onto the page ([WidgetOrder.onePage]). */
+    const val OLD_HOME = "home"
 
-    fun of(raw: Any?): String = if (raw?.toString()?.lowercase() == HOME) HOME else PANEL
+    fun of(raw: Any?): String = if (raw?.toString()?.lowercase() == OLD_HOME) OLD_HOME else PANEL
 }
 
 /**
@@ -26,7 +26,6 @@ data class PlacedWidget(
     val location: String = WidgetLocation.PANEL,
 ) {
     val pending: Boolean get() = id == null
-    val onHome: Boolean get() = location == WidgetLocation.HOME
     /** Stable key for lists: the widget id, or provider + order for pending entries. */
     val key: String get() = id?.let { "w$it" } ?: "p:$provider:$profileSerial:$location:$order"
     /** "com.example/.Clock" -> "com.example". */
@@ -89,10 +88,15 @@ object WidgetOrder {
         return all.map { w -> renumbered[w.key]?.let { w.copy(order = it) } ?: w }
     }
 
-    /** Moves a widget to another location, at the end of it. */
-    fun relocate(all: List<PlacedWidget>, key: String, location: String): List<PlacedWidget> {
-        val next = nextOrder(all.filter { it.location == location })
-        return all.map { if (it.key == key && it.location != location) it.copy(location = location, order = next) else it }
+    /**
+     * Everything on the widgets page: widgets placed on home before 0.3.1 follow the page's own, in
+     * their order, and the page is renumbered 0..n-1.
+     */
+    fun onePage(all: List<PlacedWidget>): List<PlacedWidget> {
+        if (all.all { it.location == WidgetLocation.PANEL }) return all
+        val placed = inLocation(all, WidgetLocation.PANEL) + inLocation(all, WidgetLocation.OLD_HOME)
+        val order = placed.mapIndexed { i, w -> w.key to i }.toMap()
+        return all.map { w -> w.copy(location = WidgetLocation.PANEL, order = order[w.key] ?: w.order) }
     }
 }
 

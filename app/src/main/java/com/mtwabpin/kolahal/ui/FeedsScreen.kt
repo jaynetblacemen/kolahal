@@ -51,7 +51,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -75,7 +74,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
-import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.feeds.FeedInfo
 import com.mtwabpin.kolahal.feeds.FeedItem
 import com.mtwabpin.kolahal.feeds.FeedRepository
@@ -114,8 +112,6 @@ fun FeedsScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
     val context = LocalContext.current
     val repo = remember { FeedRepository.get(context) }
     val repoVersion by repo.version.collectAsStateWithLifecycle()
-    val configVersion = vm.config.version.collectAsStateWithLifecycle()
-    val useSystemColors by remember { derivedStateOf { configVersion.value; vm.config[Keys.GUI_COLORS] == "system" } }
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
 
@@ -153,7 +149,7 @@ fun FeedsScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
         }
     }
 
-    GuiTheme(useSystemColors) {
+    GuiTheme {
         val open = openFeedId?.let { id -> feeds?.firstOrNull { it.id == id } }
         if (openFeedId != null && open != null) {
             FeedItemsPage(

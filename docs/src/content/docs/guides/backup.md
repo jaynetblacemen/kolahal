@@ -11,6 +11,7 @@ There are three ways to move your setup between phones.
 the system file picker. It contains:
 
 - settings you changed from the default,
+- [themes you made](/guides/themes-and-settings/#your-own-themes),
 - aliases,
 - hidden apps, custom labels and pinned favourites,
 - every script with its code, timers, notification flag and enabled state,

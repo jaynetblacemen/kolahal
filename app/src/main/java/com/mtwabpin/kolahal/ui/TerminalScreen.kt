@@ -276,8 +276,6 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 )
             }
         }
-        // widgets.home: widgets placed on home; they fold away with the header.
-        HomeWidgets(vm, visible = !headerCollapsed && !searching)
         val hiddenLines by vm.hiddenLines.collectAsStateWithLifecycle()
         // The log and the suggestions share what the header, key bar and prompt leave. Those are
         // measured first, so a long suggestion list can't push the prompt off the screen.
