@@ -47,6 +47,7 @@ cd kolahal
 
 ./gradlew :app:assembleRelease            # R8-optimised; signed with keystore.properties or the debug key
 ./gradlew :app:assembleLite               # the lite build (see above)
+./gradlew :app:bundlePlay                # the Google Play bundle: lite, and no call log
 ./gradlew :app:assembleDebug              # debug APK ("Kolahal debug", package suffix .debug)
 ./gradlew :app:testDebugUnitTest          # JVM tests
 ./gradlew :app:connectedDebugAndroidTest  # on-device tests (run them on an emulator)
@@ -61,17 +62,24 @@ one (it has a `.debug` package suffix), so you can keep both.
 
 ### Signing
 
-The APKs on the releases page are signed with the project's debug key, as there is no release key
-yet. Without configuration, your own release build is signed with your debug key, so it won't
-install over a downloaded one (uninstall first). To sign with your own key, create
-`keystore.properties` in the repository root (it is git-ignored) with these keys:
+The APKs on the releases page are signed with the project's key. Your own build is signed with your
+debug key unless you set up keys, so it won't install over a downloaded one (uninstall first).
+`tools/make-keys.sh` makes a release key, which signs the APKs, and an upload key, which signs the
+Google Play bundle, and lists both in `keystore.properties` (git-ignored):
 
 ```properties
 storeFile=/path/to/release.jks
 storePassword=…
 keyAlias=…
 keyPassword=…
+uploadStoreFile=/path/to/upload.jks
+uploadStorePassword=…
+uploadKeyAlias=…
+uploadKeyPassword=…
 ```
+
+Releases are built by GitHub Actions: pushing a version tag such as `v0.3.1` builds, signs and
+publishes them.
 
 ## Sideload the APK
 

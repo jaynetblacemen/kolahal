@@ -6,10 +6,26 @@ plugins {
     alias(libs.plugins.baselineprofile)
 }
 
-// Optional release signing: create keystore.properties (storeFile, storePassword, keyAlias, keyPassword).
+// Signing keys, from keystore.properties (git-ignored) or the environment (GitHub Actions):
+// - the release key signs the APKs on GitHub: storeFile, storePassword, keyAlias, keyPassword, or
+//   KOLAHAL_RELEASE_STORE_FILE, _STORE_PASSWORD, _KEY_ALIAS, _KEY_PASSWORD;
+// - the upload key signs the bundle for Google Play: uploadStoreFile… or KOLAHAL_UPLOAD_….
+// tools/make-keys.sh makes both.
 val keystoreProps = Properties().apply {
     rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }
+
+/** File, store password, alias and key password of a key, or null when any is missing. */
+fun signingKey(prefix: String, env: String): List<String>? {
+    val values = listOf("storeFile", "storePassword", "keyAlias", "keyPassword").map { name ->
+        val prop = if (prefix.isEmpty()) name else prefix + name.replaceFirstChar(Char::uppercase)
+        val variable = "KOLAHAL_${env}_" + name.replace(Regex("([A-Z])"), "_$1").uppercase()
+        keystoreProps.getProperty(prop) ?: System.getenv(variable)?.takeIf { it.isNotEmpty() }
+    }
+    return if (values.all { it != null }) values.map { it!! } else null
+}
+val releaseKey = signingKey("", "RELEASE")
+val uploadKey = signingKey("upload", "UPLOAD")
 
 android {
     namespace = "com.mtwabpin.kolahal"
@@ -22,18 +38,28 @@ android {
         versionCode = 8
         versionName = "0.3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        // The accessibility service (double-tap / `lock`) and notification listener are in the manifest (see lite).
+        // The accessibility service (double-tap / `lock`), notification listener and call log are in
+        // the manifest (see lite and play).
         buildConfigField("boolean", "LOCK_SERVICE", "true")
         buildConfigField("boolean", "NOTIFICATION_ACCESS", "true")
+        buildConfigField("boolean", "CALL_LOG", "true")
     }
 
     signingConfigs {
-        if (keystoreProps.isNotEmpty()) {
+        releaseKey?.let { (file, storePass, alias, keyPass) ->
             create("release") {
-                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
-                storePassword = keystoreProps.getProperty("storePassword")
-                keyAlias = keystoreProps.getProperty("keyAlias")
-                keyPassword = keystoreProps.getProperty("keyPassword")
+                storeFile = rootProject.file(file)
+                storePassword = storePass
+                keyAlias = alias
+                keyPassword = keyPass
+            }
+        }
+        uploadKey?.let { (file, storePass, alias, keyPass) ->
+            create("upload") {
+                storeFile = rootProject.file(file)
+                storePassword = storePass
+                keyAlias = alias
+                keyPassword = keyPass
             }
         }
     }
@@ -64,10 +90,22 @@ android {
             buildConfigField("boolean", "LOCK_SERVICE", "false")
             buildConfigField("boolean", "NOTIFICATION_ACCESS", "false")
         }
+        // Google Play: the lite build without the call log too (src/play removes it), which Play
+        // allows only to phone, SMS and assistant apps. `bundlePlay` signs it with the upload key;
+        // without one the bundle stays unsigned, never debug-signed (Play refuses those).
+        create("play") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            signingConfig = signingConfigs.findByName("upload")
+            buildConfigField("boolean", "LOCK_SERVICE", "false")
+            buildConfigField("boolean", "NOTIFICATION_ACCESS", "false")
+            buildConfigField("boolean", "CALL_LOG", "false")
+        }
     }
 
     // The same startup profile as release.
     sourceSets.getByName("lite").baselineProfiles.srcDir("src/release/generated/baselineProfiles")
+    sourceSets.getByName("play").baselineProfiles.srcDir("src/release/generated/baselineProfiles")
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

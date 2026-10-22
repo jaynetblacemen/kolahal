@@ -129,7 +129,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "system" -> startSettings(Settings.ACTION_SETTINGS)
                 "home" -> startSettings(Settings.ACTION_HOME_SETTINGS)
                 "lock", "accessibility" -> if (!com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE) {
-                    error("The lite build has no accessibility service, so it can't lock the screen")
+                    error("This build has no accessibility service, so it can't lock the screen")
                 } else if (name == "accessibility") {
                     startActivity(com.mtwabpin.kolahal.gesture.LockService.settingsIntent())
                 } else if (!com.mtwabpin.kolahal.gesture.LockService.lock()) {

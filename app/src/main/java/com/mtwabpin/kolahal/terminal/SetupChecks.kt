@@ -80,7 +80,7 @@ object SetupChecks {
                 com.mtwabpin.kolahal.productivity.Agenda.hasPermission(context),
                 "agenda --allow",
             ),
-            SetupCheck(
+            if (!com.mtwabpin.kolahal.BuildConfig.CALL_LOG) null else SetupCheck(
                 "Call log (calls in the log)",
                 "Optional: incoming, outgoing and missed calls appear in the log",
                 com.mtwabpin.kolahal.calls.CallEvents.hasPermission(context),

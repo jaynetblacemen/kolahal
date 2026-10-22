@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The play build type: what Google Play's policy rules out, or would need declarations, videos and
+  extra consent screens for, is left out. No accessibility service (Play doesn't count a launcher
+  as an accessibility tool), no notification listener, and no call log (Play allows it only to
+  phone, SMS and assistant apps). The GitHub builds keep all three.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.READ_CALL_LOG" tools:node="remove" />
+
+    <application>
+        <service
+            android:name=".gesture.LockService"
+            tools:node="remove" />
+        <service
+            android:name=".notifications.KolahalNotificationListener"
+            tools:node="remove" />
+    </application>
+</manifest>

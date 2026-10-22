@@ -342,7 +342,10 @@ kolahal/
 ├── docs/                       documentation site (Astro + Starlight, pnpm); see docs/README.md
 ├── gradle/libs.versions.toml   every dependency version in one place
 ├── tools/coverage.pl           test coverage by package, for the table under Tests
-├── .github/workflows/docs.yml  builds and publishes the docs to GitHub Pages
+├── tools/make-keys.sh          the release and upload keys, and the GitHub secrets for them
+├── tools/check-play-build.sh   checks the Play build leaves out what Play's policy rules out
+├── releases/                   release notes, one file per version (the Release workflow publishes them)
+├── .github/workflows/          build.yml (every push), release.yml (version tags), docs.yml (the site)
 └── README.org                  this file
 #+end_example
 
@@ -426,6 +429,7 @@ A backup (=Settings → Export everything=) bundles all of the above into one JS
 ./gradlew :app:assembleDebug              # debug APK ("Kolahal debug", package suffix .debug)
 ./gradlew :app:assembleRelease            # R8-optimised; signed with keystore.properties or the debug key
 ./gradlew :app:assembleLite               # release without accessibility and notification access (see below)
+./gradlew :app:bundlePlay                # the Google Play bundle: the lite build without the call log too
 ./gradlew :app:testDebugUnitTest          # JVM tests
 ./gradlew :app:connectedDebugAndroidTest  # engines, sandbox, timeouts, :script process, commands
 #+end_src
@@ -437,8 +441,17 @@ A backup (=Settings → Export everything=) bundles all of the above into one JS
   =:baselineprofile= module (cold start with notification access on, typing, help/apps output,
   log scroll, settings). Regenerate with only an emulator attached (it reinstalls the app and
   drives every connected device): =./gradlew :app:generateReleaseBaselineProfile=.
-- Signing :: Optional =keystore.properties= keys: =storeFile=, =storePassword=, =keyAlias=,
-  =keyPassword=.
+- Signing :: =keystore.properties= (git-ignored) names the release key, which signs the APKs
+  (=storeFile=, =storePassword=, =keyAlias=, =keyPassword=), and the upload key, which signs the Play
+  bundle (=uploadStoreFile=, =uploadStorePassword=, =uploadKeyAlias=, =uploadKeyPassword=); the
+  =KOLAHAL_RELEASE_*= and =KOLAHAL_UPLOAD_*= environment variables do the same in CI.
+  =tools/make-keys.sh= makes both keys and the file; =tools/make-keys.sh --secrets= stores them for
+  GitHub Actions. Without a release key the APKs are signed with the debug key; without an upload
+  key the bundle stays unsigned.
+- GitHub Actions :: =build.yml= runs the unit tests and builds all three on every push.
+  =release.yml= runs on a version tag (=v0.3.1=): it checks the tag against =versionName=, builds
+  and signs, checks the signatures, publishes the GitHub release with =releases/0.3.1.md= as its
+  notes, and keeps the Play bundle with the run for Play Console.
 - Use the release build day to day :: Debug Compose builds are noticeably slower to scroll.
 - Compile after sideloading :: A sideloaded APK runs without ahead-of-time compilation until Android
   compiles it during idle maintenance, so it can feel laggy at first. To compile it immediately, run

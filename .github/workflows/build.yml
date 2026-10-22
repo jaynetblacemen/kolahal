@@ -1,0 +1,60 @@
+name: Build
+
+# Every push and pull request: the unit tests and all three builds (the GitHub APKs, full and lite,
+# and the Google Play bundle). No keys here: the APKs are signed with the runner's own debug key
+# and the bundle is left unsigned, so these are for checking, not for installing over a release.
+on:
+  push:
+    branches: ['**']
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '**.org'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      # Also checks the Gradle wrapper is the published one.
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests and builds
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleRelease :app:assembleLite :app:bundlePlay :app:assemblePlay
+
+      - name: The Play build leaves out what Play's policy rules out
+        run: tools/check-play-build.sh
+
+      - name: Keep the test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: app/build/reports/tests/
+          retention-days: 14
+
+      - name: Keep the builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: kolahal-${{ github.sha }}
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/apk/lite/app-lite.apk
+            app/build/outputs/bundle/play/app-play.aab
+          retention-days: 14

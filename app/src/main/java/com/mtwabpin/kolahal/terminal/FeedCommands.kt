@@ -140,7 +140,7 @@ class FeedCommands(
         val actions = com.mtwabpin.kolahal.notifications.NotificationActions
         val store = com.mtwabpin.kolahal.notifications.NotificationStore
         val prefs = com.mtwabpin.kolahal.notifications.NotifPrefs.get(context)
-        if (!com.mtwabpin.kolahal.BuildConfig.NOTIFICATION_ACCESS) return error("The lite build has no notification access, so notifs isn't available")
+        if (!com.mtwabpin.kolahal.BuildConfig.NOTIFICATION_ACCESS) return error("This build has no notification access, so notifs isn't available")
         if (!actions.isEnabled(context) && args.firstOrNull() != "enable") {
             logs.add(LogKind.ERROR, "Notification access is off — tap to enable it", ctx = LogContext.of(LogContext.RUN to "notifs enable"))
             return

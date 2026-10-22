@@ -26,6 +26,7 @@ class PeopleCommands(private val context: Context, private val ui: TerminalUi) {
 
     /** `calls [n]`: the newest calls from Android's call log, in the same form as the live lines. */
     fun calls(args: List<String>) {
+        if (!com.mtwabpin.kolahal.BuildConfig.CALL_LOG) return error("This build can't read the call log, so calls isn't available")
         when (args.firstOrNull()) {
             "--allow" -> return if (CallEvents.hasPermission(context)) info("Call log is allowed") else ui.requestCallLogPermission()
             "--settings" -> return startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
