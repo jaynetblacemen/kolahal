@@ -42,7 +42,7 @@ export default defineConfig({
 			logo: { src: './src/assets/logo.svg', replacesTitle: false },
 			favicon: '/favicon.svg',
 			social: [{ icon: 'github', label: 'GitHub', href: REPO }],
-			editLink: { baseUrl: `${REPO}/edit/main/docs/` },
+			editLink: { baseUrl: `${REPO}/edit/master/site/` },
 			customCss: [
 				'@fontsource/jetbrains-mono/400.css',
 				'@fontsource/jetbrains-mono/600.css',

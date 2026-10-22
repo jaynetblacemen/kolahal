@@ -16,10 +16,10 @@ keystore.properties
 *.keystore
 .claude/worktrees/
 
-# docs site
-docs/node_modules/
-docs/dist/
-docs/.astro/
+# the website
+site/node_modules/
+site/dist/
+site/.astro/
 
 # Emacs backup files
 *~

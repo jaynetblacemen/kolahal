@@ -1,13 +1,11 @@
-name: Docs
+name: Website
 
 on:
   push:
     branches: [main, master]
     paths:
-      - 'docs/**'
-      - '!docs/release/**'
-      - '!docs/*.org'
-      - '.github/workflows/docs.yml'
+      - 'site/**'
+      - '.github/workflows/site.yml'
   workflow_dispatch:
 
 permissions:
@@ -26,31 +24,31 @@ jobs:
       ASTRO_TELEMETRY_DISABLED: 1
     defaults:
       run:
-        working-directory: docs
+        working-directory: site
     steps:
       - uses: actions/checkout@v4
 
-      # Installs the pnpm version pinned by packageManager in docs/package.json.
+      # Installs the pnpm version pinned by packageManager in site/package.json.
       - uses: pnpm/action-setup@v4
         with:
-          package_json_file: docs/package.json
+          package_json_file: site/package.json
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: docs/pnpm-lock.yaml
+          cache-dependency-path: site/pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
 
-      # Builds the site and checks every internal link (see docs/scripts/check-links.mjs).
+      # Builds the site and checks every internal link (see site/scripts/check-links.mjs).
       - run: pnpm build
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/dist
+          path: site/dist
 
   deploy:
     needs: build

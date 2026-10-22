@@ -1,11 +1,13 @@
-# Kolahal docs
+# Kolahal website
 
-The documentation site for Kolahal, built with [Astro](https://astro.build) and
+The website and user guide for Kolahal, built with [Astro](https://astro.build) and
 [Starlight](https://starlight.astro.build). It is published to GitHub Pages by
-`.github/workflows/docs.yml` on every push to `main` that touches `docs/`.
+`.github/workflows/site.yml` on every push to `master` that touches `site/`. (The maintainer's
+own notes, on the code and on releases, are in `docs/` at the repository root; they aren't part of
+the site.)
 
 ```sh
-cd docs
+cd site
 pnpm install
 pnpm dev          # http://localhost:4321/kolahal/
 pnpm build        # static site in dist/, then checks every internal link
@@ -15,9 +17,7 @@ pnpm preview      # serve dist/
 ## Layout
 
 ```
-docs/
-├── release/                maintainer notes on building, signing and publishing (not part of the site)
-├── codebase-guide.org      a guided tour of the app's code (not part of the site)
+site/
 ├── astro.config.mjs        site URL, base path, sidebar, theme settings
 ├── scripts/check-links.mjs post-build link and anchor checker (part of pnpm build)
 ├── public/favicon.svg

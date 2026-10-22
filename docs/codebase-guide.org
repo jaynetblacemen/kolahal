@@ -639,7 +639,8 @@ Outside =main=:
 | =app/src/release/generated/=       | baseline profiles (pre-compiled start-up code)                                   |
 | =baselineprofile/=                 | the module that generates those profiles                                         |
 | =app/src/main/assets/library/=     | the ready-made scripts of the script library, listed in =index.json=             |
-| =docs/=                            | the user documentation site (Astro + Starlight); this file sits beside it        |
+| =site/=                            | the website and user guide (Astro + Starlight)                                  |
+| =docs/=                            | notes for the maintainer: this file, and =release/= on building and publishing   |
 
 * Part 6: Where Kolahal bends textbook MVVM (and why)
 
@@ -747,7 +748,7 @@ Add =hello [name]=, which prints =Hello, name!=.
    =launch.instant all=, does typing =hello= run it before you get the chance to add a name?
    Check your answer against =InstantRun.canRun=, and then think about what changes if its
    usage line were just ="hello"=.
-4. User-facing commands are documented in =docs/src/content/docs/reference/commands.md=.
+4. User-facing commands are documented in =site/src/content/docs/reference/commands.md=.
 
 Then find a command that /opens a page/ (=settings=) and one that /asks a permission/
 (=contacts=), and see how each reaches the UI through =TerminalUi=.

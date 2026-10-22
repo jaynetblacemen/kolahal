@@ -11,12 +11,12 @@ Kolahal is developed with AI assistance. The developers review every change exce
 * Documentation
 
 The full documentation (guides, command and config reference, scripting API) is at
-https://mtwabpin.github.io/kolahal/. Its source is in =docs/= (Astro + Starlight), deployed to
-GitHub Pages by =.github/workflows/docs.yml= on pushes to =main= that touch =docs/=. To work on it
+https://mtwabpin.github.io/kolahal/. Its source is in =site/= (Astro + Starlight), deployed to
+GitHub Pages by =.github/workflows/site.yml= on pushes to =master= that touch =site/=. To work on it
 locally:
 
 #+begin_src sh
-cd docs && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
+cd site && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
 #+end_src
 
 * Features
@@ -339,13 +339,13 @@ kolahal/
 │       ├── test/               JVM unit tests (pure logic: parsing, ranking, layout math, formats)
 │       └── androidTest/        on-device tests (script engines, sandbox, commands, backup, home and settings screens)
 ├── baselineprofile/            macrobenchmark module that generates the baseline profile
-├── docs/                       documentation site (Astro + Starlight, pnpm); see docs/README.md
+├── docs/                       notes for the maintainer: codebase-guide.org, and release/ on building and publishing
 ├── gradle/libs.versions.toml   every dependency version in one place
+├── site/                       the website and user guide (Astro + Starlight, pnpm); see site/README.md
 ├── tools/coverage.pl           test coverage by package, for the table under Tests
 ├── tools/make-keys.sh          the release and upload keys, and the GitHub secrets for them
 ├── tools/check-play-build.sh   checks the Play build leaves out what Play's policy rules out
-├── docs/release/               how releases are built, signed and published; notes/ holds each version's notes
-├── .github/workflows/          build.yml (every push), release.yml (version tags), docs.yml (the site)
+├── .github/workflows/          build.yml (every push), release.yml (version tags), site.yml (the website)
 └── README.org                  this file
 #+end_example
 
@@ -417,7 +417,7 @@ A backup (=Settings → Export everything=) bundles all of the above into one JS
   automatically; anything smarter goes in =Completer.argSuggestions=.
 - New setting :: define it in =Keys= (=data/Config.kt=) and add it to =Keys.ALL=. Put it in a page in
   =ui/SettingsCatalog.kt= (=CATEGORIES=) with a title in =TITLES=; unplaced keys appear under "More".
-  Document it in =docs/src/content/docs/reference/config.md=.
+  Document it in =site/src/content/docs/reference/config.md=.
 - New script API :: add it to =HostApi=, bind it in both =LuaEngine= and =JsEngine=, and describe it in
   =ApiDocs= (=ApiDocsTest= checks that the names match).
 - Log line behaviour :: the tap and long-press logic is in =LogLineActions.onTap= / =actionsFor=,

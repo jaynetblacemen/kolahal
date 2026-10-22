@@ -2,8 +2,8 @@
 #+STARTUP: showall
 
 How Kolahal is built, signed and published, and why it is set up this way. Start here; the
-details are in the files beside this one. (This folder is for the maintainer: the docs website is
-built from =docs/src/= only.)
+details are in the files beside this one. (This folder is for the maintainer; the website is in
+=site/=.)
 
 * The files here
 
@@ -60,14 +60,14 @@ version bump + notes/X.Y.Z.md ── commit, push master ── push tag vX.Y.Z
      GitHub release: kolahal-X.Y.Z.apk,             kolahal-X.Y.Z-play.aab, kept
      kolahal-X.Y.Z-lite.apk, the mapping zip        with the run for 90 days
                            │                                    │
-     the docs site's download buttons               you upload it in Play Console
-     point at these (docs/src/release.ts)           (internal → closed → production)
+     the website's download buttons                 you upload it in Play Console
+     point at these (site/src/release.ts)           (internal → closed → production)
 #+end_example
 
 * Making a release
 
 1. Bump =versionCode= (by one) and =versionName= in =app/build.gradle.kts=, and =version= in
-   =docs/package.json=. The website's download buttons read that version, so they point at the
+   =site/package.json=. The website's download buttons read that version, so they point at the
    new APKs as soon as the site deploys: tag right after pushing.
 2. Write =notes/X.Y.Z.md= (see [[file:notes/README.md][notes/README.md]]) and, for Play, =notes/X.Y.Z-play.txt=.
 3. Test on the computer: the unit tests, the on-device tests on the emulator (never on a phone
@@ -79,7 +79,7 @@ version bump + notes/X.Y.Z.md ── commit, push master ── push tag vX.Y.Z
    the GitHub release by itself.
 6. Google Play: download the bundle (=gh run download <run id> -n kolahal-X.Y.Z-play=), upload it
    in Play Console, and paste =notes/X.Y.Z-play.txt= as its release notes.
-7. Check the website deployed (the Docs workflow) and its download buttons work.
+7. Check the website deployed (the Website workflow) and its download buttons work.
 
 * History
 
