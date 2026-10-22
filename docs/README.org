@@ -4,6 +4,7 @@
 This folder is for whoever works on Kolahal, not for its users. Nothing here is published: the
 website and user guide are in =site/= (https://mtwabpin.github.io/kolahal/).
 
+- [[file:developing.org][developing.org]]: building, the architecture, the repository layout and the usual changes.
 - [[file:codebase-guide.org][codebase-guide.org]]: a guided tour of the app's code, how its parts fit together and why.
 - [[file:release/README.org][release/]]: how Kolahal is built, signed and published, on GitHub and Google Play.
   - [[file:release/signing.org][signing.org]]: the keys, and why there is more than one.
