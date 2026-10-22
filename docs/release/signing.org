@@ -46,7 +46,7 @@ tell builds apart: =apksigner verify --print-certs kolahal-X.Y.Z.apk= prints the
 | debug key (0.1.0 to 0.3.0)               | =af3bcfadc3a77c7a428693ff986a0e531f2160b4064704ea549f9d9ebbca1a6c= |
 
 To make the Release workflow refuse any APK not signed with the release key, store its
-fingerprint as a repository variable (not yet set on 22 October 2026):
+fingerprint as a repository variable (set on 22 October 2026):
 
 #+begin_src sh
 gh variable set RELEASE_CERT_SHA256 --body 21223ad4312a871e4a1dd16440efccac84f4660c56fa1e80467631062938e210
