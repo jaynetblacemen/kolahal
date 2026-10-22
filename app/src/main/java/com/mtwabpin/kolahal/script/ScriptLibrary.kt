@@ -86,4 +86,7 @@ class ScriptLibrary(private val context: Context) {
     private val prefs by lazy { context.getSharedPreferences("script_library", Context.MODE_PRIVATE) }
 
     private fun installedOriginal(name: String): String? = prefs.getString("installed:$name", null)
+
+    /** The script named [name] is no longer the library's copy (renamed or deleted). */
+    fun forget(name: String) = prefs.edit { remove("installed:$name") }
 }

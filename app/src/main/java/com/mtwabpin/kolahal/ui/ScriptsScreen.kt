@@ -72,11 +72,13 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -91,6 +93,7 @@ import com.mtwabpin.kolahal.script.ScriptAccess
 import com.mtwabpin.kolahal.script.ScriptCatalog
 import com.mtwabpin.kolahal.script.ScriptLibrary
 import com.mtwabpin.kolahal.script.ScriptMeta
+import com.mtwabpin.kolahal.script.ScriptNames
 import com.mtwabpin.kolahal.script.ScriptScheduler
 import com.mtwabpin.kolahal.terminal.CommandParsing
 import com.mtwabpin.kolahal.terminal.CommandProcessor
@@ -641,6 +644,7 @@ private fun ScriptSheet(
     val secretsSet by produceState(emptySet<String>(), s.code, s.name, secretsVersion) { value = withContext(Dispatchers.IO) { vm.secretsSet(s) } }
     var editingSecret by remember(s.id) { mutableStateOf<ScriptMeta.Secret?>(null) }
     val grants = remember(s.code, s.access) { s.grants }
+    var renaming by remember(s.id) { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -651,11 +655,17 @@ private fun ScriptSheet(
             Modifier.verticalScroll(rememberScrollState()).navigationBarsPadding()
                 .padding(start = 24.dp, end = 24.dp, bottom = 16.dp)
         ) {
-            Text(
-                "${s.name}.${s.lang.ext}",
-                style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Monospace),
-                color = scriptColor(s.name),
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "${s.name}.${s.lang.ext}",
+                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Monospace),
+                    color = scriptColor(s.name),
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                IconButton(onClick = { renaming = true }) {
+                    Icon(painterResource(R.drawable.ic_edit), contentDescription = "Rename", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             title?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
             Text(
                 listOfNotNull(if (s.lang == ScriptLang.LUA) "Lua" else "JavaScript", byLine, if (isCommand) "command" else null, desc)
@@ -795,6 +805,14 @@ private fun ScriptSheet(
         }
     }
 
+    if (renaming) {
+        val all by vm.scriptList.collectAsStateWithLifecycle()
+        RenameDialog(s, all.mapTo(HashSet()) { it.name }, onDismiss = { renaming = false }) { to ->
+            renaming = false
+            vm.renameScript(s, to)
+        }
+    }
+
     if (confirmReplace && lib != null) {
         AlertDialog(
             onDismissRequest = { confirmReplace = false },
@@ -921,6 +939,39 @@ private fun SecretRow(secret: ScriptMeta.Secret, isSet: Boolean, onClick: () -> 
             )
         }
     }
+}
+
+/** A new name for [s], from its sheet. */
+@Composable
+private fun RenameDialog(s: Script, existing: Set<String>, onDismiss: () -> Unit, onRename: (String) -> Unit) {
+    var name by remember(s.id) { mutableStateOf(TextFieldValue(s.name, TextRange(s.name.length))) }
+    val clean = name.text.trim().lowercase()
+    // The same checks as `script mv`, shown while typing.
+    val problem = if (clean.isEmpty() || clean == s.name) null else ScriptNames.invalid(clean) { it in existing }
+    val valid = clean.isNotEmpty() && clean != s.name && problem == null
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(painterResource(R.drawable.ic_edit), null) },
+        title = { Text("Rename ${s.name}.${s.lang.ext}") },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Name") },
+                suffix = { Text(".${s.lang.ext}") },
+                singleLine = true,
+                isError = problem != null,
+                supportingText = {
+                    Text(problem ?: "Its keys, timers and header line stay with it. A copy from the library or Get more scripts becomes yours, without their updates.")
+                },
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, capitalization = KeyboardCapitalization.None, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { if (valid) onRename(clean) }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = { TextButton(enabled = valid, onClick = { onRename(clean) }) { Text("Rename") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable

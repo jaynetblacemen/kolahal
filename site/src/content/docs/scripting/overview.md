@@ -288,6 +288,18 @@ In the terminal, `script get` lists them and `script get <name>` installs or upd
 is kept for an hour; `--refresh` reads it again, and `--replace` replaces a copy you edited. To
 share one of yours, see the repository's [contributing guide](https://github.com/mtwabpin/kolahal-scripts/blob/main/CONTRIBUTING.md).
 
+The scripts named `template-…` are starting points, with comments that explain each part: a
+command, a timer, an API key, an event, and one in JavaScript. Install one and
+[rename it](#renaming-a-script) to make it yours.
+
+## Renaming a script
+
+Tap the ✎ beside a script's name in its sheet (Scripts → tap the script), or run
+`script mv <name> <new-name>`. A command script then runs by its new name. Its timers, access
+switches, stored data, keys and header line stay with it. A script from the library or Get more
+scripts becomes yours: it no longer gets their updates, and the original can be installed again.
+Lines already in the log keep the old name.
+
 ## Moving scripts
 
 Scripts are part of the [backup file](/guides/backup/), and can be imported and exported as

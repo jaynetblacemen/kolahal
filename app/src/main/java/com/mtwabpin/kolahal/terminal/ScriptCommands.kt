@@ -195,10 +195,24 @@ class ScriptCommands(
                 logs.onStatusChanged()
                 info("Deleted ${s.name}")
             }
+            "mv", "rename" -> withScript(target) { s ->
+                val to = args.getOrNull(2)?.lowercase()?.removeSuffix(".${s.lang.ext}")
+                    ?: return error("Usage: script mv <name> <new-name>")
+                if (to == s.name) return info("${s.name} already has that name", scriptCtx(s))
+                ScriptNames.invalid(to) { scripts.byName(it) != null }?.let { return error(it) }
+                scripts.rename(s.id, to)
+                logs.onStatusChanged()
+                val renamed = scripts.byId(s.id) ?: return
+                info(
+                    "Renamed ${s.name}.${s.lang.ext} to ${renamed.name}.${renamed.lang.ext}" +
+                        if (ScriptMeta.isCommand(renamed.code)) " — run it as '${renamed.name}'" else "",
+                    scriptCtx(renamed),
+                )
+            }
             "cat", "show" -> withScript(target) { s ->
                 s.code.lines().forEachIndexed { i, l -> out("${(i + 1).toString().padStart(3)}  $l", LogContext.of(LogContext.COPY to s.code) + LogContext.ALIGNED) }
             }
-            else -> error("Usage: script [ls|new|edit|run|every|at|notify|on|off|get|access|allow|deny|secret|triggers|rm|cat] <name>")
+            else -> error("Usage: script [ls|new|edit|run|every|at|notify|on|off|get|access|allow|deny|secret|triggers|mv|rm|cat] <name>")
         }
     }
 
@@ -416,6 +430,6 @@ class ScriptCommands(
         }
 
         /** What follows `script`, for completion. */
-        val SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "get", "access", "allow", "deny", "secret", "triggers", "rm", "cat", "dir", "export", "import")
+        val SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "get", "access", "allow", "deny", "secret", "triggers", "mv", "rm", "cat", "dir", "export", "import")
     }
 }

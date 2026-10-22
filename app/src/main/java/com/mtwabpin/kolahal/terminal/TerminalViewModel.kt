@@ -41,6 +41,7 @@ import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.data.ScriptRepository
 import com.mtwabpin.kolahal.script.ScriptScheduler
+import com.mtwabpin.kolahal.script.ScriptNames
 import com.mtwabpin.kolahal.unlock.UnlockCounter
 import com.mtwabpin.kolahal.status.DeviceStatus
 import com.mtwabpin.kolahal.status.Status
@@ -907,6 +908,15 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun runScriptNow(s: Script) = io {
         ScriptScheduler.runNow(context, s)
         notice("Running ${s.name}…")
+    }
+
+    /** Renames [s] ([ScriptRepository.rename]); the sheet checks the name as it is typed. */
+    fun renameScript(s: Script, to: String) = io {
+        ScriptNames.invalid(to) { scripts.byName(it) != null }?.let { return@io notice(it, error = true) }
+        scripts.rename(s.id, to)
+        logs.onStatusChanged()
+        scriptCache.value = scripts.all()
+        notice("Renamed ${s.name}.${s.lang.ext} to $to.${s.lang.ext}")
     }
 
     fun deleteScript(s: Script) = io {

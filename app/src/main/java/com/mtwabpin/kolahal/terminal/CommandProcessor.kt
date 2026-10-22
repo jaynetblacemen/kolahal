@@ -518,7 +518,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("work", "work [on|off|status]", "Pause / resume the work profile"),
             CommandSpec("private", "private [on|off|status]", "Lock / unlock private space"),
             CommandSpec("unlocks", "unlocks [<days>]", "Unlock counts"),
-            CommandSpec("script", "script <sub> <name>", "Subcommands: ls lib install get new edit run every at notify on off access allow deny secret triggers rm cat dir export import"),
+            CommandSpec("script", "script <sub> <name>", "Subcommands: ls lib install get new edit run every at notify on off access allow deny secret triggers mv rm cat dir export import"),
             CommandSpec("=", "= <expr>", "Calculator · = 5 km in mi · = 72 f to c · = 100 usd in eur"),
             CommandSpec("lua", "lua <code>", "Evaluate Lua 5.4"),
             CommandSpec("js", "js <code>", "Evaluate JavaScript (QuickJS)"),

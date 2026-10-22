@@ -4,9 +4,14 @@ import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
+import androidx.core.database.sqlite.transaction
+import com.mtwabpin.kolahal.script.HostApi
 import com.mtwabpin.kolahal.script.ScriptAccess
+import com.mtwabpin.kolahal.script.ScriptCatalog
+import com.mtwabpin.kolahal.script.ScriptLibrary
 import com.mtwabpin.kolahal.script.ScriptMeta
 import com.mtwabpin.kolahal.script.ScriptScheduler
+import com.mtwabpin.kolahal.script.SecretStore
 
 enum class ScriptLang(val ext: String) {
     LUA("lua"),
@@ -125,9 +130,38 @@ class ScriptRepository private constructor(private val context: Context) {
         put("last_status", status)
     }
 
+    /**
+     * Renames a script; check the name first (`ScriptNames.invalid`). Its secrets and header line,
+     * kept by name, move with it. A copy from the library or Get more scripts becomes yours: it no
+     * longer takes their updates. Lines already in the log keep the old name.
+     */
+    fun rename(id: Long, to: String) {
+        val s = byId(id) ?: return
+        if (s.name == to) return
+        val w = db.writableDatabase
+        w.transaction {
+            update("scripts", ContentValues().apply { put("name", to) }, "id = ?", arrayOf(id.toString()))
+            delete("kv", "scope = ?", arrayOf(SecretStore.scope(to)))
+            update("kv", ContentValues().apply { put("scope", SecretStore.scope(to)) }, "scope = ?", arrayOf(SecretStore.scope(s.name)))
+            delete("kv", "scope = ? AND k = ?", arrayOf(HostApi.STATUS_SCOPE, to))
+            update("kv", ContentValues().apply { put("k", to) }, "scope = ? AND k = ?", arrayOf(HostApi.STATUS_SCOPE, s.name))
+        }
+        forgetOrigin(s.name)
+        version.incrementAndGet()
+    }
+
+    /** No longer the library's or Get more scripts' copy, for updates. */
+    private fun forgetOrigin(name: String) {
+        ScriptLibrary(context).forget(name)
+        ScriptCatalog(context).forget(name)
+    }
+
     fun delete(id: Long) {
         // Its secrets go with it.
-        byId(id)?.let { com.mtwabpin.kolahal.script.SecretStore(context).clear(it.name) }
+        byId(id)?.let {
+            SecretStore(context).clear(it.name)
+            forgetOrigin(it.name)
+        }
         db.writableDatabase.delete("scripts", "id = ?", arrayOf(id.toString()))
         db.writableDatabase.delete("kv", "scope = ?", arrayOf(scopeOf(id)))
         version.incrementAndGet()

@@ -150,6 +150,9 @@ class ScriptCatalog(private val context: Context) {
         }
     }
 
+    /** The script named [name] is no longer the one installed from here (renamed or deleted). */
+    fun forget(name: String) = prefs.edit { remove("installed:$name") }
+
     private class Origin(val sha256: String, val code: String)
 
     /** What was installed from here under [name], if anything. */

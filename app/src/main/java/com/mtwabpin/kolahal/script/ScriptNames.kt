@@ -18,4 +18,14 @@ object ScriptNames {
         val app = AppRepository.get(context).apps.value.firstOrNull { it.label.lowercase().replace(PUNCTUATION, "") == bare }
         return app?.let { "'$name' is the name of the app ${it.label}" }
     }
+
+    private val NAME = Regex("^[a-z0-9_-]{1,40}$")
+
+    /** Why [name] can't name a script of yours, or null; [taken]: whether a script already has it. */
+    fun invalid(name: String, taken: (String) -> Boolean): String? = when {
+        !NAME.matches(name) -> "Script names: lowercase letters, digits, - and _, up to 40"
+        name in CommandProcessor.COMMAND_NAMES -> "'$name' is a built-in command"
+        taken(name) -> "There is already a script named $name"
+        else -> null
+    }
 }

@@ -154,6 +154,7 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `script access <name>` | each [access switch](/scripting/overview/#switching-access-off), on or off; tap one to change it |
 | `script allow\|deny <name> <what…>` | switch access on or off: `internet`, `header`, an `@uses` item, an `@on` event, or `notify` |
 | `script secret <name> [<NAME> [--clear]]` | its [secrets](/scripting/overview/#api-keys-and-other-secrets), set or not; with a name, a box to set it (`--clear` forgets it) |
+| `script mv <name> <new-name>` | [rename it](/scripting/overview/#renaming-a-script) (alias `rename`) |
 | `script rm <name>` | delete it with its timers, data and status line (alias `delete`) |
 | `script dir` | pick a sync folder |
 | `script export` | write every script plus `kolahal.json` to the folder |
