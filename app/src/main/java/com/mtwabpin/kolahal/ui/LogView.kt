@@ -29,6 +29,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,8 +91,18 @@ import java.util.Locale
 enum class TimeMode { OFF, COMMANDS, ALL }
 
 /** What the long-press sheet shows: the line (for context) and its actions. */
-/** [systemFont]: the system's font instead of the terminal's (quick actions, which reads as a menu). */
-data class ActionMenu(val title: String, val actions: List<LogAction>, val entryId: Long?, val systemFont: Boolean = false)
+/**
+ * A long-press menu. Its actions are in the system's font, as a menu; its [title] (the line pressed)
+ * in the terminal's, as in the log, unless [systemFont] (quick actions, whose title is a heading).
+ * [url]: the line's link, shown under the title so you see where Open link goes.
+ */
+data class ActionMenu(
+    val title: String,
+    val actions: List<LogAction>,
+    val entryId: Long?,
+    val systemFont: Boolean = false,
+    val url: String? = null,
+)
 
 @Composable
 fun DayDivider(row: LogRow.Day) {
@@ -432,19 +444,29 @@ fun ActionSheet(menu: ActionMenu, onDismiss: () -> Unit) {
         dragHandle = null,
         shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
     ) {
-        Column(Modifier.navigationBarsPadding().padding(vertical = 8.dp)) {
-            // Sized with the terminal's text either way, like the icons.
-            val textStyle = if (!menu.systemFont) Term.text else MaterialTheme.typography.bodyLarge.copy(
+        // Scrolls when there are more actions than fit, so the last one can be reached.
+        Column(Modifier.verticalScroll(rememberScrollState()).navigationBarsPadding().padding(vertical = 8.dp)) {
+            // Sized with the terminal's text, like the icons.
+            val menuStyle = MaterialTheme.typography.bodyLarge.copy(
                 fontSize = (Term.fontSize + 2).sp,
                 lineHeight = ((Term.fontSize + 2) * 1.4f).sp,
             )
             Text(
                 menu.title,
-                style = textStyle.copy(color = Term.dim),
+                style = (if (menu.systemFont) menuStyle else Term.text).copy(color = Term.dim),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
+            menu.url?.let { url ->
+                Text(
+                    url,
+                    style = Term.text.copy(color = Term.link, fontSize = (Term.fontSize - 1).sp),
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                )
+            }
             var dividerShown = false
             // The header's icon size; the column is as wide as its battery, so labels line up.
             val iconSize = (Term.fontSize + 3).dp
@@ -497,7 +519,7 @@ fun ActionSheet(menu: ActionMenu, onDismiss: () -> Unit) {
                         }
                         Spacer(Modifier.width(12.dp))
                     }
-                    Text(action.label, style = textStyle.copy(color = color))
+                    Text(action.label, style = menuStyle.copy(color = color))
                 }
             }
         }

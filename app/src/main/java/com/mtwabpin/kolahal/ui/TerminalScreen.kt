@@ -175,8 +175,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     var menu by remember { mutableStateOf<ActionMenu?>(null) }
     // Menus ask the system for an app's shortcuts: built off the main thread, shown when ready.
     val menuScope = rememberCoroutineScope()
-    fun showMenu(title: String, id: Long?, build: () -> List<LogAction>) {
-        menuScope.launch { menu = ActionMenu(title, kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { build() }, id) }
+    fun showMenu(title: String, id: Long?, url: String? = null, build: () -> List<LogAction>) {
+        menuScope.launch { menu = ActionMenu(title, kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { build() }, id, url = url) }
     }
     if (preview == null) LaunchedEffect(Unit) {
         vm.events.collect { if (it == UiEvent.ShowQuick) menu = ActionMenu("Quick actions", vm.quickActions(), null, systemFont = true) }
@@ -330,7 +330,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                         highlighted = menu?.entryId == row.entry.id,
                         apps = vm::appsOf,
                         onTap = vm::onTap,
-                        onLongPress = { e -> showMenu(e.text, e.id) { vm.actionsFor(e) } },
+                        onLongPress = { e -> showMenu(e.text, e.id, e.ctx.url) { vm.actionsFor(e) } },
                         onAppTap = vm::launchApp,
                         onAppLongPress = { app -> showMenu(app.label, null) { vm.appActions(app) } },
                         onSwipeCopy = vm::swipeCopy,
