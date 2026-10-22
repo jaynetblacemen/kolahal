@@ -85,8 +85,10 @@ jobs:
           expected=$(printf %s "$EXPECTED" | tr -d ':' | tr 'A-F' 'a-f')
           echo "### Signatures" >> "$GITHUB_STEP_SUMMARY"
           apk=app/build/outputs/apk/release/app-release.apk
-          digest=$("$apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
-          if [ -z "$digest" ]; then echo "::error::$apk isn't signed."; exit 1; fi
+          # Build-tools 36 prints "Signer #1 certificate SHA-256 digest: …", 37 "V2 Signer: certificate …".
+          certs=$("$apksigner" verify --print-certs "$apk")
+          digest=$(printf %s "$certs" | sed -n 's/^.*[Ss]igner.* certificate SHA-256 digest: //p' | head -1)
+          if [ -z "$digest" ]; then echo "$certs"; echo "::error::$apk isn't signed."; exit 1; fi
           if [ -n "$expected" ] && [ "$digest" != "$expected" ]; then
             echo "::error::$apk is signed with $digest, not the release key $expected."
             exit 1

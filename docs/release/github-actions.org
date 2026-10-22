@@ -81,7 +81,9 @@ gh run download <run id> -n kolahal-X.Y.Z-play    # the Play bundle and its mapp
   =app/src/play/AndroidManifest.xml= with =tools:node="remove"=, or drop the library.
 - *A unit test fails*: the run's failed step shows it; =./gradlew :app:testDebugUnitTest= does the
   same here.
-- A failed run publishes nothing, so after a fix just tag again.
+- A failed run publishes nothing, but the website already points its download button at the
+  missing release, so fix it soon. Then move the tag to the fix: =git tag -d vX.Y.Z=,
+  =git push origin :refs/tags/vX.Y.Z=, and tag and push again.
 
 * Still done on this computer
 
