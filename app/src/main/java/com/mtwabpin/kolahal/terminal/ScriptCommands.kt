@@ -58,8 +58,11 @@ class ScriptCommands(
         val all = store.all()
         when (args.firstOrNull()) {
             null, "ls" -> {
-                if (all.isEmpty()) info("No status lines — scripts set them with status(text)")
-                all.forEach { (name, text) -> out("$name ▸ $text", LogContext.of(LogContext.SCRIPT to name)) }
+                // What the header shows: lines of scripts that are on and allowed one.
+                val shown = scripts.all().filter { it.enabled && it.grants.allows(ScriptAccess.HEADER) }.mapTo(HashSet()) { it.name }
+                val lines = all.filterKeys { it in shown }
+                if (lines.isEmpty()) info("No status lines — scripts set them with status(text)")
+                lines.forEach { (name, text) -> out("$name ▸ $text", LogContext.of(LogContext.SCRIPT to name)) }
             }
             "clear" -> {
                 val target = args.getOrNull(1) ?: "all"
@@ -109,7 +112,7 @@ class ScriptCommands(
                     )
                 }
                 val s = lib.install(entry)
-                ScriptAccess.askForNew(context, s)
+                ScriptAccess.askForSecrets(context, s)
                 info("Installed ${s.name}.${s.lang.ext}" + (if (entry.command) " — run it as '${s.name}'" else "") +
                     (if (s.intervalMin > 0) " · every ${CommandParsing.formatInterval(s.intervalMin)}" else ""), scriptCtx(s))
             }
@@ -140,7 +143,10 @@ class ScriptCommands(
                     ?: return error("Usage: script every <name> <15m|30m|2h|1d|off>")
                 val effective = if (minutes > 0) minutes.coerceAtLeast(ScriptScheduler.MIN_INTERVAL_MIN) else 0
                 scripts.setInterval(s.id, effective)
-                if (effective > 0 && !s.enabled) scripts.setEnabled(s.id, true)
+                if (effective > 0 && !s.enabled) {
+                    scripts.setEnabled(s.id, true)
+                    scripts.byId(s.id)?.let { ScriptAccess.askForNew(context, it) }
+                }
                 scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
                 info(
                     if (effective == 0) "${s.name}: timer off" else "${s.name}: runs every ${CommandParsing.formatInterval(effective)}" +
@@ -152,7 +158,10 @@ class ScriptCommands(
                 val spec = args.getOrNull(2) ?: return error("Usage: script at <name> <HH:mm[,HH:mm…]|off>")
                 val times = if (spec == "off") emptyList() else spec.split(',').map { CommandParsing.parseClock(it) ?: return error("Bad time '$it' — use HH:mm") }
                 scripts.setAtTimes(s.id, times.distinct().sorted())
-                if (times.isNotEmpty() && !s.enabled) scripts.setEnabled(s.id, true)
+                if (times.isNotEmpty() && !s.enabled) {
+                    scripts.setEnabled(s.id, true)
+                    scripts.byId(s.id)?.let { ScriptAccess.askForNew(context, it) }
+                }
                 scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
                 info(if (times.isEmpty()) "${s.name}: no daily times" else "${s.name}: daily at ${times.distinct().sorted().joinToString(", ")}", scriptCtx(s))
             }
@@ -168,7 +177,8 @@ class ScriptCommands(
             }
             "on", "off", "enable", "disable" -> withScript(target) { s ->
                 val enabled = sub == "on" || sub == "enable"
-                scripts.setEnabled(s.id, enabled)
+                // Typed by you: the go-ahead for what it declares, said in the next line.
+                scripts.setEnabled(s.id, enabled, grant = enabled)
                 scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
                 info("${s.name}: ${if (enabled) "enabled" else "disabled"}", scriptCtx(s))
                 // Switching a script on allows what it declares and nobody decided yet: say what it may use.

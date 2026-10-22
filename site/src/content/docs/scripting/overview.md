@@ -235,11 +235,14 @@ Long-press a script's line in the header for **Hide from header**. In the termin
 `script deny <name> <what…>` change them (`notify` is the notifications switch). A script can
 check with [`allowed(what)`](/scripting/api/#allowedwhat) and do something else.
 
-Scripts from outside (a file, a folder, a backup) arrive **switched off**. Switching one on asks
-about what it declares with `@uses`, all on, so you can switch off what you don't want first;
-`script on <name>` allows it all and says what that is. If a library update declares something
-more, that starts switched off and a line in the log offers to allow it. A backup carries the
-switches you turned off, never the ones you turned on.
+Scripts from outside (a file, a folder, a backup) arrive **switched off**, and so does a script
+whose code one of them replaces: what it was allowed has to be allowed again. Switching one on in
+the Scripts screen asks about what it declares with `@uses`, all on, so you can switch off what you
+don't want first; `script on <name>` allows it all and says what that is. Turning a script on
+another way (giving it a timer, or an import of one that was on) allows nothing it asks for: a line
+in the log offers to. If an update from the library or Get more scripts declares something more,
+or runs on a new event, that starts switched off and a line in the log offers to allow it.
+Restoring a backup brings back only the switches you turned off, never the ones you turned on.
 
 Links a script puts on a line (`url`, `image`, or a notification's link) must be web links:
 anything else (`tel:`, `upi:`, an app's own link) is dropped. A line's `copy` must be what the line

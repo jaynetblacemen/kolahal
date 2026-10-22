@@ -51,8 +51,7 @@ class ScriptFiles(private val context: Context) {
                 existing.lang != lang -> skipped += "$fileName (a ${existing.lang.ext} script '$name' exists)"
                 existing.code == code -> Unit
                 else -> {
-                    scripts.saveCode(existing.id, code)
-                    scripts.setEnabled(existing.id, false)
+                    scripts.replaceCode(existing.id, code)
                     scripts.byId(existing.id)?.let { runCatching { ScriptScheduler.sync(context, it) } }
                     updated += "$name.${lang.ext}"
                 }

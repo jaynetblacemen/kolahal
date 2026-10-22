@@ -851,15 +851,16 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         scriptCache.value = scripts.all()
     }
 
+    /** The Scripts screen's switch: it asks first when there is anything to decide ([enableScript]). */
     fun setScriptEnabled(s: Script, on: Boolean) = updateScript(s) {
-        scripts.setEnabled(s.id, on)
+        scripts.setEnabled(s.id, on, grant = on)
         if (on) scripts.byId(s.id)?.let { ScriptAccess.askForSecrets(context, it) }
     }
 
     /** Switches [s] on with the user's answers for what it asks to use ([choices]: item to allowed). */
     fun enableScript(s: Script, choices: Map<String, Boolean>) = updateScript(s) {
         choices.forEach { (item, on) -> scripts.setAccess(s.id, item, on) }
-        scripts.setEnabled(s.id, true)
+        scripts.setEnabled(s.id, true, grant = true)
         scripts.byId(s.id)?.let { ScriptAccess.askForSecrets(context, it) }
     }
 
@@ -893,7 +894,11 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     fun setScriptInterval(s: Script, minutes: Int) = updateScript(s) {
         scripts.setInterval(s.id, if (minutes > 0) minutes.coerceAtLeast(ScriptScheduler.MIN_INTERVAL_MIN) else 0)
-        if (minutes > 0 && !s.enabled) scripts.setEnabled(s.id, true)
+        // A timer switches it on, but allows nothing it asks for: that stays a tap away.
+        if (minutes > 0 && !s.enabled) {
+            scripts.setEnabled(s.id, true)
+            scripts.byId(s.id)?.let { ScriptAccess.askForNew(context, it) }
+        }
     }
 
     /** "08:00, 18:30" -> daily times; returns false if any time is invalid. */
@@ -1028,7 +1033,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun installFromLibrary(entry: ScriptLibrary.Entry) {
         fileOp("install") {
             val s = library.install(entry)
-            ScriptAccess.askForNew(context, s)
+            ScriptAccess.askForSecrets(context, s)
             refreshScriptCaches()
             notice("Installed ${s.name}.${s.lang.ext}" + if (entry.command) " — run it as '${s.name}'" else "")
         }

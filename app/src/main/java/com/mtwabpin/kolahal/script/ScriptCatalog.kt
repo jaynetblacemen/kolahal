@@ -128,13 +128,17 @@ class ScriptCatalog(private val context: Context) {
      */
     fun install(e: Entry, code: String, allow: Map<String, Boolean> = emptyMap(), replace: Boolean = false): Script {
         val repo = ScriptRepository.get(context)
+        // What installing grants comes from the file: it must declare what the list (and the sheet) says.
+        val uses = ScriptMeta.uses(code)
+        if (uses != e.uses.toSet()) throw IllegalStateException("${e.name} doesn't match the script list; refresh it and try again")
+        if (ScriptMeta.needsNewer(code, BuildConfig.VERSION_NAME)) throw IllegalStateException("${e.name} needs Kolahal ${ScriptMeta.requires(code)}")
         val existing = repo.byName(e.name)
         val script = if (existing == null) {
             ScriptNames.clash(context, e.name)?.let { throw IllegalStateException(it) }
             repo.create(e.name, e.lang, code, enabled = false).also { s ->
                 repo.applySuggested(s.id, code)
-                allow.forEach { (item, on) -> repo.setAccess(s.id, item, on) }
-                repo.setEnabled(s.id, true)
+                allow.filterKeys { it in uses }.forEach { (item, on) -> repo.setAccess(s.id, item, on) }
+                repo.setEnabled(s.id, true, grant = true)
             }
         } else {
             val origin = origin(e.name) ?: throw IllegalStateException("you have your own script named ${e.name}")
@@ -146,7 +150,7 @@ class ScriptCatalog(private val context: Context) {
         prefs.edit { putString("installed:${e.name}", Json.stringify(mapOf("sha256" to e.sha256, "version" to e.version, "code" to code))) }
         return repo.byId(script.id)!!.also {
             ScriptScheduler.sync(context, it)
-            ScriptAccess.askForNew(context, it)
+            ScriptAccess.askForSecrets(context, it)
         }
     }
 

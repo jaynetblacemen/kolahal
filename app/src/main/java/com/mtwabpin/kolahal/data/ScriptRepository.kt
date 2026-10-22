@@ -74,15 +74,39 @@ class ScriptRepository private constructor(private val context: Context) {
     }
 
     /**
-     * New code for a script. [byUser] (typed in the editor) and the script switched on: what the new
-     * code declares is allowed, since you wrote it. Code from elsewhere leaves new declarations off.
+     * New code for a script. [byUser] (typed in the editor): what it newly declares with `@uses` is
+     * allowed, since you wrote it (for a switched-on script); what an update left for you to decide
+     * stays undecided. Code from elsewhere (a library or shared-script update) leaves what it newly
+     * declares off, `@on` events included, with a line to allow them.
      */
     fun saveCode(id: Long, code: String, byUser: Boolean = false) {
-        val s = if (byUser) byId(id) else null
+        val s = byId(id) ?: return
+        val newUses = ScriptMeta.uses(code) - ScriptMeta.uses(s.code) - s.access.keys
+        val newEvents = ScriptMeta.events(code) - ScriptMeta.events(s.code).toSet() - s.access.keys
+        val access = when {
+            byUser -> if (s.enabled) s.access + newUses.associateWith { true } else s.access
+            else -> s.access + newEvents.associateWith { false }
+        }
         update(id) {
             put("code", code)
-            if (s != null && s.enabled) put("access", ScriptAccess.encode(ScriptAccess.allowUndecided(code, s.access)))
+            put("access", ScriptAccess.encode(access))
         }
+        if (!byUser && s.enabled) ScriptAccess.askToAllow(context, s.name, newUses.toList() + newEvents, "now asks for")
+    }
+
+    /**
+     * Code from a file, a folder or a backup over an existing script: it is switched off, and what
+     * it was allowed goes back to undecided (what you switched off stays off), so turning it on asks
+     * again. Its values ([com.mtwabpin.kolahal.script.SecretStore]) stay, for the sites they were set for.
+     */
+    fun replaceCode(id: Long, code: String) {
+        val s = byId(id) ?: return
+        update(id) {
+            put("code", code)
+            put("enabled", 0)
+            put("access", ScriptAccess.encode(s.access.filterValues { !it }))
+        }
+        KvStore(context, HostApi.STATUS_SCOPE).set(s.name, null)
     }
 
     /**
@@ -98,15 +122,20 @@ class ScriptRepository private constructor(private val context: Context) {
 
     fun setInterval(id: Long, minutes: Int) = update(id) { put("interval_min", minutes) }
 
-    /** Switching a script on allows what it declares and nobody decided yet: the Scripts screen asks first. */
-    fun setEnabled(id: Long, enabled: Boolean) {
+    /**
+     * Switches a script on or off. [grant]: the user's go-ahead for what it declares and nobody
+     * decided yet (the Scripts screen's dialog, `script on`, an install they started). Without it,
+     * those stay off; the caller offers a line to allow them ([ScriptAccess.askForNew]).
+     */
+    fun setEnabled(id: Long, enabled: Boolean, grant: Boolean = false) {
         val s = byId(id) ?: return
         update(id) {
             put("enabled", if (enabled) 1 else 0)
-            if (enabled) put("access", ScriptAccess.encode(ScriptAccess.allowUndecided(s.code, s.access)))
+            if (enabled && grant) put("access", ScriptAccess.encode(ScriptAccess.allowUndecided(s.code, s.access)))
         }
-        // Switched off, its header line goes too, rather than coming back stale when it is switched on.
-        if (!enabled) KvStore(context, com.mtwabpin.kolahal.script.HostApi.STATUS_SCOPE).set(s.name, null)
+        // Its header line goes either way: switched off, it would come back stale; switched on, a
+        // line left by a run while it was off would.
+        if (enabled != s.enabled) KvStore(context, HostApi.STATUS_SCOPE).set(s.name, null)
     }
 
     /** The timers and notifications [code] suggests (`@every`, `@at`, `@notify`), for a script just added. */

@@ -70,7 +70,8 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             "timeout"
         } catch (e: Throwable) {
             host.flush()
-            val off = host.denied
+            // Stopped by the switch itself, not an error the script caught and went on after.
+            val off = host.denied?.takeIf { host.deniedMessage?.let { m -> e.message.orEmpty().contains(m) } == true }
             if (off != null) {
                 // Stopped by a switch the user turned off: say which, with a tap to allow it.
                 logs.add(
@@ -90,6 +91,10 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
                 logs.add(LogKind.ERROR, "$name: $msg" + (line?.let { " (tap to edit line $it)" } ?: ""), name, errorCtx + extra)
                 "error: $msg" + (line?.let { " (line $it)" } ?: "")
             }
+        }
+        // A run you started that asked for what nobody allowed yet got empty answers: offer to allow it.
+        if (script != null && host.undecided.isNotEmpty() && inputData.getBoolean(KEY_INTERACTIVE, false)) {
+            ScriptAccess.askToAllow(ctx, name, host.undecided.toList(), "hasn't been allowed")
         }
         script?.let {
             scripts.recordRun(it.id, status)

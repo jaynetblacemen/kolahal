@@ -69,6 +69,7 @@ class HostApi(
     private fun may(what: String, call: String): Boolean {
         val g = grants ?: return true
         if (what !in g.declared) throw IllegalStateException("$call needs `@uses $what` at the top of the script")
+        if (!g.allows(what) && what in g.undecided) undecided += what
         return g.allows(what)
     }
 
@@ -78,6 +79,20 @@ class HostApi(
     /** The access item that stopped this run, switched off by the user (the worker says how to allow it). */
     var denied: String? = null
         private set
+
+    /** What [denied] stopped the run with, to tell it from an error the script caught and went on after. */
+    var deniedMessage: String? = null
+        private set
+
+    /** Declared, not decided yet, and asked for this run: the worker offers to allow them. */
+    val undecided = LinkedHashSet<String>()
+
+    /** Stops the run: [item] is switched off; the worker says so, with a tap to allow it. */
+    private fun deny(item: String, message: String): Nothing {
+        denied = item
+        deniedMessage = message
+        throw java.io.IOException(message)
+    }
 
     /** May reach this device or the local network over http. */
     val allowsLan: Boolean get() = grants == null || grants.allows("lan")
@@ -198,8 +213,7 @@ class HostApi(
         flush() // show what was logged before a slow request
         // No made-up empty response: a script would take it for real data.
         if (grants != null && !grants.allows(ScriptAccess.INTERNET)) {
-            denied = ScriptAccess.INTERNET
-            throw java.io.IOException("internet is switched off for this script")
+            deny(ScriptAccess.INTERNET, "internet is switched off for this script")
         }
         val h = Json.toStringMap(headers).toMutableMap()
         if (h.keys.none { it.equals("User-Agent", ignoreCase = true) }) h["User-Agent"] = USER_AGENT
@@ -230,8 +244,7 @@ class HostApi(
             // Without `@uses lan` the address isn't allowed at all; switched off, the user said no;
             // otherwise Android's permission is what's missing.
             if (grants != null && "lan" in grants.declared && !grants.allows("lan")) {
-                denied = "lan"
-                throw java.io.IOException("${e.host} is on your local network, switched off for this script")
+                deny("lan", "${e.host} is on your local network, switched off for this script")
             }
             if (!allowsLan) throw java.io.IOException("${e.host} is this phone or the local network: not allowed here")
             lanBlocked = true

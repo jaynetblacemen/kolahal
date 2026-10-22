@@ -23,7 +23,7 @@ import com.mtwabpin.kolahal.script.SecretStore
 object FullBackup {
     /** SharedPreferences files that hold user data. */
     private val PREFS = listOf(
-        "config", "aliases", "apps", "app_usage", "notif_prefs", "script_library", "unlocks", "triggers", "launcher", "logs",
+        "config", "aliases", "apps", "app_usage", "notif_prefs", "script_library", "script_catalog", "unlocks", "triggers", "launcher", "logs",
     )
 
     private class Table(val db: (Context) -> SQLiteDatabase, val name: String)

@@ -182,6 +182,14 @@ private fun runs(e: ScriptCatalog.Entry): String = buildList {
     if (e.on.isNotEmpty()) add("on ${e.on.joinToString(", ")}")
 }.joinToString(" · ")
 
+/** The same, read from the file itself: what installing it sets up. */
+private fun runs(code: String): String = buildList {
+    if (ScriptMeta.isCommand(code)) add("command")
+    ScriptMeta.every(code)?.let { add("every ${CommandParsing.formatInterval(it)}") }
+    ScriptMeta.at(code).takeIf { it.isNotEmpty() }?.let { add("daily ${it.joinToString(", ")}") }
+    ScriptMeta.events(code).takeIf { it.isNotEmpty() }?.let { add("on ${it.joinToString(", ")}") }
+}.joinToString(" · ")
+
 private fun stateLabel(state: ScriptCatalog.State?, e: ScriptCatalog.Entry): String? = when (state) {
     ScriptCatalog.State.INSTALLED -> "Installed"
     ScriptCatalog.State.UPDATE_AVAILABLE -> "Update to ${e.version}"
@@ -242,8 +250,11 @@ private fun SharedSheet(vm: TerminalViewModel, e: ScriptCatalog.Entry, state: Sc
                 Text(e.desc, style = MaterialTheme.typography.bodyLarge)
             }
             Spacer(Modifier.height(12.dp))
-            Fact("Runs", runs(e).ifEmpty { "when you run it" })
-            Fact("Uses", if (e.uses.isEmpty()) "nothing private" else e.uses.joinToString(", ") { ScriptAccess.label(it).lowercase() })
+            // From the file once it is here (checked against the list): that is what installing grants.
+            val text = code?.getOrNull()
+            val uses = remember(text) { text?.let { ScriptMeta.uses(it).toList() } ?: e.uses }
+            Fact("Runs", remember(text) { text?.let { runs(it) } ?: runs(e) }.ifEmpty { "when you run it" })
+            Fact("Uses", if (uses.isEmpty()) "nothing private" else uses.joinToString(", ") { ScriptAccess.label(it).lowercase() })
             code?.getOrNull()?.let(ScriptMeta::secrets)?.takeIf { it.isNotEmpty() }?.let { keys ->
                 Fact("Keys", keys.joinToString(", ") { "${it.name} (you set it; sent only to ${it.hosts.joinToString()})" })
             }
@@ -253,7 +264,7 @@ private fun SharedSheet(vm: TerminalViewModel, e: ScriptCatalog.Entry, state: Sc
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 when (state) {
                     ScriptCatalog.State.NOT_INSTALLED, null -> Button(
-                        onClick = { if (e.uses.isEmpty()) vm.installSharedScript(e) else asking = true },
+                        onClick = { if (uses.isEmpty()) vm.installSharedScript(e) else asking = true },
                         enabled = code?.isSuccess == true,
                     ) {
                         Icon(painterResource(R.drawable.ic_download), null, Modifier.size(ButtonDefaults.IconSize))
@@ -301,7 +312,8 @@ private fun SharedSheet(vm: TerminalViewModel, e: ScriptCatalog.Entry, state: Sc
     }
 
     if (asking) {
-        AccessDialog("Install ${e.name}.${e.lang.ext}?", e.uses, "Install", onDismiss = { asking = false }) { choices ->
+        val uses = code?.getOrNull()?.let { ScriptMeta.uses(it).toList() } ?: e.uses
+        AccessDialog("Install ${e.name}.${e.lang.ext}?", uses, "Install", onDismiss = { asking = false }) { choices ->
             asking = false
             vm.installSharedScript(e, choices)
         }

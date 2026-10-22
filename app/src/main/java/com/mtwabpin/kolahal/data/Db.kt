@@ -105,7 +105,11 @@ class Db private constructor(context: Context) :
      * scripts keep that; switched-off ones ask when they are switched on.
      */
     private fun addScriptAccess(db: SQLiteDatabase) {
-        db.execSQL("ALTER TABLE scripts ADD COLUMN access TEXT")
+        // Both processes may open the database right after an update: add the column once.
+        val has = db.rawQuery("PRAGMA table_info(scripts)", null).use { c ->
+            generateSequence { if (c.moveToNext()) c.getString(c.getColumnIndexOrThrow("name")) else null }.any { it == "access" }
+        }
+        if (!has) db.execSQL("ALTER TABLE scripts ADD COLUMN access TEXT")
         db.query("scripts", arrayOf("id", "code"), "enabled = 1", null, null, null, null).use { c ->
             while (c.moveToNext()) {
                 val uses = com.mtwabpin.kolahal.script.ScriptMeta.uses(c.getString(1))

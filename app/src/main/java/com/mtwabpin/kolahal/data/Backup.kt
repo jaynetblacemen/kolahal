@@ -38,7 +38,9 @@ class Backup(private val context: Context) {
             "scripts" to all.map {
                 mapOf(
                     "name" to it.name, "lang" to it.lang.ext, "code" to it.code, "every" to it.intervalMin,
-                    "at" to it.atTimes, "notify" to it.notify, "enabled" to it.enabled, "access" to it.access,
+                    "at" to it.atTimes, "notify" to it.notify, "enabled" to it.enabled,
+                    // Only what you switched off: what a script may use is allowed on each phone.
+                    "access" to it.access.filterValues { !it },
                 )
             },
             // Everything else: todos, notes, reminders, feeds, script stores, log, history.
@@ -123,13 +125,17 @@ class Backup(private val context: Context) {
                 skipped += "script ${m["name"]}"
                 return@forEach
             }
+            if (com.mtwabpin.kolahal.script.ScriptMeta.needsNewer(code, com.mtwabpin.kolahal.BuildConfig.VERSION_NAME)) {
+                skipped += "script $name (needs Kolahal ${com.mtwabpin.kolahal.script.ScriptMeta.requires(code)})"
+                return@forEach
+            }
             val existing = scripts.byName(name)
             // New code, whether a new script or a replaced one, arrives switched off.
             var isNew = false
             val script = when {
                 existing == null -> scripts.create(name, lang, code, enabled = false).also { isNew = true }
                 existing.lang != lang -> { skipped += "script $name (language differs)"; return@forEach }
-                else -> existing.also { if (it.code != code) { scripts.saveCode(it.id, code); isNew = true } }
+                else -> existing.also { if (it.code != code) { scripts.replaceCode(it.id, code); isNew = true } }
             }
             (m["every"] as? Number)?.toLong()?.let { every ->
                 val minutes = every.coerceIn(0, 7L * 24 * 60).toInt()
@@ -146,7 +152,10 @@ class Backup(private val context: Context) {
                 scripts.setEnabled(script.id, false)
                 disabled++
             } else {
-                (m["enabled"] as? Boolean)?.let { scripts.setEnabled(script.id, it) }
+                (m["enabled"] as? Boolean)?.let { on ->
+                    scripts.setEnabled(script.id, on)
+                    if (on) scripts.byId(script.id)?.let { com.mtwabpin.kolahal.script.ScriptAccess.askForNew(context, it) }
+                }
             }
             runCatching { scripts.byId(script.id)?.let { ScriptScheduler.sync(context, it) } }
             count++

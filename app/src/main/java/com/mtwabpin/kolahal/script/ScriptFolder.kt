@@ -114,7 +114,11 @@ class ScriptFolder(private val context: Context) {
                     skipped += fileName
                     continue
                 }
-                if (existing.code != code) scripts.saveCode(existing.id, code)
+                // Code from the folder over a script's: switched off, to be reviewed like a new one.
+                if (existing.code != code) {
+                    scripts.replaceCode(existing.id, code)
+                    isNew = true
+                }
                 updated++
                 existing
             }
@@ -127,7 +131,10 @@ class ScriptFolder(private val context: Context) {
                     scripts.setAtTimes(script.id, at.mapNotNull { ScriptScheduler.normalizeTime(it.toString()) }.distinct().sorted())
                 }
                 (m["notify"] as? Boolean)?.let { scripts.setNotify(script.id, it) }
-                if (!isNew) (m["enabled"] as? Boolean)?.let { scripts.setEnabled(script.id, it) }
+                if (!isNew) (m["enabled"] as? Boolean)?.let { on ->
+                    scripts.setEnabled(script.id, on)
+                    if (on) scripts.byId(script.id)?.let { ScriptAccess.askForNew(context, it) }
+                }
             }
             // A new script without settings in kolahal.json gets the timers its code suggests.
             if (isNew && settings[name] == null) scripts.applySuggested(script.id, code)

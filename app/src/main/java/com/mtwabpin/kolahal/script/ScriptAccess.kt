@@ -84,16 +84,20 @@ object ScriptAccess {
     }
 
     /**
-     * After code from outside (a library update) declares more, the new items start off: a line to
-     * allow them, for a switched-on script.
+     * A script switched on without the user's go-ahead for what it declares (a timer set in its sheet,
+     * an import): what nobody decided yet stays off, with a line to allow it.
      */
     fun askForNew(context: Context, s: Script) {
         askForSecrets(context, s)
-        val new = s.grants.undecided
-        if (!s.enabled || new.isEmpty()) return
+        if (s.enabled) askToAllow(context, s.name, s.grants.undecided)
+    }
+
+    /** "[name] asks for [items] — tap to allow": one tap allows them all ([what] words the line). */
+    fun askToAllow(context: Context, name: String, items: List<String>, what: String = "asks for") {
+        if (items.isEmpty()) return
         LogRepository.get(context).add(
-            LogKind.INFO, "${s.name} now asks for ${new.joinToString(", ")} — tap to allow", s.name,
-            LogContext.of(LogContext.RUN to "script allow ${s.name} ${new.joinToString(" ")}"),
+            LogKind.INFO, "$name $what ${items.joinToString(", ")} — tap to allow", name,
+            LogContext.of(LogContext.RUN to "script allow $name ${items.joinToString(" ")}"),
         )
     }
 }

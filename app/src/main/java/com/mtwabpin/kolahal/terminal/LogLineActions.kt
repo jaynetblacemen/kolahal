@@ -20,6 +20,7 @@ import com.mtwabpin.kolahal.notifications.NotifPrefs
 import com.mtwabpin.kolahal.notifications.NotificationActions
 import com.mtwabpin.kolahal.script.Json
 import com.mtwabpin.kolahal.script.ScriptScheduler
+import com.mtwabpin.kolahal.script.ScriptAccess
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -150,7 +151,10 @@ class LogLineActions(private val context: Context, private val processor: Comman
                 actions += LogAction(if (s.enabled) "Disable $name" else "Enable $name") {
                     host.io {
                         scripts.setEnabled(s.id, !s.enabled)
-                        scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
+                        scripts.byId(s.id)?.let {
+                            ScriptScheduler.sync(context, it)
+                            if (it.enabled) ScriptAccess.askForNew(context, it)
+                        }
                         logs.add(LogKind.INFO, "$name: ${if (s.enabled) "disabled" else "enabled"}", ctx = LogContext.of(LogContext.SCRIPT to name))
                     }
                 }
