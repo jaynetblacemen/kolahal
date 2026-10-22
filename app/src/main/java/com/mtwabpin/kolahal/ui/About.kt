@@ -5,13 +5,31 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mtwabpin.kolahal.BuildConfig
 import com.mtwabpin.kolahal.CrashReports
@@ -64,16 +82,59 @@ internal fun emailDeveloper(context: Context, subject: String, body: String): Bo
 internal fun aboutThisPhone(): String =
     "\n\n--\n$VERSION_TEXT · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.MANUFACTURER} ${Build.MODEL}"
 
-/** The crash list page: [crashes] is null while it is being read. */
+/** A tapped crash report: email it to the developer, or delete it. */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+internal fun CrashSheet(crash: CrashRow, onDismiss: () -> Unit, onEmail: () -> Unit, onDelete: () -> Unit) {
+    val state = rememberBottomSheetState(SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = state,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(Modifier.navigationBarsPadding().padding(start = 24.dp, end = 24.dp, bottom = 16.dp)) {
+            Text(crash.title, style = MaterialTheme.typography.titleLarge)
+            Text(
+                crash.summary,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 4,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "The email holds the whole report: the app and Android versions, the phone model and the error. " +
+                    "Your mail app opens with it, and nothing is sent until you send it.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+            )
+            Spacer(Modifier.height(16.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onEmail) {
+                    Icon(painterResource(R.drawable.ic_mail), null, Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text("Email the developer")
+                }
+                OutlinedButton(onClick = onDelete) {
+                    Icon(painterResource(R.drawable.ic_delete), null, Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text("Delete")
+                }
+            }
+        }
+    }
+}
+
+/** The crash list page: [crashes] is null while it is being read; [onOpen] is a tap on one. */
 internal fun LazyListScope.crashReportsPage(
     crashes: List<CrashRow>?,
-    onSend: (CrashRow) -> Unit,
+    onOpen: (CrashRow) -> Unit,
     onDeleteAll: () -> Unit,
 ) {
     item(key = "crashes:about") {
         Text(
-            "Kolahal keeps its last 10 crash reports on this phone. Tap one to email it to the developer: " +
-                "your mail app opens with the report, and nothing is sent until you send it.",
+            "Kolahal keeps its last 10 crash reports on this phone. Tap one to email it to the developer " +
+                "or delete it.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
@@ -91,7 +152,7 @@ internal fun LazyListScope.crashReportsPage(
         return
     }
     item(key = "crashes:list") {
-        ActionGroup(crashes.map { c -> Action(R.drawable.ic_bug, c.title, c.summary) { onSend(c) } })
+        ActionGroup(crashes.map { c -> Action(R.drawable.ic_bug, c.title, c.summary) { onOpen(c) } })
     }
     item(key = "crashes:delete") {
         Spacer(Modifier.height(16.dp))

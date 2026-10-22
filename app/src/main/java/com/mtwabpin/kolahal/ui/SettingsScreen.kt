@@ -151,6 +151,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     // About → Crash reports: read off the main thread, and again after they are deleted.
     var crashReads by remember { mutableIntStateOf(0) }
+    var openCrash by remember { mutableStateOf<CrashRow?>(null) }
     val crashes by produceState<List<CrashRow>?>(null, crashReads) {
         value = withContext(Dispatchers.IO) { crashRows(context) }
     }
@@ -238,11 +239,7 @@ fun SettingsScreen(
                 if (crashPage) {
                     crashReportsPage(
                         crashes,
-                        onSend = { c ->
-                            if (!emailDeveloper(context, "$VERSION_TEXT: ${c.title}", c.report.text())) {
-                                tapScope.launch { snackbar.showSnackbar("No app on this phone can send email") }
-                            }
-                        },
+                        onOpen = { openCrash = it },
                         onDeleteAll = {
                             val n = com.mtwabpin.kolahal.CrashReports.clear(context)
                             crashReads++
@@ -345,6 +342,24 @@ fun SettingsScreen(
             }
         }
         if (peek != null) PeekHint(Modifier.align(Alignment.TopCenter))
+        // A tapped crash report. The sheet stays after Email, so the report can be deleted once sent.
+        openCrash?.let { c ->
+            CrashSheet(
+                c,
+                onDismiss = { openCrash = null },
+                onEmail = {
+                    if (!emailDeveloper(context, "$VERSION_TEXT: ${c.title}", c.report.text())) {
+                        tapScope.launch { snackbar.showSnackbar("No app on this phone can send email") }
+                    }
+                },
+                onDelete = {
+                    openCrash = null
+                    c.report.delete()
+                    crashReads++
+                    tapScope.launch { snackbar.showSnackbar("Crash report deleted") }
+                },
+            )
+        }
       }
     }
 }

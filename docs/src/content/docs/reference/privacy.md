@@ -38,7 +38,7 @@ The next time you open home, a red line says Kolahal stopped unexpectedly; tap i
 report with the share sheet (email, a chat, or paste it into a GitHub issue). `crashes` lists the
 reports, and `crashes clear` deletes them. **Settings → About → Crash reports** lists them too: tap
 one to email it to the developer (your mail app opens a draft with the report, which you send
-yourself), or delete them all. Nothing is sent by itself, the newest 10 are kept, and
+yourself) or to delete it, or delete them all at once. Nothing is sent by itself, the newest 10 are kept, and
 they are left out of Android's backup. An error message can contain a bit of what you were doing
 (a command, a file name), so read the report before you send it.
 
