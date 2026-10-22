@@ -89,7 +89,7 @@ kolahal/
 │   └── src/
 │       ├── main/
 │       │   ├── AndroidManifest.xml   HOME activity, :script process, listener and accessibility services
-│       │   ├── assets/library/       ready-made scripts for `script lib` (index.json lists them)
+│       │   ├── assets/library/       ready-made scripts for `script lib`, each describing itself (@title, @every…)
 │       │   ├── assets/licenses/      OFL licences of the bundled fonts
 │       │   ├── java/…/launcher/      Kotlin sources, by package (table below)
 │       │   └── res/                  icons, fonts, XML config (accessibility service, backup rules, network security)

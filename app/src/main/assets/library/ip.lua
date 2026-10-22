@@ -2,6 +2,9 @@
 -- @command
 -- @desc public IP address; long-press the line to copy it
 -- @usage
+-- @title Public IP
+-- @every 30m
+-- @notify
 --
 -- As a command it prints your IP. On a timer it notifies when the IP changes
 -- (handy for spotting VPN drops) and pins it as a status line.

@@ -37,7 +37,7 @@ object ApiDocs {
         ApiDoc("log", "log(text, ctx?)", "Append a line to the terminal; ctx.url makes it a tappable link, ctx.image shows an image under it"),
         ApiDoc("notify", "notify(title, body, ctx?) -> bool", "Post a notification if enabled for the script; ctx.url opens on tap"),
         ApiDoc("status", "status(text)", "Pin one header line for this script; status(nil) clears it"),
-        ApiDoc("allowed", "allowed(what) -> bool", "Whether you let this script use what: internet, header, notifications, apps, clipboard, lan or an @on event"),
+        ApiDoc("allowed", "allowed(what) -> bool", "Whether you let this script use what: internet, header, notifications, apps, clipboard, lan, commands or an @on event"),
         ApiDoc("sleep", "sleep(ms)", "Pause up to 5000 ms", LUA),
         ApiDoc("sleep", "await sleep(ms)", "Pause up to 5000 ms (async)", JS),
         ApiDoc("print", "print(...)", "Log the values joined by tabs", LUA),
@@ -80,7 +80,7 @@ object ApiDocs {
         ApiDoc("notifications.recent", "notifications.recent(n?=20) -> [{ pkg, app, title, text, time }]", "Newest first, up to 50 (needs notification access)"),
 
         ApiDoc("launcher", "launcher", "Drive the launcher: run", kind = NS),
-        ApiDoc("launcher.run", "launcher.run(command) -> bool", "Run a terminal command; only when started from the prompt"),
+        ApiDoc("launcher.run", "launcher.run(command) -> bool", "Run a terminal command (needs @uses commands); only when started from the prompt"),
 
         ApiDoc("json", "json", "JSON: encode, decode", LUA, NS),
         ApiDoc("json.encode", "json.encode(value) -> string", "Serialize a table/value to JSON", LUA),

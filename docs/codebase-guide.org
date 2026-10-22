@@ -638,7 +638,7 @@ Outside =main=:
 | =app/src/play/AndroidManifest.xml= | removes the accessibility service, the notification listener and =READ_CALL_LOG= for the =play= build |
 | =app/src/release/generated/=       | baseline profiles (pre-compiled start-up code)                                   |
 | =baselineprofile/=                 | the module that generates those profiles                                         |
-| =app/src/main/assets/library/=     | the ready-made scripts of the script library, listed in =index.json=             |
+| =app/src/main/assets/library/=     | the ready-made scripts of the script library; each describes itself (=@title=, =@every=…) |
 | =site/=                            | the website and user guide (Astro + Starlight)                                  |
 | =docs/=                            | notes for the maintainer: this file, and =release/= on building and publishing   |
 

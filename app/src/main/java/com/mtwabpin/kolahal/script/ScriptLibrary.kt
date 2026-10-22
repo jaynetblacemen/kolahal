@@ -6,7 +6,7 @@ import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.data.ScriptRepository
 
-/** Ready-made scripts bundled in assets/library (index.json describes them). */
+/** Ready-made scripts bundled in assets/library; each describes itself with its directives ([ScriptMeta]). */
 class ScriptLibrary(private val context: Context) {
     data class Entry(
         val file: String,
@@ -22,29 +22,33 @@ class ScriptLibrary(private val context: Context) {
 
     enum class State { NOT_INSTALLED, INSTALLED, MODIFIED, UPDATE_AVAILABLE }
 
+    /** Every `.lua` and `.js` file in assets/library, by name. */
     val entries: List<Entry> by lazy {
-        val raw = context.assets.open("library/index.json").use { it.readBytes().toString(Charsets.UTF_8) }
-        (Json.parse(raw) as? List<*>).orEmpty().filterIsInstance<Map<*, *>>().mapNotNull { m ->
-            val lang = ScriptLang.of(m["lang"]?.toString().orEmpty()) ?: return@mapNotNull null
+        context.assets.list("library").orEmpty().sorted().mapNotNull { file ->
+            val lang = ScriptLang.of(file.substringAfterLast('.', "")) ?: return@mapNotNull null
+            val code = read(file)
+            val name = file.substringBeforeLast('.')
             Entry(
-                file = m["file"]?.toString() ?: return@mapNotNull null,
-                name = m["name"]?.toString() ?: return@mapNotNull null,
+                file = file,
+                name = name,
                 lang = lang,
-                title = m["title"]?.toString().orEmpty(),
-                description = m["description"]?.toString().orEmpty(),
-                command = m["command"] == true,
-                suggestedEvery = (m["suggestedEvery"] as? Number)?.toInt() ?: 0,
-                suggestedAt = (m["suggestedAt"] as? List<*>)?.map { it.toString() }.orEmpty(),
-                notify = m["notify"] == true,
+                title = ScriptMeta.title(code) ?: name,
+                description = ScriptMeta.description(code).orEmpty(),
+                command = ScriptMeta.isCommand(code),
+                suggestedEvery = ScriptMeta.every(code) ?: 0,
+                suggestedAt = ScriptMeta.at(code),
+                notify = ScriptMeta.notifies(code),
             )
         }
     }
 
     private val codeCache = HashMap<String, String>()
 
-    fun code(entry: Entry): String = synchronized(codeCache) {
-        codeCache.getOrPut(entry.file) {
-            context.assets.open("library/${entry.file}").use { it.readBytes().toString(Charsets.UTF_8) }
+    fun code(entry: Entry): String = read(entry.file)
+
+    private fun read(file: String): String = synchronized(codeCache) {
+        codeCache.getOrPut(file) {
+            context.assets.open("library/$file").use { it.readBytes().toString(Charsets.UTF_8) }
         }
     }
 
@@ -69,11 +73,7 @@ class ScriptLibrary(private val context: Context) {
         val code = code(entry)
         val existing = repo.byName(entry.name)
         val script = if (existing == null) {
-            repo.create(entry.name, entry.lang, code).also { s ->
-                if (entry.suggestedEvery > 0) repo.setInterval(s.id, entry.suggestedEvery.coerceAtLeast(ScriptScheduler.MIN_INTERVAL_MIN))
-                if (entry.suggestedAt.isNotEmpty()) repo.setAtTimes(s.id, entry.suggestedAt.mapNotNull(ScriptScheduler::normalizeTime))
-                repo.setNotify(s.id, entry.notify)
-            }
+            repo.create(entry.name, entry.lang, code).also { s -> repo.applySuggested(s.id, code) }
         } else {
             if (existing.lang != entry.lang) throw IllegalStateException("a ${existing.lang.ext} script '${entry.name}' already exists")
             repo.saveCode(existing.id, code)

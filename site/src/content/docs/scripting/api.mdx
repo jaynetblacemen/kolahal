@@ -120,7 +120,7 @@ status(null);
 ### allowed(what)
 
 Whether this script may use `what`: `"internet"`, `"header"`, `"notifications"`, `"apps"`,
-`"clipboard"`, `"lan"` or an `@on` event such as `"unlock"`. You switch these per script
+`"clipboard"`, `"lan"`, `"commands"` or an `@on` event such as `"unlock"`. You switch these per script
 ([switching access off](/scripting/overview/#switching-access-off)); with one off, a script can do
 something else instead. Code typed at the prompt gets `true` for everything.
 
@@ -374,13 +374,15 @@ end
 
 ### launcher.run(command)
 
-Runs a terminal command, as if typed. **Only when the script was started from the prompt** (a
-command script, `script run`, or a one-liner); in timer and event runs it logs an error and
-returns `false`.
+Runs a terminal command, as if typed: another script's command too. Needs `@uses commands`.
+**Only when the script was started from the prompt** (a command script, `script run`, or a
+one-liner); in timer and event runs it logs an error and returns `false`. Sensitive commands
+(`clear`, `uninstall` and the like) must be typed.
 
 ```lua
 -- @command
 -- @desc work mode: pause notifications, open the work mail
+-- @uses commands
 launcher.run("work on")
 launcher.run("open gmail -w")
 ```

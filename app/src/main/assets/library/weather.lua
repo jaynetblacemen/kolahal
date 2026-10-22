@@ -2,6 +2,8 @@
 -- @command
 -- @desc current weather: weather [city] | weather --default <city>
 -- @usage [<city>|--default <city>]
+-- @title Weather
+-- @every 1h
 --
 -- Usage:
 --   weather                 weather for the saved default city (or your IP location)

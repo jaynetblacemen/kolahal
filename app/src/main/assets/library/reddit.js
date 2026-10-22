@@ -2,6 +2,7 @@
 // @command
 // @desc top posts today: reddit [subreddit] (default: android)
 // @usage [<subreddit>]
+// @title Reddit Top Posts
 //
 // Usage:
 //   reddit             top 5 posts of r/android today

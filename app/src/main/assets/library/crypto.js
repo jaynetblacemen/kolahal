@@ -2,6 +2,8 @@
 // @command
 // @desc coin prices: crypto [ids…] [--vs eur] (default: bitcoin ethereum, usd)
 // @usage [<ids…>] [--vs <currency>]
+// @title Crypto Prices
+// @every 30m
 //
 // Usage:
 //   crypto                       bitcoin and ethereum in USD

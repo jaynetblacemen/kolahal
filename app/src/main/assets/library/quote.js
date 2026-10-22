@@ -2,6 +2,9 @@
 // @command
 // @desc a random quote; long-press to copy it
 // @usage
+// @title Quote of the Day
+// @at 08:00
+// @notify
 //
 // On a timer (e.g. every morning) it also sends the quote as a notification.
 

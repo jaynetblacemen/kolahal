@@ -2,6 +2,8 @@
 // @command
 // @desc 3-day forecast: forecast [city] | forecast --default <city>
 // @usage [<city>|--default <city>]
+// @title 3-Day Forecast
+// @at 07:00
 //
 // Usage:
 //   forecast                  forecast for the saved default city (London if none)

@@ -34,12 +34,18 @@ class ScriptFiles(private val context: Context) {
                 skipped += "$fileName (${it.message})"
                 continue
             }
+            // Written for a newer Kolahal: it may call what this one doesn't have.
+            if (ScriptMeta.needsNewer(code, com.mtwabpin.kolahal.BuildConfig.VERSION_NAME)) {
+                skipped += "$fileName (needs Kolahal ${ScriptMeta.requires(code)})"
+                continue
+            }
             val existing = scripts.byName(name)
             // A script from a file arrives switched off, and so does one whose code a file replaces:
             // turning it on is the user's go-ahead for its timers, triggers and `@uses`.
             when {
                 existing == null -> {
-                    scripts.create(name, lang, code, enabled = false)
+                    val s = scripts.create(name, lang, code, enabled = false)
+                    scripts.applySuggested(s.id, code)
                     created += "$name.${lang.ext}"
                 }
                 existing.lang != lang -> skipped += "$fileName (a ${existing.lang.ext} script '$name' exists)"

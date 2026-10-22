@@ -2,6 +2,8 @@
 // @command
 // @desc sunrise/sunset: sun | sun <city> | sun <lat> <lng> (city/coords are saved)
 // @usage [<city>|<lat> <lng>]
+// @title Sunrise & Sunset
+// @at 05:00
 //
 // Usage:
 //   sun                  use the saved location

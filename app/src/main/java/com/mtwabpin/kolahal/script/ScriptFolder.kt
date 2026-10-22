@@ -99,6 +99,10 @@ class ScriptFolder(private val context: Context) {
                 continue
             }
             val code = readText(file.uri) ?: continue
+            if (ScriptMeta.needsNewer(code, com.mtwabpin.kolahal.BuildConfig.VERSION_NAME)) {
+                skipped += "$fileName (needs Kolahal ${ScriptMeta.requires(code)})"
+                continue
+            }
             val existing = scripts.byName(name)
             var isNew = false
             val script = if (existing == null) {
@@ -125,6 +129,8 @@ class ScriptFolder(private val context: Context) {
                 (m["notify"] as? Boolean)?.let { scripts.setNotify(script.id, it) }
                 if (!isNew) (m["enabled"] as? Boolean)?.let { scripts.setEnabled(script.id, it) }
             }
+            // A new script without settings in kolahal.json gets the timers its code suggests.
+            if (isNew && settings[name] == null) scripts.applySuggested(script.id, code)
             // New scripts from a folder arrive switched off, like from a backup: review them before
             // they run on a timer.
             if (isNew) scripts.setEnabled(script.id, false)

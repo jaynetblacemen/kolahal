@@ -2,6 +2,7 @@
 // @command
 // @desc Wikipedia summary: wikipedia <topic> (no topic: a random article)
 // @usage [<topic>]
+// @title Wikipedia
 //
 // Usage:
 //   wikipedia Alan Turing

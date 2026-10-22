@@ -107,7 +107,7 @@ fun ScriptsScreen(
         if (on && s.grants.undecided.isNotEmpty()) consentFor = s else vm.setScriptEnabled(s, on)
     }
 
-    // index.json and the script bodies come from assets; read them off the main thread.
+    // The library scripts and their directives come from assets; read them off the main thread.
     val library by produceState<List<LibRow>?>(null, vm.library, scripts) {
         value = withContext(Dispatchers.IO) {
             runCatching {
@@ -312,6 +312,11 @@ private fun ScriptSheet(
     var timesError by remember(s.id) { mutableStateOf(false) }
     val isCommand = remember(s.code) { ScriptMeta.isCommand(s.code) }
     val desc = remember(s.code) { ScriptMeta.description(s.code) }
+    val title = remember(s.code) { ScriptMeta.title(s.code) }
+    // `@version` and `@author`, when it says: v1.2 · by Someone
+    val byLine = remember(s.code) {
+        listOfNotNull(ScriptMeta.version(s.code)?.let { "v$it" }, ScriptMeta.author(s.code)?.let { "by $it" }).joinToString(" · ").ifEmpty { null }
+    }
     val access = remember(s.code) { ScriptAccess.items(s.code) }
     val grants = remember(s.code, s.access) { s.grants }
 
@@ -329,8 +334,9 @@ private fun ScriptSheet(
                 style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Monospace),
                 color = scriptColor(s.name),
             )
+            title?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
             Text(
-                listOfNotNull(if (s.lang == ScriptLang.LUA) "Lua" else "JavaScript", if (isCommand) "command" else null, desc)
+                listOfNotNull(if (s.lang == ScriptLang.LUA) "Lua" else "JavaScript", byLine, if (isCommand) "command" else null, desc)
                     .joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

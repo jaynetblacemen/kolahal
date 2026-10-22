@@ -2,6 +2,9 @@
 -- @command
 -- @desc GitHub release watcher: releases [add|rm owner/repo | list]
 -- @usage [add <owner/repo>|rm <owner/repo>|list]
+-- @title GitHub Releases
+-- @every 3h
+-- @notify
 --
 -- Usage:
 --   releases                    check every watched repo now

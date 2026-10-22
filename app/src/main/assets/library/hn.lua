@@ -1,5 +1,8 @@
 -- hn.lua — Hacker News front page, only stories you have not seen yet.
 -- @desc Hacker News front page: new stories since the last run
+-- @title Hacker News
+-- @every 1h
+-- @notify
 --
 -- Runs well on a timer (every 30-60 min). Each run logs the new front-page
 -- stories (tap a line to open it), notifies about the top new one and pins

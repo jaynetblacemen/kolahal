@@ -1,6 +1,8 @@
 -- charge-reminder.lua — reacts to the charger instead of a timer. No network.
 -- @on charger, unplug
 -- @desc charging session summary; warns when unplugged below 30%
+-- @title Charge Reminder
+-- @notify
 --
 -- `event` is the trigger payload: event.name ("charger" / "unplug"), event.level (battery %),
 -- event.plug ("ac", "usb", "wireless"). Run by hand (event is nil) it shows the last session.

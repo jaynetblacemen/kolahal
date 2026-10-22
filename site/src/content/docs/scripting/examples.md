@@ -154,6 +154,7 @@ for command scripts.
 -- focus.lua
 -- @command
 -- @desc focus on|off: work profile and notification logging together
+-- @uses commands
 
 if argline == "off" then
   launcher.run("notifs log on")
@@ -167,7 +168,7 @@ return "focus on: work profile on, notifications out of the log"
 
 ## Charging log (Lua, event trigger)
 
-Uses the new [`@on` triggers](/scripting/overview/#event-triggers) to run when the charger is connected or
+Uses [`@on` triggers](/scripting/overview/#event-triggers) to run when the charger is connected or
 removed.
 
 ```lua

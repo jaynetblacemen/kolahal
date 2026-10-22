@@ -2,6 +2,7 @@
 -- @command
 -- @desc todo list: todo | todo add <text> | todo done N | todo clear
 -- @usage [add <text>|done <n>|clear]
+-- @title Todo List
 --
 -- Usage:
 --   todo                 list open items

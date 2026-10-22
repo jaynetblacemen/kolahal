@@ -117,7 +117,7 @@ weather paris
 ```
 
 In JavaScript use `// @command` and `// @desc …`. Arguments arrive in `args` and `argline`. A
-command script run from the prompt may also call [`launcher.run`](/scripting/api/#launcherruncommand). When
+command script run from the prompt may also call [`launcher.run`](/scripting/api/#launcherruncommand) (with `@uses commands`). When
 the same script runs on a timer, it gets no arguments, which is how most library scripts tell the
 two cases apart.
 
@@ -146,6 +146,31 @@ local b = device.battery()
 status((b.charging and "charging " or "on battery ") .. tostring(b.level) .. "%")
 ```
 
+## Describing a script
+
+A few more comment lines describe a script, so the file is complete on its own: the Scripts screen
+shows them, and the [library](/scripting/library/) scripts carry them too.
+
+```lua
+-- @title Hacker News
+-- @desc new front-page stories since the last run
+-- @author Your Name
+-- @version 1.2
+-- @every 1h
+-- @notify
+-- @tags news, tech
+```
+
+| Line | What it does |
+| --- | --- |
+| `@title <text>` | its name for people, shown above its file name |
+| `@desc <text>` | one line about it, in `help`, suggestions and the Scripts screen |
+| `@author <name>`, `@version <x.y>` | shown in its sheet in the Scripts screen |
+| `@every <15m\|1h\|1d>`, `@at <HH:mm>[, …]` | the timer it suggests, set when it is added from a file, a folder or the library |
+| `@notify` | it suggests posting notifications, switched on when it is added |
+| `@tags <word>[, …]` | words to find it by |
+| `@requires <x.y.z>` | the oldest Kolahal it works with: an older Kolahal won't import it |
+
 ## Sandbox and limits
 
 Scripts run in a separate `:script` process, so a crashing engine can't take down the home screen.
@@ -166,8 +191,8 @@ Scripts run in a separate `:script` process, so a crashing engine can't take dow
 
 ## What a script may use
 
-Your notifications, the clipboard, the list of your apps and your local network are only
-for scripts that ask, with a `@uses` line at the top:
+Your notifications, the clipboard, the list of your apps, your local network and running
+commands are only for scripts that ask, with a `@uses` line at the top:
 
 ```lua
 -- @uses notifications, clipboard
@@ -179,6 +204,7 @@ for scripts that ask, with a `@uses` line at the top:
 | `clipboard` | [`clipboard.get` and `clipboard.set`](/scripting/api/#clipboardget--clipboardsettext) |
 | `apps` | [`apps.list`](/scripting/api/#appslist) |
 | `lan` | `http` requests to this phone or your local network (192.168.…, router pages, a home server) |
+| `commands` | [`launcher.run`](/scripting/api/#launcherruncommand): terminal commands, and other scripts by their names, when you start it from the prompt |
 
 Calling one of these without its `@uses` line stops the script with an error saying what to add.
 On Android 17 and newer, reaching your local network also needs Android's
@@ -196,7 +222,7 @@ stops where it isn't:
 | Internet | stops at its first `http` or `rss` call, with a line to tap to allow it again |
 | Header line | runs as before, but its `status()` line doesn't show |
 | Post notifications | runs as before; `notify()` returns false |
-| An `@uses` item | gets nothing: `apps.list()` and `notifications.recent()` return empty lists, `clipboard.get()` returns nil and `clipboard.set()` does nothing. Switched-off `lan` requests stop the script |
+| An `@uses` item | gets nothing: `apps.list()` and `notifications.recent()` return empty lists, `clipboard.get()` returns nil and `clipboard.set()` does nothing. Switched-off `lan` requests stop the script, and `launcher.run` returns false |
 | An `@on` event | doesn't run on that event |
 
 Long-press a script's line in the header for **Hide from header**. In the terminal,

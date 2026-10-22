@@ -2,6 +2,9 @@
 // @command
 // @desc xkcd comic: xkcd | xkcd <number> | xkcd random
 // @usage [random|<number>]
+// @title xkcd
+// @every 6h
+// @notify
 //
 // On a timer (no arguments) it notifies only when a new comic is out.
 // The comic shows in the log under its title; tap the title to open it on xkcd.com.

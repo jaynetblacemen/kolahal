@@ -5,6 +5,8 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
 import com.mtwabpin.kolahal.script.ScriptAccess
+import com.mtwabpin.kolahal.script.ScriptMeta
+import com.mtwabpin.kolahal.script.ScriptScheduler
 
 enum class ScriptLang(val ext: String) {
     LUA("lua"),
@@ -95,6 +97,13 @@ class ScriptRepository private constructor(private val context: Context) {
             put("enabled", if (enabled) 1 else 0)
             if (s != null) put("access", ScriptAccess.encode(ScriptAccess.allowUndecided(s.code, s.access)))
         }
+    }
+
+    /** The timers and notifications [code] suggests (`@every`, `@at`, `@notify`), for a script just added. */
+    fun applySuggested(id: Long, code: String) {
+        ScriptMeta.every(code)?.let { setInterval(id, it.coerceAtLeast(ScriptScheduler.MIN_INTERVAL_MIN)) }
+        ScriptMeta.at(code).takeIf { it.isNotEmpty() }?.let { setAtTimes(id, it) }
+        if (ScriptMeta.notifies(code)) setNotify(id, true)
     }
 
     /** Switches one access item; see [ScriptAccess]. */

@@ -2,6 +2,7 @@
 // @command
 // @desc convert currency: exchange [amount] <from> [to…] (e.g. exchange 100 usd inr eur)
 // @usage [<amount>] <from> [<to…>]
+// @title Currency Converter
 //
 // Usage:
 //   exchange 100 usd inr       100 US dollars in Indian rupees

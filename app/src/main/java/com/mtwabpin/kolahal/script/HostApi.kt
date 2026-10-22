@@ -335,6 +335,8 @@ class HostApi(
 
     /** Runs a terminal command in the launcher. Only for scripts started from the prompt. */
     fun runCommand(command: String): Boolean {
+        // Commands, and through them other scripts, only for scripts that declare it and are allowed it.
+        if (!may("commands", "launcher.run")) return false
         if (!interactive) {
             logError("launcher.run is only available when the script is run from the prompt")
             return false

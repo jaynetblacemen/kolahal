@@ -20,8 +20,8 @@ keystore.properties
 kolahal-release-for-play.zip
 .claude/worktrees/
 
-# the website
-site/node_modules/
+# the website (and any stray dependency folder, such as one a dev server left in docs/)
+node_modules/
 site/dist/
 site/.astro/
 

@@ -9,6 +9,14 @@ package com.mtwabpin.kolahal.script
  *                            empty when there are none. Drives suggestions and `launch.instant`
  *   -- @on <event>[, ...]  — run when a device event happens (see [EVENTS]); the payload is `event`
  *   -- @uses <what>[, ...] — private data or reach it needs (see [USES]); without it those calls fail
+ *
+ * And what describes it, so a script file is complete on its own (the library reads these too):
+ *
+ *   -- @title <text>       — its name for people: Hacker News
+ *   -- @author <name>, @version <x.y>, @tags <word>[, ...]
+ *   -- @every <15m|1h|1d>, @at <HH:mm>[, ...], @notify — the timers and notifications it suggests,
+ *                            set when it is added from a file or the library
+ *   -- @requires <x.y.z>   — the oldest Kolahal it works with; older ones don't import it
  */
 object ScriptMeta {
     private val command = Regex("""^\s*(--|//)\s*@command\b""", RegexOption.MULTILINE)
@@ -20,11 +28,11 @@ object ScriptMeta {
 
     /**
      * What a script may ask for with `@uses`: `notifications` (notifications.recent and the
-     * `@on notification` trigger), `clipboard`, `apps` (apps.list) and `lan` (http to the local
-     * network or this device). Imported scripts arrive switched off, so turning one on is the
-     * user's consent to what it declares.
+     * `@on notification` trigger), `clipboard`, `apps` (apps.list), `lan` (http to the local
+     * network or this device) and `commands` (launcher.run: terminal commands and other scripts).
+     * The user allows each one ([ScriptAccess]).
      */
-    val USES = listOf("notifications", "clipboard", "apps", "lan")
+    val USES = listOf("notifications", "clipboard", "apps", "lan", "commands")
 
     /** Known names from every `@uses` line; unknown ones are ignored. */
     fun uses(code: String): Set<String> {
@@ -39,6 +47,50 @@ object ScriptMeta {
     fun isCommand(code: String) = command.containsMatchIn(code)
 
     fun description(code: String): String? = desc.find(code)?.groupValues?.get(2)?.trim()
+
+    /** The text after a `@<name>` directive, or null when there is none (or it is empty). */
+    private fun value(code: String, name: String): String? =
+        Regex("""^\s*(--|//)\s*@$name\b[ \t]*(.*)$""", RegexOption.MULTILINE).find(code)
+            ?.groupValues?.get(2)?.trim()?.takeIf { it.isNotEmpty() }
+
+    fun title(code: String): String? = value(code, "title")
+
+    fun author(code: String): String? = value(code, "author")
+
+    fun version(code: String): String? = value(code, "version")
+
+    fun tags(code: String): List<String> =
+        value(code, "tags")?.split(',')?.map { it.trim().lowercase() }?.filter { it.isNotEmpty() }?.distinct().orEmpty()
+
+    /** `@every 1h`: the interval it suggests, in minutes; null without one (or `off`). */
+    fun every(code: String): Int? =
+        value(code, "every")?.let { com.mtwabpin.kolahal.terminal.CommandParsing.parseInterval(it) }?.takeIf { it > 0 }
+
+    /** `@at 07:00, 18:30`: the daily times it suggests, as "HH:mm". */
+    fun at(code: String): List<String> =
+        value(code, "at")?.split(',', ' ')?.filter { it.isNotBlank() }?.mapNotNull(ScriptScheduler::normalizeTime)
+            ?.distinct()?.sorted().orEmpty()
+
+    /** `@notify`: it suggests letting it post notifications. */
+    fun notifies(code: String): Boolean = Regex("""^\s*(--|//)\s*@notify\b""", RegexOption.MULTILINE).containsMatchIn(code)
+
+    fun requires(code: String): String? = value(code, "requires")
+
+    /** True when [code]'s `@requires` names a newer Kolahal than [current] (a version name such as 0.4.0). */
+    fun needsNewer(code: String, current: String): Boolean {
+        val wanted = requires(code)?.let(::versionParts) ?: return false
+        val have = versionParts(current) ?: return false
+        for (i in 0 until maxOf(wanted.size, have.size)) {
+            val w = wanted.getOrElse(i) { 0 }
+            val h = have.getOrElse(i) { 0 }
+            if (w != h) return w > h
+        }
+        return false
+    }
+
+    /** "0.4.0" or "0.4.0-lite" to [0, 4, 0]; null when it isn't a version. */
+    private fun versionParts(v: String): List<Int>? =
+        v.trim().removePrefix("v").substringBefore('-').split('.').map { it.toIntOrNull() ?: return null }
 
     /**
      * The command's usage line, `name args…`, like a built-in one: from `@usage` (the name in front

@@ -32,6 +32,7 @@ object ScriptAccess {
         "apps" -> "Your app list"
         "clipboard" -> "Clipboard"
         "lan" -> "Local network"
+        "commands" -> "Run commands"
         else -> "Runs on $item"
     }
 
@@ -42,6 +43,7 @@ object ScriptAccess {
         "apps" -> "Lists your installed apps; switched off, it sees none"
         "clipboard" -> "Reads and sets the clipboard; switched off, it reads and sets nothing"
         "lan" -> "Reaches this phone and your local network; switched off, those requests stop the run"
+        "commands" -> "Runs terminal commands and other scripts when you start it from the prompt; switched off, it can't"
         else -> "Runs when this happens (@on $item)"
     }
 

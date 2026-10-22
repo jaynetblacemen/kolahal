@@ -1,5 +1,8 @@
 -- feeds.lua — a tiny RSS/Atom reader for several feeds at once.
 -- @desc Several RSS feeds: new items since the last run, prefixed by feed name
+-- @title RSS Feeds
+-- @every 1h
+-- @notify
 --
 -- Edit the FEEDS list below. Each run logs only items you have not seen,
 -- at most PER_FEED per feed, and pins "Feeds: N new" in the header.
