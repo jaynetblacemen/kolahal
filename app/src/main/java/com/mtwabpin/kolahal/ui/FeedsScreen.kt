@@ -51,6 +51,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -74,6 +76,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
+import com.mtwabpin.kolahal.data.ConfigKey
+import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.feeds.FeedInfo
 import com.mtwabpin.kolahal.feeds.FeedItem
 import com.mtwabpin.kolahal.feeds.FeedRepository
@@ -83,6 +87,7 @@ import com.mtwabpin.kolahal.feeds.exportOpml
 import com.mtwabpin.kolahal.feeds.importOpml
 import com.mtwabpin.kolahal.script.Files
 import com.mtwabpin.kolahal.terminal.CommandParsing
+import com.mtwabpin.kolahal.terminal.Screen
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -118,6 +123,9 @@ fun FeedsScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
     val feeds by produceState<List<FeedInfo>?>(null, repoVersion) {
         value = withContext(Dispatchers.IO) { repo.all() }
     }
+    // The feeds settings, shown under the subscriptions; read here, not in the list's content.
+    val configVersion = vm.config.version.collectAsStateWithLifecycle()
+    val applicable by remember { derivedStateOf { configVersion.value; Keys.ALL.filterTo(HashSet()) { applies(it, vm.config) } } }
     var openFeedId by rememberSaveable { mutableStateOf<Long?>(null) }
     var sheetFeedId by rememberSaveable { mutableStateOf<Long?>(null) }
     var adding by rememberSaveable { mutableStateOf(false) }
@@ -164,6 +172,9 @@ fun FeedsScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
             )
         } else {
             FeedListPage(
+                vm = vm,
+                configVersion = configVersion,
+                applicable = applicable,
                 feeds = feeds,
                 snackbar = snackbar,
                 onBack = vm::closeScreen,
@@ -227,6 +238,9 @@ private fun openItem(context: Context, scope: CoroutineScope, repo: FeedReposito
 
 @Composable
 private fun FeedListPage(
+    vm: TerminalViewModel,
+    configVersion: State<Int>,
+    applicable: Set<ConfigKey<*>>,
     feeds: List<FeedInfo>?,
     snackbar: SnackbarHostState,
     onBack: () -> Unit,
@@ -285,6 +299,7 @@ private fun FeedListPage(
             verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
             modifier = Modifier.fillMaxSize(),
         ) {
+            item(key = "tabs") { FeatureTabs(vm, Screen.FEEDS) }
             when {
                 feeds == null -> Unit // first load; the list appears within a frame or two
                 feeds.isEmpty() -> {
@@ -321,6 +336,9 @@ private fun FeedListPage(
                     }
                 }
             }
+            // The feed settings live here, with the feeds; Settings search finds them too.
+            item(key = "h:settings") { GroupHeader("Settings") }
+            categorySettings(vm, FEEDS_CATEGORY, configVersion, applicable)
         }
     }
 }

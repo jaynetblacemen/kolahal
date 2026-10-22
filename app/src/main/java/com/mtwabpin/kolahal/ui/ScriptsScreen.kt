@@ -1,7 +1,11 @@
 package com.mtwabpin.kolahal.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -16,8 +20,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -28,6 +34,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -41,6 +48,7 @@ import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,8 +65,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
@@ -68,12 +80,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
+import com.mtwabpin.kolahal.data.Config
 import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.data.ScriptLang
+import com.mtwabpin.kolahal.data.shortTime
 import com.mtwabpin.kolahal.script.ScriptAccess
 import com.mtwabpin.kolahal.script.ScriptCatalog
 import com.mtwabpin.kolahal.script.ScriptLibrary
 import com.mtwabpin.kolahal.script.ScriptMeta
+import com.mtwabpin.kolahal.script.ScriptScheduler
 import com.mtwabpin.kolahal.terminal.CommandParsing
 import com.mtwabpin.kolahal.terminal.CommandProcessor
 import com.mtwabpin.kolahal.terminal.Screen
@@ -86,11 +101,39 @@ private val INTERVALS = listOf(0 to "Off", 15 to "15m", 30 to "30m", 60 to "1h",
 /** A library script with its state against what is installed, and its `@on` events. */
 private class LibRow(val entry: ScriptLibrary.Entry, val state: ScriptLibrary.State, val events: List<String>)
 
+/** What a script's card shows and the filters match, read from its code once per change. */
+private class ScriptInfo(val script: Script) {
+    val title = ScriptMeta.title(script.code)
+    val desc = ScriptMeta.description(script.code)
+    val isCommand = ScriptMeta.isCommand(script.code)
+    val usage = if (isCommand) ScriptMeta.usage(script.code, script.name) else null
+    val events = ScriptMeta.events(script.code)
+    val uses = ScriptMeta.uses(script.code)
+    val timed = script.intervalMin > 0 || script.atTimes.isNotEmpty()
+}
+
+/** A filter chip: its name and the scripts it keeps ([inHeader]: the script has a header line now). */
+private class ScriptFilter(val id: String, val label: String, val keeps: (info: ScriptInfo, inHeader: Boolean) -> Boolean)
+
+/** Short names for what scripts use, in chips. */
+private val USES_SHORT = mapOf("notifications" to "notifications", "clipboard" to "clipboard", "apps" to "apps", "lan" to "local network", "commands" to "commands")
+
+private val SCRIPT_FILTERS = listOf(
+    ScriptFilter("commands", "Commands") { s, _ -> s.isCommand },
+    ScriptFilter("timers", "Timers") { s, _ -> s.timed },
+    ScriptFilter("events", "Events") { s, _ -> s.events.isNotEmpty() },
+    ScriptFilter("header", "In the header") { _, line -> line },
+    ScriptFilter("failed", "Failed") { s, _ -> s.script.failed() },
+    ScriptFilter("off", "Off") { s, _ -> !s.script.enabled },
+) + ScriptMeta.USES.map { what -> ScriptFilter("uses:$what", "Uses ${USES_SHORT[what] ?: what}") { s, _ -> what in s.uses } }
+
 /**
- * Script manager (Material 3 Expressive): your scripts as compact rows (tap one for its timers,
- * notifications and buttons in a sheet), then the library scripts not installed yet. Files are
- * imported from the top bar.
+ * Script manager (Material 3 Expressive), the Scripts tab: a card per script, compact (its title,
+ * kind, timers and last run on one line) or expanded (its header line, next run, usage, events and
+ * access), filtered by chips and search. Add script holds new, library, shared and imported ones;
+ * a card opens the script's sheet.
  */
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ScriptsScreen(
     vm: TerminalViewModel,
@@ -98,11 +141,24 @@ fun ScriptsScreen(
     onExportScript: (Script) -> Unit,
 ) {
     val scripts by vm.scriptList.collectAsStateWithLifecycle()
+    val statuses by vm.statuses.collectAsStateWithLifecycle()
     val notice by vm.notice.collectAsStateWithLifecycle()
     var creating by remember { mutableStateOf(false) }
+    var adding by remember { mutableStateOf(false) }
     var sheetId by rememberSaveable { mutableStateOf<Long?>(null) }
     var consentFor by remember { mutableStateOf<Script?>(null) }
-    BackHandler { vm.closeScreen() }
+    var filters by rememberSaveable { mutableStateOf(listOf<String>()) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var searching by rememberSaveable { mutableStateOf(false) }
+    // Details: all cards open or closed, and the ones you flipped from that.
+    var expandAll by rememberSaveable { mutableStateOf(false) }
+    var flipped by rememberSaveable { mutableStateOf(listOf<Long>()) }
+    BackHandler {
+        when {
+            searching -> { searching = false; query = "" }
+            else -> vm.closeScreen()
+        }
+    }
 
     // Switching on a script that declares what nobody allowed yet asks first, with everything on.
     fun setEnabled(s: Script, on: Boolean) {
@@ -118,7 +174,6 @@ fun ScriptsScreen(
         }
     }
     val libByName = remember(library) { library.orEmpty().associateBy { it.entry.name } }
-    val notInstalled = remember(library) { library?.filter { it.state == ScriptLibrary.State.NOT_INSTALLED } }
     // Shared scripts with a newer version, from the list kept by Get more scripts (no download here).
     val sharedUpdates by produceState(emptyMap<String, ScriptCatalog.Entry>(), scripts) {
         value = withContext(Dispatchers.IO) {
@@ -126,6 +181,21 @@ fun ScriptsScreen(
                 .filter { vm.scriptCatalog.state(it, scripts) == ScriptCatalog.State.UPDATE_AVAILABLE }.associateBy { it.name }
         }
     }
+
+    val infos = remember(scripts) { scripts.map(::ScriptInfo) }
+    // Only chips something matches, with how many.
+    val chips = remember(infos, statuses) {
+        SCRIPT_FILTERS.map { f -> f to infos.count { f.keeps(it, it.script.name in statuses) } }.filter { it.second > 0 }
+    }
+    val shown = remember(infos, statuses, filters, query) {
+        val active = SCRIPT_FILTERS.filter { it.id in filters }
+        val words = query.lowercase().split(' ').filter { it.isNotBlank() }
+        infos.filter { info ->
+            val text = listOfNotNull(info.script.name, info.title, info.desc).joinToString(" ").lowercase()
+            active.all { it.keeps(info, info.script.name in statuses) } && words.all { it in text }
+        }
+    }
+    val on = scripts.count { it.enabled }
 
     GuiTheme {
         val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -139,11 +209,23 @@ fun ScriptsScreen(
             topBar = {
                 LargeFlexibleTopAppBar(
                     title = { Text("Scripts") },
-                    subtitle = { Text(if (scripts.isEmpty()) "Lua 5.4 · JavaScript" else "${scripts.size} scripts") },
+                    subtitle = {
+                        Text(
+                            if (scripts.isEmpty()) "Lua 5.4 · JavaScript"
+                            else listOfNotNull("$on on", (scripts.size - on).takeIf { it > 0 }?.let { "$it off" }).joinToString(" · ")
+                        )
+                    },
                     navigationIcon = { BackButton(vm::closeScreen) },
                     actions = {
-                        IconButton(onClick = onImportFiles) {
-                            Icon(painterResource(R.drawable.ic_upload), contentDescription = "Import .lua / .js files")
+                        IconButton(onClick = { searching = !searching; if (!searching) query = "" }) {
+                            Icon(painterResource(R.drawable.ic_search), contentDescription = "Search scripts")
+                        }
+                        IconButton(onClick = { expandAll = !expandAll; flipped = emptyList() }) {
+                            Icon(
+                                painterResource(R.drawable.ic_expand_more),
+                                contentDescription = if (expandAll) "Hide details" else "Show details",
+                                modifier = Modifier.rotate(if (expandAll) 180f else 0f),
+                            )
                         }
                     },
                     scrollBehavior = scroll,
@@ -151,85 +233,90 @@ fun ScriptsScreen(
             },
             floatingActionButton = {
                 ExtendedFloatingActionButton(
-                    onClick = { creating = true },
+                    onClick = { adding = true },
                     icon = { Icon(painterResource(R.drawable.ic_add), null) },
-                    text = { Text("New script") },
+                    text = { Text("Add script") },
                 )
             },
         ) { padding ->
             LazyColumn(
                 contentPadding = PaddingValues(
                     start = 16.dp, end = 16.dp,
-                    top = padding.calculateTopPadding() + 8.dp, bottom = padding.calculateBottomPadding() + 96.dp,
+                    top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 96.dp,
                 ),
-                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
-                item(key = "h:mine") { GroupHeader("Your scripts") }
-                if (scripts.isEmpty()) {
-                    item(key = "empty") {
-                        Text(
-                            "No scripts yet. Install one from the library below, tap “New script”, or import a file.",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                item(key = "tabs") { FeatureTabs(vm, Screen.SCRIPTS) }
+                if (searching) {
+                    item(key = "search") {
+                        OutlinedTextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            placeholder = { Text("Search by name, title or description") },
+                            leadingIcon = { Icon(painterResource(R.drawable.ic_search), null) },
+                            singleLine = true,
+                            shape = MaterialTheme.shapes.extraLarge,
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
-                    item(key = "import") {
-                        ActionGroup(
-                            listOf(
-                                Action(
-                                    R.drawable.ic_upload,
-                                    "Import .lua / .js files",
-                                    "Pick files from the file manager. The file name becomes the script name; importing again updates it.",
-                                    onClick = onImportFiles,
-                                ),
+                }
+                if (scripts.size > 1 && chips.isNotEmpty()) {
+                    // One row, scrolled sideways: the chips grow with what scripts use.
+                    item(key = "chips") {
+                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            for ((f, count) in chips) {
+                                val selected = f.id in filters
+                                FilterChip(
+                                    selected = selected,
+                                    onClick = { filters = if (selected) filters - f.id else filters + f.id },
+                                    label = { Text("${f.label} $count") },
+                                )
+                            }
+                        }
+                    }
+                }
+                when {
+                    scripts.isEmpty() -> item(key = "empty") {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text(
+                                "No scripts yet. Write one, take one from the library, get one people shared, or import a file.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
                             )
-                        )
+                            ActionGroup(addActions(vm, onNew = { creating = true }, onImportFiles = onImportFiles))
+                        }
                     }
-                } else {
-                    itemsIndexed(scripts, key = { _, s -> s.id }) { i, s ->
-                        ScriptRow(
-                            s, i, scripts.size,
+                    shown.isEmpty() -> item(key = "nomatch") {
+                        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                            Text("No script matches", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            TextButton(onClick = { filters = emptyList(); query = "" }) { Text("Show all") }
+                        }
+                    }
+                    else -> items(shown, key = { it.script.id }) { info ->
+                        val s = info.script
+                        ScriptCard(
+                            info,
+                            line = statuses[s.name],
+                            expanded = expandAll != (s.id in flipped),
                             updateAvailable = libByName[s.name]?.state == ScriptLibrary.State.UPDATE_AVAILABLE || s.name in sharedUpdates,
+                            onExpand = { flipped = if (s.id in flipped) flipped - s.id else flipped + s.id },
                             onClick = { sheetId = s.id },
                             onEnabled = { setEnabled(s, it) },
+                            onRun = { vm.runScriptNow(s) },
                         )
                     }
+                }
+                if (scripts.isNotEmpty()) {
                     item(key = "hint") {
                         Text(
-                            "Tap a script to set its timers, run, edit or export it.",
+                            "Tap a script for its timers, access, code and more. The arrow shows its details here.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp),
+                            modifier = Modifier.padding(start = 16.dp, top = 4.dp, end = 16.dp),
                         )
-                    }
-                }
-
-                item(key = "h:lib") { GroupHeader("Library") }
-                item(key = "get-more") {
-                    ActionGroup(
-                        listOf(
-                            Action(R.drawable.ic_download, "Get more scripts", "Shared by people who use Kolahal, on GitHub", chevron = true) {
-                                vm.openScreen(Screen.GET_SCRIPTS)
-                            },
-                        )
-                    )
-                }
-                val rows = notInstalled
-                when {
-                    rows == null -> Unit // first load; the rows appear within a frame or two
-                    rows.isEmpty() -> item(key = "lib:all") {
-                        Text(
-                            "Every library script is installed.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 16.dp),
-                        )
-                    }
-                    else -> itemsIndexed(rows, key = { _, r -> "lib:" + r.entry.name }) { i, r ->
-                        LibraryRow(r, i, rows.size) { vm.installFromLibrary(r.entry) }
                     }
                 }
             }
@@ -246,6 +333,14 @@ fun ScriptsScreen(
             )
         }
 
+        if (adding) {
+            ModalBottomSheet(onDismissRequest = { adding = false }, containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
+                Column(Modifier.navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
+                    ActionGroup(addActions(vm, onNew = { adding = false; creating = true }, onImportFiles = { adding = false; onImportFiles() }, close = { adding = false }))
+                }
+            }
+        }
+
         consentFor?.let { s ->
             AccessDialog("Turn on ${s.name}.${s.lang.ext}?", s.grants.undecided, "Turn on", onDismiss = { consentFor = null }) { choices ->
                 consentFor = null
@@ -260,6 +355,20 @@ fun ScriptsScreen(
     }
 }
 
+/** The ways to add a script: Add script's sheet, and the Scripts tab while it is empty. */
+private fun addActions(vm: TerminalViewModel, onNew: () -> Unit, onImportFiles: () -> Unit, close: () -> Unit = {}) = listOf(
+    Action(R.drawable.ic_add, "New script", "Lua or JavaScript, from a template", onClick = onNew),
+    Action(R.drawable.ic_code, "From the library", "Ready-made scripts that come with Kolahal", chevron = true) {
+        close()
+        vm.openScreen(Screen.SCRIPT_LIBRARY)
+    },
+    Action(R.drawable.ic_download, "Get more scripts", "Shared by people who use Kolahal, on GitHub", chevron = true) {
+        close()
+        vm.openScreen(Screen.GET_SCRIPTS)
+    },
+    Action(R.drawable.ic_upload, "Import a file", ".lua or .js; the file name becomes the script name", onClick = onImportFiles),
+)
+
 /** How [s] gets started: `command · every 1h · daily 08:00 · on boot`, or "run by hand". */
 private fun schedule(s: Script, isCommand: Boolean, events: List<String>): String = buildList {
     if (isCommand) add("command")
@@ -270,44 +379,206 @@ private fun schedule(s: Script, isCommand: Boolean, events: List<String>): Strin
 
 private fun Script.failed() = lastStatus?.let { it.startsWith("error") || it.startsWith("stopped") || it == "timeout" } == true
 
-/** One line per script: name, how it runs and its last run; the switch turns it on or off. */
+/** When a switched-on script runs next on its own: its next daily time, or about one interval after its last run. */
+private fun nextRun(s: Script, now: Long = System.currentTimeMillis()): Pair<Long, Boolean>? {
+    if (!s.enabled) return null
+    // To the minute: the daily time itself, not a few seconds before it.
+    val daily = s.atTimes.map { Math.round((now + ScriptScheduler.millisUntil(it)) / 60_000.0) * 60_000 }.minOrNull()
+    val every = if (s.intervalMin > 0) maxOf(now, (s.lastRun ?: now) + s.intervalMin * 60_000L) else null
+    return when {
+        daily != null && (every == null || daily <= every) -> daily to true
+        every != null -> every to false
+        else -> null
+    }
+}
+
+/**
+ * One script. Compact: a dot (on, failed, off), its title and file name, Run for a command, the
+ * details arrow, the switch, and one line of how it runs and how its last run went. Expanded, also
+ * its header line, description, next run, usage, events and what it may use.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ScriptRow(s: Script, index: Int, count: Int, updateAvailable: Boolean, onClick: () -> Unit, onEnabled: (Boolean) -> Unit) {
-    val isCommand = remember(s.code) { ScriptMeta.isCommand(s.code) }
-    val events = remember(s.code) { ScriptMeta.events(s.code) }
-    val status = buildList {
-        add(schedule(s, isCommand, events))
-        add(s.lastRun?.let { (if (s.failed()) "failed " else "ran ") + relative(it, short = true) } ?: "never run")
+private fun ScriptCard(
+    info: ScriptInfo,
+    line: String?,
+    expanded: Boolean,
+    updateAvailable: Boolean,
+    onExpand: () -> Unit,
+    onClick: () -> Unit,
+    onEnabled: (Boolean) -> Unit,
+    onRun: () -> Unit,
+) {
+    val s = info.script
+    val colors = MaterialTheme.colorScheme
+    val failed = s.failed()
+    val summary = buildList {
+        add(schedule(s, info.isCommand, info.events))
+        add(s.lastRun?.let { (if (failed) "failed " else "ran ") + relative(it, short = true) } ?: "never run")
         if (updateAvailable) add("update available")
     }.joinToString(" · ")
-    SegmentedListItem(
+    Surface(
         onClick = onClick,
-        shapes = segShapes(index, count),
-        colors = segColors(),
-        leadingContent = {
-            Icon(
-                painterResource(R.drawable.ic_code),
-                null,
-                tint = if (s.enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-            )
-        },
-        supportingContent = {
-            Text(
-                status,
-                color = if (s.failed()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        trailingContent = { Switch(checked = s.enabled, onCheckedChange = onEnabled) },
+        shape = MaterialTheme.shapes.large,
+        color = colors.surfaceContainer,
+        modifier = Modifier.fillMaxWidth().animateContentSize().testTag("script-card"),
     ) {
-        Text(
-            "${s.name}.${s.lang.ext}",
-            fontFamily = FontFamily.Monospace,
-            color = if (s.enabled) scriptColor(s.name) else MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(8.dp).clip(CircleShape)
+                        .background(if (!s.enabled) colors.outlineVariant else if (failed) colors.error else colors.primary)
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        info.title ?: s.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (s.enabled) colors.onSurface else colors.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        "${s.name}.${s.lang.ext}",
+                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                        color = if (s.enabled) scriptColor(s.name) else colors.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+                if (info.isCommand && s.enabled) TextButton(onClick = onRun) { Text("Run") }
+                IconButton(onClick = onExpand) {
+                    Icon(
+                        painterResource(R.drawable.ic_expand_more),
+                        contentDescription = if (expanded) "Hide details" else "Show details",
+                        modifier = Modifier.rotate(if (expanded) 180f else 0f),
+                    )
+                }
+                Switch(checked = s.enabled, onCheckedChange = onEnabled)
+            }
+            Text(
+                summary,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (failed) colors.error else if (updateAvailable) colors.primary else colors.onSurfaceVariant,
+                maxLines = if (expanded) 3 else 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 20.dp, end = 8.dp),
+            )
+            if (expanded) ScriptDetails(info, line)
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ScriptDetails(info: ScriptInfo, line: String?) {
+    val s = info.script
+    val colors = MaterialTheme.colorScheme
+    val grants = s.grants
+    Column(Modifier.padding(start = 20.dp, top = 10.dp, end = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        line?.let {
+            Surface(shape = MaterialTheme.shapes.small, color = colors.surfaceContainerHighest) {
+                Text(
+                    "${s.name} ▸ $it",
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
+        }
+        info.desc?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+        nextRun(s)?.let { (at, exact) ->
+            val time = Config.get(LocalContext.current).shortTime(at)
+            Fact("Next run", if (exact) time else "about $time")
+        }
+        info.usage?.let { Fact("Usage", it) }
+        if (info.events.isNotEmpty()) Fact("Runs on", info.events.joinToString(", ") { if (grants.allows(it)) it else "$it (switched off)" })
+        // What it declares, and internet or its header line when they are switched off.
+        val access = ScriptAccess.items(s.code).filter { it !in info.events && (it in grants.declared || !grants.allows(it)) }
+        if (access.isNotEmpty()) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                for (item in access) {
+                    val allowed = grants.allows(item)
+                    val name = USES_SHORT[item] ?: ScriptAccess.label(item).lowercase()
+                    Surface(shape = MaterialTheme.shapes.small, color = if (allowed) colors.secondaryContainer else colors.surfaceContainerHighest) {
+                        Text(
+                            when {
+                                allowed -> name
+                                item in grants.undecided -> "$name · not allowed yet"
+                                else -> "$name · off"
+                            },
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (allowed) colors.onSecondaryContainer else colors.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        )
+                    }
+                }
+            }
+        }
+        if (s.failed()) Text(s.lastStatus.orEmpty(), style = MaterialTheme.typography.bodySmall, color = colors.error)
+    }
+}
+
+@Composable
+private fun Fact(label: String, value: String) {
+    Text("$label: $value", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/** Scripts → Add script → From the library: the ready-made scripts that come with Kolahal. */
+@Composable
+fun ScriptLibraryScreen(vm: TerminalViewModel) {
+    val scripts by vm.scriptList.collectAsStateWithLifecycle()
+    val notice by vm.notice.collectAsStateWithLifecycle()
+    BackHandler { vm.closeScreen() }
+    val library by produceState<List<LibRow>?>(null, vm.library, scripts) {
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                vm.library.entries.map { LibRow(it, vm.library.state(it, scripts), ScriptMeta.events(vm.library.code(it))) }
+            }.getOrDefault(emptyList())
+        }
+    }
+    GuiTheme {
+        val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+        val snackbar = remember { SnackbarHostState() }
+        LaunchedEffect(notice) { notice?.let { snackbar.showSnackbar(it) } }
+        Scaffold(
+            modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
+            containerColor = MaterialTheme.colorScheme.surface,
+            snackbarHost = { SnackbarHost(snackbar) },
+            topBar = {
+                LargeFlexibleTopAppBar(
+                    title = { Text("Library") },
+                    subtitle = { Text("Ready-made scripts that come with Kolahal") },
+                    navigationIcon = { BackButton(vm::closeScreen) },
+                    scrollBehavior = scroll,
+                )
+            },
+        ) { padding ->
+            LazyColumn(
+                contentPadding = PaddingValues(
+                    start = 16.dp, end = 16.dp,
+                    top = padding.calculateTopPadding() + 8.dp, bottom = padding.calculateBottomPadding() + 32.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                val rows = library.orEmpty()
+                itemsIndexed(rows, key = { _, r -> "lib:" + r.entry.name }) { i, r ->
+                    LibraryRow(r, i, rows.size) { vm.installFromLibrary(r.entry) }
+                }
+                item(key = "more") {
+                    Column(Modifier.padding(top = 16.dp)) {
+                        ActionGroup(
+                            listOf(
+                                Action(R.drawable.ic_download, "Get more scripts", "Shared by people who use Kolahal, on GitHub", chevron = true) {
+                                    vm.openScreen(Screen.GET_SCRIPTS)
+                                },
+                            )
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -604,6 +875,14 @@ private fun LibraryRow(r: LibRow, index: Int, count: Int, onInstall: () -> Unit)
         supportingContent = if (open) {
             { Text(e.description) }
         } else null,
-        trailingContent = { FilledTonalButton(onClick = onInstall) { Text("Install") } },
+        trailingContent = {
+            when (r.state) {
+                ScriptLibrary.State.NOT_INSTALLED -> FilledTonalButton(onClick = onInstall) { Text("Install") }
+                ScriptLibrary.State.UPDATE_AVAILABLE -> FilledTonalButton(onClick = onInstall) { Text("Update") }
+                // Replacing your edited copy is in its sheet (Scripts), behind a confirmation.
+                ScriptLibrary.State.MODIFIED -> Text("Edited", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                ScriptLibrary.State.INSTALLED -> Text("Installed", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
     ) { Text(e.title) }
 }

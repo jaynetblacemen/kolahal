@@ -16,7 +16,7 @@ script new feed.js         # JavaScript instead (or: script new feed js)
 script new weather --cmd   # a command template that takes arguments
 ```
 
-Or tap **New script** in the script manager (`scripts`). Then:
+Or tap **Add script → New script** in the script manager (`scripts`). Then:
 
 ```sh
 script run hn              # run it now
@@ -52,9 +52,14 @@ Intervals have Android's 15-minute minimum. An interval and daily times can be c
 timer turns a disabled script back on; `script off <name>` disables it without losing the timers.
 
 `script ls` shows every script with its timers, whether it is a command, notification state and the
-last run's result. The script manager shows the same: one line per script
-(how it runs and when it last ran, red if that failed) with its on/off switch; tap a script for
-**Run**, **Edit**, **Export**, notifications, timers and **Delete**.
+last run's result. The script manager (`scripts`, or the **Scripts** tab in Settings) shows a card per
+script: its title, how it runs and how its last run went (red if it failed), **Run** for a command,
+and its on/off switch. The arrow on a card, or the one at the top for all of them, shows its details:
+its header line, next run, usage, events and what it may use. Chips filter the cards (commands,
+timers, events, in the header, failed, off, and what they use), and the search icon finds one by name.
+Tap a card for **Run**, **Edit**, **Export**, access, notifications, timers and **Delete**.
+**Add script** writes a new one, or takes one from the library, from
+[the scripts people share](#getting-scripts-from-others) or from a file.
 
 The script's **return value** is printed into the log (tables and objects as JSON). Each run gets a
 `── name · 22:40 ──` header and the script's own colour. When a script fails, the error line is

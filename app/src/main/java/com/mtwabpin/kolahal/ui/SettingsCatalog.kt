@@ -167,14 +167,13 @@ private val CATEGORIES = listOf(
         ),
     ),
     Category(
-        "feeds", "Feeds", "Refresh, log, read / unread, notifications", R.drawable.ic_rss,
+        FEEDS_CATEGORY, "Feeds", "Refresh, log, read / unread, notifications", R.drawable.ic_rss,
         listOf(
             "In the log" to listOf(Keys.FEEDS_LOG, Keys.FEEDS_LOG_LINES),
             "Read / unread" to listOf(Keys.FEEDS_READ_SHOWN, Keys.FEEDS_BACKLOG_READ),
             "Refreshing" to listOf(Keys.FEEDS_WIFI),
             "New subscriptions" to listOf(Keys.FEEDS_INTERVAL, Keys.FEEDS_NOTIFY),
         ),
-        manage = Triple("Manage feeds", "Subscriptions, unread counts, refresh, OPML import / export", Screen.FEEDS),
     ),
     Category(
         "typing", "Typing", "Suggestions, key bar, prompt, keyboard", R.drawable.ic_keyboard,
@@ -203,6 +202,9 @@ private val OTHER: Category by lazy {
     val listed = CATEGORIES.flatMap { it.keys }.toSet()
     Category("other", "More", "Everything else", R.drawable.ic_tune, listOf(null to Keys.ALL.filter { it !in listed }))
 }
+
+/** The feeds category: shown in the Feeds tab ([categorySettings]), not in the Settings list. */
+internal const val FEEDS_CATEGORY = "feeds"
 
 internal fun allCategories() = CATEGORIES + listOfNotNull(OTHER.takeIf { it.keys.isNotEmpty() })
 

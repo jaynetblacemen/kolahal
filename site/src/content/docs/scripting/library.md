@@ -3,8 +3,8 @@ title: Script library
 description: The 15 ready-made Lua and JavaScript scripts bundled with Kolahal.
 ---
 
-Kolahal ships 15 scripts you can install with one tap in the script manager's **Library**
-section (installed ones move up to your scripts), or from the prompt:
+Kolahal ships 15 scripts you can install with one tap in the script manager (**Add script → From the
+library**), or from the prompt:
 
 ```sh
 script lib                 # list them, with ✓ for installed ones

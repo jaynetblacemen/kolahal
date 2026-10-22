@@ -128,7 +128,7 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 
 | Usage | Description |
 | --- | --- |
-| `scripts` | script manager screen (import files, timers); `scripts <sub>` works like `script <sub>` |
+| `scripts` | the script manager (the Scripts tab in Settings); `scripts <sub>` works like `script <sub>` |
 | `script <sub> <name>` | manage scripts; subcommands below |
 | `lua <code>` | evaluate Lua 5.4 |
 | `js <code>` | evaluate JavaScript (QuickJS) |

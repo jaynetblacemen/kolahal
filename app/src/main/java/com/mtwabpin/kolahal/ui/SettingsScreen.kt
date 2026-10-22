@@ -273,6 +273,7 @@ fun SettingsScreen(
                     return@LazyColumn
                 }
 
+                item(key = "tabs") { PeekFade(peek) { FeatureTabs(vm, Screen.SETTINGS) } }
                 item(key = "search") {
                   PeekFade(peek) {
                     OutlinedTextField(
@@ -313,14 +314,13 @@ fun SettingsScreen(
 
                 item(key = "h:settings") { GroupHeader("Settings") }
                 item(key = "categories") {
-                    ActionGroup(allCategories().map { c -> Action(c.icon, c.title, c.subtitle, chevron = true) { openId = c.id } })
+                    // Feed settings live in the Feeds tab; search still finds them here.
+                    ActionGroup(allCategories().filter { it.id != FEEDS_CATEGORY }.map { c -> Action(c.icon, c.title, c.subtitle, chevron = true) { openId = c.id } })
                 }
                 item(key = "h:manage") { GroupHeader("Manage") }
                 item(key = "manage") {
                     ActionGroup(
                         listOf(
-                            Action(R.drawable.ic_code, "Scripts", "Lua / JS scripts, timers, triggers, library", chevron = true) { vm.openScreen(Screen.SCRIPTS) },
-                            Action(R.drawable.ic_rss, "Feeds", "RSS / Atom subscriptions, OPML import / export", chevron = true) { vm.openScreen(Screen.FEEDS) },
                             Action(R.drawable.ic_widgets, "Widgets", "Add, resize and arrange widgets", chevron = true) { vm.openScreen(Screen.WIDGETS) },
                             Action(R.drawable.ic_check, "Setup checklist", "Default launcher, permissions, battery", chevron = true) { vm.openScreen(Screen.SETUP) },
                         )
@@ -454,7 +454,7 @@ private fun PeekHint(modifier: Modifier) {
 }
 
 @Composable
-private fun SettingItem(
+internal fun SettingItem(
     vm: TerminalViewModel,
     config: Config,
     key: ConfigKey<*>,
@@ -644,6 +644,27 @@ private fun ThemeSwatches(selected: String, onPick: (String) -> Unit) {
                     Text(name, color = p.fg, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
+        }
+    }
+}
+
+/**
+ * A settings category's rows, grouped, in another screen: the Feeds tab shows the feeds category.
+ * [applicable] is read by the caller outside the list's content (see [SettingsScreen]).
+ */
+internal fun androidx.compose.foundation.lazy.LazyListScope.categorySettings(
+    vm: TerminalViewModel,
+    id: String,
+    version: State<Int>,
+    applicable: Set<ConfigKey<*>>,
+) {
+    val category = allCategories().firstOrNull { it.id == id } ?: return
+    for ((title, all) in category.groups) {
+        val keys = all.filter { it in applicable }
+        if (keys.isEmpty()) continue
+        item(key = "h:$id:$title") { if (title != null) GroupHeader(title) else Spacer(Modifier.height(8.dp)) }
+        keys.forEachIndexed { index, key ->
+            item(key = key.key) { SettingItem(vm, vm.config, key, version, index, keys.size, onImportFont = {}) }
         }
     }
 }

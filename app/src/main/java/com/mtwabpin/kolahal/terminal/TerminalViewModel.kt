@@ -747,9 +747,17 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             else if (current != Screen.TERMINAL && current != screen) backStack.addLast(current)
             _screen.value = screen
         }
-        if (screen == Screen.SCRIPTS || screen == Screen.GET_SCRIPTS) refreshScripts()
+        if (screen == Screen.SCRIPTS || screen == Screen.SCRIPT_LIBRARY || screen == Screen.GET_SCRIPTS) refreshScripts()
         if (screen == Screen.GET_SCRIPTS) loadSharedScripts()
         if (screen == Screen.SETUP) refreshSetup()
+    }
+
+    /** Settings, Feeds and Scripts are tabs of one place: switching replaces the screen, so Back leaves them all. */
+    fun switchTab(screen: Screen) {
+        _notice.value = null
+        _peek.value = null
+        _screen.value = screen
+        if (screen == Screen.SCRIPTS) refreshScripts()
     }
 
     private val _setup = MutableStateFlow<List<SetupCheck>>(emptyList())
