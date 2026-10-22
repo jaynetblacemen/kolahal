@@ -211,6 +211,11 @@ class LuaEngine : ScriptEngine {
             local check = __kolahal_check
             local sethook = debug.sethook
             local gc = collectgarbage
+            -- Everything the guards below call, kept now: the script can replace the globals and the
+            -- string and table libraries, which would otherwise switch the guards off.
+            local error, type, tostring, select = error, type, tostring, select
+            local pack, unpack, concat = table.pack, table.unpack, table.concat
+            local sfind, slower = string.find, string.lower
             local HOOK_EVERY = 10000
             local MEMORY_LIMIT_KB = 64 * 1024
             local function hook()
@@ -222,17 +227,17 @@ class LuaEngine : ScriptEngine {
             -- Timeouts and the memory cap must not be swallowed by pcall / xpcall / resume.
             local function fatal(e)
               -- Lowercased: the hook raises "Memory limit exceeded (64 MB)".
-              local s = type(e) == "string" and e:lower()
-              return s and (s:find("script timed out", 1, true) or s:find("memory limit exceeded", 1, true)) ~= nil
+              local s = type(e) == "string" and slower(e)
+              return s and (sfind(s, "script timed out", 1, true) or sfind(s, "memory limit exceeded", 1, true)) ~= nil
             end
             local function rethrow(res)
               if not res[1] and fatal(res[2]) then error(res[2], 0) end
-              return table.unpack(res, 1, res.n)
+              return unpack(res, 1, res.n)
             end
             local rawpcall, rawxpcall = pcall, xpcall
-            pcall = function(f, ...) return rethrow(table.pack(rawpcall(f, ...))) end
+            pcall = function(f, ...) return rethrow(pack(rawpcall(f, ...))) end
             xpcall = function(f, handler, ...)
-              return rethrow(table.pack(rawxpcall(f, function(e)
+              return rethrow(pack(rawxpcall(f, function(e)
                 if fatal(e) then return e end
                 return handler(e)
               end, ...)))
@@ -240,32 +245,37 @@ class LuaEngine : ScriptEngine {
 
             -- Coroutines get their own hook so they cannot dodge the timeout.
             local cocreate, coresume = coroutine.create, coroutine.resume
-            coroutine.create = function(f)
+            local function hooked(f)
               local co = cocreate(f)
               sethook(co, hook, "", HOOK_EVERY)
               return co
             end
-            coroutine.resume = function(co, ...) return rethrow(table.pack(coresume(co, ...))) end
+            coroutine.create = hooked
+            coroutine.resume = function(co, ...) return rethrow(pack(coresume(co, ...))) end
             coroutine.wrap = function(f)
-              local co = coroutine.create(f)
+              local co = hooked(f)
               return function(...)
-                local res = table.pack(coresume(co, ...))
+                local res = pack(coresume(co, ...))
                 if not res[1] then error(res[2], fatal(res[2]) and 0 or 2) end
-                return table.unpack(res, 2, res.n)
+                return unpack(res, 2, res.n)
               end
             end
 
             -- string.rep can ask for gigabytes in one call, before the hook gets to check memory.
             local rawrep, tointeger = string.rep, math.tointeger
+            local REP_LIMIT = 16 * 1024 * 1024
             string.rep = function(s, n, sep)
-              local size = (#tostring(s) + (sep ~= nil and #tostring(sep) or 0)) * (tointeger(n) or 0)
-              if size > 16 * 1024 * 1024 then error("string.rep: result too large (over 16 MB)", 2) end
+              local each, count = #tostring(s) + (sep ~= nil and #tostring(sep) or 0), tointeger(n) or 0
+              -- Divided, not multiplied: a huge count would wrap the product around to a small number.
+              if count > 0 and each > 0 and each > REP_LIMIT // count then error("string.rep: result too large (over 16 MB)", 2) end
               return rawrep(s, n, sep)
             end
 
             -- Sandbox
             local realload = load
             java, debug, io, package, require, dofile, loadfile = nil, nil, nil, nil, nil, nil, nil
+            -- LuaJava keeps a thrown Java exception (a reflective object) here; none should get this far.
+            __jthrowable__ = nil
             os = { time = os.time, date = os.date, clock = os.clock, difftime = os.difftime }
             -- Text chunks only. Passing env explicitly (even nil) would replace _ENV, so forward it only if given.
             load = function(chunk, name, _, ...)
@@ -295,11 +305,11 @@ class LuaEngine : ScriptEngine {
               if repl then fn = realload("return " .. src, "=" .. name, "t") end
               if not fn then fn, err = realload(src, "=" .. name, "t") end
               if not fn then error(err, 0) end
-              local res = table.pack(fn())
+              local res = pack(fn())
               if res.n == 0 or (res.n == 1 and res[1] == nil) then return nil end
               local out = {}
               for i = 1, res.n do out[i] = render(res[i]) end
-              return table.concat(out, "\t")
+              return concat(out, "\t")
             end
         """.trimIndent()
     }
