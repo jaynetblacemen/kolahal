@@ -305,6 +305,10 @@ private fun HomePager(vm: TerminalViewModel, terminal: @androidx.compose.runtime
             }
         },
     ) { page ->
-        if (page == terminalPage) terminal() else com.mtwabpin.kolahal.ui.WidgetPanel(vm)
+        if (page == terminalPage) {
+            androidx.compose.runtime.CompositionLocalProvider(com.mtwabpin.kolahal.ui.LocalTerminalShown provides (pager.currentPage == terminalPage)) { terminal() }
+        } else {
+            com.mtwabpin.kolahal.ui.WidgetPanel(vm)
+        }
     }
 }

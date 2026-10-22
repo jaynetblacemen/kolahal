@@ -138,7 +138,7 @@ class LogRepository private constructor(private val context: Context) {
      * column, newest first: all the log keeps, lines a fresh screen hid included. At most [limit] are
      * returned; [Found.total] counts them all. [skip] leaves lines out (a locked private space's).
      */
-    fun search(words: List<String>, limit: Int = 500, skip: ((LogEntry) -> Boolean)? = null): Found {
+    fun search(words: List<String>, limit: Int = 500, skip: ((LogEntry) -> Boolean)? = null, keepGoing: () -> Boolean = { true }): Found {
         val found = ArrayList<LogEntry>()
         var total = 0
         var searched = 0
@@ -147,6 +147,8 @@ class LogRepository private constructor(private val context: Context) {
             arrayOf(prefs.getLong(KEY_CLEARED_UP_TO, 0L).toString()),
         ).use { c ->
             while (c.moveToNext()) {
+                // A newer search (more typing, another log line) makes this one moot.
+                if (c.position % 256 == 0 && !keepGoing()) break
                 val text = c.getString(4)
                 val source = c.getString(3)
                 // JSON escapes slashes in links; matching the raw row first spares parsing most of them.
@@ -154,7 +156,8 @@ class LogRepository private constructor(private val context: Context) {
                 val candidate = words.all { w ->
                     text.contains(w, ignoreCase = true) || source?.contains(w, ignoreCase = true) == true || rawCtx?.contains(w, ignoreCase = true) == true
                 }
-                if (!candidate && skip == null) {
+                // Only a line from a profile ([LogContext.USER]) can be skipped: the others aren't parsed unless they match.
+                if (!candidate && (skip == null || rawCtx?.contains("\"${LogContext.USER}\"") != true)) {
                     searched++
                     continue
                 }

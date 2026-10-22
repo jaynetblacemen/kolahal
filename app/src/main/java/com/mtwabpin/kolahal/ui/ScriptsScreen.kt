@@ -205,9 +205,9 @@ fun ScriptsScreen(
         }
     }
     fun stateOf(info: ScriptInfo) = ScriptState(info.script.name in statuses, info.script.name in missingKeys)
-    // Only chips something matches, with how many.
-    val chips = remember(infos, statuses, missingKeys) {
-        SCRIPT_FILTERS.map { f -> f to infos.count { f.keeps(it, stateOf(it)) } }.filter { it.second > 0 }
+    // Only chips something matches, with how many; a selected one stays, so it can be unselected.
+    val chips = remember(infos, statuses, missingKeys, filters) {
+        SCRIPT_FILTERS.map { f -> f to infos.count { f.keeps(it, stateOf(it)) } }.filter { it.second > 0 || it.first.id in filters }
     }
     val shown = remember(infos, statuses, missingKeys, filters, query) {
         val active = SCRIPT_FILTERS.filter { it.id in filters }
@@ -283,7 +283,7 @@ fun ScriptsScreen(
                         )
                     }
                 }
-                if (scripts.size > 1 && chips.isNotEmpty()) {
+                if ((scripts.size > 1 && chips.isNotEmpty()) || filters.isNotEmpty()) {
                     // One row, scrolled sideways: the chips grow with what scripts use.
                     item(key = "chips") {
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

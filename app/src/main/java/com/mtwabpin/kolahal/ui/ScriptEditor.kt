@@ -618,7 +618,13 @@ fun ScriptEditor(
             },
             onDirective = { line ->
                 referenceOpen = false
-                insert(line)
+                // A directive is a line of its own: it goes above the line the cursor is on, the
+                // cursor after it to type what follows (or on the line below when nothing does).
+                val text = value.text
+                val start = if (value.selection.min == 0) 0 else text.lastIndexOf('\n', value.selection.min - 1) + 1
+                val body = if (line.endsWith("\n")) line else line + "\n"
+                val caret = start + if (line.endsWith("\n")) body.length else line.length
+                edit(TextFieldValue(text.substring(0, start) + body + text.substring(start), TextRange(caret)))
                 focusEditor()
             },
         )

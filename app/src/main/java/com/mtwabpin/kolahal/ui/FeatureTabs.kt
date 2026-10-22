@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -51,6 +53,7 @@ internal fun FeatureTabs(vm: TerminalViewModel, current: Screen, modifier: Modif
             .clip(RoundedCornerShape(24.dp))
             .background(colors.surfaceContainerHigh)
             .padding(4.dp)
+            .selectableGroup()
             .testTag("feature-tabs"),
     ) {
         for (screen in FEATURE_TABS) {
@@ -66,6 +69,7 @@ internal fun FeatureTabs(vm: TerminalViewModel, current: Screen, modifier: Modif
                     .clip(RoundedCornerShape(20.dp))
                     .background(if (on) colors.primary else Color.Transparent)
                     .selectable(selected = on, role = Role.Tab) { if (!on) vm.switchTab(screen) }
+                    .heightIn(min = 48.dp)
                     .padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {

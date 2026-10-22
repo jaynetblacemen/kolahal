@@ -74,6 +74,9 @@ import kotlinx.coroutines.launch
 /** What the prompt shows when home is seen from Settings as if typing: one letter matches plenty. */
 private const val PREVIEW_INPUT = "s"
 
+/** Whether the terminal is the page showing (false while the widgets page beside it is). */
+val LocalTerminalShown = androidx.compose.runtime.compositionLocalOf { true }
+
 /**
  * Home. [preview]: drawn under Settings while a look setting is changed (TerminalViewModel.Peek):
  * it doesn't take focus, the keyboard or events, and with `typing` it looks as if [PREVIEW_INPUT] were typed.
@@ -156,7 +159,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     }
     // `/words` at the prompt: the matching lines take the log's place until the search ends.
     val search by vm.search.collectAsStateWithLifecycle()
-    if (preview == null) BackHandler(enabled = search != null) { vm.escape() }
+    // Not while the widgets page is showing: Back there returns to the terminal.
+    if (preview == null) BackHandler(enabled = search != null && LocalTerminalShown.current) { vm.escape() }
     // A result tapped: once its line is loaded, scroll to it (a few newer lines below it) and mark it a moment.
     val jumpTo by vm.jumpTo.collectAsStateWithLifecycle()
     var flash by remember { mutableStateOf<Long?>(null) }
@@ -164,7 +168,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         val id = jumpTo ?: return@LaunchedEffect
         val index = reversedRows.indexOfFirst { it is LogRow.Entry && it.entry.id == id }
         if (index < 0) return@LaunchedEffect
-        pinned = false
+        // One of the newest lines: still following new ones.
+        pinned = index <= 3
         runCatching { listState.scrollToItem((index - 3).coerceAtLeast(0)) }
         vm.jumpDone()
         flash = id
@@ -311,7 +316,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         // measured first, so a long suggestion list can't push the prompt off the screen.
         Column(Modifier.weight(1f).fillMaxWidth()) {
         Box(Modifier.weight(1f).fillMaxWidth()) {
-        val results = search?.takeIf { it.words.isNotEmpty() }
+        val results = search?.takeIf { it.words.isNotEmpty() && preview == null }
         if (results != null) LogSearchResults(
             search = results,
             timeFormat = lineTimeFormat,

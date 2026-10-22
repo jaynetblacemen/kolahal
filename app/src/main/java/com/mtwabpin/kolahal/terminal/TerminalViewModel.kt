@@ -68,6 +68,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.currentCoroutineContext
 
 private const val PAGE = 400
 private const val KEY_PENDING_EXPORT = "pending_export"
@@ -342,17 +343,30 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     init {
         viewModelScope.launch {
             // Typing settles before a search; leaving it is at once. The log changing searches again.
-            combine(androidx.compose.runtime.snapshotFlow { searchWords(input.text) }.distinctUntilChanged(), logs.version) { words, _ -> words }
-                .debounce { if (it.isNullOrEmpty()) 0L else 120L }
-                .collectLatest { words ->
-                    _search.value = when {
-                        words == null -> null
-                        words.isEmpty() -> LogSearch(words, emptyList(), 0, 0)
-                        else -> withContext(Dispatchers.IO) {
-                            val locked = lockedPrivate(appsRepo.profiles.value)
-                            val found = logs.search(words, skip = if (locked.isEmpty()) null else { e -> e.ctx.userSerial in locked })
-                            LogSearch(words, buildRows(found.entries.asReversed()), found.total, found.searched)
+            // Locking the private space hides its lines from the results too, as from the log.
+            val locks = appsRepo.profiles.map(::lockedPrivate).distinctUntilChanged()
+            combine(androidx.compose.runtime.snapshotFlow { searchWords(input.text) }.distinctUntilChanged(), logs.version, locks) { words, _, locked -> words to locked }
+                .debounce { (words, _) -> if (words.isNullOrEmpty()) 0L else 120L }
+                .collectLatest { (words, locked) ->
+                    // A failed search keeps the previous results instead of crashing home.
+                    try {
+                        _search.value = when {
+                            words == null -> null
+                            words.isEmpty() -> LogSearch(words, emptyList(), 0, 0)
+                            else -> withContext(Dispatchers.IO) {
+                                val job = currentCoroutineContext()[kotlinx.coroutines.Job]
+                                val found = logs.search(
+                                    words,
+                                    skip = if (locked.isEmpty()) null else { e -> e.ctx.userSerial in locked },
+                                    keepGoing = { job?.isActive != false },
+                                )
+                                LogSearch(words, buildRows(found.entries.asReversed()), found.total, found.searched)
+                            }
                         }
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (e: Throwable) {
+                        android.util.Log.w("Kolahal", "log search failed", e)
                     }
                 }
         }
@@ -367,6 +381,12 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             pageLimit = maxOf(pageLimit, (logs.countFrom(entry.id) + 20).coerceAtMost(MAX_PAGE))
             _jumpTo.value = entry.id
             requestReload()
+            // A line that never shows up (deleted meanwhile, past the page limit) doesn't stay a pending jump.
+            kotlinx.coroutines.delay(3_000)
+            if (_jumpTo.value == entry.id) {
+                _jumpTo.value = null
+                atNewest()
+            }
         }
     }
 
