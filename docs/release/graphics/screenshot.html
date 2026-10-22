@@ -9,15 +9,14 @@
 	@font-face { font-family: 'JetBrains Mono'; font-weight: 400; src: url('../../../app/src/main/res/font/jetbrains_mono_regular.ttf'); }
 	@font-face { font-family: 'JetBrains Mono'; font-weight: 700; src: url('../../../app/src/main/res/font/jetbrains_mono_bold.ttf'); }
 	:root {
-		/* The website's light colours (gruvbox light); the phone shows the app in gruvbox. */
-		--paper: #fbf1c7;
-		--paper-2: #f2e5bc;
-		--fg: #3c3836;
-		--dim: #7c6f64;
-		--accent: #79740e;
+		/* Gruvbox dark, as the app on the phone. --a and --b (r g b) are each shot's two colours. */
+		--fg: #ebdbb2;
+		--dim: #bdae93;
 		--screen: #282828;
-		--bezel: #32302f;
-		--edge: #504945;
+		--bezel: #3c3836;
+		--edge: #665c54;
+		--a: 250 189 47;
+		--b: 142 192 124;
 	}
 	* { margin: 0; box-sizing: border-box; }
 	html, body { width: 1080px; height: 1920px; overflow: hidden; }
@@ -25,8 +24,10 @@
 		font-family: 'JetBrains Mono', monospace;
 		color: var(--fg);
 		background:
-			radial-gradient(ellipse 70% 45% at 50% 70%, rgb(255 255 255 / 0.45), transparent 70%),
-			linear-gradient(var(--paper), var(--paper-2));
+			radial-gradient(ellipse 75% 40% at 12% 4%, rgb(var(--a) / 0.34), transparent 70%),
+			radial-gradient(ellipse 80% 45% at 95% 78%, rgb(var(--b) / 0.26), transparent 70%),
+			radial-gradient(rgb(235 219 178 / 0.06) 1.6px, transparent 1.8px) 0 0 / 30px 30px,
+			linear-gradient(165deg, #32302f, #1d2021 55%, #141617);
 		position: relative;
 	}
 	.caption {
@@ -40,7 +41,7 @@
 		line-height: 1.18;
 		letter-spacing: -0.01em;
 	}
-	h1 em { font-style: normal; color: var(--accent); }
+	h1 em { font-style: normal; color: rgb(var(--a)); }
 	p {
 		margin-top: 24px;
 		font-size: 31px;
@@ -57,11 +58,11 @@
 		height: 1436px;
 		padding: 18px;
 		border-radius: 76px;
-		background: var(--bezel);
+		background: linear-gradient(160deg, #504945, var(--bezel) 30%, #282828);
 		box-shadow:
 			inset 0 0 0 2px var(--edge),
-			0 40px 80px -30px rgb(60 56 54 / 0.55),
-			0 0 0 1px rgb(40 40 40 / 0.5);
+			0 50px 100px -30px rgb(0 0 0 / 0.75),
+			0 0 140px -10px rgb(var(--b) / 0.30);
 	}
 	.screen {
 		position: relative;
@@ -82,8 +83,8 @@
 		height: 22px;
 		margin-left: -11px;
 		border-radius: 50%;
-		background: #050605;
-		box-shadow: inset 0 0 0 3px #161a16;
+		background: #0e0f0f;
+		box-shadow: inset 0 0 0 3px #1d2021;
 	}
 </style>
 </head>
@@ -91,18 +92,23 @@
 	<div class="caption"><h1 id="title"></h1><p id="text"></p></div>
 	<div class="phone"><div class="screen"><img id="shot" alt=""></div></div>
 	<script>
-		// Captions per capture: the title (an <em> part is green) and one line under it.
+		// Per capture: the title (an <em> part takes the first colour), one line under it, and the
+		// two gruvbox colours of the background glows.
+		const YELLOW = '250 189 47', GREEN = '184 187 38', AQUA = '142 192 124', BLUE = '131 165 152',
+			PURPLE = '211 134 155', ORANGE = '254 128 25';
 		const SHOTS = {
-			'1-home': ['Your home screen<br>is <em>a terminal</em>', 'Clock, weather and to-dos at the top,<br>every command and its answer below'],
-			'2-type': ['Type a few letters,<br>press <em>Enter</em>', 'The best match sits right above your thumb'],
-			'3-feeds': ['Your <em>feeds</em>,<br>in the log', 'A built-in RSS and Atom reader<br>with unread counts'],
-			'4-scripts': ['Scripts in <em>Lua</em><br>or <em>JavaScript</em>', 'On a timer, on an event,<br>or as commands of your own'],
-			'5-themes': ['Make it <em>yours</em>', 'Seven themes, and a theme builder<br>with a live preview'],
+			'1-home': ['Your home screen<br>is <em>a terminal</em>', 'Clock, weather and to-dos at the top,<br>every command and its answer below', YELLOW, AQUA],
+			'2-type': ['Type a few letters,<br>press <em>Enter</em>', 'The best match sits right above your thumb', GREEN, BLUE],
+			'3-feeds': ['Your <em>feeds</em>,<br>in the log', 'A built-in RSS and Atom reader<br>with unread counts', ORANGE, YELLOW],
+			'4-scripts': ['Scripts in <em>Lua</em><br>or <em>JavaScript</em>', 'On a timer, on an event,<br>or as commands of your own', AQUA, PURPLE],
+			'5-themes': ['Make it <em>yours</em>', 'Seven themes, and a theme builder<br>with a live preview', PURPLE, ORANGE],
 		};
 		const name = new URLSearchParams(location.search).get('shot') || '1-home';
-		const [title, text] = SHOTS[name] || [name, ''];
+		const [title, text, a, b] = SHOTS[name] || [name, '', YELLOW, AQUA];
 		document.getElementById('title').innerHTML = title;
 		document.getElementById('text').innerHTML = text;
+		document.documentElement.style.setProperty('--a', a);
+		document.documentElement.style.setProperty('--b', b);
 		document.getElementById('shot').src = 'raw/' + name + '.png';
 	</script>
 </body>

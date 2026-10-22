@@ -9,15 +9,13 @@
 	@font-face { font-family: 'JetBrains Mono'; font-weight: 400; src: url('../../../app/src/main/res/font/jetbrains_mono_regular.ttf'); }
 	@font-face { font-family: 'JetBrains Mono'; font-weight: 700; src: url('../../../app/src/main/res/font/jetbrains_mono_bold.ttf'); }
 	:root {
-		/* As screenshot.html: the website's light colours, the app in gruvbox. */
-		--paper: #fbf1c7;
-		--paper-2: #f2e5bc;
-		--fg: #3c3836;
-		--dim: #7c6f64;
-		--accent: #79740e;
+		/* As screenshot.html: gruvbox dark, with an orange and an aqua glow. */
+		--fg: #ebdbb2;
+		--dim: #bdae93;
+		--accent: #fabd2f;
 		--screen: #282828;
-		--bezel: #32302f;
-		--edge: #504945;
+		--bezel: #3c3836;
+		--edge: #665c54;
 	}
 	* { margin: 0; box-sizing: border-box; }
 	html, body { width: 1024px; height: 500px; overflow: hidden; }
@@ -25,8 +23,10 @@
 		font-family: 'JetBrains Mono', monospace;
 		color: var(--fg);
 		background:
-			radial-gradient(ellipse 45% 75% at 76% 70%, rgb(255 255 255 / 0.5), transparent 70%),
-			linear-gradient(160deg, var(--paper), var(--paper-2) 70%);
+			radial-gradient(ellipse 55% 80% at 8% 10%, rgb(254 128 25 / 0.30), transparent 70%),
+			radial-gradient(ellipse 45% 85% at 80% 85%, rgb(142 192 124 / 0.26), transparent 70%),
+			radial-gradient(rgb(235 219 178 / 0.06) 1.4px, transparent 1.6px) 0 0 / 24px 24px,
+			linear-gradient(160deg, #32302f, #1d2021 55%, #141617);
 		position: relative;
 	}
 	.text {
@@ -40,7 +40,7 @@
 		width: 104px;
 		height: 104px;
 		border-radius: 26px;
-		box-shadow: 0 12px 26px -12px rgb(60 56 54 / 0.6);
+		box-shadow: inset 0 0 0 1px var(--edge), 0 0 0 1px #504945, 0 14px 30px -10px rgb(0 0 0 / 0.8);
 	}
 	h1 {
 		margin-top: 30px;
@@ -65,8 +65,8 @@
 		height: 640px;
 		padding: 10px;
 		border-radius: 42px;
-		background: var(--bezel);
-		box-shadow: inset 0 0 0 2px var(--edge), 0 30px 60px -20px rgb(60 56 54 / 0.6);
+		background: linear-gradient(160deg, #504945, var(--bezel) 30%, #282828);
+		box-shadow: inset 0 0 0 2px var(--edge), 0 30px 70px -20px rgb(0 0 0 / 0.8), 0 0 90px -10px rgb(142 192 124 / 0.3);
 	}
 	.screen {
 		position: relative;
@@ -87,8 +87,8 @@
 		height: 12px;
 		margin-left: -6px;
 		border-radius: 50%;
-		background: #050605;
-		box-shadow: inset 0 0 0 2px #161a16;
+		background: #0e0f0f;
+		box-shadow: inset 0 0 0 2px #1d2021;
 	}
 </style>
 </head>
