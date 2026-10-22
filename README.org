@@ -122,7 +122,7 @@ cd site && pnpm install && pnpm dev    # http://localhost:4321/kolahal/
 - App shortcuts :: =shortcuts <app>= lists an app's launcher shortcuts; =open maps:home= starts one.
   They are also in every app's long-press sheet.
 - Instant launch :: With =launch.instant apps= (default) an app opens the moment the input matches only
-  one app: =grov= opens Grove, =grow= opens Groww, without Enter. =launch.instant all= also runs
+  one app: =calc= opens Calculator, =cale= opens Calendar, without Enter. =launch.instant all= also runs
   argument-free commands and aliases that way (=setti= opens settings) and makes tapped history lines run at once.
   A line whose arguments leave nothing to choose runs as well: =torch on=, =dnd off=, =media pause=.
   Calls, messages, uninstall, profile switches, =clear= and other sensitive commands always need

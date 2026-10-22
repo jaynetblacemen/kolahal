@@ -79,9 +79,9 @@ gh variable set RELEASE_CERT_SHA256 --body 21223ad4312a871e4a1dd16440efccac84f46
 
 * Giving Play the release key
 
-Do this once in Play Console, before the first bundle goes up. Play's PEPK tool encrypts
-=kolahal-release.jks= with Google's public key (=play-encryption-key.pem=, beside this file), and
-=kolahal-upload-certificate.pem= goes up as the upload key. [[file:play-signing.org][play-signing.org]] has each step and the
+Done once in Play Console, before the first bundle went up (22 October 2026). Play's PEPK tool
+encrypts =kolahal-release.jks= with Google's public key, and =kolahal-upload-certificate.pem= goes
+up as the upload key. [[file:play-signing.org][play-signing.org]] has each step and the
 commands, run with the Java that comes with Android Studio.
 
 From then on, Play signs Kolahal with the release key, and you upload bundles signed with the

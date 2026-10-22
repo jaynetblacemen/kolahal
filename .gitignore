@@ -16,6 +16,7 @@ keystore.properties
 *.keystore
 # Play's key export tool and what it makes (docs/release/play-signing.org)
 /docs/pepk.jar
+/docs/encryption_public_key.pem
 kolahal-release-for-play.zip
 .claude/worktrees/
 

@@ -1,9 +1,9 @@
 #+TITLE: Giving Play the release key
 #+STARTUP: showall
 
-Do this once in Play Console, before the first bundle goes up, even to internal testing. After
-that, Play signs Kolahal with the release key, the same key as the APKs on GitHub, so an install
-from either place updates the other. [[file:signing.org][signing.org]] explains why.
+Do this once in Play Console, before the first bundle goes up, even to internal testing (done on
+22 October 2026). After that, Play signs Kolahal with the release key, the same key as the APKs on
+GitHub, so an install from either place updates the other. [[file:signing.org][signing.org]] explains why.
 
 Where: Play Console → the app → Test and release → App integrity → Play app signing (or "Change
 app signing key" while creating the first release). Choose your own key, exported from a Java
@@ -16,7 +16,7 @@ them.
 |------------------------+---------------------------------------------------------------|
 | Java                   | Android Studio's own, in its =jbr= folder (below)             |
 | PEPK                   | =pepk.jar=, from step 2 on the page                           |
-| Play's encryption key  | =docs/release/play-encryption-key.pem= (step 1, already here) |
+| Play's encryption key  | =encryption_public_key.pem=, from step 1 on the page          |
 | The release key        | =~/.config/keys/kolahal-release.jks=, alias =kolahal=         |
 | Its password           | =keystore.properties= in the repository, =storePassword=      |
 | The upload certificate | =~/.config/keys/kolahal-upload-certificate.pem=               |
@@ -36,12 +36,11 @@ with Play's encryption key without errors.
 
 * The five steps
 
-1. *Download encryption public key.* It is already in the repository as
-   =docs/release/play-encryption-key.pem= (downloaded on 22 October 2026). It is Google's public
-   key, not a secret: PEPK uses it to lock the release key so only Google can open it. If the
-   page ever gives a different file, save it over this one.
-2. *Download PEPK tool.* Save =pepk.jar= in the repository's =docs/= folder. It is git-ignored
-   there, so it can't be committed by mistake.
+1. *Download encryption public key.* Save =encryption_public_key.pem= in the repository's =docs/=
+   folder. It is Google's public key, not a secret: PEPK uses it to lock the release key so only
+   Google can open it.
+2. *Download PEPK tool.* Save =pepk.jar= in =docs/= too. Both files are git-ignored there, so they
+   can't be committed by mistake.
 3. *Run PEPK* from the repository folder. It asks for the keystore password: use the
    =storePassword= in =keystore.properties= (both keys share one password). Don't use
    =--keystore-pass=: the password would stay in the shell history.
@@ -54,7 +53,7 @@ with Play's encryption key without errors.
        --output="$HOME/Downloads/kolahal-release-for-play.zip" \
        --include-cert \
        --rsa-aes-encryption \
-       --encryption-key-path=docs/release/play-encryption-key.pem
+       --encryption-key-path=docs/encryption_public_key.pem
    #+end_src
    It writes =~/Downloads/kolahal-release-for-play.zip=: the release key, encrypted for Google,
    and its certificate.
@@ -88,8 +87,8 @@ Console writes them.
   from Play would be signed with that key and could never update a GitHub APK, or be updated by
   one.
 - Then delete the zip: =rm ~/Downloads/kolahal-release-for-play.zip=. Only Google can open it,
-  but there is no reason to keep another copy of the release key. =docs/pepk.jar= can go too:
-  Play gives it again whenever it's needed.
+  but there is no reason to keep another copy of the release key. =docs/pepk.jar= and
+  =docs/encryption_public_key.pem= can go too: Play gives them again whenever they're needed.
 
 After this, every bundle goes up as in [[file:google-play.org][google-play.org]] → Each release on Play.
 
@@ -98,8 +97,8 @@ After this, every bundle goes up as in [[file:google-play.org][google-play.org]]
 - *PEPK says the password is wrong*: check you used =storePassword=, the one for
   =kolahal-release.jks=. The upload key has the same password, so it's =kolahal-release.jks= and
   the =kolahal= alias that need checking.
-- *Play refuses the zip*: the encryption key may be old. Download it again from step 1, save it
-  over =docs/release/play-encryption-key.pem=, and run step 3 again.
+- *Play refuses the zip*: the encryption key may be old. Download it again from step 1 and run step 3
+  again.
 - *Play refuses a bundle later, signed with the wrong key*: step 5 was skipped, or a different
   certificate went up. Play Console → App integrity → upload key reset, with
   =kolahal-upload-certificate.pem=.

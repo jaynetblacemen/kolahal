@@ -10,7 +10,6 @@ details are in the files beside this one. (This folder is for the maintainer; th
 - [[file:signing.org][signing.org]]: the keys. What each file in =~/.config/keys= is, why Kolahal has
   two where an app only on Play needs one, where they are used, and how to back them up.
 - [[file:play-signing.org][play-signing.org]]: giving Play the release key, once, with PEPK and Android Studio's Java.
-  =play-encryption-key.pem= is the public key from Play it uses.
 - [[file:github-actions.org][github-actions.org]]: the Build and Release workflows, their secrets, what a release
   run does, and what to do when one fails.
 - [[file:google-play.org][google-play.org]]: Google Play: the lite build there, the policy behind it, setting up
