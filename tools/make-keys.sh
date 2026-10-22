@@ -16,10 +16,10 @@ set -euo pipefail
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 props=$root/keystore.properties
-keytool=${JAVA_HOME:+$JAVA_HOME/bin/}keytool
 
 if [ "${1:-}" = "--secrets" ]; then
     [ -f "$props" ] || { echo "No keystore.properties: make the keys first." >&2; exit 1; }
+    command -v gh >/dev/null || { echo "This needs gh, the GitHub command line, logged in." >&2; exit 1; }
     get() { sed -n "s/^$1=//p" "$props"; }
     put() { printf %s "$2" | gh secret set "$1" --repo mtwabpin/kolahal; }
     base64 -w0 "$(get storeFile)" | gh secret set RELEASE_KEYSTORE_BASE64 --repo mtwabpin/kolahal
@@ -32,6 +32,19 @@ if [ "${1:-}" = "--secrets" ]; then
     put UPLOAD_KEY_PASSWORD "$(get uploadKeyPassword)"
     echo "Stored the release and upload keys as GitHub Actions secrets."
     exit 0
+fi
+
+# keytool comes with every JDK: JAVA_HOME's, the one on the PATH, or the one inside Android Studio.
+keytool=
+for k in ${JAVA_HOME:+"$JAVA_HOME/bin/keytool"} "$(command -v keytool || true)" \
+    "$HOME/.apps/Android/Studio/jbr/bin/keytool" "$HOME/android-studio/jbr/bin/keytool" \
+    /opt/android-studio/jbr/bin/keytool /usr/local/android-studio/jbr/bin/keytool \
+    "/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/keytool"; do
+    if [ -n "$k" ] && [ -x "$k" ]; then keytool=$k; break; fi
+done
+if [ -z "$keytool" ]; then
+    echo "No keytool found. Set JAVA_HOME to a JDK; Android Studio's jbr folder is one." >&2
+    exit 1
 fi
 
 dir=${1:-$HOME/.config/keys}
