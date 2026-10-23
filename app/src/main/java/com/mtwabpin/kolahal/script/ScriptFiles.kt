@@ -26,7 +26,8 @@ class ScriptFiles(private val context: Context) {
                 skipped += "$fileName (not .lua / .js)"
                 continue
             }
-            ScriptNames.clash(context, name)?.let { why ->
+            // A new name can't be a built-in's or an app's; a script that exists is updated whatever its name.
+            if (scripts.byName(name) == null) ScriptNames.clash(context, name)?.let { why ->
                 skipped += "$fileName ($why)"
                 continue
             }

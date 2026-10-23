@@ -94,7 +94,8 @@ class Db private constructor(context: Context) :
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        if (oldVersion < 2) db.execSQL("ALTER TABLE scripts ADD COLUMN at_times TEXT")
+        // Both processes may open the database right after an update: each step once.
+        if (oldVersion < 2 && !hasColumn(db, "scripts", "at_times")) db.execSQL("ALTER TABLE scripts ADD COLUMN at_times TEXT")
         if (oldVersion < 3) createProductivityTables(db)
         if (oldVersion < 4) addScriptAccess(db)
         if (oldVersion < 5) dropRunHeaders(db)
@@ -105,12 +106,13 @@ class Db private constructor(context: Context) :
      * Before, switching a script on allowed everything it declared with `@uses`: switched-on
      * scripts keep that; switched-off ones ask when they are switched on.
      */
-    private fun addScriptAccess(db: SQLiteDatabase) {
-        // Both processes may open the database right after an update: add the column once.
-        val has = db.rawQuery("PRAGMA table_info(scripts)", null).use { c ->
-            generateSequence { if (c.moveToNext()) c.getString(c.getColumnIndexOrThrow("name")) else null }.any { it == "access" }
+    private fun hasColumn(db: SQLiteDatabase, table: String, column: String): Boolean =
+        db.rawQuery("PRAGMA table_info($table)", null).use { c ->
+            generateSequence { if (c.moveToNext()) c.getString(c.getColumnIndexOrThrow("name")) else null }.any { it == column }
         }
-        if (!has) db.execSQL("ALTER TABLE scripts ADD COLUMN access TEXT")
+
+    private fun addScriptAccess(db: SQLiteDatabase) {
+        if (!hasColumn(db, "scripts", "access")) db.execSQL("ALTER TABLE scripts ADD COLUMN access TEXT")
         db.query("scripts", arrayOf("id", "code"), "enabled = 1", null, null, null, null).use { c ->
             while (c.moveToNext()) {
                 val uses = com.mtwabpin.kolahal.script.ScriptMeta.uses(c.getString(1))

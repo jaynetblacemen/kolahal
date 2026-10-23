@@ -95,9 +95,10 @@ class ScriptLibrary(private val context: Context) {
         val fingerprint = entries.joinToString("\n") { it.file + ":" + code(it).hashCode() }.hashCode()
         if (prefs.getInt(KEY_LIBRARY, 0) == fingerprint) return emptyList()
         val installed = ScriptRepository.get(context).all()
-        val updated = entries.filter { state(it, installed) == State.UPDATE_AVAILABLE }
-            .mapNotNull { e -> runCatching { install(e) }.getOrNull()?.name }
-        prefs.edit { putInt(KEY_LIBRARY, fingerprint) }
+        val results = entries.filter { state(it, installed) == State.UPDATE_AVAILABLE }.map { e -> e.name to runCatching { install(e) }.isSuccess }
+        val updated = results.filter { it.second }.map { it.first }
+        // One that failed (a locked database, a changed language) is tried again next start.
+        if (results.all { it.second }) prefs.edit { putInt(KEY_LIBRARY, fingerprint) }
         if (updated.isNotEmpty()) {
             com.mtwabpin.kolahal.data.LogRepository.get(context).add(
                 com.mtwabpin.kolahal.data.LogKind.INFO,

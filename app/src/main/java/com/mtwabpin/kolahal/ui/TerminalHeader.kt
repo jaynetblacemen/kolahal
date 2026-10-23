@@ -54,17 +54,46 @@ import androidx.compose.ui.semantics.semantics
 /** What a tap on a header item does. */
 enum class HeaderTarget { CLOCK, UNLOCKS, BATTERY, NETWORK, ALARM, SETTINGS, TODO }
 
+/**
+ * The time, a minute at a time, as the system ticks it (on waking too, where a delay that slept
+ * with the phone wouldn't), and at once when the clock or the time zone is set. The second value
+ * counts time-zone changes, for formatters to be made again in the new zone.
+ */
+@Composable
+private fun rememberNow(): Pair<Date, Int> {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var now by remember { androidx.compose.runtime.mutableStateOf(Date()) }
+    var zone by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    androidx.compose.runtime.DisposableEffect(context) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: android.content.Context, intent: android.content.Intent) {
+                now = Date()
+                if (intent.action == android.content.Intent.ACTION_TIMEZONE_CHANGED) zone++
+            }
+        }
+        val filter = android.content.IntentFilter().apply {
+            addAction(android.content.Intent.ACTION_TIME_TICK)
+            addAction(android.content.Intent.ACTION_TIME_CHANGED)
+            addAction(android.content.Intent.ACTION_TIMEZONE_CHANGED)
+        }
+        androidx.core.content.ContextCompat.registerReceiver(context, receiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
+        now = Date()
+        onDispose { context.unregisterReceiver(receiver) }
+    }
+    // Back on screen: the time now, whether or not a tick came while away.
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        now = Date()
+        onPauseOrDispose { }
+    }
+    return now to zone
+}
+
 /** One-line header while the log is in use: time, battery and how many status lines are hidden. */
 @Composable
 internal fun CompactHeader(status: Status, statusCount: Int, config: Config, version: Int, onExpand: () -> Unit, mediaPlaying: Boolean = false) {
-    val now by produceState(Date()) {
-        while (true) {
-            value = Date()
-            delay(1_000L * (60 - (System.currentTimeMillis() / 1000 % 60)))
-        }
-    }
+    val (now, zone) = rememberNow()
     val is24h = remember(version) { config[Keys.CLOCK_24H] }
-    val timeFmt = remember(is24h) { SimpleDateFormat(if (is24h) "HH:mm" else "h:mm a", Locale.getDefault()) }
+    val timeFmt = remember(is24h, zone) { SimpleDateFormat(if (is24h) "HH:mm" else "h:mm a", Locale.getDefault()) }
     val small = Term.text.copy(fontSize = (Term.fontSize - 1).sp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -152,16 +181,11 @@ internal fun Header(
     /** Long-press on a script's line: its menu (run, hide from header, edit). */
     onStatusLongPress: (String) -> Unit = {},
 ) {
-    val now by produceState(Date()) {
-        while (true) {
-            value = Date()
-            delay(1_000L * (60 - (System.currentTimeMillis() / 1000 % 60)))
-        }
-    }
+    val (now, zone) = rememberNow()
     val is24h = remember(version) { config[Keys.CLOCK_24H] }
-    val timeFmt = remember(is24h) { SimpleDateFormat(if (is24h) "HH:mm" else "h:mm a", Locale.getDefault()) }
-    val dateFmt = remember { SimpleDateFormat("EEE d MMM", Locale.getDefault()) }
-    val alarmFmt = remember(is24h) { SimpleDateFormat(if (is24h) "EEE HH:mm" else "EEE h:mm a", Locale.getDefault()) }
+    val timeFmt = remember(is24h, zone) { SimpleDateFormat(if (is24h) "HH:mm" else "h:mm a", Locale.getDefault()) }
+    val dateFmt = remember(zone) { SimpleDateFormat("EEE d MMM", Locale.getDefault()) }
+    val alarmFmt = remember(is24h, zone) { SimpleDateFormat(if (is24h) "EEE HH:mm" else "EEE h:mm a", Locale.getDefault()) }
     val small = Term.text.copy(fontSize = (Term.fontSize - 1).sp)
 
     val useIcons = config[Keys.HEADER_ICONS]

@@ -7,6 +7,7 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.produceState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
@@ -113,11 +114,11 @@ data class ActionMenu(
 
 @Composable
 fun DayDivider(row: LogRow.Day) {
-    val label = remember(row.day) {
-        // Made here, not once per process, so the dividers follow a change of language.
+    // Made each time, not remembered: "Yesterday" is the day before today, which moves at midnight
+    // under a launcher that stays composed for days; and the dividers follow a change of language.
+    val label =
         if (row.day == LocalDate.now().minusDays(1)) "Yesterday"
         else row.day.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault()))
-    }
     Text(
         "── $label ──",
         style = Term.text.copy(color = Term.dim, fontSize = (Term.fontSize - 1).sp),
@@ -266,8 +267,12 @@ fun LogLine(
     ) {
         Box(Modifier.weight(1f)) {
             when {
-                // Parsed once per entry: it decodes JSON and looks up every app.
-                isGrid -> AppGrid(remember(entry.id, entry.ctx) { apps(entry) }, onAppTap, onAppLongPress)
+                // Parsed once per entry (it decodes JSON and looks up every app), and again when the
+                // apps change: a chip uninstalled or hidden from it goes.
+                isGrid -> {
+                    val installed by com.mtwabpin.kolahal.apps.AppRepository.get(context).apps.collectAsStateWithLifecycle()
+                    AppGrid(remember(entry.id, entry.ctx, installed) { apps(entry) }, onAppTap, onAppLongPress)
+                }
                 desc != null -> TwoColumns(entry, desc, marks, dense)
                 else -> {
                     val text = remember(entry, Term.palette, indents, row.unread, iconKey, marks) {

@@ -253,7 +253,7 @@ private class SelectorState {
     fun close() {
         mode = Mode.CLOSED
         contact = Float.NaN
-        shiftPx = 0f
+        // shiftPx stays: the panel fades out where it is, and the next touch places it again.
     }
 }
 
@@ -350,7 +350,9 @@ fun AppSelector(
         }
         if (stripHPx < with(density) { 160.dp.toPx() }) return@BoxWithConstraints
         val count = entries.size
-        val rowPx = with(density) { ROW_H.roundToPx() }
+        // Rows grow with the text: at a large text size a fixed row would overlap the next.
+        val rowH = maxOf(ROW_H, with(density) { (Term.fontSize * 1.36f).sp.toDp() } + 8.dp)
+        val rowPx = with(density) { rowH.roundToPx() }
         // The panel uses the whole height, whatever the strip's; a short list sits at the bottom.
         val listHPx = containerH - 2 * topPx
         val panelHPx = min(listHPx, (count * rowPx).toFloat()).coerceAtLeast(rowPx.toFloat())
@@ -418,6 +420,7 @@ fun AppSelector(
                         count = count,
                         state = state,
                         rowPx = rowPx,
+                        height = rowH,
                         pinned = entry.item.key in pinned,
                         enabled = state.mode == Mode.OPEN,
                         onClick = { state.close(); launch(entry.item) },
@@ -572,7 +575,10 @@ fun AppSelector(
                                 x = change.position.x
                                 y = change.position.y
                                 // Off the edge, toward the panel: the list holds still to pick from.
-                                selecting = if (left) x > stripWPx + leavePx else x < -leavePx
+                                // Picking starts LEAVE off the edge and ends only halfway back, so a
+                                // thumb resting at the line doesn't flip between the two.
+                                val off = if (left) x - stripWPx else -x
+                                selecting = if (selecting) off > leavePx / 2 else off > leavePx
                                 state.mode = if (selecting) Mode.SELECT else Mode.SCRUB
                                 update(SystemClock.uptimeMillis())
                             }
@@ -625,6 +631,7 @@ private fun SelectorRow(
     count: Int,
     state: SelectorState,
     rowPx: Int,
+    height: androidx.compose.ui.unit.Dp,
     pinned: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
@@ -639,7 +646,7 @@ private fun SelectorRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .height(ROW_H)
+            .height(height)
             // Fisheye in the draw phase only: no recomposition or relayout per frame.
             .graphicsLayer {
                 val c = state.contact

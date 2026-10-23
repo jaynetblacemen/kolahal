@@ -48,7 +48,9 @@ class UnlockCounter private constructor(private val context: Context) {
                 com.mtwabpin.kolahal.script.TriggerDispatcher.get(context).fire("unlock")
                 refresh()
             }
-        }, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_NOT_EXPORTED)
+        // USER_PRESENT comes from SystemUI, not the system's own uid: a receiver that isn't exported
+        // never gets it. It is a protected broadcast, so only the system can send it anyway.
+        }, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_EXPORTED)
         refresh()
     }
 
@@ -92,24 +94,32 @@ class UnlockCounter private constructor(private val context: Context) {
         val today = LocalDate.now(zone)
         if (day != today) {
             val end = day.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
-            return pastDays.getOrPut(day) { keyguardHidden(start, end) }
+            return pastDays.getOrPut(day) { keyguardHidden(start, end).first }
         }
         val (_, upTo, count) = todayScan?.takeIf { it.first == today } ?: Triple(today, start, 0)
         val now = System.currentTimeMillis()
-        val total = count + if (now > upTo) keyguardHidden(upTo, now) else 0
-        todayScan = Triple(today, now, total)
+        val (added, last) = if (now > upTo) keyguardHidden(upTo, now) else (0 to null)
+        val total = count + added
+        // The next scan starts after the last unlock seen, not now: one the system writes a moment
+        // later, with a time before now, is still found.
+        todayScan = Triple(today, last?.let { it + 1 } ?: upTo, total)
         return total
     }
 
-    private fun keyguardHidden(from: Long, until: Long): Int {
+    /** How many unlocks in [from, until), and the time of the last. */
+    private fun keyguardHidden(from: Long, until: Long): Pair<Int, Long?> {
         val events = context.getSystemService(UsageStatsManager::class.java).queryEvents(from, until)
         val event = UsageEvents.Event()
         var count = 0
+        var last: Long? = null
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            if (event.eventType == UsageEvents.Event.KEYGUARD_HIDDEN) count++
+            if (event.eventType == UsageEvents.Event.KEYGUARD_HIDDEN) {
+                count++
+                last = maxOf(last ?: 0L, event.timeStamp)
+            }
         }
-        return count
+        return count to last
     }
 
     /** Counts for the last [days] days, oldest first. */

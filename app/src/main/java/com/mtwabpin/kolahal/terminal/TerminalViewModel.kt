@@ -707,8 +707,11 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     private var undoJob: kotlinx.coroutines.Job? = null
 
     /** Swipe left on a log line. */
+    /** Deletes and restores run here, not on the command queue: a slow command mustn't leave the swiped line's gap on screen. */
+    private val deleteIo = Dispatchers.IO.limitedParallelism(1)
+
     fun swipeDelete(entry: LogEntry) {
-        io { logs.delete(entry.id) }
+        viewModelScope.launch(deleteIo) { runCatching { logs.delete(entry.id) } }
         _undoDelete.value = entry
         undoJob?.cancel()
         undoJob = viewModelScope.launch {
@@ -721,7 +724,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         val entry = _undoDelete.value ?: return
         _undoDelete.value = null
         undoJob?.cancel()
-        io { logs.restore(entry) }
+        viewModelScope.launch(deleteIo) { runCatching { logs.restore(entry) } }
     }
 
     /** Swipe right on a log line. */

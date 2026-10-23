@@ -143,9 +143,14 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             listState.isScrollInProgress to
                 (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 48)
         }.collect { (scrolling, atBottom) ->
+            // Settled at the bottom too: a fling the newest line stops can end in the same frame it
+            // arrives, with no scrolling-and-at-bottom state in between. Inserts can't settle a list.
             if (scrolling) pinned = atBottom
-            // Settled back at the newest lines: older pages loaded on the way up can go.
-            if (!scrolling && atBottom) vm.atNewest()
+            else if (atBottom) {
+                pinned = true
+                // Settled back at the newest lines: older pages loaded on the way up can go.
+                vm.atNewest()
+            }
         }
     }
     // Keyed on the newest *row* (rows are built after entries), so the scroll targets the new line.
@@ -234,6 +239,9 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     }
     val lineTimeFormat = remember(configVersion) {
         SimpleDateFormat(if (config[Keys.CLOCK_24H]) "HH:mm" else "h:mm", Locale.getDefault())
+    }
+    val doubleTapOn = remember(configVersion) {
+        config[Keys.GESTURE_DOUBLE_TAP].trim().let { it.isNotEmpty() && it != com.mtwabpin.kolahal.gesture.Gestures.NONE }
     }
 
     Column(
@@ -348,10 +356,11 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 .onSizeChanged { vm.onLogWidth(it.width) }
                 .testTag("log")
                 .pinchToZoomFont(onChange = { Term.fontSize = it }, onEnd = vm::saveFontSize)
-                // Taps that no log line consumed (empty space) bring up the keyboard.
-                .pointerInput(Unit) {
+                // Taps that no log line consumed (empty space) bring up the keyboard. A double tap
+                // is watched for only when it does something: waiting for it delays every tap.
+                .pointerInput(doubleTapOn) {
                     detectTapGestures(
-                        onDoubleTap = { vm.onGesture(Keys.GESTURE_DOUBLE_TAP) },
+                        onDoubleTap = if (doubleTapOn) { _ -> vm.onGesture(Keys.GESTURE_DOUBLE_TAP) } else null,
                     ) {
                         runCatching { focus.requestFocus() }
                         keyboard?.show()

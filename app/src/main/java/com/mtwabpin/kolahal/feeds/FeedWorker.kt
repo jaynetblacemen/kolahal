@@ -36,7 +36,11 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         }
         if (targets.isEmpty()) return Result.success()
 
-        val results = FeedFetcher(ctx).fetchAll(targets)
+        // Android stops a worker after about ten minutes, and what it had fetched by then would be
+        // stored but never reported: report what is done before that; the rest is due again.
+        val fetcher = FeedFetcher(ctx)
+        val results = ArrayList<FeedFetcher.Result>()
+        kotlinx.coroutines.withTimeoutOrNull(FETCH_DEADLINE_MS) { for (feed in targets) results += fetcher.fetchOne(feed) }
         report(ctx, results, explicit = force || feedId >= 0, from = inputData.getLong(KEY_FROM, -1L).takeIf { it >= 0 })
         return Result.success()
     }
@@ -116,6 +120,8 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     companion object {
         const val KEY_FEED_ID = "feed_id"
         const val KEY_FORCE = "force"
+        /** Fetching stops here, well before the system stops the worker. */
+        private const val FETCH_DEADLINE_MS = 8 * 60_000L
         const val KEY_FROM = "from"
 
         /** Log context key carrying the feed id on feed lines. */

@@ -70,6 +70,8 @@ class ScriptFolder(private val context: Context) {
         context.contentResolver.openOutputStream(manifestFile.uri, "wt")!!.use {
             it.write(Json.stringify(manifest).toByteArray())
         }
+        // What this export wrote: the next one deletes the files of scripts gone since.
+        prefs.edit { putStringSet(KEY_EXPORTED, current) }
         return all.size
     }
 

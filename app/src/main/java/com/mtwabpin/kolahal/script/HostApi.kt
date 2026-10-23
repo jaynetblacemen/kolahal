@@ -197,7 +197,8 @@ class HostApi(
      * short with "…", or its link. Otherwise a line could show one address and copy another.
      */
     private fun honestCopy(copy: String, text: String, url: String?): Boolean {
-        if (copy == url) return true
+        // The link as given, or as it was normalised (a trailing / added).
+        if (copy == url || Net.webUrl(copy) == url) return true
         // As they read: styles and list marks aside.
         fun bare(s: String) = StyledText.plain(s).filterNot { it.isWhitespace() || it == ',' }
         val c = bare(copy)
@@ -232,6 +233,8 @@ class HostApi(
         url: String,
         method: String = "GET",
         body: String? = null,
+        /** [body] is a table or object the binding wrote as JSON: sent as JSON unless told otherwise. */
+        bodyIsJson: Boolean = false,
         contentType: String? = null,
         headers: Map<*, *>? = null,
     ): Map<String, Any?> {
@@ -243,7 +246,11 @@ class HostApi(
         val h = Json.toStringMap(headers).toMutableMap()
         if (h.keys.none { it.equals("User-Agent", ignoreCase = true) }) h["User-Agent"] = USER_AGENT
         val m = method.uppercase()
-        val reqBody = body?.toRequestBody((contentType ?: "text/plain; charset=utf-8").toMediaTypeOrNull())
+        // The body's type: `contentType`, else a Content-Type header (OkHttp replaces that header
+        // with the body's type, so it must become the body's), else JSON for a table, else text.
+        val typeHeader = h.keys.firstOrNull { it.equals("Content-Type", ignoreCase = true) }
+        val type = contentType ?: typeHeader?.let { h.remove(it) } ?: if (bodyIsJson) "application/json; charset=utf-8" else "text/plain; charset=utf-8"
+        val reqBody = body?.toRequestBody(type.toMediaTypeOrNull())
             ?: if (m in METHODS_REQUIRING_BODY) ByteArray(0).toRequestBody() else null
         // This phone and the local network only with `@uses lan` (or code typed at the prompt).
         val request = Net.reach(Request.Builder(), if (allowsLan) Net.Reach.ANY else Net.Reach.PUBLIC)
@@ -338,7 +345,14 @@ class HostApi(
 
     /** Persists deferred state after a successful run (so a failing script re-sees its items). */
     fun commit() = synchronized(pendingSeen) {
-        pendingSeen.forEach { (key, ids) -> store.set(key, Json.stringify(ids)) }
+        pendingSeen.forEach { (key, ids) ->
+            val value = Json.stringify(ids)
+            // A store filled by cached responses makes room among them, as a cache write does.
+            runCatching { store.set(key, value) }.recoverCatching {
+                store.deleteStartingWith("http.cache:")
+                store.set(key, value)
+            }.getOrThrow()
+        }
         pendingSeen.clear()
     }
 

@@ -85,6 +85,7 @@ class JsEngine : ScriptEngine {
                             url = opts["url"]?.toString() ?: throw IllegalArgumentException("url is required"),
                             method = opts["method"]?.toString() ?: "GET",
                             body = opts["body"]?.let { if (it is String) it else Json.stringify(it) },
+                            bodyIsJson = opts["body"].let { it != null && it !is String },
                             contentType = opts["contentType"]?.toString(),
                             headers = opts["headers"] as? Map<*, *>,
                         )
@@ -172,7 +173,7 @@ class JsEngine : ScriptEngine {
         null -> "null"
         is String -> v
         is Map<*, *>, is Collection<*> -> Json.stringify(v)
-        is Double -> if (v % 1.0 == 0.0) v.toLong().toString() else v.toString()
+        is Double -> if (v % 1.0 == 0.0 && v in -9.0e15..9.0e15) v.toLong().toString() else v.toString()
         else -> v.toString()
     }
 

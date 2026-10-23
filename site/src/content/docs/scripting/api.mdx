@@ -275,8 +275,9 @@ return JSON.parse(r.body).stargazers_count;
 ### http.request(opts)
 
 Any method. `opts` = `{ url, method, body, contentType, headers }`; only `url` is required and
-`method` defaults to `GET`. A string `body` is sent as is; a table / object body is encoded as
-JSON. `contentType` defaults to `text/plain; charset=utf-8`, so set it for JSON APIs.
+`method` defaults to `GET`. A string `body` is sent as is, as `text/plain; charset=utf-8`; a
+table / object body is encoded as JSON and sent as `application/json`. `contentType`, or a
+`Content-Type` header, sets the type instead.
 
 <Tabs syncKey="lang">
 <TabItem label="Lua">

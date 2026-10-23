@@ -45,7 +45,10 @@ class FeedFetcher(context: Context) {
     }
 
     /** Fetches each feed in turn; one failing feed never stops the rest, and this never throws (bar cancellation). */
-    suspend fun fetchAll(feeds: List<Feed>): List<Result> = feeds.map { feed ->
+    suspend fun fetchAll(feeds: List<Feed>): List<Result> = feeds.map { fetchOne(it) }
+
+    /** One feed: its new items, or why it failed. A cancellation passes through. */
+    suspend fun fetchOne(feed: Feed): Result =
         try {
             // Not `lastFetch == null`: a failed attempt sets last_fetch too, and must not turn the
             // backlog into "new" items on the next success.
@@ -56,7 +59,6 @@ class FeedFetcher(context: Context) {
         } catch (e: Throwable) {
             Result(feed, emptyList(), describe(e), lanBlocked = e is Net.LocalNetworkBlocked)
         }
-    }
 
     private suspend fun fetchInternal(feed: Feed): List<FeedItem> {
         // A feed on a home server may stay home; a public feed can't redirect into the local network.

@@ -170,7 +170,16 @@ object ScriptScheduler {
      * `event` global; it is skipped in the worker if the script was disabled meanwhile.
      */
     fun runForEvent(context: Context, scriptId: Long, payload: Map<String, Any?>) {
-        val json = Json.stringify(payload)
+        // Too big for WorkManager's data (a long notification in a script with many bytes per
+        // character): its texts are cut shorter until it fits, rather than the run dropped.
+        var trimmed = payload
+        var json = Json.stringify(trimmed)
+        var cap = 2000
+        while (json.toByteArray().size > MAX_INLINE_CODE && cap >= 125) {
+            cap /= 2
+            trimmed = trimmed.mapValues { (_, v) -> if (v is String && v.length > cap) v.take(cap) + "…" else v }
+            json = Json.stringify(trimmed)
+        }
         if (json.toByteArray().size > MAX_INLINE_CODE) return
         WorkManager.getInstance(context).enqueue(
             OneTimeWorkRequestBuilder<ScriptWorker>()

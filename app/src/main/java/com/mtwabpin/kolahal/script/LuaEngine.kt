@@ -102,22 +102,26 @@ class LuaEngine : ScriptEngine {
         lua.global("logs") { l ->
             // logs({ "a", "b" }) or logs("a", "b"): one title line each.
             val titles = if (l.isTable(1)) {
-                (Json.normalizeLua(l.toMap(1)) as? List<*>)?.map { it.toString() }
-                    ?: throw IllegalArgumentException("logs expects a list of titles")
-            } else (1..l.getTop()).map { l.toString(it) ?: "nil" }
+                // An empty table is an empty list (it has no keys to tell them apart).
+                when (val t = Json.normalizeLua(l.toMap(1))) {
+                    is List<*> -> t.map { it.toString() }
+                    is Map<*, *> -> if (t.isEmpty()) emptyList() else throw IllegalArgumentException("logs expects a list of titles")
+                    else -> throw IllegalArgumentException("logs expects a list of titles")
+                }
+            } else (1..l.getTop()).map { l.str(it) ?: "nil" }
             host.logs(titles)
             0
         }
         lua.global("status") { l ->
-            host.status(if (l.isNil(1)) null else l.toString(1))
+            host.status(l.str(1))
             0
         }
         lua.global("allowed") { l ->
-            l.push(host.allowed(l.toString(1).orEmpty()))
+            l.push(host.allowed(l.str(1).orEmpty()))
             1
         }
         lua.global("notify") { l ->
-            l.push(host.notify(l.toString(1) ?: "", l.toString(2) ?: "", l.mapArg(3)))
+            l.push(host.notify(l.str(1) ?: "", l.str(2) ?: "", l.mapArg(3)))
             1
         }
         lua.table(
@@ -132,6 +136,7 @@ class LuaEngine : ScriptEngine {
                         url = opts["url"]?.toString() ?: throw IllegalArgumentException("url is required"),
                         method = opts["method"]?.toString() ?: "GET",
                         body = opts["body"]?.let { if (it is String) it else Json.stringify(it) },
+                        bodyIsJson = opts["body"].let { it != null && it !is String },
                         contentType = opts["contentType"]?.toString(),
                         headers = opts["headers"] as? Map<*, *>,
                     )
@@ -166,12 +171,13 @@ class LuaEngine : ScriptEngine {
         lua.table(
             "store",
             "get" to { l: Lua -> l.pushValue(host.storeGet(l.checkString(1))); 1 },
-            "set" to { l: Lua -> host.storeSet(l.checkString(1), if (l.isNil(2)) null else l.toString(2)); 0 },
+            // A boolean or a table is kept as text (true, JSON), not dropped as nil.
+            "set" to { l: Lua -> host.storeSet(l.checkString(1), l.str(2)); 0 },
         )
         lua.table(
             "md",
             "log" to { l: Lua -> l.logArgs().let { (title, body, ctx) -> host.logMarkdown(title, body, ctx) }; 0 },
-            "escape" to { l: Lua -> l.pushValue(Markdown.escape(l.toString(1) ?: "")); 1 },
+            "escape" to { l: Lua -> l.pushValue(Markdown.escape(l.str(1) ?: "")); 1 },
         )
         lua.table(
             "fmt",
@@ -180,7 +186,7 @@ class LuaEngine : ScriptEngine {
             "underline" to { l: Lua -> l.styled(StyledText.Style.UNDERLINE) },
             "strike" to { l: Lua -> l.styled(StyledText.Style.STRIKE) },
             "code" to { l: Lua -> l.styled(StyledText.Style.CODE) },
-            "color" to { l: Lua -> l.pushValue(StyledText.colour(colourNamed(l.toString(1)), l.toString(2) ?: "nil")); 1 },
+            "color" to { l: Lua -> l.pushValue(StyledText.colour(colourNamed(l.toString(1)), l.str(2) ?: "nil")); 1 },
             "list" to { l: Lua ->
                 val items = (if (!l.isTable(1)) null else when (val v = Json.normalizeLua(l.toMap(1))) {
                     is List<*> -> v.map { it.toString() }
@@ -190,7 +196,7 @@ class LuaEngine : ScriptEngine {
                 l.pushValue(StyledText.list(items, numbered = l.getTop() >= 2 && l.toBoolean(2)))
                 1
             },
-            "plain" to { l: Lua -> l.pushValue(StyledText.plain(l.toString(1) ?: "")); 1 },
+            "plain" to { l: Lua -> l.pushValue(StyledText.plain(l.str(1) ?: "")); 1 },
         )
         lua.table(
             "secrets",
@@ -203,6 +209,17 @@ class LuaEngine : ScriptEngine {
         )
     }
 
+    /**
+     * Argument [index] as text, as `tostring` shows it: a boolean as true/false and a table as
+     * JSON (lua_tostring gives nil for both), a number as Lua writes it; null for nil or none.
+     */
+    private fun Lua.str(index: Int): String? = when {
+        getTop() < index || isNil(index) -> null
+        isBoolean(index) -> toBoolean(index).toString()
+        isTable(index) -> Json.stringify(Json.normalizeLua(toMap(index)))
+        else -> toString(index)
+    }
+
     private fun Lua.checkString(index: Int): String =
         toString(index) ?: throw IllegalArgumentException("argument #$index must be a string")
 
@@ -212,15 +229,15 @@ class LuaEngine : ScriptEngine {
 
     /** `fmt.<style>(text)`: the text with [style] on it. */
     private fun Lua.styled(style: StyledText.Style): Int {
-        pushValue(StyledText.wrap(style, toString(1) ?: "nil"))
+        pushValue(StyledText.wrap(style, str(1) ?: "nil"))
         return 1
     }
 
     /** `(title, body?, ctx?)` as log and md.log take them; a table second is the ctx: log(title, ctx). */
     private fun Lua.logArgs(): Triple<String, String?, Map<*, *>?> {
         val tableSecond = getTop() >= 2 && isTable(2)
-        val body = if (getTop() >= 2 && !tableSecond && !isNil(2)) toString(2) else null
-        return Triple(toString(1) ?: "nil", body, mapArg(if (tableSecond) 2 else 3))
+        val body = if (getTop() >= 2 && !tableSecond) str(2) else null
+        return Triple(str(1) ?: "nil", body, mapArg(if (tableSecond) 2 else 3))
     }
 
     private fun Lua.mapArg(index: Int): Map<*, *>? =

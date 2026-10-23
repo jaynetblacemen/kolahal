@@ -186,7 +186,9 @@ class LogRepository private constructor(private val context: Context) {
                 // Styled text matches as it reads: a word across a style's edge is still the word.
                 val rawCtx = c.getString(5)?.replace("\\/", "/")?.let(StyledText::plain)
                 val shown = StyledText.plain(text)
-                val candidate = words.all { w ->
+                // A quote, a backslash or a tab is escaped in the raw JSON: such a word is matched on
+                // the parsed line only.
+                val candidate = words.any { w -> w.any { it == '"' || it == '\\' || it < ' ' } } || words.all { w ->
                     shown.contains(w, ignoreCase = true) || source?.contains(w, ignoreCase = true) == true || rawCtx?.contains(w, ignoreCase = true) == true
                 }
                 // Only a line from a profile ([LogContext.USER]) can be skipped: the others aren't parsed unless they match.

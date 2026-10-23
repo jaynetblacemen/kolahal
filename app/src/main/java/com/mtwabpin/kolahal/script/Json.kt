@@ -39,7 +39,8 @@ object Json {
         is Map<*, *> -> JSONObject().also { o -> v.forEach { (k, value) -> o.put(k.toString(), toOrg(value)) } }
         is Collection<*> -> JSONArray().also { a -> v.forEach { a.put(toOrg(it)) } }
         is Array<*> -> JSONArray().also { a -> v.forEach { a.put(toOrg(it)) } }
-        is Double -> if (v % 1.0 == 0.0 && v in -9.0e15..9.0e15) v.toLong() else v
+        // NaN and infinity aren't JSON: null, as JSON.stringify writes them.
+        is Double -> if (v.isNaN() || v.isInfinite()) JSONObject.NULL else if (v % 1.0 == 0.0 && v in -9.0e15..9.0e15) v.toLong() else v
         is Float -> toOrg(v.toDouble())
         is Number, is Boolean, is String -> v
         else -> v.toString()
