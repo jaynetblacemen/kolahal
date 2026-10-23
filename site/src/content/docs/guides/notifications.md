@@ -23,7 +23,8 @@ clipboard previews.
 To keep the log readable, Kolahal skips its own notifications, ongoing ones (music, navigation),
 foreground-service and group-summary notifications, low-importance (silent) channels, and
 notifications without a title or text. A chat app re-posting the same notification logs at most
-one line per 30 seconds.
+one line per 30 seconds, and an update with the same text as its last line none; dismissed and
+posted again later, it is new.
 
 ```sh
 notifs                 # active notifications

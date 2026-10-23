@@ -11,7 +11,7 @@ paste the code into the editor and save with `Ctrl+S` or **save**.
 Records the battery level each run and pins the change since the last run.
 
 ```lua
--- battery.lua — run with: script every battery 30m
+-- batterylog.lua — run with: script every batterylog 30m
 -- @desc battery level history
 
 local b = device.battery()
@@ -70,12 +70,13 @@ status(down ? `${down} site(s) down` : null);
 
 ## Notes (Lua, command)
 
-A tiny scratchpad: `note buy stamps`, `note` to list, `note rm 2`.
+A tiny scratchpad: `jot buy stamps`, `jot` to list, `jot rm 2`. (`note` is taken: Kolahal has its
+own notes.)
 
 ```lua
--- note.lua
+-- jot.lua
 -- @command
--- @desc quick notes: note <text> | note | note rm N
+-- @desc quick notes: jot <text> | jot | jot rm N
 
 local notes = json.decode(store.get("notes") or "[]")
 local function save() store.set("notes", json.encode(notes)) end
@@ -93,7 +94,7 @@ if argline ~= "" then
   return "saved (" .. #notes .. " notes)"
 end
 
-if #notes == 0 then return "no notes yet: note <text>" end
+if #notes == 0 then return "no notes yet: jot <text>" end
 for i, text in ipairs(notes) do log(i .. ". " .. text, { copy = text }) end
 ```
 
@@ -152,9 +153,9 @@ for command scripts. Commands that change settings or data (`work`, `notifs`, `c
 and the like) must be typed, so they don't run from a script.
 
 ```lua
--- morning.lua
+-- routine.lua
 -- @command
--- @desc morning: the weather, the day's agenda, then the news app
+-- @desc routine: the weather, the day's agenda, then the news app
 -- @uses commands
 
 launcher.run("weather")

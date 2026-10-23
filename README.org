@@ -16,8 +16,9 @@ Kolahal is developed with AI assistance. The developers review every change exce
 - *APK*: the [[https://github.com/mtwabpin/kolahal/releases/latest][latest release]] on GitHub has the full build, with everything in it, and the
   Play build for phones where Play Protect blocks the full one. The [[https://mtwabpin.github.io/kolahal/getting-started/install/][install guide]] says how
   to sideload them.
-- *Google Play*: coming. The Play version leaves out the screen lock, notifications in the log and
-  calls in the log, which Play's policy rules out.
+- *Google Play*: coming. The Play version leaves out the screen lock, notification access
+  (notifications in the log, media controls and the now-playing line) and calls in the log, which
+  Play's policy rules out.
 
 * Documentation
 

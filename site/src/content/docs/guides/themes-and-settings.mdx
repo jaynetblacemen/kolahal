@@ -83,9 +83,8 @@ suggestions, key bar and the script editor. Choices:
 The bundled fonts ship in Regular and Bold under the SIL Open Font License 1.1 (licence texts are
 in the app's `assets/licenses/`). `font import`, or the import card in the settings screen's font
 previews, copies a `.ttf` or `.otf` (up to 10 MB) into the app and switches to `custom`; importing
-again replaces it. If the custom font goes missing or can't be read (for example after restoring a
-backup on another phone), the terminal falls back to the system monospace and says so once in the
-log. Text size stays a separate setting: `config set font.size 16`, or pinch the log.
+again replaces it, and backups carry it. If the custom font goes missing or can't be read, the
+terminal falls back to the system monospace and says so once in the log. Text size stays a separate setting: `config set font.size 16`, or pinch the log.
 
 ### The phone's font
 
@@ -136,7 +135,7 @@ Settings that change how home looks show home while you change them, like the br
 in the quick settings:
 
 - **Drag a slider** for text size, line height, log spacing, key bar or prompt height, suggestions,
-  chip height, or the app selector or widget height: Settings fades away except that slider, and
+  chip height, or the app selector height: Settings fades away except that slider, and
   home shows underneath at the value under your finger. Let go to save it and bring Settings back.
   The typing ones show home as if you were typing, with suggestions (and the key bar, if it is on).
 - **Hold the eye** (👁) at the top of Look & feel, Home screen, Log and Typing to see home with

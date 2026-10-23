@@ -12,6 +12,7 @@ the system file picker. It contains:
 
 - settings you changed from the default,
 - [themes you made](/guides/themes-and-settings/#your-own-themes),
+- the font you imported with `font import`,
 - aliases,
 - hidden apps, custom labels and pinned favourites,
 - every script with its code, timers, notification flag and enabled state,
@@ -23,7 +24,7 @@ It's plain JSON, so you can edit it on a computer. **Import from file** loads it
 
 ```json
 { "kolahal": 2,
-  "config":  { "theme": "gruvbox-material", "log.spacing": "16" },
+  "config":  { "theme.name": "gruvbox-material", "log.spacing": "16" },
   "aliases": { "m": "open maps" },
   "apps":    { "hidden": [], "labels": {}, "pinned": [] },
   "scripts": [ { "name": "hn", "lang": "lua", "code": "...", "every": 30,
@@ -56,8 +57,9 @@ where those match.
 
 Not included, because they can't move between phones: the folder picked with `script dir` (a
 storage permission you grant again) and home-screen widgets' live ids (widgets are listed so
-they can be added again). Notification and call lines, and the copy of recent
-notifications kept for scripts, stay on the phone. The file can still contain private things
+they can be added again). Notification and call lines, the copy of recent notifications kept
+for scripts, and what this phone has seen of its calls and apps stay on the phone (a restore
+keeps the new phone's, so it doesn't log every app as installed). The file can still contain private things
 (notes, the rest of the log), so keep it somewhere safe.
 
 ## Single script files
@@ -75,4 +77,7 @@ script export    # write every script plus kolahal.json (timers and flags) there
 script import    # read them back: new scripts are created, changed ones updated
 ```
 
-This is handy for keeping scripts in a synced folder or a git repository on your computer.
+This is handy for keeping scripts in a synced folder or a git repository on your computer. An
+export deletes only the files of scripts you deleted on this phone since its last export, never
+ones another phone put there. Scripts from a backup or the folder arrive switched off, as from any
+file.

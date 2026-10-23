@@ -30,7 +30,7 @@ feed                 # list: #id, title, unread/total, interval, notify, last st
 feed read            # all unread items, then mark them read
 feed read 2          # unread items of feed #2
 feed all 2           # every stored item of feed #2, read or not
-feed open 2          # open up to 10 unread items of #2 in the browser, mark them read
+feed open 2          # open up to 5 unread items of #2 in the browser, mark them read
 feed fetch           # refresh every feed now (feed fetch 2 for one)
 ```
 
@@ -95,4 +95,4 @@ feed rm 2                # unsubscribe and delete its items
 Built-in feeds are the easy path. For filtering, merging several feeds into one line, scoring
 or a header status line, write a script with
 [`rss.fresh(url)`](/scripting/api/#rssfreshurl), like the bundled
-[`hn` and `feeds` scripts](/scripting/library/).
+[`hn` script](/scripting/library/#hn).

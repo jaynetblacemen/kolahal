@@ -1,13 +1,13 @@
 ---
 title: Gestures
-description: Double-tap to lock, swipe down for the shade, swipe up for apps, and binding gestures to any command.
+description: Double-tap to lock, swipe down for the shade, an optional swipe up, and binding gestures to any command.
 ---
 
 Three gestures are configurable, in **Settings → Gestures** or with `config set`:
 
 | Gesture | Key | Default |
 | --- | --- | --- |
-| Double-tap empty log space | `gesture.double-tap` | `lock` |
+| Double-tap empty log space | `gesture.double-tap` | `lock` (`none` in the Play build, which has no screen lock) |
 | Swipe down on the header | `gesture.swipe-down` | `shade` |
 | Swipe up on the prompt | `gesture.swipe-up` | `none` (off: it fires by accident easily) |
 
@@ -15,6 +15,7 @@ Each value is one of:
 
 - `lock`: lock the screen,
 - `shade`: pull down the notification shade,
+- `quick`: open the quick actions (as tapping `$` on the prompt does),
 - `none`: do nothing,
 - **any command**, run as if you typed it.
 

@@ -241,7 +241,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
             error("Notifications are off — the reminder will only appear in the log (tap to allow)", LogContext.of(LogContext.RUN to "notifications"))
         }
         if (!ReminderScheduler.canBeExact(context)) {
-            info("Exact alarms are off, so it may be a few minutes late — tap to allow them", LogContext.of(LogContext.RUN to "remind exact"))
+            info("Exact alarms are off, so it may be up to an hour late — tap to allow them", LogContext.of(LogContext.RUN to "remind exact"))
         }
     }
 

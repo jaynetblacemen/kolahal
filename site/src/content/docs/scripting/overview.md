@@ -12,7 +12,7 @@ same [API](/scripting/api/).
 
 ```sh
 script new hn              # hn.lua from an RSS template, opens the editor
-script new feed.js         # JavaScript instead (or: script new feed js)
+script new news.js         # JavaScript instead (or: script new news js)
 script new weather --cmd   # a command template that takes arguments
 ```
 
@@ -23,7 +23,7 @@ script run hn              # run it now
 script every hn 30m        # and every 30 minutes
 ```
 
-The fastest start is the [script library](/scripting/library/): `script lib` lists 15 ready-made
+The fastest start is the [script library](/scripting/library/): `script lib` lists 14 ready-made
 scripts and `script install weather` installs one with sensible timers.
 
 ## Lua or JavaScript?
@@ -141,8 +141,8 @@ directives:
 ```
 
 The supported events are `unlock`, `charger`, `unplug`, `wifi`, `offline`, `notification`,
-`boot` and `headset`. During an event run, the script gets an `event` object describing what
-happened (at least its type). Check the in-editor docs for the exact fields of each event.
+`boot` and `headset`. During an event run, the script gets an `event` object: `event.name` is the
+event, and some events add [details](/scripting/api/#event).
 
 ```lua
 -- @on charger

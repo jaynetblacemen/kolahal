@@ -64,7 +64,7 @@ optional, and `a|b` means one of.
 | `feed fetch [id]` | refresh now (alias `refresh`) |
 | `feed read [id]` | show unread items, then mark them read |
 | `feed all [id]` | show all stored items |
-| `feed open [id]` | open up to 10 unread items in the browser and mark them read |
+| `feed open [id]` | open up to 5 unread items in the browser and mark them read |
 | `feed notify <id> on\|off` | notifications for new items |
 | `feed every <id> <30m\|2h\|…>` | check interval (minimum 15m) |
 | `feed on\|off <id>` | enable or pause a feed |
@@ -112,10 +112,12 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `notes [grep <text>\|rm <n>]` | | notes, newest first; tap copies |
 | `remind <when> <text>` | | notification later: `10m`, `2h`, `1h30m`, `18:30`, `6pm`, `tomorrow 9:00`, `fri 8am` |
 | `reminders` / `remind rm <n>` | | pending reminders / cancel one |
+| `remind exact` | | allow exact alarms, so reminders fire on time |
 | `timer <5m\|1h30m\|25> [<label>]` | | start a timer in the clock app (no args: show timers) |
 | `alarm <HH:MM\|7am> [<label>]` | | set an alarm in the clock app (no args: show alarms) |
 | `alarms` / `stopwatch` | | open the clock app |
 | `agenda [<days>]` | | upcoming calendar events (3 days by default, up to 31); tap opens one |
+| `agenda --allow` / `agenda --settings` | | ask for calendar access / open Kolahal's app settings |
 
 ## profiles
 
@@ -151,6 +153,7 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `script at <name> <HH:mm[,HH:mm…]\|off>` | daily times |
 | `script notify <name> on\|off` | allow `notify()` for this script |
 | `script on\|off <name>` | enable / disable (aliases `enable`, `disable`) |
+| `script triggers` | scripts with `@on` lines and the events they run on (alias `events`) |
 | `script access <name>` | each [access switch](/scripting/overview/#switching-access-off), on or off; tap one to put the command that changes it in the prompt |
 | `script allow\|deny <name> <what…>` | switch access on or off: `internet`, `header`, an `@uses` item, an `@on` event, or `notify` |
 | `script secret <name> [<NAME> [--clear]]` | its [secrets](/scripting/overview/#api-keys-and-other-secrets), set or not; with a name, a box to set it (`--clear` forgets it) |
@@ -185,7 +188,7 @@ See [Widgets](/guides/widgets/).
 
 | Usage | Aliases | Description |
 | --- | --- | --- |
-| `widgets` | | Widgets page: placed widgets, add, resize, arrange, move to / from home |
+| `widgets` | | Settings → Widgets: placed widgets; add, resize and arrange them |
 | `widgets ls` | `widget ls` | placed widgets as text lines (tap one to open the page) |
 | `widget add` | | open the widget picker; the widget goes on the widgets page |
 

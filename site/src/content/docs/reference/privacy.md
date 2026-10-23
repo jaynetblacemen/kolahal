@@ -68,7 +68,7 @@ Declared in the manifest:
 | `READ_CONTACTS` | `call`, `sms` and `contacts` name matching. Asked for on first use; optional |
 | `READ_CALENDAR` | `agenda` lists upcoming events. Asked for on first use; optional; nothing leaves the device |
 | `SET_ALARM` | `timer` and `alarm` hand the timer or alarm to your clock app |
-| `SCHEDULE_EXACT_ALARM` | `remind` fires on time (Android 12+ lets you turn it off; reminders may then be a few minutes late) |
+| `SCHEDULE_EXACT_ALARM` | `remind` fires on time (Android 12+ lets you turn it off; reminders may then be up to an hour late) |
 | `RECEIVE_BOOT_COMPLETED` | pending reminders are set again after a reboot |
 | `POST_NOTIFICATIONS` | notifications from scripts and feeds (Android 13+ asks at runtime) |
 | `REQUEST_DELETE_PACKAGES` | `uninstall` and the Uninstall action open Android's uninstall dialog |

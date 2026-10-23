@@ -219,7 +219,7 @@ line with the time, battery and the number of hidden status lines. Tap it or swi
 also brings it back.
 
 While you type (the keyboard is up, or there is text in the prompt), the header shrinks
-to that one line and home-screen widgets fold away, so the suggestions get the room. It comes back
+to that one line, so the suggestions get the room. It comes back
 as it was when you're done.
 
 `header.device` adds a `kolahal@device` line. Swipe down on the header to pull down the
@@ -263,7 +263,8 @@ config reset keybar.row1      # back to the default row
 
 - Tap empty log space to bring up the keyboard (`keyboard.on-home on` opens it every time Home is shown).
 - Pinch the log to resize the text (`font.size`, 10–24).
-- Double-tap empty log space to lock the screen, and swipe up on the prompt for the app grid. See [Gestures](/guides/gestures/).
+- Double-tap empty log space to lock the screen. Swiping up on the prompt does nothing until you
+  set it: `config set gesture.swipe-up apps` opens the app grid. See [Gestures](/guides/gestures/).
 
 ## Hardware keyboard
 

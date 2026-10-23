@@ -66,4 +66,6 @@ row for each:
 When a command needs one of them and it isn't granted, the command prints a tappable line that
 opens the right page.
 
-These commands change device state, so [instant launch](/getting-started/basics/) never runs them without Enter.
+These commands change device state, so [instant launch](/getting-started/basics/) never runs them from
+part of a name: `torch` waits for Enter. A complete line such as `torch on` or `dnd off` runs without
+Enter when `launch.instant` is `all`.

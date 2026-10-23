@@ -380,7 +380,7 @@ class ScriptCommands(
     private fun listScripts() {
         val all = scripts.all()
         if (all.isEmpty()) {
-            info("No scripts yet — try 'script new hn' or 'script new feed.js'")
+            info("No scripts yet — try 'script new hn' or 'script new news.js'")
             return
         }
         val df = DateFormat.getTimeInstance(DateFormat.SHORT)

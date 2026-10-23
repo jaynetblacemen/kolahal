@@ -50,13 +50,12 @@ the end, muted (`… · weather`).
 | Key | Effect |
 | --- | --- |
 | `url` | tap opens the link; long-press offers open, share and copy |
-| `copy` | text that "Copy text" copies instead of the visible line |
-| `phone` | tap dials the number; long-press offers call, message and copy |
+| `copy` | what "Copy text" copies instead of the whole line: all or part of what the line shows, or its `url`; anything else is dropped |
 | `image` | an image URL (http or https): the picture shows under the line, as wide as the log; long-press offers "Open image" |
 
-Other keys are kept with the line. Keys the launcher uses internally (commands, script identity,
-app references and the like) are dropped, so a script can't plant a line that runs a command when
-tapped.
+Other keys are kept with the line. Keys the launcher uses itself (commands, script identity, app
+references, phone numbers and the like) are dropped, so a script can't plant a line that runs a
+command or dials a number when tapped.
 
 <Tabs syncKey="lang">
 <TabItem label="Lua">
@@ -216,7 +215,9 @@ const r2 = await http.request({
 
 A GET that reuses this script's stored response while it is younger than `seconds` (default 600).
 The result has an extra `cached` field (`true` when it came from the cache). Only successful
-responses are cached.
+responses are cached, and only their body: a cached result has `status` 200 and empty `headers`.
+Cached responses count toward the script's [store](#storegetkey--storesetkey-value) limits; when it
+is full, they make room among themselves.
 
 <Tabs syncKey="lang">
 <TabItem label="Lua">
@@ -325,7 +326,8 @@ const r = await http.get("https://api.github.com/notifications", { Authorization
 ### json.encode(v) / json.decode(s)
 
 Lua only; JavaScript has the built-in `JSON`. `json.decode` turns objects into tables and arrays
-into 1-based sequences.
+into 1-based sequences, and raises an error when `s` isn't JSON (an HTML error page, say): wrap it
+in `pcall` when the text comes from a site.
 
 ```lua
 local data = json.decode('{"ip":"203.0.113.7"}')
@@ -375,8 +377,9 @@ return `${b.level}% ${b.charging ? "charging" : ""} · ${device.network()} · ${
 
 ### apps.list()
 
-Launchable apps in every profile, sorted by label: `[{ label, pkg, profile }]`, where `profile` is
-`"personal"` or `"other"` (work, private, clone). Needs `@uses apps`.
+Launchable apps in your personal profile and in a work or clone profile that is on, sorted by label:
+`[{ label, pkg, profile }]`, where `profile` is `"personal"` or `"other"`. Apps in a paused profile or
+the private space are left out. Needs `@uses apps`.
 
 ```js
 // @uses apps
@@ -435,7 +438,16 @@ return `hello, ${argline || "world"} (${args.length} args)`;
 ### event
 
 In a run started by an [`@on` trigger](/scripting/overview/#event-triggers), `event` describes what
-happened. It always carries the event's type (one of `unlock`, `charger`, `unplug`, `wifi`,
-`offline`, `notification`, `boot`, `headset`); events such as `notification` add details about the
-notification. Outside event runs, don't rely on it being set. The editor's inline docs list the
-fields for each event.
+happened. `event.name` is the event (`unlock`, `charger`, `unplug`, `wifi`, `offline`,
+`notification`, `boot`, `headset`). Some events add more:
+
+| Event | Other fields |
+| --- | --- |
+| `charger`, `unplug` | `level` (battery %), and `plug` (`ac`, `usb`, `wireless`, `other`) while plugged in |
+| `notification` | `app`, `pkg`, `title`, `text`, `time` |
+| `headset` | `type` (`wired`), `device`, `mic` |
+| `wifi` | `network` (`wifi`) |
+| `boot` | `uptime` (seconds) |
+
+`unlock` and `offline` carry only `name`. Text over 2,000 characters is cut short. Outside event
+runs `event` is nil (null in JavaScript).

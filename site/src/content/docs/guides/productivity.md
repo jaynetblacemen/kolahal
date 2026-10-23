@@ -55,7 +55,7 @@ remind rm 1               # cancel
   line to put a 10-minute snooze in the prompt.
 - Reminders survive restarts and reboots.
 - Android 12 and later let you turn off exact alarms for an app. Kolahal then schedules reminders
-  normally, and they may arrive a few minutes late. `remind` prints a line you can tap to allow
+  normally, and they may arrive late, up to an hour. `remind` prints a line you can tap to allow
   exact alarms again.
 - If notifications are off, the reminder still shows up in the log. Run `notifications` to allow
   them.
@@ -83,10 +83,10 @@ agenda 7                  # a week (up to 31 days)
 ```
 
 ```
-today · Sat 17 Oct
-all day      Diwali
+Today · Sat 17 Oct
+All day      Diwali
 09:30–10:00  Standup
-tomorrow · Sun 18 Oct
+Tomorrow · Sun 18 Oct
 19:00–21:00  Dinner with Sam
 ```
 

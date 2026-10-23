@@ -1,9 +1,9 @@
 ---
 title: Script library
-description: The 15 ready-made Lua and JavaScript scripts bundled with Kolahal.
+description: The 14 ready-made Lua and JavaScript scripts bundled with Kolahal.
 ---
 
-Kolahal ships 15 scripts you can install with one tap in the script manager (**Add script → From the
+Kolahal ships 14 scripts you can install with one tap in the script manager (**Add script → From the
 library**), or from the prompt:
 
 ```sh
@@ -39,7 +39,6 @@ None of the network scripts need an API key.
 | [xkcd](#xkcd) | JS | yes | every 6h | yes |
 | [quote](#quote) | JS | yes | daily 08:00 | yes |
 | [countdown](#countdown) | Lua | yes | daily 00:05 | |
-| [todo](#todo) | Lua | yes | | |
 | [charge-reminder](#charge-reminder) | Lua | | on charger and unplug | yes |
 
 ## hn
@@ -137,17 +136,6 @@ countdown 2026-12-25
 countdown add 2026-12-25 Christmas
 countdown                    # list, nearest first
 countdown rm 2
-```
-
-## todo
-
-**Todo list** kept in the script's store, with the open count in the header. No network.
-
-```sh
-todo add buy milk
-todo                         # list
-todo done 2
-todo clear
 ```
 
 ## charge-reminder

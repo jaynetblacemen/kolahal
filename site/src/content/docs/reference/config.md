@@ -18,6 +18,7 @@ work in `config` (which tells you the new name), and older backups import as bef
 | --- | --- |
 | `theme` | `theme.name` |
 | `gui.colors` | gone in 0.3.1: Settings always use the theme's colours |
+| `widgets.home`, `widgets.height` | gone: widgets live on the widgets page (`widgets.page`) |
 | `font` | `font.family` |
 | `statusbar` | `screen.bars` |
 | `suggestions` | `suggestions.max` |
@@ -105,11 +106,11 @@ The `theme` and `font` commands are unchanged.
 
 ## Gestures
 
-Each takes a command, `lock`, `shade` or `none`. See [Gestures](/guides/gestures/).
+Each takes a command, `lock`, `shade`, `quick` (quick actions) or `none`. See [Gestures](/guides/gestures/).
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| `gesture.double-tap` | text | `lock` | double-tap empty log space |
+| `gesture.double-tap` | text | `lock` (`none` in the Play build, which has no screen lock) | double-tap empty log space |
 | `gesture.swipe-down` | text | `shade` | swipe down on the header |
 | `gesture.swipe-up` | text | `none` | swipe up on the prompt (`none`, the default, turns it off: it fires by accident easily; `apps` opens the app grid) |
 

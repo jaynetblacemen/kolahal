@@ -22,10 +22,11 @@ JavaScript, in the terminal theme.
 Above the keyboard there's a row of keys that soft keyboards hide:
 
 ```
-↶  ↷  ⇥  (  )  {  }  [  ]  "  '  =  .  ,  :  ;  #  -  ~  <  >
+↶  ↷  ⇥  (  )  {  }  [  ]  "  '  =  .  ,  :  ;  #  -  ~  <  >  Ln
 ```
 
-`↶` / `↷` are undo and redo, dimmed when there's nothing to undo or redo; `⇥` inserts two spaces.
+`↶` / `↷` are undo and redo, dimmed when there's nothing to undo or redo; `⇥` inserts two spaces;
+`Ln` opens go to line.
 
 ## Keyboard shortcuts
 
@@ -35,7 +36,8 @@ Above the keyboard there's a row of keys that soft keyboards hide:
 | `Ctrl+R` | save and run |
 | `Ctrl+Z` | undo |
 | `Ctrl+Shift+Z`, `Ctrl+Y` | redo |
-| `Tab` | insert two spaces |
+| `Tab` | accept the first completion while the completions show; otherwise insert two spaces |
+| `Shift+Tab` | insert two spaces |
 | `Esc`, Back | save and close |
 | `Ctrl+F` | find |
 | `Ctrl+H` | find and replace |
