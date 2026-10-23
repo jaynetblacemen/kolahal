@@ -131,10 +131,12 @@ class HomeScreenTest {
             show(360.dp, 700.dp)
             compose.waitUntil(5_000) { compose.onAllNodesWithTag("line-$output").fetchSemanticsNodes().isNotEmpty() }
             fun height(id: Long) = compose.onNodeWithTag("line-$id").getUnclippedBoundsInRoot().let { it.bottom - it.top }
-            assertEquals(35f, height(command).value, 1f)
-            assertEquals(25f, height(output).value, 1f)
+            // In sp: a larger system text size makes the lines taller with the text.
+            val scale = app.resources.configuration.fontScale
+            assertEquals(35f * scale, height(command).value, 1f)
+            assertEquals(25f * scale, height(output).value, 1f)
             compose.runOnIdle { Term.tallerTaps = false }
-            assertEquals(25f, height(command).value, 1f)
+            assertEquals(25f * scale, height(command).value, 1f)
             // Set shorter than a line of text with its padding: as short as the text allows, tappable or not.
             compose.runOnIdle { Term.lineHeight = 10 }
             assertTrue(height(output).value < 20f)

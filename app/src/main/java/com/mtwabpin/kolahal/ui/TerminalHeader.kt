@@ -322,7 +322,7 @@ internal fun Header(
                     modifier = Modifier
                         .fillMaxWidth()
                         .combinedClickable(onLongClick = { onStatusLongPress(name) }) { onStatusTap(name) }
-                        .heightIn(min = Term.lineHeight.dp)
+                        .heightIn(min = with(androidx.compose.ui.platform.LocalDensity.current) { Term.lineHeight.sp.toDp() })
                         .wrapContentHeight(),
                 )
             }

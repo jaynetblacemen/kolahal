@@ -27,6 +27,8 @@ interface TerminalUi {
     fun requestLocalNetworkPermission() {}
     /** `log only …` ([filter]) or `log all` (null): the lines the log shows. */
     fun filterLog(filter: LogFilter?) {}
+    /** The log's width on screen (px), for output laid out to fit it; null before home has shown. */
+    fun logWidthPx(): Int? = null
 }
 
 data class CommandSpec(val name: String, val usage: String, val help: String)

@@ -453,7 +453,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private fun fetch() {
         val (device, rows) = Fetch.facts(context)
         val at = System.currentTimeMillis()
-        logs.addAll(Fetch.layout(device, rows, Fetch.columns(context)).map { LogRepository.Pending(LogKind.OUTPUT, it, null, LogContext(LogContext.ALIGNED), at) })
+        logs.addAll(Fetch.layout(device, rows, Fetch.columns(context, ui.logWidthPx())).map { LogRepository.Pending(LogKind.OUTPUT, it, null, LogContext(LogContext.ALIGNED), at) })
     }
 
     /** `clear` screen · `clear history` ↑ recall · `clear all` everything (log + history). */

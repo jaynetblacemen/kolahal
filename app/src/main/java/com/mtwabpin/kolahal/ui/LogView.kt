@@ -189,15 +189,18 @@ fun LogLine(
     // under the last goes as well, so lines get as short as the text itself allows.
     val density = androidx.compose.ui.platform.LocalDensity.current
     val textLine = with(density) { (Term.fontSize * TEXT_LINE).sp.toDp() }
-    val padding = ((Term.lineHeight.dp - textLine) / 2).coerceIn(0.dp, LINE_PADDING.dp)
-    val dense = Term.lineHeight.dp + 0.5.dp < textLine
+    // In sp: the line height follows the phone's text size, as the text does, so a larger system
+    // text size doesn't squeeze the lines (22 is 22dp at the usual size).
+    val lineHeight = with(density) { Term.lineHeight.sp.toDp() }
+    val padding = ((lineHeight - textLine) / 2).coerceIn(0.dp, LINE_PADDING.dp)
+    val dense = lineHeight + 0.5.dp < textLine
     // Lines that do something get a larger touch target than plain output (log.taller-taps).
     val actionable = entry.kind == LogKind.COMMAND || entry.ctx.values.keys.any { it in ACTIONABLE_KEYS }
     val minHeight = when {
-        !Term.tallerTaps -> Term.lineHeight.dp
-        desc != null -> (Term.lineHeight + 14).dp
-        actionable -> (Term.lineHeight + 10).dp
-        else -> Term.lineHeight.dp
+        !Term.tallerTaps -> lineHeight
+        desc != null -> lineHeight + 14.dp
+        actionable -> lineHeight + 10.dp
+        else -> lineHeight
     }
     Box(Modifier.padding(top = topGap)) {
     // What the swipe will do, revealed under the line as it moves.

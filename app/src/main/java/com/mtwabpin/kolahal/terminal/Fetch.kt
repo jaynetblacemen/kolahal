@@ -99,8 +99,11 @@ object Fetch {
         return info.mapIndexed { i, line -> (if (i < LOGO.size) logoLine(i) + " ".repeat(GAP) else pad) + line }
     }
 
-    /** How many characters of the terminal font fit across a log line on this screen. */
-    fun columns(context: Context): Int {
+    /**
+     * How many characters of the terminal font fit across a log line: in the log [widthPx] wide
+     * (the whole display when home hasn't shown yet, or in a test).
+     */
+    fun columns(context: Context, widthPx: Int? = null): Int {
         val config = Config.get(context)
         val metrics = context.resources.displayMetrics
         val scale = context.resources.configuration.fontScale
@@ -111,7 +114,7 @@ object Fetch {
         val now = java.text.SimpleDateFormat(if (config[Keys.CLOCK_24H]) "HH:mm" else "h:mm", Locale.getDefault()).format(java.util.Date())
         val time = if (config[Keys.SHOW_TIMESTAMPS] == "all") 8 + now.length * 0.6f * (size - 2) * scale else 0f
         val gutter = if (config[Keys.LOG_GUTTER]) 10 else 0
-        val widthDp = metrics.widthPixels / metrics.density - 24 - gutter - time
+        val widthDp = (widthPx ?: metrics.widthPixels) / metrics.density - 24 - gutter - time
         return (widthDp / (size * scale * 0.6f)).toInt()
     }
 

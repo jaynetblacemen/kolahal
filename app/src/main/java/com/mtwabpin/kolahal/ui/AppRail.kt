@@ -513,7 +513,7 @@ fun AppSelector(
                             while (true) {
                                 val now = SystemClock.uptimeMillis()
                                 val speed = if (selecting) {
-                                    SelectorMath.edgeSpeed(stripTopPx + y - panelTopPx, panelHPx, edgeZonePx, edgeMaxSpeed)
+                                    SelectorMath.edgeSpeed(stripTopPx + y - (panelTopPx + state.shiftPx), panelHPx, edgeZonePx, edgeMaxSpeed)
                                 } else 0f
                                 val scrolling = speed != 0f &&
                                     !(speed < 0f && state.listY <= 0f) && !(speed > 0f && state.listY >= maxScrollPx)

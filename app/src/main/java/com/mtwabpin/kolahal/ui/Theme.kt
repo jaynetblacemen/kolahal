@@ -194,7 +194,7 @@ object Term {
     /** Terminal typeface (`font`); [FontFamily.Monospace] is the system monospace. */
     var fontFamily by mutableStateOf<FontFamily>(FontFamily.Monospace)
 
-    /** Minimum height (dp) of a plain log line (`log.line-height`); tappable lines get +10, two-column rows +14 ([tallerTaps]). */
+    /** Minimum height (sp: it follows the phone's text size) of a plain log line (`log.line-height`); tappable lines get +10, two-column rows +14 ([tallerTaps]). */
     var lineHeight by mutableIntStateOf(22)
 
     /** `log.taller-taps`: tappable lines and two-column rows taller than [lineHeight]; off, every line is that tall. */

@@ -52,6 +52,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -344,6 +345,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 // header.autohide by direction: toward older lines the header goes away entirely,
                 // back toward the newest it returns as the one-line mini header.
                 .nestedScroll(headerScroll)
+                .onSizeChanged { vm.onLogWidth(it.width) }
                 .testTag("log")
                 .pinchToZoomFont(onChange = { Term.fontSize = it }, onEnd = vm::saveFontSize)
                 // Taps that no log line consumed (empty space) bring up the keyboard.

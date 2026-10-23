@@ -158,6 +158,15 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** Where the log's lines came from, newest first: `/@` and `log only` suggest them. */
     @Volatile private var logSources: List<String> = emptyList()
 
+    /** The log column's width on screen, as last laid out ([onLogWidth]); `fetch` lays its lines out to fit it. */
+    @Volatile private var logWidth: Int? = null
+
+    fun onLogWidth(px: Int) {
+        if (px > 0) logWidth = px
+    }
+
+    override fun logWidthPx(): Int? = logWidth
+
     override fun filterLog(filter: LogFilter?) {
         if (_filter.value == filter) return
         _filter.value = filter

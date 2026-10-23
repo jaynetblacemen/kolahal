@@ -33,7 +33,7 @@ internal val TITLES = mapOf(
     "log.dim" to "Dim older output",
     "log.spacing" to "Space between output groups (dp)",
     "log.gutter" to "Colour bar beside lines",
-    "log.line-height" to "Line height (dp)",
+    "log.line-height" to "Line height",
     "log.taller-taps" to "Taller tappable lines",
     "log.keep-days" to "Keep log for (days)",
     "log.fresh" to "Fresh screen after (minutes away)",
