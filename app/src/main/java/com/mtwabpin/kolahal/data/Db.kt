@@ -97,8 +97,7 @@ class Db private constructor(context: Context) :
         if (oldVersion < 2) db.execSQL("ALTER TABLE scripts ADD COLUMN at_times TEXT")
         if (oldVersion < 3) createProductivityTables(db)
         if (oldVersion < 4) addScriptAccess(db)
-        // Run headers (`── hn · 22:40 ──`) are gone: every line shows its time and its script.
-        if (oldVersion < 5) db.delete("logs", "kind = ? AND ctx LIKE ?", arrayOf(LogKind.INFO.key, "%\"${LogContext.RUN_HEADER}\"%"))
+        if (oldVersion < 5) dropRunHeaders(db)
     }
 
     /**
@@ -125,6 +124,10 @@ class Db private constructor(context: Context) :
     companion object {
         private const val NAME = "kolahal.db"
         private const val VERSION = 5
+
+        /** Run headers (`── hn · 22:40 ──`) are gone (version 5): every line shows its time and its script. */
+        internal fun dropRunHeaders(db: SQLiteDatabase): Int =
+            db.delete("logs", "kind = ? AND ctx LIKE ?", arrayOf(LogKind.INFO.key, "%\"${LogContext.RUN_HEADER}\"%"))
 
         @Volatile
         private var instance: Db? = null

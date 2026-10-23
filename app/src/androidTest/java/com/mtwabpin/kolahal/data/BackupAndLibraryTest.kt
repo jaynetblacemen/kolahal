@@ -193,6 +193,27 @@ class BackupAndLibraryTest {
         }
     }
 
+    /** Updating from 0.4.1 deletes the old `── name · 22:40 ──` lines, and only those. */
+    @Test fun oldRunHeadersGoOnUpdate() {
+        val db = android.database.sqlite.SQLiteDatabase.create(null)
+        try {
+            db.execSQL("CREATE TABLE logs (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, kind TEXT NOT NULL, source TEXT, text TEXT NOT NULL, ctx TEXT)")
+            fun add(kind: LogKind, text: String, ctx: LogContext) = db.execSQL(
+                "INSERT INTO logs (ts, kind, text, ctx) VALUES (0, ?, ?, ?)", arrayOf<Any?>(kind.key, text, ctx.toJson()),
+            )
+            add(LogKind.INFO, "── hn · 1:00 PM ──", LogContext.of(LogContext.SCRIPT to "hn", LogContext.RUN_HEADER to "1"))
+            add(LogKind.INFO, "── Feeds · 1:00 PM ──", LogContext.of(LogContext.RUN_HEADER to "1"))
+            // A line that only mentions the word, in its text or a value, stays.
+            add(LogKind.INFO, "runheader", LogContext.of(LogContext.COPY to "\"runheader\""))
+            add(LogKind.SCRIPT, "a story", LogContext.of(LogContext.SCRIPT to "hn"))
+            assertEquals(2, Db.dropRunHeaders(db))
+            val left = db.rawQuery("SELECT text FROM logs ORDER BY id", null).use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
+            assertEquals(listOf("runheader", "a story"), left)
+        } finally {
+            db.close()
+        }
+    }
+
     /** A backup from 0.4.1 or before brings its log back without the old `── name · 22:40 ──` lines. */
     @Test fun oldRunHeadersStayBehindOnRestore() {
         val logs = LogRepository.get(context)

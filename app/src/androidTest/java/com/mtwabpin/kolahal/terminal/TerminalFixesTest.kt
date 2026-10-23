@@ -101,9 +101,11 @@ class TerminalFixesTest {
             val before = logs.maxId()
             processor.run("feed fetch")
             val until = System.currentTimeMillis() + 20_000
-            fun failed() = logs.recent(100).any { it.id > before && it.kind == LogKind.ERROR && it.text.startsWith("tf-broken: ") }
-            while (!failed() && System.currentTimeMillis() < until) Thread.sleep(100)
-            assertTrue(failed())
+            fun failed() = logs.recent(100).firstOrNull { it.id > before && it.kind == LogKind.ERROR && it.text.startsWith("tf-broken: ") }
+            while (failed() == null && System.currentTimeMillis() < until) Thread.sleep(100)
+            // It is the command's output, though the fetch ran in the background.
+            val command = logs.recent(100).single { it.id > before && it.kind == LogKind.COMMAND && it.text == "feed fetch" }
+            assertEquals(command.id.toString(), failed()!!.ctx.values[LogContext.FROM])
         } finally {
             feeds.remove(feed.id)
         }
@@ -186,6 +188,9 @@ class TerminalFixesTest {
         logs.add(LogKind.SCRIPT, "tf random comic", "tfx", LogContext.of(LogContext.FROM to command.toString()))
         val vm = viewModel()
         waitUntil("the lines load") { vm.entries.value.any { it.text == "tf random comic" } }
+        // Its line offers the command that asked for it, not the one just above it.
+        val comic = vm.entries.value.single { it.text == "tf random comic" }
+        assertTrue(vm.actionsFor(comic).any { it.label == "Run 'tf xkcd random' again" })
         val delete = vm.actionsFor(vm.entries.value.single { it.id == command }).single { it.label == "Delete command and output" }
         instrumentation.runOnMainSync { delete.run() }
         waitUntil("the output goes") { logs.recent(50).none { it.text == "tf random comic" } }
