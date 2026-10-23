@@ -15,6 +15,11 @@
         <exclude domain="database" path="feeds.db-journal" />
         <exclude domain="database" path="feeds.db-wal" />
         <exclude domain="database" path="feeds.db-shm" />
+        <!-- The scripts' work queue: a waiting @on notification run holds that notification's text. -->
+        <exclude domain="database" path="androidx.work.workdb" />
+        <exclude domain="database" path="androidx.work.workdb-journal" />
+        <exclude domain="database" path="androidx.work.workdb-wal" />
+        <exclude domain="database" path="androidx.work.workdb-shm" />
         <exclude domain="sharedpref" path="logs.xml" />
         <!-- Which apps you open and when, and how often you unlock: not for the cloud. -->
         <exclude domain="sharedpref" path="app_usage.xml" />
@@ -32,6 +37,11 @@
         <exclude domain="database" path="feeds.db-journal" />
         <exclude domain="database" path="feeds.db-wal" />
         <exclude domain="database" path="feeds.db-shm" />
+        <!-- The scripts' work queue: a waiting @on notification run holds that notification's text. -->
+        <exclude domain="database" path="androidx.work.workdb" />
+        <exclude domain="database" path="androidx.work.workdb-journal" />
+        <exclude domain="database" path="androidx.work.workdb-wal" />
+        <exclude domain="database" path="androidx.work.workdb-shm" />
         <exclude domain="sharedpref" path="logs.xml" />
         <exclude domain="file" path="crash/" />
         <exclude domain="sharedpref" path="crash.xml" />

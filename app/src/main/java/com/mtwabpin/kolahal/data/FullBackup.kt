@@ -199,16 +199,22 @@ object FullBackup {
     private fun withSafeCtx(row: Map<*, *>): Map<*, *> {
         val ctx = LogContext.fromJson(row["ctx"] as? String)
         if (ctx.isEmpty) return row
-        val kept = ctx.values.filter { (k, v) ->
-            when (k) {
-                LogContext.RUN, LogContext.SHORTCUT -> false
-                LogContext.URL -> com.mtwabpin.kolahal.script.Net.webUrl(v) != null || v.startsWith("geo:") || v.startsWith("market:")
-                LogContext.IMAGE -> com.mtwabpin.kolahal.script.Net.webUrl(v) != null
-                else -> true
-            }
-        }
-        return row.toMutableMap().apply { put("ctx", LogContext(kept).toJson()) }
+        return row.toMutableMap().apply { put("ctx", safeCtx(ctx).toJson()) }
     }
+
+    /**
+     * [ctx] with only what a restored line may do on a tap: no command that runs, no app shortcut,
+     * links to the web, maps or the store, and a contact only from the contacts app.
+     */
+    internal fun safeCtx(ctx: LogContext): LogContext = LogContext(ctx.values.filter { (k, v) ->
+        when (k) {
+            LogContext.RUN, LogContext.SHORTCUT, LogContext.COMMAND -> false
+            LogContext.URL -> com.mtwabpin.kolahal.script.Net.webUrl(v) != null || v.startsWith("geo:") || v.startsWith("market:")
+            LogContext.IMAGE -> com.mtwabpin.kolahal.script.Net.webUrl(v) != null
+            LogContext.CONTACT -> v.startsWith("content://com.android.contacts/")
+            else -> true
+        }
+    })
 
     private fun values(row: Map<*, *>, columns: Set<String>) = ContentValues().apply {
         row.forEach { (k, v) ->

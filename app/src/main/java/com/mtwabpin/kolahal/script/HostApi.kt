@@ -184,9 +184,18 @@ class HostApi(
     private fun safeCtx(ctx: Map<*, *>?, text: String): Map<String, String> {
         val m = Json.toStringMap(ctx).filterKeys { it !in RESERVED_CTX }.toMutableMap()
         // A tap opens the link in another app at once: web links only, not upi:, tel:, intent: …
+        // Home fetches a picture as soon as the line shows, and opens a link on a tap: with internet
+        // switched off for this script, neither leaves the phone; and like a request, neither may
+        // carry a secret anywhere but the sites its @secret line names, nor over plain http.
         for (key in listOf(LogContext.URL, LogContext.IMAGE)) {
             val link = m[key] ?: continue
-            Net.webUrl(link)?.let { m[key] = it } ?: m.remove(key)
+            val web = Net.webUrl(link)?.takeIf { grants == null || grants.allows(ScriptAccess.INTERNET) }
+            if (web == null) {
+                m.remove(key)
+                continue
+            }
+            web.toHttpUrlOrNull()?.let { checkSecrets(it.host, listOf(web), it.isHttps) }
+            m[key] = web
         }
         m[LogContext.COPY]?.let { if (!honestCopy(it, text, m[LogContext.URL])) m.remove(LogContext.COPY) }
         return m
@@ -222,8 +231,9 @@ class HostApi(
         val values = Json.toStringMap(ctx)
         // With notifications off for this script, the script's own log lines already show the content.
         if (!notifyEnabled) return false
-        // Opening the link sends what it holds to its site: the same rule as a request.
-        val url = values[LogContext.URL]?.let(Net::webUrl)?.also { u -> u.toHttpUrlOrNull()?.let { checkSecrets(it.host, listOf(u)) } }
+        // Opening the link sends what it holds to its site: the same rules as a request, and no link with internet off.
+        val url = values[LogContext.URL]?.let(Net::webUrl)?.takeIf { grants == null || grants.allows(ScriptAccess.INTERNET) }
+            ?.also { u -> u.toHttpUrlOrNull()?.let { checkSecrets(it.host, listOf(u), it.isHttps) } }
         val posted = Notifier.post(context, scriptName, StyledText.plain(redact(title)), StyledText.plain(redact(body)), url)
         if (!posted) notifyBlocked = true
         return posted
@@ -259,10 +269,10 @@ class HostApi(
             .method(m, if (m != "GET" && m != "HEAD") reqBody else null)
             // Redirects too: every hop is checked before it is sent, with what it carries on.
             .tag(Net.HopCheck::class.java, Net.HopCheck { hop ->
-                checkSecrets(hop.url.host, listOf(hop.url.toString()) + hop.headers.map { it.second } + if (hop.body != null) listOf(body.orEmpty()) else emptyList())
+                checkSecrets(hop.url.host, listOf(hop.url.toString()) + hop.headers.map { it.second } + if (hop.body != null) listOf(body.orEmpty()) else emptyList(), hop.url.isHttps)
             })
             .build()
-        checkSecrets(request.url.host, listOf(request.url.toString(), body.orEmpty()) + h.values)
+        checkSecrets(request.url.host, listOf(request.url.toString(), body.orEmpty()) + h.values, request.url.isHttps)
         try {
             (if (allowsLan) client else Net.publicClient).newCall(request).execute().use { resp ->
                 return mapOf(
@@ -285,18 +295,20 @@ class HostApi(
     }
 
     /**
-     * A secret goes only to the sites its `@secret` line names: a request carrying it ([carried]: the
-     * URL, body and headers) anywhere else stops the run. A script could still disguise a value, so
-     * this guards against mistakes more than against a script written to leak.
+     * A secret goes only to the sites its `@secret` line names, and only over [https]: a request
+     * carrying it ([carried]: the URL, body and headers) anywhere else, or over plain http, stops
+     * the run. A script could still disguise a value, so this guards against mistakes more than
+     * against a script written to leak.
      */
-    private fun checkSecrets(host: String, carried: List<String>) {
+    private fun checkSecrets(host: String, carried: List<String>, https: Boolean) {
         val s = secrets ?: return
         for (secret in s.declared) {
             val value = s.values[secret.name]?.takeIf { it.length >= SecretStore.MIN_LENGTH } ?: continue
             val forms = forms(value)
-            if (carried.any { text -> forms.any { it in text } } && !secret.allows(host)) {
-                throw java.io.IOException("${secret.name} may only be sent to ${secret.hosts.joinToString()}, not $host")
-            }
+            if (carried.none { text -> forms.any { it in text } }) continue
+            if (!secret.allows(host)) throw java.io.IOException("${secret.name} may only be sent to ${secret.hosts.joinToString()}, not $host")
+            // On the hostile network a script must assume, plain http shows the value to anyone on the way.
+            if (!https) throw java.io.IOException("${secret.name} may only be sent over https, not to http://$host")
         }
     }
 

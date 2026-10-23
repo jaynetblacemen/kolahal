@@ -113,7 +113,7 @@ choice, `<city>` a value you type. The words in it are suggested as you type (`x
 ```lua
 -- weather.lua
 -- @command
--- @desc current weather: weather [city]
+-- @desc Current weather: weather [city]
 -- @usage [<city>]
 local city = argline ~= "" and argline or "London"
 return (http.get("https://wttr.in/" .. city .. "?format=3").body:gsub("%s+$", ""))
@@ -160,7 +160,7 @@ shows them, and the [library](/scripting/library/) scripts carry them too.
 
 ```lua
 -- @title Hacker News
--- @desc new front-page stories since the last run
+-- @desc New front-page stories since the last run
 -- @author Your Name
 -- @version 1.2
 -- @every 1h
@@ -229,7 +229,7 @@ stops where it isn't:
 
 | Switch | Switched off, the script… |
 | --- | --- |
-| Internet | stops at its first `http` or `rss` call, with a line to tap to allow it again |
+| Internet | stops at its first `http` or `rss` call, with a line to tap to allow it again; its lines carry no links or pictures |
 | Header line | runs as before, but its `status()` line doesn't show |
 | Post notifications | runs as before; `notify()` returns false |
 | An `@uses` item | gets nothing: `apps.list()` and `notifications.recent()` return empty lists, `clipboard.get()` returns nil and `clipboard.set()` does nothing. Switched-off `lan` requests stop the script, and `launcher.run` returns false |

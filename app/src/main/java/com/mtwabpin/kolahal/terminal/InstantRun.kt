@@ -25,6 +25,9 @@ object InstantRun {
         "scripts", "status",
         // Change how the launcher looks or what it puts first.
         "theme", "font", "pin", "unpin",
+        // Open Android's panels and pages: typing `wi` on the way to something else mustn't open
+        // Wi-Fi, and a script mustn't either.
+        "wifi", "bt", "nfc", "data", "info",
     ) + com.mtwabpin.kolahal.control.ControlCommands.SENSITIVE
 
     /** Other names the dispatcher accepts for a command; checks always use the canonical name. */
@@ -38,12 +41,21 @@ object InstantRun {
 
     fun canonical(head: String): String = head.lowercase().let { SYNONYMS[it] ?: it }
 
-    /** True when the first word of [line], after synonyms, is a sensitive command. */
+    /**
+     * True when [line] is a sensitive command, after synonyms: by its first word, or by what its
+     * arguments make it do (`open phone:mom` starts a shortcut, which may place a call; `open x -w
+     * --resume` turns a paused profile on; `--allow` asks for a permission and `--settings` opens
+     * Android's settings).
+     */
     fun isSensitive(line: String): Boolean {
         val t = CommandParsing.spaces(line).trim()
         // `=…` runs code in the calculator (`=notify(…)` has no space after the `=`).
         if (t.startsWith("=")) return true
-        return canonical(t.substringBefore(' ')) in SENSITIVE
+        val head = canonical(t.substringBefore(' '))
+        if (head in SENSITIVE) return true
+        val args = t.substringAfter(' ', "").split(' ')
+        if (head == "open" && (args.any { ':' in it } || "--resume" in args)) return true
+        return args.any { it == "--allow" || it == "--settings" }
     }
 
     /**

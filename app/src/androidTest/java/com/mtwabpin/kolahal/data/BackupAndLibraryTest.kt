@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.dokar.quickjs.QuickJs
 import com.mtwabpin.kolahal.apps.AppPrefs
+import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.script.ScriptLibrary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -92,6 +93,18 @@ class BackupAndLibraryTest {
             CustomThemes.delete(context, "bk-theme")
             file.delete()
         }
+    }
+
+    /** A restored line may not run a command on a tap, nor open a contact URI from anywhere but the contacts app. */
+    @Test fun restoredLinesKeepOnlySafeContext() {
+        val ctx = LogContext.of(
+            LogContext.COMMAND to "brightness 0", LogContext.RUN to "clear all", LogContext.SHORTCUT to "x",
+            LogContext.URL to "https://example.com/", LogContext.PHONE to "+15550100", LogContext.CONTACT to "upi://pay?pa=x",
+            LogContext.PKG to "com.example", LogContext.COPY to "text",
+        )
+        assertEquals(setOf(LogContext.URL, LogContext.PHONE, LogContext.PKG, LogContext.COPY), FullBackup.safeCtx(ctx).values.keys)
+        val contact = "content://com.android.contacts/contacts/lookup/abc"
+        assertEquals(contact, FullBackup.safeCtx(LogContext.of(LogContext.CONTACT to contact)).values[LogContext.CONTACT])
     }
 
     @Test fun backupRoundTrip() {

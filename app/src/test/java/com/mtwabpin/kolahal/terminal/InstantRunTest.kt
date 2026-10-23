@@ -158,6 +158,19 @@ class InstantRunTest {
         assertTrue(InstantRun.isSensitive("status clear all"))
     }
 
+    /** What a script may not do through launcher.run, beyond the first word. */
+    @Test fun shortcutsResumesPermissionsAndPanelsAreSensitive() {
+        assertTrue(InstantRun.isSensitive("open phone:mom"))
+        assertTrue(InstantRun.isSensitive("launch maps -w --resume"))
+        assertTrue(InstantRun.isSensitive("contacts --allow"))
+        assertTrue(InstantRun.isSensitive("calls --settings"))
+        assertTrue(InstantRun.isSensitive("wifi"))
+        assertTrue(InstantRun.isSensitive("bluetooth"))
+        assertTrue(InstantRun.isSensitive("info maps"))
+        assertTrue(!InstantRun.isSensitive("open maps"))
+        assertTrue(!InstantRun.isSensitive("search how to resume"))
+    }
+
     @Test fun aliasesCantCarrySensitiveCommandsPastTheCheck() {
         val aliases = mapOf("c" to "clear", "x" to "c all", "w" to "weather")
         assertTrue(InstantRun.isSensitive("c", aliases))

@@ -37,7 +37,7 @@ object ScriptAccess {
     }
 
     fun help(item: String): String = when (item) {
-        INTERNET -> "Web requests and feeds; switched off, a run that needs them stops"
+        INTERNET -> "Web requests and feeds, and the links and pictures its lines carry; switched off, a run that needs a request stops"
         HEADER -> "Its line at the top of home; switched off, the script still runs"
         "notifications" -> "Reads your recent notifications; switched off, it sees none"
         "apps" -> "Lists your installed apps; switched off, it sees none"
