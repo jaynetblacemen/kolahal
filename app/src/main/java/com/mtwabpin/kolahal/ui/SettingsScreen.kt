@@ -72,6 +72,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
@@ -84,6 +85,7 @@ import com.mtwabpin.kolahal.data.Config
 import com.mtwabpin.kolahal.data.CustomThemes
 import com.mtwabpin.kolahal.data.ConfigKey
 import com.mtwabpin.kolahal.data.Keys
+import com.mtwabpin.kolahal.data.ThemeChoice
 import com.mtwabpin.kolahal.terminal.Screen
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import kotlinx.coroutines.Dispatchers
@@ -249,7 +251,7 @@ fun SettingsScreen(
                             PeekFade(peek) {
                                 ActionGroup(
                                     ownThemes.map { name ->
-                                        Action(R.drawable.ic_palette, name, if (name == inUse) "In use · tap to change it" else "Tap to change it", chevron = true) {
+                                        Action(R.drawable.ic_palette, name, if (name in ThemeChoice.names(inUse)) "In use · tap to change it" else "Tap to change it", chevron = true) {
                                             vm.openThemeBuilder(name)
                                         }
                                     } + Action(R.drawable.ic_add, "Create a theme", "Start from the theme in use and pick any colour", chevron = true) {
@@ -518,7 +520,14 @@ internal fun SettingItem(
                         supporting()
                         Spacer(Modifier.height(10.dp))
                         if (key == Keys.THEME) {
-                            ThemeSwatches(value) { vm.setConfig(key, it) }
+                            val light = ThemeChoice.light(value)
+                            val dark = ThemeChoice.dark(value)
+                            ThemeSwatches(dark) { vm.setConfig(key, ThemeChoice.pair(light, it ?: dark)) }
+                            // The light half of a pair: one tap here, "Same" for one theme always.
+                            Spacer(Modifier.height(12.dp))
+                            Text("When the phone is light", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(6.dp))
+                            ThemeSwatches(light, same = dark) { vm.setConfig(key, ThemeChoice.pair(it, dark)) }
                         } else if (key == Keys.FONT) {
                             FontChoices(value, { vm.setConfig(key, it) }, onImportFont)
                         } else if (key.choices.size > 4) {
@@ -622,11 +631,35 @@ fun ChipChoices(choices: List<String>, selected: String, onPick: (String) -> Uni
 
 /** Theme picker: a preview card per palette. */
 @Composable
-private fun ThemeSwatches(selected: String, onPick: (String) -> Unit) {
+private fun ThemeSwatches(selected: String?, same: String? = null, onPick: (String?) -> Unit) {
     // Not lazy, for the reason in FontChoices.
     // The built-in themes, then the ones made in the theme builder (they come and go).
     val own = CustomThemes.themes.collectAsStateWithLifecycle().value.keys.sorted()
-    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    val scroll = rememberScrollState()
+    val step = with(LocalDensity.current) { (112 + 10).dp.roundToPx() }
+    // Opens at the theme in use (half a card of the one before shows), not at the strip's start.
+    LaunchedEffect(Unit) {
+        val at = (Keys.BUILT_IN_THEMES + own).indexOf(selected) + (if (same != null) 1 else 0)
+        if (at > 0) scroll.scrollTo(at * step - step / 2)
+    }
+    Row(Modifier.horizontalScroll(scroll), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        // The light-phone strip starts with "Same": [same], the one theme, whatever the phone's mode.
+        if (same != null) {
+            val p = Palettes.named(same)
+            Card(
+                onClick = { onPick(null) },
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(containerColor = p.bg),
+                border = if (selected == null) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, p.surface),
+                modifier = Modifier.width(112.dp).testTag("theme-light-same"),
+            ) {
+                Column(Modifier.padding(12.dp)) {
+                    Text("Same", color = p.fg, style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.height(6.dp))
+                    Text(same, color = p.dim, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
         (Keys.BUILT_IN_THEMES + own).forEach { name ->
             val p = Palettes.named(name)
             val on = name == selected

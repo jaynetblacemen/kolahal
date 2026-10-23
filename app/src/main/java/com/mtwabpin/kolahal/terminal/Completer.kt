@@ -188,8 +188,12 @@ class Completer(private val context: Context, private val data: Data) {
                     else -> emptyList()
                 }
             }
-            "theme" -> Keys.THEME.choices.filter { it.startsWith(arg) && it != arg }
-                .map { Suggestion.Completion(it, "theme $it") }
+            // `theme gruvbox-light/` goes on with the pair's dark one.
+            "theme" -> {
+                val light = arg.substringBefore('/', "")
+                val names = if ('/' in arg) Keys.THEME.choices.filter { it != light }.map { "$light/$it" } else Keys.THEME.choices
+                names.filter { it.startsWith(arg) && it != arg }.map { Suggestion.Completion(it, "theme $it") }
+            }
             "font" -> if (parts.size == 3 && parts[1] == "sans") {
                 Keys.FONT_SANS.choices.filter { it.startsWith(last) && it != last }.map { Suggestion.Completion(it, "font sans $it") }
             } else {

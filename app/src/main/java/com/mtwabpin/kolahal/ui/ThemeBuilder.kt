@@ -72,6 +72,7 @@ import androidx.core.graphics.ColorUtils
 import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.data.CustomThemes
 import com.mtwabpin.kolahal.data.Keys
+import com.mtwabpin.kolahal.data.ThemeChoice
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 
 /** What each colour role is called in the builder, and what it colours. */
@@ -100,6 +101,8 @@ private val ROLE_TEXT = mapOf(
 fun ThemeBuilderScreen(vm: TerminalViewModel) {
     val context = LocalContext.current
     val editing = remember { vm.themeBuilderName.value }
+    // Which half of a light/dark pair is showing: a new theme takes its place.
+    val dark = androidx.compose.foundation.isSystemInDarkTheme() || vm.config[Keys.THEME_ALWAYS_DARK]
     // The draft: a copy of the theme being changed, or of the theme in use.
     val draft = remember {
         mutableStateMapOf<String, Int>().apply { putAll(editing?.let(CustomThemes::colors) ?: Palettes.colorsOf(Term.palette)) }
@@ -136,7 +139,8 @@ fun ThemeBuilderScreen(vm: TerminalViewModel) {
                         CustomThemes.save(context, name, draft.toMap())
                         // Renamed: the old file goes, and the new name is used.
                         if (editing != null && editing != name) CustomThemes.delete(context, editing)
-                        vm.setConfig(Keys.THEME, name)
+                        // In a light/dark pair it takes its own place, or else the half showing now.
+                        vm.setConfig(Keys.THEME, ThemeChoice.saved(vm.config[Keys.THEME], editing, name, dark))
                         vm.closeScreen()
                     },
                     enabled = nameError == null,
@@ -214,9 +218,10 @@ fun ThemeBuilderScreen(vm: TerminalViewModel) {
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            val inUse = vm.config[Keys.THEME] == editing
+                            // Half of a pair: the other half stays, alone.
+                            val left = ThemeChoice.without(vm.config[Keys.THEME], editing)
                             CustomThemes.delete(context, editing)
-                            if (inUse) vm.resetConfig(Keys.THEME)
+                            if (left == null) vm.resetConfig(Keys.THEME) else vm.setConfig(Keys.THEME, left)
                             vm.closeScreen()
                         },
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),

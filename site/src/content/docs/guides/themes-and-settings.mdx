@@ -1,6 +1,6 @@
 ---
 title: Themes & settings
-description: The seven terminal themes, terminal fonts, the settings screen and the config command.
+description: The terminal themes, light and dark pairs, terminal fonts, the settings screen and the config command.
 ---
 
 ## Themes
@@ -9,7 +9,7 @@ description: The seven terminal themes, terminal fonts, the settings screen and 
 theme gruvbox-material
 ```
 
-Seven palettes, each with its own colours for the prompt, links, script output, errors and the
+Ten palettes, each with its own colours for the prompt, links, script output, errors and the
 work and private profile tags:
 
 <div class="palettes">
@@ -18,8 +18,11 @@ work and private profile tags:
 	<div class="pal" style="--bg:#000000;--fg:#E6E6E6;--a:#FFFFFF;--b:#CCCCCC;--c:#FFD27F;--d:#D7A6FF;--e:#FF8080"><b>mono</b></div>
 	<div class="pal" style="--bg:#282A36;--fg:#F8F8F2;--a:#50FA7B;--b:#8BE9FD;--c:#FFB86C;--d:#BD93F9;--e:#FF5555"><b>dracula</b></div>
 	<div class="pal" style="--bg:#002B36;--fg:#93A1A1;--a:#859900;--b:#268BD2;--c:#CB4B16;--d:#6C71C4;--e:#DC322F"><b>solarized</b></div>
+	<div class="pal" style="--bg:#FDF6E3;--fg:#586E75;--a:#859900;--b:#268BD2;--c:#CB4B16;--d:#6C71C4;--e:#DC322F"><b>solarized-light</b></div>
 	<div class="pal" style="--bg:#282828;--fg:#EBDBB2;--a:#B8BB26;--b:#83A598;--c:#FE8019;--d:#D3869B;--e:#FB4934"><b>gruvbox</b></div>
+	<div class="pal" style="--bg:#FBF1C7;--fg:#3C3836;--a:#79740E;--b:#076678;--c:#AF3A03;--d:#8F3F71;--e:#9D0006"><b>gruvbox-light</b></div>
 	<div class="pal" style="--bg:#292828;--fg:#D4BE98;--a:#A9B665;--b:#7DAEA3;--c:#E78A4E;--d:#D3869B;--e:#EA6962"><b>gruvbox-material</b></div>
+	<div class="pal" style="--bg:#FBF1C7;--fg:#654735;--a:#6C782E;--b:#45707A;--c:#C35E0A;--d:#945E80;--e:#C14A4A"><b>gruvbox-material-light</b></div>
 </div>
 
 <style>{`
@@ -35,6 +38,20 @@ work and private profile tags:
 
 The swatch strip shows prompt, link, work, private and error colours. The settings screens use the
 theme's colours too.
+
+### Light and dark
+
+Give `theme` two names, the light one first, and Kolahal follows the phone's dark mode, switching
+as soon as the phone does:
+
+```sh
+theme gruvbox-light/gruvbox
+config set theme.always-dark on   # keep the dark one, whatever the phone's mode
+```
+
+Any two themes pair, yours too. In **Settings → Look & feel**, the first strip picks the theme and
+**When the phone is light** the other half; **Same** there means one theme always. **Always the dark
+one** shows up while a pair is set.
 
 ### Your own themes
 

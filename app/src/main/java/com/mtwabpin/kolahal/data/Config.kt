@@ -26,13 +26,23 @@ sealed class ConfigKey<T>(val key: String, val default: T, val help: String) {
         override fun parse(raw: String) = raw.toIntOrNull()?.takeIf { it in range }
     }
 
-    /** One of [fixed], or of [added]: values that come and go while the app runs (custom themes). */
+    /**
+     * One of [fixed], or of [added]: values that come and go while the app runs (custom themes).
+     * With [pairs], also two of them as `first/second` ([ThemeChoice]).
+     */
     class Choice(
         key: String, default: String, private val fixed: List<String>, help: String,
         private val added: () -> List<String> = { emptyList() },
+        private val pairs: Boolean = false,
     ) : ConfigKey<String>(key, default, help) {
         val choices: List<String> get() = fixed + added()
-        override fun parse(raw: String) = raw.lowercase().takeIf { it in choices }
+        override fun parse(raw: String): String? {
+            val value = raw.trim().lowercase()
+            if (!pairs || '/' !in value) return value.takeIf { it in choices }
+            val (first, second) = value.split('/', limit = 2).map { it.trim() }
+            if (first !in choices || second !in choices) return null
+            return ThemeChoice.pair(first, second)
+        }
     }
 
     class Text(key: String, default: String, help: String) : ConfigKey<String>(key, default, help) {
@@ -65,8 +75,16 @@ object Keys {
     val KEYBAR_HEIGHT = ConfigKey.Num("keybar.height", 40, 20..64, "Key bar row height (dp); smaller leaves more room for the log")
     val PROMPT_HEIGHT_TYPING = ConfigKey.Num("prompt.height", 40, 20..72, "Prompt line height (dp); it never gets shorter than its text")
     /** The themes that come with Kolahal; [CustomThemes] holds the ones people make. */
-    val BUILT_IN_THEMES = listOf("green", "amber", "mono", "dracula", "solarized", "gruvbox", "gruvbox-material")
-    val THEME = ConfigKey.Choice("theme.name", "green", BUILT_IN_THEMES, "Colour theme: a built-in one or one you made", added = { CustomThemes.names })
+    val BUILT_IN_THEMES = listOf(
+        "green", "amber", "mono", "dracula", "solarized", "solarized-light", "gruvbox", "gruvbox-light",
+        "gruvbox-material", "gruvbox-material-light",
+    )
+    val THEME = ConfigKey.Choice(
+        "theme.name", "green", BUILT_IN_THEMES,
+        "Colour theme: a built-in one or one you made; two as light/dark (gruvbox-light/gruvbox) follow the phone's dark mode",
+        added = { CustomThemes.names }, pairs = true,
+    )
+    val THEME_ALWAYS_DARK = ConfigKey.Bool("theme.always-dark", false, "With a light/dark pair, always the dark one, whatever the phone's mode")
     val STATUS_BAR = ConfigKey.Choice("screen.bars", "immersive", listOf("show", "hide", "immersive"), "Full screen: hide the status bar, or both system bars (immersive); swipe from the edge to peek")
     val FONT = ConfigKey.Choice(
         "font.family", "jetbrains-mono",
@@ -131,7 +149,7 @@ object Keys {
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_SHOW, HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
-        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, STATUS_BAR, FONT, FONT_SANS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGEST_ICONS, SUGGESTIONS_WRAP, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_HANDLE, SELECTOR_HEIGHT, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
+        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, THEME_ALWAYS_DARK, STATUS_BAR, FONT, FONT_SANS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGEST_ICONS, SUGGESTIONS_WRAP, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_HANDLE, SELECTOR_HEIGHT, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_GUTTER, LOG_LINE_HEIGHT, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_KEEP_LINES, LOG_FRESH, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP,
         FEEDS_LOG, FEEDS_LOG_LINES, FEEDS_READ_SHOWN, FEEDS_BACKLOG_READ, FEEDS_INTERVAL, FEEDS_NOTIFY, FEEDS_WIFI,
@@ -208,6 +226,49 @@ object Keys {
 
 private const val DEFAULT_KEYBAR = "ESC,/,-,HOME,UP,END,BKSP"
 private const val DEFAULT_KEYBAR2 = "TAB,|,.,LEFT,DOWN,RIGHT,ENTER"
+
+/**
+ * `theme.name`: one theme, or a pair `light/dark` that follows the phone's dark mode
+ * (`theme.always-dark` keeps the dark one).
+ */
+object ThemeChoice {
+    /** [light]/[dark], or just [dark] when there is no light one, or it is the same. */
+    fun pair(light: String?, dark: String): String = if (light == null || light == dark) dark else "$light/$dark"
+
+    /** The theme for the light phone, or null for one theme. */
+    fun light(value: String): String? = value.substringBefore('/', "").ifEmpty { null }
+
+    /** The theme for the dark phone; the only one when [value] is no pair. */
+    fun dark(value: String): String = value.substringAfter('/')
+
+    fun names(value: String): List<String> = listOfNotNull(light(value), dark(value))
+
+    /** The theme to show: [value]'s dark one when the phone is [dark] (or always-dark), its light one otherwise. */
+    fun showing(value: String, dark: Boolean): String = if (dark) dark(value) else light(value) ?: dark(value)
+
+    /**
+     * [value] after the theme builder saves [new] (renamed from [old]): a pair keeps its other half,
+     * replacing [old], or else the half showing ([dark]).
+     */
+    fun saved(value: String, old: String?, new: String, dark: Boolean): String {
+        val light = light(value) ?: return new
+        val darkOne = dark(value)
+        return when (old) {
+            light -> pair(new, darkOne)
+            darkOne -> pair(light, new)
+            else -> if (dark) pair(light, new) else pair(new, darkOne)
+        }
+    }
+
+    /** [value] without [deleted]: the other half of a pair, or null when nothing is left (the default then). */
+    fun without(value: String, deleted: String): String? = names(value).filter { it != deleted }.let { left ->
+        when {
+            left.size == names(value).size -> value
+            left.isEmpty() -> null
+            else -> left.single()
+        }
+    }
+}
 
 /** Snapshot of all settings; recomposes the UI when anything changes. */
 class Config private constructor(private val prefs: SharedPreferences) {

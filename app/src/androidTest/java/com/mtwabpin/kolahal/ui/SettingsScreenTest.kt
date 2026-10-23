@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasScrollToKeyAction
@@ -221,7 +222,8 @@ class SettingsScreenTest {
     @Test fun yourThemesOpenInTheBuilder() {
         CustomThemes.save(app, TEST_THEME, Palettes.colorsOf(Palettes.amber))
         show("look")
-        compose.onNode(hasText(TEST_THEME) and hasText("\$ ls")).assertExists()
+        // In the theme strip and the light-phone strip.
+        compose.onAllNodes(hasText(TEST_THEME) and hasText("\$ ls")).assertCountEquals(2)
         compose.onNode(hasScrollToKeyAction()).performScrollToKey("own-themes")
         compose.onNode(hasText(TEST_THEME) and hasText("Tap to change it")).performClick()
         assertEquals(Screen.THEME_BUILDER, vm.screen.value)
@@ -275,7 +277,7 @@ class SettingsScreenTest {
      */
     @Test fun lookPreviewsAreNotLazy() {
         show("look")
-        compose.onNodeWithText(Keys.THEME.choices.last()).assertExists()
+        compose.onAllNodesWithText(Keys.THEME.choices.last()).assertCountEquals(2)
         scrollTo(Keys.FONT)
         compose.onNodeWithText(TermFonts.label(TermFonts.names.last { it != TermFonts.CUSTOM })).assertExists()
     }

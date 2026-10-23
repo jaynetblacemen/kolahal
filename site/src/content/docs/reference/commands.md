@@ -177,7 +177,7 @@ Script names use lowercase letters, digits, `-` and `_` (up to 40), and can't be
 | `alias [name = command]` | | list or define aliases |
 | `unalias <name>` | | remove an alias |
 | `config [ls\|set\|get\|reset] <key> <v>` | `set` | settings (no args opens the settings page) |
-| `theme <name>` | | `green` `amber` `mono` `dracula` `solarized` `gruvbox` `gruvbox-material` |
+| `theme <name>[/<name>]` | | `green` `amber` `mono` `dracula` `solarized` `solarized-light` `gruvbox` `gruvbox-light` `gruvbox-material` `gruvbox-material-light`; two, light first, [follow the phone's dark mode](/guides/themes-and-settings/#light-and-dark) |
 | `font [<name>\|import\|sans [off\|prompt\|all]]` | | terminal font: `system` `jetbrains-mono` `fira-code` `ibm-plex-mono` `source-code-pro` `custom`; no args lists them (tap to apply), `import` picks a .ttf/.otf; `sans prompt` or `sans all` uses the phone's font for the prompt or everything (`font.sans`) |
 | `echo <text>` | | print text |
 | `date` | `time` | current date and time |

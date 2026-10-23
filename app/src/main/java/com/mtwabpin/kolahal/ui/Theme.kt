@@ -68,6 +68,24 @@ object Palettes {
         prompt = Color(0xFFB8BB26), error = Color(0xFFFB4934), info = Color(0xFF8EC07C), link = Color(0xFF83A598),
         script = Color(0xFFFABD2F), personal = Color(0xFFB8BB26), work = Color(0xFFFE8019), private = Color(0xFFD3869B),
     )
+    /** Solarized's light version (base3 background). */
+    val solarizedLight = Palette(
+        bg = Color(0xFFFDF6E3), surface = Color(0xFFEEE8D5), fg = Color(0xFF586E75), dim = Color(0xFF839496),
+        prompt = Color(0xFF859900), error = Color(0xFFDC322F), info = Color(0xFF2AA198), link = Color(0xFF268BD2),
+        script = Color(0xFFB58900), personal = Color(0xFF859900), work = Color(0xFFCB4B16), private = Color(0xFF6C71C4),
+    )
+    /** Gruvbox's light version, with its darker ("faded") accents. */
+    val gruvboxLight = Palette(
+        bg = Color(0xFFFBF1C7), surface = Color(0xFFEBDBB2), fg = Color(0xFF3C3836), dim = Color(0xFF7C6F64),
+        prompt = Color(0xFF79740E), error = Color(0xFF9D0006), info = Color(0xFF427B58), link = Color(0xFF076678),
+        script = Color(0xFFB57614), personal = Color(0xFF79740E), work = Color(0xFFAF3A03), private = Color(0xFF8F3F71),
+    )
+    /** Gruvbox Material, light "medium" background. */
+    val gruvboxMaterialLight = Palette(
+        bg = Color(0xFFFBF1C7), surface = Color(0xFFF2E5BC), fg = Color(0xFF654735), dim = Color(0xFF7C6F64),
+        prompt = Color(0xFF6C782E), error = Color(0xFFC14A4A), info = Color(0xFF4C7A5D), link = Color(0xFF45707A),
+        script = Color(0xFFB47109), personal = Color(0xFF6C782E), work = Color(0xFFC35E0A), private = Color(0xFF945E80),
+    )
     /** Gruvbox Material, dark "medium" background. */
     val gruvboxMaterial = Palette(
         bg = Color(0xFF292828), surface = Color(0xFF32302F), fg = Color(0xFFD4BE98), dim = Color(0xFFA89984),
@@ -84,6 +102,9 @@ object Palettes {
         "mono" -> mono
         "dracula" -> dracula
         "solarized" -> solarized
+        "solarized-light" -> solarizedLight
+        "gruvbox-light" -> gruvboxLight
+        "gruvbox-material-light" -> gruvboxMaterialLight
         else -> CustomThemes.colors(name)?.let(::fromColors) ?: green
     }
 
