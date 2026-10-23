@@ -426,7 +426,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 TintedIcon(R.drawable.ic_arrow_down, Term.prompt, 24.dp, description = "Jump to the newest lines")
             }
         }
-        // [selector] selector.rail: fluid full-list app selector on the log's right edge, keyboard down only.
+        // [selector] selector.rail: fluid full-list app selector on an edge of the log, keyboard down only.
         val railOn = remember(configVersion) { config[Keys.SELECTOR_RAIL] }
         if (railOn && !WindowInsets.isImeVisible) {
             val pinnedKeys = remember(apps, prefsVersion) { vm.pinnedKeys() }
@@ -437,6 +437,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 onLongPress = { app -> showMenu(app.label, null) { vm.appActions(app) } },
                 heightDp = remember(configVersion) { config[Keys.SELECTOR_HEIGHT] },
                 showHandle = remember(configVersion) { config[Keys.SELECTOR_HANDLE] },
+                left = remember(configVersion) { config[Keys.SELECTOR_SIDE] == "left" },
+                position = remember(configVersion) { config[Keys.SELECTOR_POSITION] },
             )
         }
         // [/selector]

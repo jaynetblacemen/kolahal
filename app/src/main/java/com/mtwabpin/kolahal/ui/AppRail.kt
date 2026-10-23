@@ -225,8 +225,10 @@ private class SelectorState {
     var mode by mutableStateOf(Mode.CLOSED)
     /** List position (rows) under the finger while it is down; NaN when not touching. */
     var contact by mutableFloatStateOf(Float.NaN)
-    /** Finger Y in the selector's coordinates (drives the letter bubble). */
+    /** Finger Y in the selector's coordinates (moves the handle). */
     var fingerY by mutableFloatStateOf(0f)
+    /** Where the focused row is, in the selector's coordinates (the letter bubble sits level with it). */
+    var focusY by mutableFloatStateOf(0f)
     /** Scroll offset (px) set by scrubbing. */
     var scrollPx = 0f
     var interaction by mutableIntStateOf(0)
@@ -252,13 +254,16 @@ private fun LazyListState.scrollToPx(px: Float, rowPx: Int) {
 }
 
 /**
- * App selector on the right edge of the log (`selector.rail`): a slim handle at rest. Touch the
- * edge and a panel slides in listing every app (favourites first, then A–Z). Sliding along the
- * edge glides through the whole list proportionally; the row under the finger is magnified with
- * its neighbours (fisheye) and a bubble shows its section letter, ticking once per section.
- * Slide left into the panel to freeze the list and pick a row (auto-scrolling at the panel's
- * ends); lift to launch, or hold still for its actions. Lifting on the edge leaves the panel
- * open as a normal list (fling, tap, long-press); an outside tap, Back or 4 s idle closes it.
+ * App selector on an edge of the log (`selector.rail`, `selector.side`): a slim handle at rest, on
+ * a strip of the edge (`selector.height` long, at the bottom, middle or top: `selector.position`).
+ * Touch it and a panel slides in on the other side, the whole height, listing every app
+ * (favourites first, then A–Z), away from the thumb. Sliding along the strip glides through the
+ * whole list proportionally (its top is the first app, its bottom the last); the focused row is
+ * magnified with its neighbours (fisheye) and a bubble beside the panel shows its section letter,
+ * ticking once per section. Slide off the edge, toward the panel, to freeze the list and pick a
+ * row (auto-scrolling at the panel's ends); lift to launch, or hold still for its actions. Lifting
+ * on the edge leaves the panel open as a normal list (fling, tap, long-press); an outside tap,
+ * Back or 4 s idle closes it.
  *
  * The strip consumes all its touches, so the home pager never turns the page under it.
  * Gesture exclusion: Android honours at most 200dp per screen edge, so only the strip's central
@@ -275,6 +280,10 @@ fun AppSelector(
     heightDp: Int = 350,
     /** selector.handle: draw the A–Z handle when idle (it still shows under the finger). */
     showHandle: Boolean = true,
+    /** selector.side: the strip on the left edge, the panel on the right. */
+    left: Boolean = false,
+    /** selector.position: the strip at the edge's `bottom`, `middle` or `top`. */
+    position: String = "bottom",
 ) {
     val entries = remember(apps, pinned) {
         SelectorMath.build(
@@ -307,21 +316,32 @@ fun AppSelector(
     BoxWithConstraints(modifier.fillMaxSize()) {
         val containerW = constraints.maxWidth.toFloat()
         val containerH = constraints.maxHeight.toFloat()
-        // selector.height: a short band low on the screen, in the thumb's reach, instead of the
-        // whole log height; the full list still maps onto it (top of the band = first app).
+        // selector.height: a strip of the edge, in the thumb's reach (selector.position), instead of
+        // the whole log height; the full list still maps onto it (its top = the first app).
+        val topPx = with(density) { TOP_GAP.toPx() }
         val bottomPx = containerH - with(density) { BOTTOM_GAP.toPx() }
-        val stripHPx = min(bottomPx - with(density) { TOP_GAP.toPx() }, with(density) { heightDp.dp.toPx() })
-        val stripTopPx = bottomPx - stripHPx
+        val stripHPx = min(bottomPx - topPx, with(density) { heightDp.dp.toPx() })
+        val stripTopPx = when (position) {
+            "top" -> topPx
+            "middle" -> topPx + (bottomPx - topPx - stripHPx) / 2
+            else -> bottomPx - stripHPx
+        }
         if (stripHPx < with(density) { 160.dp.toPx() }) return@BoxWithConstraints
         val count = entries.size
         val rowPx = with(density) { ROW_H.roundToPx() }
-        // The panel spans the strip.
-        val panelHPx = min(stripHPx, (count * rowPx).toFloat()).coerceAtLeast(rowPx.toFloat())
-        // A short list sits at the bottom of the band, nearest the thumb.
-        val panelTopPx = stripTopPx + stripHPx - panelHPx
-        val panelW = with(density) { (containerW * 0.75f).toDp() }.coerceAtLeast(220.dp).coerceAtMost(maxWidth - 24.dp)
-        val panelWPx = with(density) { panelW.toPx() }
+        // The panel uses the whole height, whatever the strip's; a short list sits at the bottom.
+        val listHPx = containerH - 2 * topPx
+        val panelHPx = min(listHPx, (count * rowPx).toFloat()).coerceAtLeast(rowPx.toFloat())
+        val panelTopPx = topPx + listHPx - panelHPx
         val stripWPx = with(density) { STRIP_W.toPx() }
+        val bubbleSize = 56.dp
+        val bubblePx = with(density) { bubbleSize.toPx() }
+        // On the other side from the strip, leaving room beside it for the letter bubble.
+        val panelW = with(density) { (containerW * 0.7f).toDp() }.coerceAtLeast(220.dp)
+            .coerceAtMost(maxWidth - STRIP_W - bubbleSize - 24.dp)
+        val panelWPx = with(density) { panelW.toPx() }
+        val panelXPx = if (left) containerW - panelWPx else 0f
+        val stripXPx = if (left) 0f else containerW - stripWPx
         val exclusionPx = with(density) { 200.dp.toPx() }
         val leavePx = with(density) { 10.dp.toPx() }
         val slopPx = with(density) { 8.dp.toPx() }
@@ -352,11 +372,11 @@ fun AppSelector(
             visible = open && count > 0,
             // Opaque from the first frame (no fade): readable while it slides in.
             enter =
-                slideInHorizontally(spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)) { it / 4 },
-            exit = fadeOut(tween(140)) + slideOutHorizontally(tween(160)) { it / 4 },
-            modifier = Modifier.offset { IntOffset((containerW - panelWPx).roundToInt(), panelTopPx.roundToInt()) },
+                slideInHorizontally(spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)) { if (left) it / 4 else -it / 4 },
+            exit = fadeOut(tween(140)) + slideOutHorizontally(tween(160)) { if (left) it / 4 else -it / 4 },
+            modifier = Modifier.offset { IntOffset(panelXPx.roundToInt(), panelTopPx.roundToInt()) },
         ) {
-            val shape = RoundedCornerShape(topStart = 14.dp, bottomStart = 14.dp)
+            val shape = if (left) RoundedCornerShape(topStart = 14.dp, bottomStart = 14.dp) else RoundedCornerShape(topEnd = 14.dp, bottomEnd = 14.dp)
             LazyColumn(
                 state = listState,
                 userScrollEnabled = state.mode == Mode.OPEN,
@@ -386,20 +406,21 @@ fun AppSelector(
             }
         }
 
-        // Section letter bubble, just left of the finger while scrubbing the edge.
+        // Section letter bubble while scrubbing: beside the panel, level with the focused row, away
+        // from the thumb.
         val bubble by remember(entries) {
             derivedStateOf { entries.getOrNull(SelectorMath.focusedIndex(state.contact, entries.size))?.section }
         }
-        val bubbleSize = 52.dp
-        val bubblePx = with(density) { bubbleSize.toPx() }
         if (state.mode == Mode.SCRUB) bubble?.let { letter ->
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .offset {
+                        val gapStart = if (left) stripWPx else panelWPx
+                        val gapEnd = if (left) containerW - panelWPx else containerW - stripWPx
                         IntOffset(
-                            (containerW - stripWPx - bubblePx - 8.dp.toPx()).roundToInt(),
-                            (state.fingerY - bubblePx / 2).coerceIn(0f, containerH - bubblePx).roundToInt(),
+                            (gapStart + (gapEnd - gapStart - bubblePx) / 2).roundToInt(),
+                            (state.focusY - bubblePx / 2).coerceIn(0f, containerH - bubblePx).roundToInt(),
                         )
                     }
                     .size(bubbleSize)
@@ -416,7 +437,7 @@ fun AppSelector(
         // The edge strip: invisible touch area with a slim handle; owns every touch it gets.
         Box(
             Modifier
-                .offset { IntOffset((containerW - stripWPx).roundToInt(), stripTopPx.roundToInt()) }
+                .offset { IntOffset(stripXPx.roundToInt(), stripTopPx.roundToInt()) }
                 .width(STRIP_W)
                 .height(with(density) { stripHPx.toDp() })
                 .testTag("app-selector")
@@ -427,7 +448,7 @@ fun AppSelector(
                     val top = ((h - exclusionPx) / 2).coerceAtLeast(0f)
                     Rect(0f, top, c.size.width.toFloat(), min(h, top + exclusionPx))
                 }
-                .pointerInput(entries, rowPx, panelHPx, panelTopPx, stripHPx) {
+                .pointerInput(entries, rowPx, panelHPx, panelTopPx, stripHPx, left) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         down.consume()
@@ -457,7 +478,10 @@ fun AppSelector(
                                 state.scrollPx = SelectorMath.scrollOffset(f, count, rowPx.toFloat(), panelHPx)
                                 listState.scrollToPx(state.scrollPx, rowPx)
                             }
-                            val yIn = (cy - panelTopPx).coerceIn(0f, panelHPx - 1f)
+                            // The strip maps onto the whole panel: a finger a third down the strip is
+                            // a third down the panel, however tall each is.
+                            val yIn = (y / stripHPx * panelHPx).coerceIn(0f, panelHPx - 1f)
+                            state.focusY = panelTopPx + yIn
                             state.contact = SelectorMath.contact(state.scrollPx, yIn, rowPx.toFloat())
                             val f = SelectorMath.focusedIndex(state.contact, count)
                             val section = entries[f].sectionIndex
@@ -489,7 +513,7 @@ fun AppSelector(
                             while (true) {
                                 val now = SystemClock.uptimeMillis()
                                 val speed = if (selecting) {
-                                    SelectorMath.edgeSpeed(stripTopPx + y - panelTopPx, panelHPx, edgeZonePx, edgeMaxSpeed)
+                                    SelectorMath.edgeSpeed(y / stripHPx * panelHPx, panelHPx, edgeZonePx, edgeMaxSpeed)
                                 } else 0f
                                 val scrolling = speed != 0f &&
                                     !(speed < 0f && state.scrollPx <= 0f) && !(speed > 0f && state.scrollPx >= maxScrollPx)
@@ -545,7 +569,8 @@ fun AppSelector(
                                 change.consume()
                                 x = change.position.x
                                 y = change.position.y
-                                selecting = x < -leavePx
+                                // Off the edge, toward the panel: the list holds still to pick from.
+                                selecting = if (left) x > stripWPx + leavePx else x < -leavePx
                                 state.mode = if (selecting) Mode.SELECT else Mode.SCRUB
                                 update(SystemClock.uptimeMillis())
                             }
@@ -564,8 +589,8 @@ fun AppSelector(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 3.dp)
+                    .align(if (left) Alignment.CenterStart else Alignment.CenterEnd)
+                    .padding(start = if (left) 3.dp else 0.dp, end = if (left) 0.dp else 3.dp)
                     .graphicsLayer {
                         translationY = if (touching) {
                             (state.fingerY - stripTopPx - stripHPx / 2).coerceIn(-(stripHPx - handleHPx) / 2, (stripHPx - handleHPx) / 2)

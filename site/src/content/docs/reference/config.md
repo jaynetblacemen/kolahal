@@ -99,9 +99,11 @@ The `theme` and `font` commands are unchanged.
 | `suggestions.auto` | bool | `on` | show suggestions only while typing (keyboard up or text in the prompt) |
 | `suggestions.style` | choice: `list` `chips` | `list` | while typing: a list above the prompt (best match at the bottom, nearest the thumb, with command descriptions) or a strip of chips |
 | `suggestions.rows` | number 1–2 | `2` | rows of suggestion chips while typing (`suggestions.style chips`) |
-| `selector.rail` | bool | `on` | App selector on the right edge while the keyboard is down: slide along the right edge to glide through all your apps; let go on one to launch, hold for its actions |
-| `selector.handle` | bool | `on` | show the slim A–Z handle on the right edge; off hides it while the selector keeps working (it still appears under your finger) |
-| `selector.height` | number 200–900 | `350` | height (dp) of the app selector band, low on the right edge: shorter means less thumb travel |
+| `selector.rail` | bool | `off` | the app selector on an edge of the log while the keyboard is down: slide along it to glide through all your apps, let go on one to launch |
+| `selector.side` | choice: `right` `left` | `right` | the edge you slide on; the list of apps opens on the other side |
+| `selector.position` | choice: `bottom` `middle` `top` | `bottom` | where on the edge you slide: keep it away from where you swipe back |
+| `selector.handle` | bool | `on` | show the slim A–Z handle on the edge; off hides it while the selector keeps working |
+| `selector.height` | number 200–900 | `350` | length (dp) of the part of the edge you slide on: shorter means less thumb travel; the list uses the whole height |
 | `suggestions.max` | number 0–30 | `30` | max suggestions shown while typing |
 | `search.engine` | choice: `duckduckgo` `google` `bing` `brave` `startpage` `kagi` `custom` | `duckduckgo` | web search engine for `search` / `g` |
 | `search.url` | text | `https://duckduckgo.com/?q=%s` | custom search URL (`%s` = query), used when `search.engine` = `custom` |
