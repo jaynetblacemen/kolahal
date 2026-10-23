@@ -54,6 +54,8 @@ class TerminalFixesTest {
         Keys.ALL.forEach(config::reset)
         AppPrefs.get(app).setAlias("text", null)
         listOf("tfcat", "tftag").forEach { n -> scripts.byName(n)?.let { scripts.delete(it.id) } }
+        AppPrefs.get(app).setAlias("tfhf", null)
+        com.mtwabpin.kolahal.productivity.TodoStore.get(app).let { t -> t.all().filter { it.text.startsWith("tf ") || it.text.startsWith("clear out") || it.text.startsWith("all hands") }.forEach { t.remove(it.id) } }
         logs.recent(100).filter { it.text.startsWith("tf ") || it.text.startsWith("echo tf ") || it.text.startsWith("tftag") }.forEach { logs.delete(it.id) }
         muted.unmute(gone)
     }
@@ -120,6 +122,43 @@ class TerminalFixesTest {
         val second = vm.notice.value!!
         assertEquals(first.text, second.text)
         assertTrue(first != second)
+    }
+
+    /** `alias hf = help | grep feed`: the pipe is the alias's, for when hf runs. */
+    @Test fun anAliasKeepsItsPipe() {
+        run("alias tfhf = help | grep feed")
+        assertEquals("help | grep feed", AppPrefs.get(app).aliases()["tfhf"])
+        val all = run("help").size
+        val some = run("tfhf").size
+        assertTrue("$some of $all", some in 1 until all)
+    }
+
+    /** A built-in's name in another case can't be an alias either: typed, the built-in would win. */
+    @Test fun anAliasCantBeABuiltInInAnotherCase() {
+        assertTrue(run("alias Help = echo x").single().text.contains("built-in"))
+        assertNull(AppPrefs.get(app).aliases()["help"])
+    }
+
+    /** `todo clear out the garage` is a todo; `todo clear` on its own clears the finished ones. */
+    @Test fun aTodoStartingWithASubcommandWordIsATodo() {
+        val todos = com.mtwabpin.kolahal.productivity.TodoStore.get(app)
+        run("todo clear out the garage")
+        run("todo all hands meeting")
+        val texts = todos.all().map { it.text }
+        assertTrue(texts.toString(), "clear out the garage" in texts && "all hands meeting" in texts)
+    }
+
+    @Test fun feedCommandsRefuseAnUnknownId() {
+        assertEquals(LogKind.ERROR, run("feed rm 999999").single().kind)
+        assertEquals(LogKind.ERROR, run("feed every 999999 2h").single().kind)
+        assertEquals(LogKind.ERROR, run("feed notify 999999 on").single().kind)
+    }
+
+    @Test fun anEmptyNoteIsntSaved() {
+        val notes = com.mtwabpin.kolahal.productivity.NoteStore.get(app)
+        val before = notes.all().size
+        assertEquals(LogKind.ERROR, run("notes add").single().kind)
+        assertEquals(before, notes.all().size)
     }
 
     @Test fun aCommandsOtherNamesCantBeAliases() {

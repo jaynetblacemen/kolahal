@@ -748,11 +748,18 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         }
     }
 
-    fun runScript(script: Script, code: String) {
-        io {
-            scripts.saveCode(script.id, code, byUser = true)
-            scripts.byId(script.id)?.let { ScriptScheduler.runNow(context, it) }
-            logs.add(LogKind.INFO, "Running ${script.name}…", ctx = LogContext.of(LogContext.SCRIPT to script.name))
+    /** Saves [code] and runs the script; [onDone] gets what went wrong with the save, if anything. */
+    fun runScript(script: Script, code: String, onDone: (Throwable?) -> Unit = {}) {
+        viewModelScope.launch {
+            val failure = withContext(serialIo) {
+                runCatching {
+                    scripts.saveCode(script.id, code, byUser = true)
+                    refreshScriptCaches()
+                    scripts.byId(script.id)?.let { ScriptScheduler.runNow(context, it) }
+                    logs.add(LogKind.INFO, "Running ${script.name}…", ctx = LogContext.of(LogContext.SCRIPT to script.name))
+                }.exceptionOrNull()
+            }
+            onDone(failure)
         }
     }
 
@@ -922,6 +929,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun switchTab(screen: Screen) {
         _notice.value = null
         _peek.value = null
+        // Settings opens on its main page next time, not the category left by a tab.
+        settingsCategory.value = null
         _screen.value = screen
         if (screen == Screen.SCRIPTS) refreshScripts()
     }
@@ -940,6 +949,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun closeScreen() {
         _notice.value = null
         val previous = synchronized(backStack) { backStack.removeLastOrNull() } ?: Screen.TERMINAL
+        // A category stays open only across a manager screen opened from it, not a trip home.
+        if (_screen.value == Screen.SETTINGS && previous == Screen.TERMINAL) settingsCategory.value = null
         _screen.value = previous
         if (previous == Screen.SCRIPTS) refreshScripts()
         if (previous == Screen.SETUP) refreshSetup()

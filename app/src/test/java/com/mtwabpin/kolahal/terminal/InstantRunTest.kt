@@ -57,6 +57,9 @@ class InstantRunTest {
         assertNull("call is sensitive", target("call"))
         assertNull("theme needs an argument", target("them"))
         assertEquals(Target.Command("help"), target("he"))
+        // Leaves the launcher: never on a prefix typed on the way to something else.
+        assertNull("system opens Android's settings", target("sy"))
+        assertNull("battery opens a settings page", target("ba"))
     }
 
     @Test fun aliasesFollowTheirExpansion() {

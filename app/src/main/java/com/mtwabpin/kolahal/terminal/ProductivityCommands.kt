@@ -81,9 +81,11 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
         fun pick(): Todo? = pickRef(w.getOrNull(1), all) { it.id }.also {
             if (it == null) error("No todo '${w.getOrNull(1).orEmpty()}' — 'todo' lists them with numbers")
         }
+        // A word on its own is a subcommand; with more after it, it's the todo (`todo clear out the garage`).
         when (sub) {
-            null, "ls", "list" -> listTodos(all, includeDone = false)
-            "all" -> listTodos(all, includeDone = true)
+            null -> listTodos(all, includeDone = false)
+            "ls", "list" -> if (w.size == 1) listTodos(all, includeDone = false) else addTodo(rest.trim())
+            "all" -> if (w.size == 1) listTodos(all, includeDone = true) else addTodo(rest.trim())
             "add" -> addTodo(rest.trim().substringAfter(' ', "").trim())
             "done", "undo", "undone", "toggle" -> {
                 if (w.size < 2) return error("Usage: todo $sub <n>")
@@ -109,7 +111,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
                 todos.edit(t.id, text)
                 todoLine(t.copy(text = text), null, info = true)
             }
-            "clear" -> {
+            "clear" -> if (w.size > 1) addTodo(rest.trim()) else {
                 val n = todos.clearDone()
                 info(if (n == 0) "No finished todos to clear" else "Cleared $n finished todo${if (n == 1) "" else "s"}")
             }
@@ -157,6 +159,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
     // ---- notes ---------------------------------------------------------------------------------
 
     private fun addNote(text: String) {
+        if (text.isBlank()) return error("Usage: note <text>")
         val id = notes.add(text.trim())
         info("Noted", noteCtx(id, text.trim()))
     }

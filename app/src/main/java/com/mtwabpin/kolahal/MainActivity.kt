@@ -153,7 +153,7 @@ class MainActivity : ComponentActivity() {
                         lastRun = stored?.lastRun,
                         lastStatus = stored?.lastStatus,
                         onSave = { code, done -> vm.saveScript(script, code, done) },
-                        onRun = { vm.runScript(script, it) },
+                        onRun = { code, done -> vm.runScript(script, code, done) },
                         onClose = vm::closeEditor,
                     )
                 } else {

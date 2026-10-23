@@ -80,8 +80,9 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     }
 
     private fun runLogged(typed: String, expand: Boolean) {
-        // Aliases first, so `alias hf = help | grep feed` pipes too.
-        val stages = Pipes.split(if (expand) expandAliases(typed) else typed)
+        // Aliases first, so `alias hf = help | grep feed` pipes too; its definition keeps the pipe.
+        val expanded = if (expand) expandAliases(typed) else typed
+        val stages = if (expanded.substringBefore(' ').lowercase() == "alias") listOf(expanded) else Pipes.split(expanded)
         if (stages.size > 1) {
             // `cmd | grep x | head 5`: capture what the command prints right away, then filter it.
             val (_, captured) = logs.capture { execute(stages[0], expand = false) }
@@ -189,7 +190,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             all.forEach { (k, v) -> out("$k = $v", LogContext.of(LogContext.COMMAND to k)) }
             return
         }
-        val name = rest.substringBefore('=').trim().substringBefore(' ')
+        // Lowercase, as typed lines are matched: `alias Help = …` can't hide behind the built-in.
+        val name = rest.substringBefore('=').trim().substringBefore(' ').lowercase()
         val expansion = rest.substringAfter('=', "").trim().removeSurrounding("\"").removeSurrounding("'")
         when {
             !rest.contains('=') -> prefs.alias(name)?.let { out("$name = $it") } ?: error("No alias '$name'")

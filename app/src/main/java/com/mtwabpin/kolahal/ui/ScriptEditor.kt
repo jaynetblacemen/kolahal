@@ -87,7 +87,7 @@ fun ScriptEditor(
     lastRun: Long?,
     lastStatus: String?,
     onSave: (String, (Throwable?) -> Unit) -> Unit,
-    onRun: (String) -> Unit,
+    onRun: (String, (Throwable?) -> Unit) -> Unit,
     onClose: (unsaved: String?) -> Unit,
 ) {
     var value by rememberSaveable(script.id, stateSaver = TextFieldValue.Saver) {
@@ -185,11 +185,18 @@ fun ScriptEditor(
     }
 
     fun run() {
-        // Running saves the text first.
-        saved = value.text
+        // Running saves the text first; it counts as saved once it is, so a failed save keeps the edits.
+        val text = value.text
         runSince = System.currentTimeMillis()
-        message = EditorMessage("Saved · running…", EditorMessage.Kind.BUSY)
-        onRun(value.text)
+        message = EditorMessage("Saving…", EditorMessage.Kind.BUSY)
+        onRun(text) { failure ->
+            if (failure == null) {
+                saved = text
+                message = EditorMessage("Saved · running…", EditorMessage.Kind.BUSY)
+            } else {
+                message = EditorMessage("Couldn't save: ${failure.message ?: failure.javaClass.simpleName}", EditorMessage.Kind.ERROR)
+            }
+        }
     }
 
     fun close() {

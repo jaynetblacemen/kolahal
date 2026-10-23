@@ -18,6 +18,9 @@ object InstantRun {
         "todo", "note", "notes", "remind", "timer", "alarm", "widget",
         // `rss <url>` fetches with no script's internet switch; `crashes clear` deletes the reports.
         "rss", "crashes",
+        // These leave the launcher or change the phone: typing `sy` on the way to something else
+        // mustn't open Android's settings.
+        "battery", "home", "system", "accessibility", "usage-access", "shade", "local-network", "notifications",
         // `scripts rm|off|import …` reaches the same handler as `script`; `status clear` wipes lines.
         "scripts", "status",
         // Change how the launcher looks or what it puts first.

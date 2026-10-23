@@ -73,6 +73,7 @@ class ScriptCatalog(private val context: Context) {
         if ((root["format"] as? Number)?.toInt() != FORMAT) throw IOException("the script list is newer than this Kolahal: update it")
         fun Map<*, *>.str(key: String) = this[key]?.toString()?.takeIf { it.isNotBlank() }
         fun Map<*, *>.list(key: String) = (this[key] as? List<*>).orEmpty().map { it.toString() }
+        // One entry per name: the list is keyed by it on screen.
         return (root["scripts"] as? List<*>).orEmpty().filterIsInstance<Map<*, *>>().mapNotNull { m ->
             val name = m.str("name")?.takeIf(NAME::matches) ?: return@mapNotNull null
             val lang = m.str("lang")?.let(ScriptLang::of) ?: return@mapNotNull null
@@ -98,7 +99,7 @@ class ScriptCatalog(private val context: Context) {
                 size = (m["size"] as? Number)?.toInt() ?: 0,
                 sha256 = sha,
             )
-        }
+        }.distinctBy { it.name }
     }
 
     /** [e]'s file, checked against the list; throws when it doesn't match (the list changed: refresh). */

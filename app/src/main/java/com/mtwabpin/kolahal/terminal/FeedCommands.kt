@@ -77,6 +77,7 @@ class FeedCommands(
             }
             "rm", "remove" -> {
                 id ?: return error("Usage: feed rm <id>")
+                if (repo.byId(id) == null) return error("No feed #$id — 'feeds' lists them")
                 repo.remove(id)
                 scheduler.sync(context)
                 info("Removed feed #$id")
@@ -117,17 +118,20 @@ class FeedCommands(
             }
             "notify" -> {
                 id ?: return error("Usage: feed notify <id> on|off")
+                if (repo.byId(id) == null) return error("No feed #$id — 'feeds' lists them")
                 repo.setNotify(id, args.getOrNull(2) != "off")
                 info("Feed #$id notifications ${args.getOrNull(2) ?: "on"}")
             }
             "every" -> {
                 val minutes = CommandParsing.parseInterval(args.getOrNull(2))
                 if (id == null || minutes == null || minutes <= 0) return error("Usage: feed every <id> <30m|2h|…>")
+                if (repo.byId(id) == null) return error("No feed #$id — 'feeds' lists them")
                 repo.setInterval(id, minutes)
                 info("Feed #$id every ${CommandParsing.formatInterval(minutes.coerceAtLeast(15))}")
             }
             "on", "off" -> {
                 id ?: return error("Usage: feed ${args[0]} <id>")
+                if (repo.byId(id) == null) return error("No feed #$id — 'feeds' lists them")
                 repo.setEnabled(id, args[0] == "on")
                 scheduler.sync(context)
                 info("Feed #$id ${args[0]}")

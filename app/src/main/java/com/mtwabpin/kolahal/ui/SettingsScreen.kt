@@ -520,7 +520,8 @@ internal fun SettingItem(
                         Spacer(Modifier.height(10.dp))
                         if (key == Keys.THEME) {
                             // Each card in the version showing now: dark or light, as the phone (or Always dark) says.
-                            val dark = androidx.compose.foundation.isSystemInDarkTheme() || config[Keys.THEME_ALWAYS_DARK]
+                            // Read with the version, so toggling Always dark redraws the cards.
+                            val dark = androidx.compose.foundation.isSystemInDarkTheme() || run { version.value; config[Keys.THEME_ALWAYS_DARK] }
                             ThemeSwatches(value, dark) { vm.setConfig(key, it) }
                         } else if (key == Keys.FONT) {
                             FontChoices(value, { vm.setConfig(key, it) }, onImportFont)

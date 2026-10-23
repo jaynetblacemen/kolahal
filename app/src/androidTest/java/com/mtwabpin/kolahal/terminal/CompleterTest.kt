@@ -10,6 +10,7 @@ import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.productivity.Todo
 import org.junit.After
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -35,6 +36,13 @@ class CompleterTest {
         override val notes = emptyList<com.mtwabpin.kolahal.productivity.Note>()
         override val reminders = emptyList<com.mtwabpin.kolahal.productivity.Reminder>()
     })
+
+    /** `log only …` suggests the kinds (and the log's sources, when there are any). */
+    @Test fun logOnlySuggestsTheKinds() {
+        val all = completer.suggestions("log only ").map { (it as Suggestion.Completion).replacement }
+        assertTrue(all.toString(), "log only feeds" in all && "log only scripts" in all)
+        assertEquals(listOf("log only feeds"), completer.suggestions("log only fe").map { (it as Suggestion.Completion).replacement })
+    }
 
     @Before fun setUp() {
         apps.refresh()

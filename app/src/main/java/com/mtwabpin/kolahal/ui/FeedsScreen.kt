@@ -201,7 +201,7 @@ fun FeedsScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
                 onEnabled = { on ->
                     io("update") { repo.setEnabled(sheetFeed.id, on); FeedScheduler.sync(context); null }
                 },
-                onInterval = { minutes -> io("update") { repo.setInterval(sheetFeed.id, minutes); null } },
+                onInterval = { minutes -> io("update") { repo.setInterval(sheetFeed.id, minutes); FeedScheduler.sync(context); null } },
                 onMarkAllRead = { io("mark read") { repo.markAllRead(sheetFeed.id); "Marked ${sheetFeed.displayTitle()} read" } },
                 onRemove = {
                     sheetFeedId = null

@@ -115,9 +115,11 @@ fun ThemeBuilderScreen(vm: TerminalViewModel) {
         }
     }
     // Which version the colours below change; the preview shows it.
-    var light by rememberSaveable { mutableStateOf(false) }
+    // Per visit, like the draft: the screen's saved state outlives a visit, and a name from the
+    // last one would rename the theme being edited.
+    var light by remember { mutableStateOf(false) }
     fun keyOf(role: String) = if (light) CustomThemes.LIGHT + role else role
-    var name by rememberSaveable { mutableStateOf(editing ?: newName()) }
+    var name by remember { mutableStateOf(editing ?: newName()) }
     var picking by remember { mutableStateOf<String?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     val nameError = when {

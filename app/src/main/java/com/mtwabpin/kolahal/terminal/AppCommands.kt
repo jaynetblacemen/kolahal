@@ -154,7 +154,8 @@ class AppCommands(
     private fun open(args: List<String>) {
         // `open maps:navigate` starts the shortcut whose label best matches "navigate".
         val joined = stripFlags(args)
-        if (joined.contains(':')) {
+        // "Duolingo: Language Lessons" is an app's name, not a shortcut of Duolingo's.
+        if (joined.contains(':') && apps.search(joined, profileFlag(args)).none { it.label.equals(joined, ignoreCase = true) }) {
             val app = apps.search(joined.substringBefore(':'), profileFlag(args)).firstOrNull()
                 ?: return error("No app matches '${joined.substringBefore(':')}'")
             val wanted = joined.substringAfter(':').trim().lowercase()

@@ -88,8 +88,10 @@ class ConfigCommands(private val context: Context, private val ui: TerminalUi) {
     private fun setKey(name: String?, parsed: String, raw: String): Unit = withKey(name) { key ->
         // Free text as typed after the name (an old name too), so quotes in it survive.
         val at = if (key is ConfigKey.Text && name != null) raw.indexOf(name, ignoreCase = true) else -1
-        val value = if (at >= 0) raw.substring(at + name!!.length).trim() else parsed
-        if (value.isBlank()) return error("${key.key} = ${conf.display(key)}  (${hint(key)})")
+        var value = if (at >= 0) raw.substring(at + name!!.length).trim() else parsed
+        // `config set keybar.row2 ""`: an empty text, where its help allows one.
+        if (key is ConfigKey.Text && (value == "\"\"" || value == "''")) value = ""
+        else if (value.isBlank()) return error("${key.key} = ${conf.display(key)}  (${hint(key)})")
         if (conf.set(key, value)) info("${key.key} = ${conf.display(key)}")
         else error("Invalid value for ${key.key}: ${hint(key)}")
     }
