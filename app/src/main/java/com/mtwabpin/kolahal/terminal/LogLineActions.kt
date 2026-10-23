@@ -218,13 +218,23 @@ class LogLineActions(private val context: Context, private val processor: Comman
         return null
     }
 
-    /** A command line plus the output that followed it (up to the next command; timer output excluded). */
+    /**
+     * A command line plus the output that followed it: up to the next command or a pause longer
+     * than [GROUP_GAP_MS], as the log groups it (a call or install line later on isn't output).
+     * Script lines are left out.
+     */
     private fun blockOf(command: LogEntry): List<LogEntry> {
         val all = host.entries
         val start = all.indexOfFirst { it.id == command.id }
         if (start < 0) return listOf(command)
-        val rest = all.drop(start + 1).takeWhile { it.kind != LogKind.COMMAND }.filter { it.kind != LogKind.SCRIPT }
-        return listOf(command) + rest
+        val block = arrayListOf(command)
+        var previous = command
+        for (e in all.subList(start + 1, all.size)) {
+            if (e.kind == LogKind.COMMAND || e.ts - previous.ts > GROUP_GAP_MS) break
+            if (e.kind != LogKind.SCRIPT && LogContext.RUN_HEADER !in e.ctx.values) block += e
+            previous = e
+        }
+        return block
     }
 
     /** Apps referenced by a grid line (`ctx.apps` = JSON list of {pkg, cls, user}). */

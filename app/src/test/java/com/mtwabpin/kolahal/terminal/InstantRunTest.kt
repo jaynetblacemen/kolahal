@@ -139,6 +139,17 @@ class InstantRunTest {
         assertTrue(InstantRun.isSensitive("pin gpay"))
     }
 
+    @Test fun anyKindOfSpaceAfterTheNameStillCounts() {
+        assertTrue(InstantRun.isSensitive("clear\tall"))
+        assertTrue(InstantRun.isSensitive("clear all"))
+        assertTrue(InstantRun.isSensitive("c\tall", mapOf("c" to "clear")))
+    }
+
+    @Test fun feedFetchesAndCrashReportsAreSensitive() {
+        assertTrue(InstantRun.isSensitive("rss https://example.com/feed"))
+        assertTrue(InstantRun.isSensitive("crashes clear"))
+    }
+
     @Test fun scriptsAndStatusAreSensitive() {
         assertTrue(InstantRun.isSensitive("scripts rm hn"))
         assertTrue(InstantRun.isSensitive("status clear all"))

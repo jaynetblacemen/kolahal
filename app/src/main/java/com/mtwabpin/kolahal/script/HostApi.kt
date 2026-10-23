@@ -424,7 +424,9 @@ class HostApi(
     private var commands = 0
 
     /** Runs a terminal command in the launcher. Only for scripts started from the prompt. */
-    fun runCommand(command: String): Boolean {
+    fun runCommand(sent: String): Boolean {
+        // Split and checked as home will run it ([com.mtwabpin.kolahal.terminal.CommandProcessor.run]).
+        val command = com.mtwabpin.kolahal.terminal.CommandParsing.spaces(sent)
         // Commands, and through them other scripts, only for scripts that declare it and are allowed it.
         if (!may("commands", "launcher.run")) return false
         if (!interactive) {

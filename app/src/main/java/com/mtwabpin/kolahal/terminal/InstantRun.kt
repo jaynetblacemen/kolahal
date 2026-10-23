@@ -16,6 +16,8 @@ object InstantRun {
         "call", "sms", "uninstall", "work", "private", "clear", "restart", "lock", "script", "alias", "unalias",
         "config", "hide", "unhide", "rename", "feed", "feeds", "notifs", "lua", "js", "=", "url", "echo",
         "todo", "note", "notes", "remind", "timer", "alarm", "widget",
+        // `rss <url>` fetches with no script's internet switch; `crashes clear` deletes the reports.
+        "rss", "crashes",
         // `scripts rm|off|import …` reaches the same handler as `script`; `status clear` wipes lines.
         "scripts", "status",
         // Change how the launcher looks or what it puts first.
@@ -35,7 +37,7 @@ object InstantRun {
 
     /** True when the first word of [line], after synonyms, is a sensitive command. */
     fun isSensitive(line: String): Boolean {
-        val t = line.trim()
+        val t = CommandParsing.spaces(line).trim()
         // `=…` runs code in the calculator (`=notify(…)` has no space after the `=`).
         if (t.startsWith("=")) return true
         return canonical(t.substringBefore(' ')) in SENSITIVE
@@ -46,7 +48,7 @@ object InstantRun {
      * levels), so an alias such as `c = clear` can't carry a sensitive command past the check.
      */
     fun isSensitive(line: String, aliases: Map<String, String>): Boolean {
-        var current = line.trim()
+        var current = CommandParsing.spaces(line).trim()
         repeat(6) {
             if (isSensitive(current)) return true
             val head = current.substringBefore(' ')

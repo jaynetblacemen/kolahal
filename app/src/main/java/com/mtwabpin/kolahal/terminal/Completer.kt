@@ -71,7 +71,7 @@ class Completer(private val context: Context, private val data: Data) {
             // When Enter would launch an app (launch.top + a prefix match), that app is the first,
             // highlighted chip, so Enter, TAB and the highlight agree.
             val enterLaunches = config[Keys.LAUNCH_TOP] && ranked.firstOrNull()?.second?.let { it <= 2 } == true &&
-                names.none { it == head }
+                names.none { it == head } && head !in InstantRun.SYNONYMS
             val apps = ranked.map { Suggestion.App(it.first) }
             // A whole command name already: its first options too, so `xkcd` offers `xkcd random`.
             val options = if (head in names) usageOptions(head, listOf(head, "")).map { it.copy(label = "$head ${it.label}") } else emptyList()
@@ -249,7 +249,8 @@ class Completer(private val context: Context, private val data: Data) {
             val label = (if (c.starred) "★ " else "") + c.name + if (shared) " · ${c.label} ${c.number}" else ""
             val target = when {
                 head == "contacts" || head == "contact" -> c.name
-                sms || shared -> c.number
+                sms -> c.number.filterNot { it.isWhitespace() }
+                shared -> c.number
                 else -> c.name
             }
             Suggestion.Completion(label, "$head $target" + if (sms) " " else "")

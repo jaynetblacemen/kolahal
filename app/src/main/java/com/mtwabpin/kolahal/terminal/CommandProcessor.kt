@@ -60,7 +60,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
 
     /** [expand] = false runs [line] literally (tap-to-run lines must not be rewritten by aliases). */
     fun run(line: String, expand: Boolean = true) {
-        val typed = line.trim()
+        val typed = CommandParsing.spaces(line).trim()
         if (typed.isEmpty()) return
         // The same command again with nothing printed in between (settings, settings…) is one line.
         // `fresh` isn't logged at all: it would put a line straight back on the clean screen.
@@ -104,7 +104,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "lua" -> eval(ScriptLang.LUA, rest)
                 "js" -> eval(ScriptLang.JS, rest)
                 "rss" -> feedCommands.rss(rest)
-                "feeds" -> if (args.isEmpty()) ui.openScreen(Screen.FEEDS) else feedCommands.feeds(args)
+                "feeds" -> if (args.isEmpty()) ui.openScreen(Screen.FEEDS) else feedCommands.feeds(args).also { runCatching { com.mtwabpin.kolahal.feeds.FeedScheduler.sync(context) } }
                 // A feed added, removed, switched or given a new interval changes the schedule.
                 "feed" -> feedCommands.feeds(args).also { runCatching { com.mtwabpin.kolahal.feeds.FeedScheduler.sync(context) } }
                 "widgets" -> if (args.isEmpty()) ui.openScreen(Screen.WIDGETS) else widgets(args)
@@ -159,7 +159,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         repeat(5) {
             val head = current.substringBefore(' ')
             // A built-in always wins, even over an alias that slipped in (an old backup).
-            if (head.lowercase() in COMMAND_NAMES) return current
+            if (head.lowercase() in RESERVED_NAMES) return current
             if (!seen.add(head)) return current
             val expansion = prefs.alias(head) ?: return current
             current = (expansion + " " + current.substringAfter(' ', "")).trim()
@@ -179,7 +179,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         when {
             !rest.contains('=') -> prefs.alias(name)?.let { out("$name = $it") } ?: error("No alias '$name'")
             name.isEmpty() || expansion.isEmpty() -> error("Usage: alias <name> = <command>")
-            name in COMMAND_NAMES -> error("'$name' is a built-in command and can't be an alias")
+            name in RESERVED_NAMES -> error("'$name' is a built-in command and can't be an alias")
             else -> {
                 prefs.setAlias(name, expansion)
                 info("Alias $name = $expansion")
@@ -237,7 +237,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             logs.add(
                 LogKind.ERROR,
                 "Command not found: $head — did you mean '$corrected'? (tap to put it in the prompt)",
-                ctx = LogContext.of(LogContext.COMMAND to corrected),
+                // The trailing space marks it as one to fill in, not run, whatever launch.instant says.
+                ctx = LogContext.of(LogContext.COMMAND to "$corrected "),
             )
         }
     }
@@ -585,6 +586,9 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
 
         /** Every built-in command name, for alias, script-name and typo checks. */
         val COMMAND_NAMES: Set<String> = COMMANDS.map { it.name }.toSet()
+
+        /** Names a script or an alias can't take: the commands and the other names they answer to. */
+        val RESERVED_NAMES: Set<String> = COMMAND_NAMES + InstantRun.SYNONYMS.keys
 
         /**
          * The commands of each feature the Play build leaves out (screen lock, notification access,

@@ -40,7 +40,7 @@ object FullBackup {
 
     /** kv scopes are "script:<id>"; ids differ between devices, so backups key them by script name. */
     private const val SCRIPT_SCOPE = "script:"
-    private val BUILT_INS get() = com.mtwabpin.kolahal.terminal.CommandProcessor.COMMAND_NAMES
+    private val BUILT_INS get() = com.mtwabpin.kolahal.terminal.CommandProcessor.RESERVED_NAMES
 
     fun export(context: Context): Map<String, Any?> {
         // Rows too big for a cursor would make the whole export fail.

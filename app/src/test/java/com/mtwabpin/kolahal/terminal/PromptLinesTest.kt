@@ -41,6 +41,8 @@ class PromptLinesTest {
         assertTrue(ScriptNames.invalid("Weather") { it in taken }.orEmpty().contains("lowercase"))
         assertTrue(ScriptNames.invalid("a".repeat(41)) { it in taken }.orEmpty().contains("lowercase"))
         assertTrue(ScriptNames.invalid("help") { it in taken }.orEmpty().contains("built-in command"))
+        // The other names a command answers to are taken too: a script named `text` would never run.
+        assertTrue(ScriptNames.invalid("text") { it in taken }.orEmpty().contains("built-in command"))
         assertTrue(ScriptNames.invalid("weather") { it in taken }.orEmpty().contains("already"))
     }
 }

@@ -161,7 +161,11 @@ class FeedCommands(
                 }
             }
             "enable" -> startActivity(actions.settingsIntent(context))
-            "mute", "unmute" -> appCommands.withApp(args.drop(1)) { app ->
+            "unmute" -> args.drop(1).joinToString(" ").takeIf { it in prefs.muted.value }?.let { pkg ->
+                prefs.unmute(pkg)
+                info("${apps.apps.value.firstOrNull { it.pkg == pkg }?.label ?: pkg}: notifications will appear in the log")
+            } ?: appCommands.withApp(args.drop(1)) { app -> prefs.unmute(app.pkg); info("${app.label}: notifications will appear in the log") }
+            "mute" -> appCommands.withApp(args.drop(1)) { app ->
                 if (args[0] == "mute") prefs.mute(app.pkg) else prefs.unmute(app.pkg)
                 info("${app.label}: notifications ${if (args[0] == "mute") "won't" else "will"} appear in the log")
             }

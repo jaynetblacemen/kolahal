@@ -2,6 +2,10 @@ package com.mtwabpin.kolahal.terminal
 
 /** Pure helpers for reading and printing command arguments. */
 object CommandParsing {
+    /**
+     * Words, with "…" or '…' around one holding spaces. A quote opens only at the start of a word,
+     * so an apostrophe inside one (`I'm`, `Domino's`) is just a letter.
+     */
     fun tokenize(s: String): List<String> {
         val out = ArrayList<String>()
         val cur = StringBuilder()
@@ -10,7 +14,7 @@ object CommandParsing {
             when {
                 quote != null && ch == quote -> quote = null
                 quote != null -> cur.append(ch)
-                ch == '"' || ch == '\'' -> quote = ch
+                (ch == '"' || ch == '\'') && cur.isEmpty() -> quote = ch
                 ch.isWhitespace() -> if (cur.isNotEmpty()) { out += cur.toString(); cur.clear() }
                 else -> cur.append(ch)
             }
@@ -18,6 +22,13 @@ object CommandParsing {
         if (cur.isNotEmpty()) out += cur.toString()
         return out
     }
+
+    /**
+     * [line] with every kind of space (tab, no-break space, a line break) as a plain one, so the
+     * command name splits off the same way everywhere: running it, and checking whether it is sensitive.
+     */
+    fun spaces(line: String): String = if (line.none { it.isWhitespace() && it != ' ' }) line
+        else buildString(line.length) { line.forEach { append(if (it.isWhitespace()) ' ' else it) } }
 
     /** Longest timer or feed interval: a week, like backup import allows. */
     const val MAX_INTERVAL_MIN = 7L * 24 * 60

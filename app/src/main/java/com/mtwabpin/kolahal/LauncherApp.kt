@@ -24,6 +24,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -86,12 +87,19 @@ class LauncherApp : Application(), Configuration.Provider {
         // The :script process doesn't see settings changes: home copies `log.keep-lines` where it can
         // read it, and trims to it now and whenever it changes.
         val config = Config.get(this)
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        scope.launch {
             config.version.map { config[Keys.LOG_KEEP_LINES] }.distinctUntilChanged().collect { keep ->
                 runCatching {
                     logs.keepLines = keep
                     logs.trim(keep)
                 }
+            }
+        }
+        // Wi-Fi only or not changes every feed's schedule, whether set, reset or restored.
+        scope.launch {
+            config.version.map { config[Keys.FEEDS_WIFI] }.distinctUntilChanged().drop(1).collect {
+                runCatching { com.mtwabpin.kolahal.feeds.FeedScheduler.sync(this@LauncherApp) }
             }
         }
     }

@@ -191,6 +191,6 @@ class Backup(private val context: Context) {
         const val VERSION = 2
         const val FILE_NAME = "kolahal-backup.json"
         val NAME = Regex("^[a-z0-9_-]{1,40}$")
-        private val BUILT_INS get() = com.mtwabpin.kolahal.terminal.CommandProcessor.COMMAND_NAMES
+        private val BUILT_INS get() = com.mtwabpin.kolahal.terminal.CommandProcessor.RESERVED_NAMES
     }
 }

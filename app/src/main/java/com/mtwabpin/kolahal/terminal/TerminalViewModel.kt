@@ -74,6 +74,9 @@ private const val PAGE = 400
 private const val KEY_PENDING_EXPORT = "pending_export"
 private const val MAX_PAGE = 5000
 
+/** Commands whose effect shows in the todo, note, reminder and feed caches. */
+private val PRODUCTIVITY_COMMANDS = CommandProcessor.PRODUCTIVITY + setOf("feed", "feeds")
+
 /** The whole page is read again at least this often, catching trims by other processes. */
 private const val FULL_RELOAD_MS = 60_000L
 
@@ -252,7 +255,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     @Volatile private var pageLimit = PAGE
 
     fun loadOlder() {
-        if (_entries.value.size < pageLimit || pageLimit >= MAX_PAGE) return
+        if (loaded.size < pageLimit || pageLimit >= MAX_PAGE) return
         pageLimit += PAGE
         requestReload()
     }
@@ -277,12 +280,6 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         val incremental = newest != null && structure == loadedStructure && pageLimit == loadedLimit && now - fullAt < FULL_RELOAD_MS
         val fresh = withContext(Dispatchers.IO) { if (incremental) logs.recent(pageLimit, afterId = newest) else logs.recent(pageLimit) }
         val all = if (incremental) (loaded + fresh).takeLast(pageLimit) else fresh
-        if (!incremental) {
-            loadedStructure = structure
-            loadedLimit = pageLimit
-            fullAt = now
-        }
-        loaded = all
         val print = withContext(Dispatchers.IO) { scripts.fingerprint() }
         if (print != scriptsPrint) {
             val scriptList = withContext(Dispatchers.IO) { scripts.all() }
@@ -297,12 +294,22 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         // A locked private space hides its apps; its lines (launches, notifications) hide with it.
         val locked = lockedPrivate(appsRepo.profiles.value)
         val list = if (locked.isEmpty()) all else all.filterNot { it.ctx.userSerial in locked }
+        // Only now: cancelled earlier (a newer change came in), the next reload reads these lines
+        // again and refreshes history, todos and the hidden count for them.
+        if (!incremental) {
+            loadedStructure = structure
+            loadedLimit = pageLimit
+            fullAt = now
+        }
+        loaded = all
         _entries.value = list
         _rows.value = withContext(Dispatchers.Default) { buildRows(list, seenUpTo, unreadUntil) }
     }
 
     /** A line after which the todo, note, reminder or feed caches may be out of date. */
     private fun touchesProductivity(e: LogEntry): Boolean {
+        // `notes rm 2` prints no numbered line, but the numbers after it moved.
+        if (e.kind == LogKind.COMMAND && InstantRun.canonical(e.text.substringBefore(' ')) in PRODUCTIVITY_COMMANDS) return true
         val k = e.ctx.values.keys
         return LogContext.TODO in k || LogContext.NOTE in k || LogContext.REMINDER in k ||
             com.mtwabpin.kolahal.feeds.FeedWorker.CTX_FEED in k || com.mtwabpin.kolahal.feeds.FeedWorker.CTX_ITEM in k ||
@@ -967,7 +974,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             show("names: lowercase letters, digits, - and _")
             return
         }
-        if (clean in CommandProcessor.COMMAND_NAMES) {
+        if (clean in CommandProcessor.RESERVED_NAMES) {
             show("'$clean' is a built-in command, pick another name")
             return
         }
@@ -1144,9 +1151,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         setCommandScripts(list)
     }
 
-    fun setConfig(key: ConfigKey<*>, raw: String): Boolean = config.set(key, raw).also { ok ->
-        if (ok && key == Keys.FEEDS_WIFI) io { com.mtwabpin.kolahal.feeds.FeedScheduler.sync(context) }
-    }
+    fun setConfig(key: ConfigKey<*>, raw: String): Boolean = config.set(key, raw)
 
     fun resetConfig(key: ConfigKey<*>) = config.reset(key)
 

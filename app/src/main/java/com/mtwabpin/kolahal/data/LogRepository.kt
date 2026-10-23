@@ -235,7 +235,8 @@ class LogRepository private constructor(private val context: Context) {
      * says how much can come back with [unhide].
      */
     fun hideScreen(upTo: Long = maxId()) {
-        prefs.edit { putLong(KEY_HIDDEN_UP_TO, upTo) }
+        // Never lower: `fresh` may already hide more than what was seen when home was left.
+        prefs.edit { putLong(KEY_HIDDEN_UP_TO, maxOf(upTo, prefs.getLong(KEY_HIDDEN_UP_TO, 0L))) }
         restructured()
     }
 

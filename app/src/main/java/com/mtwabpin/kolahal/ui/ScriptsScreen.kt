@@ -981,7 +981,7 @@ private fun NewScriptDialog(existing: Set<String>, onDismiss: () -> Unit, onCrea
     var name by remember { mutableStateOf("") }
     var lang by remember { mutableStateOf(ScriptLang.LUA) }
     var command by remember { mutableStateOf(false) }
-    val builtIns = CommandProcessor.COMMAND_NAMES
+    val builtIns = CommandProcessor.RESERVED_NAMES
     val clean = name.trim().lowercase()
     // The same checks as `script new`, shown while typing.
     val problem = when {

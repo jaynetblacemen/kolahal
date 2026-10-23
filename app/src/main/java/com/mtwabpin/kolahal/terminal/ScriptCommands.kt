@@ -124,7 +124,7 @@ class ScriptCommands(
             "new" -> {
                 val (name, lang) = parseName(target ?: return error("Usage: script new <name>[.lua|.js] [lua|js] [--cmd]"))
                 if (!Regex("^[a-z0-9_-]{1,40}$").matches(name)) return error("Script names: lowercase letters, digits, - and _ only")
-                if (name in CommandProcessor.COMMAND_NAMES) return error("'$name' is a built-in command, pick another name")
+                if (name in CommandProcessor.RESERVED_NAMES) return error("'$name' is a built-in command, pick another name")
                 val asCommand = "--cmd" in args || "cmd" in args
                 val chosen = args.drop(2).firstNotNullOfOrNull(ScriptLang::of) ?: lang ?: ScriptLang.LUA
                 if (scripts.byName(name) != null) return error("Script '$name' exists — 'script edit $name'")
@@ -220,7 +220,12 @@ class ScriptCommands(
                 )
             }
             "cat", "show" -> withScript(target) { s ->
-                s.code.lines().forEachIndexed { i, l -> out("${(i + 1).toString().padStart(3)}  $l", LogContext.of(LogContext.COPY to s.code) + LogContext.ALIGNED) }
+                // "Copy text" on the first line copies the script; on every line it made each row as big as the code.
+                val at = System.currentTimeMillis()
+                logs.addAll(s.code.lines().mapIndexed { i, l ->
+                    val ctx = if (i == 0) LogContext.of(LogContext.COPY to s.code) + LogContext.ALIGNED else LogContext(LogContext.ALIGNED)
+                    LogRepository.Pending(LogKind.OUTPUT, "${(i + 1).toString().padStart(3)}  $l", null, ctx, at)
+                })
             }
             else -> error("Usage: script [ls|new|edit|run|every|at|notify|on|off|get|access|allow|deny|secret|triggers|mv|rm|cat] <name>")
         }
