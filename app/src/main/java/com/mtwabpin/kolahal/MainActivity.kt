@@ -241,7 +241,7 @@ class MainActivity : ComponentActivity() {
         if (hasFocus) applyBars()
     }
 
-    /** The phone is in dark mode (or `theme.always-dark`): a theme pair shows its dark one. */
+    /** The phone is in dark mode (or `theme.always-dark`): the theme's dark version shows. */
     private fun darkTheme(): Boolean = vm.config[Keys.THEME_ALWAYS_DARK] ||
         (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
 
@@ -252,7 +252,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun applyTheme() {
-        Term.palette = Palettes.named(com.mtwabpin.kolahal.data.ThemeChoice.showing(vm.config[Keys.THEME], darkTheme()))
+        Term.palette = Palettes.named(vm.config[Keys.THEME], darkTheme())
         Term.fontSize = vm.config[Keys.FONT_SIZE]
         val font = vm.config[Keys.FONT]
         val family = TermFonts.family(this, font)

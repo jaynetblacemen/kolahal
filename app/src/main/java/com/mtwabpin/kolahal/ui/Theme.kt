@@ -68,23 +68,47 @@ object Palettes {
         prompt = Color(0xFFB8BB26), error = Color(0xFFFB4934), info = Color(0xFF8EC07C), link = Color(0xFF83A598),
         script = Color(0xFFFABD2F), personal = Color(0xFFB8BB26), work = Color(0xFFFE8019), private = Color(0xFFD3869B),
     )
-    /** Solarized's light version (base3 background). */
+    /** Green's light version: the same greens, darker, on a pale green-grey. */
+    val greenLight = Palette(
+        bg = Color(0xFFF3F7F1), surface = Color(0xFFE3EBE0), fg = Color(0xFF1E2A1D), dim = Color(0xFF5B6957),
+        prompt = Color(0xFF2F7D32), error = Color(0xFFB3261E), info = Color(0xFF4B6B4E), link = Color(0xFF1D63A8),
+        script = Color(0xFF3F6B35), personal = Color(0xFF2F7D32), work = Color(0xFF9A5B00), private = Color(0xFF7A3FB0),
+    )
+    /** Amber's light version: brown and amber ink on paper. */
+    val amberLight = Palette(
+        bg = Color(0xFFFFF7E8), surface = Color(0xFFF6E8CC), fg = Color(0xFF3D2A0C), dim = Color(0xFF7E6136),
+        prompt = Color(0xFFA05F00), error = Color(0xFFB83A26), info = Color(0xFF8A5E22), link = Color(0xFF7A4B00),
+        script = Color(0xFF85571A), personal = Color(0xFFA05F00), work = Color(0xFF0A6A93), private = Color(0xFF8E3AB8),
+    )
+    /** Mono's light version: black on white. */
+    val monoLight = Palette(
+        bg = Color(0xFFFFFFFF), surface = Color(0xFFEFEFEF), fg = Color(0xFF141414), dim = Color(0xFF5E5E5E),
+        prompt = Color(0xFF000000), error = Color(0xFFC0392B), info = Color(0xFF4A4A4A), link = Color(0xFF2B2B2B),
+        script = Color(0xFF333333), personal = Color(0xFF3D6B3D), work = Color(0xFF8A5600), private = Color(0xFF6E44A8),
+    )
+    /** Dracula's light version, Alucard. */
+    val draculaLight = Palette(
+        bg = Color(0xFFFFFBEB), surface = Color(0xFFF1ECD8), fg = Color(0xFF1F1F1F), dim = Color(0xFF635D97),
+        prompt = Color(0xFF14710A), error = Color(0xFFCB3A2A), info = Color(0xFF036A96), link = Color(0xFF036A96),
+        script = Color(0xFF846E15), personal = Color(0xFF14710A), work = Color(0xFFA34D14), private = Color(0xFF644AC9),
+    )
+    /** Solarized's light version (base3 background), its accents a shade darker to read on it. */
     val solarizedLight = Palette(
-        bg = Color(0xFFFDF6E3), surface = Color(0xFFEEE8D5), fg = Color(0xFF586E75), dim = Color(0xFF839496),
-        prompt = Color(0xFF859900), error = Color(0xFFDC322F), info = Color(0xFF2AA198), link = Color(0xFF268BD2),
-        script = Color(0xFFB58900), personal = Color(0xFF859900), work = Color(0xFFCB4B16), private = Color(0xFF6C71C4),
+        bg = Color(0xFFFDF6E3), surface = Color(0xFFEEE8D5), fg = Color(0xFF3D525A), dim = Color(0xFF657B83),
+        prompt = Color(0xFF6F8000), error = Color(0xFFC42D2A), info = Color(0xFF1A847C), link = Color(0xFF1F76B5),
+        script = Color(0xFF8F6C00), personal = Color(0xFF6F8000), work = Color(0xFFB54312), private = Color(0xFF5F64B4),
     )
     /** Gruvbox's light version, with its darker ("faded") accents. */
     val gruvboxLight = Palette(
         bg = Color(0xFFFBF1C7), surface = Color(0xFFEBDBB2), fg = Color(0xFF3C3836), dim = Color(0xFF7C6F64),
         prompt = Color(0xFF79740E), error = Color(0xFF9D0006), info = Color(0xFF427B58), link = Color(0xFF076678),
-        script = Color(0xFFB57614), personal = Color(0xFF79740E), work = Color(0xFFAF3A03), private = Color(0xFF8F3F71),
+        script = Color(0xFF9C6512), personal = Color(0xFF79740E), work = Color(0xFFAF3A03), private = Color(0xFF8F3F71),
     )
     /** Gruvbox Material, light "medium" background. */
     val gruvboxMaterialLight = Palette(
         bg = Color(0xFFFBF1C7), surface = Color(0xFFF2E5BC), fg = Color(0xFF654735), dim = Color(0xFF7C6F64),
         prompt = Color(0xFF6C782E), error = Color(0xFFC14A4A), info = Color(0xFF4C7A5D), link = Color(0xFF45707A),
-        script = Color(0xFFB47109), personal = Color(0xFF6C782E), work = Color(0xFFC35E0A), private = Color(0xFF945E80),
+        script = Color(0xFF9E6308), personal = Color(0xFF6C782E), work = Color(0xFFAB520A), private = Color(0xFF945E80),
     )
     /** Gruvbox Material, dark "medium" background. */
     val gruvboxMaterial = Palette(
@@ -93,19 +117,34 @@ object Palettes {
         script = Color(0xFFD8A657), personal = Color(0xFFA9B665), work = Color(0xFFE78A4E), private = Color(0xFFD3869B),
     )
 
-    /** A built-in theme, or one people made ([CustomThemes]); green for a name it doesn't know. */
-    fun named(name: String): Palette = when (name) {
-        "green" -> green
-        "gruvbox" -> gruvbox
-        "gruvbox-material" -> gruvboxMaterial
-        "amber" -> amber
-        "mono" -> mono
-        "dracula" -> dracula
-        "solarized" -> solarized
-        "solarized-light" -> solarizedLight
-        "gruvbox-light" -> gruvboxLight
-        "gruvbox-material-light" -> gruvboxMaterialLight
-        else -> CustomThemes.colors(name)?.let(::fromColors) ?: green
+    /** Each built-in theme: its dark version, then its light one. */
+    private val BUILT_IN: Map<String, Pair<Palette, Palette>> by lazy {
+        mapOf(
+            "green" to (green to greenLight),
+            "amber" to (amber to amberLight),
+            "mono" to (mono to monoLight),
+            "dracula" to (dracula to draculaLight),
+            "solarized" to (solarized to solarizedLight),
+            "gruvbox" to (gruvbox to gruvboxLight),
+            "gruvbox-material" to (gruvboxMaterial to gruvboxMaterialLight),
+        )
+    }
+
+    /**
+     * A theme's [dark] or light version: built-in, or one people made ([CustomThemes]; without a
+     * light version, the same in both). Green for a name it doesn't know.
+     */
+    fun named(name: String, dark: Boolean = true): Palette {
+        BUILT_IN[name]?.let { (d, l) -> return if (dark) d else l }
+        val colors = CustomThemes.colors(name) ?: return if (dark) green else greenLight
+        return fromColors(if (dark) colors else CustomThemes.light(colors) ?: colors)
+    }
+
+    /** Both versions of a theme by role ([CustomThemes]' form): where the theme builder starts. */
+    fun themeColors(name: String): Map<String, Int> {
+        val dark = colorsOf(named(name, dark = true))
+        val light = colorsOf(named(name, dark = false))
+        return dark + light.mapKeys { CustomThemes.LIGHT + it.key }
     }
 
     /** A custom theme's colours, by role ([CustomThemes.ROLES]), as a palette. */

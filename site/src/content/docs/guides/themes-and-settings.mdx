@@ -1,6 +1,6 @@
 ---
 title: Themes & settings
-description: The terminal themes, light and dark pairs, terminal fonts, the settings screen and the config command.
+description: The terminal themes in their dark and light versions, terminal fonts, the settings screen and the config command.
 ---
 
 ## Themes
@@ -9,8 +9,8 @@ description: The terminal themes, light and dark pairs, terminal fonts, the sett
 theme gruvbox-material
 ```
 
-Ten palettes, each with its own colours for the prompt, links, script output, errors and the
-work and private profile tags:
+Seven themes, each with its own colours for the prompt, links, script output, errors and the
+work and private profile tags, in a dark and a light version:
 
 <div class="palettes">
 	<div class="pal" style="--bg:#0B0D0B;--fg:#D7DED3;--a:#8FD18A;--b:#7FB8F0;--c:#F2B35B;--d:#C792EA;--e:#F0907D"><b>green</b> <span>default</span></div>
@@ -18,11 +18,18 @@ work and private profile tags:
 	<div class="pal" style="--bg:#000000;--fg:#E6E6E6;--a:#FFFFFF;--b:#CCCCCC;--c:#FFD27F;--d:#D7A6FF;--e:#FF8080"><b>mono</b></div>
 	<div class="pal" style="--bg:#282A36;--fg:#F8F8F2;--a:#50FA7B;--b:#8BE9FD;--c:#FFB86C;--d:#BD93F9;--e:#FF5555"><b>dracula</b></div>
 	<div class="pal" style="--bg:#002B36;--fg:#93A1A1;--a:#859900;--b:#268BD2;--c:#CB4B16;--d:#6C71C4;--e:#DC322F"><b>solarized</b></div>
-	<div class="pal" style="--bg:#FDF6E3;--fg:#586E75;--a:#859900;--b:#268BD2;--c:#CB4B16;--d:#6C71C4;--e:#DC322F"><b>solarized-light</b></div>
 	<div class="pal" style="--bg:#282828;--fg:#EBDBB2;--a:#B8BB26;--b:#83A598;--c:#FE8019;--d:#D3869B;--e:#FB4934"><b>gruvbox</b></div>
-	<div class="pal" style="--bg:#FBF1C7;--fg:#3C3836;--a:#79740E;--b:#076678;--c:#AF3A03;--d:#8F3F71;--e:#9D0006"><b>gruvbox-light</b></div>
 	<div class="pal" style="--bg:#292828;--fg:#D4BE98;--a:#A9B665;--b:#7DAEA3;--c:#E78A4E;--d:#D3869B;--e:#EA6962"><b>gruvbox-material</b></div>
-	<div class="pal" style="--bg:#FBF1C7;--fg:#654735;--a:#6C782E;--b:#45707A;--c:#C35E0A;--d:#945E80;--e:#C14A4A"><b>gruvbox-material-light</b></div>
+</div>
+
+<div class="palettes">
+	<div class="pal" style="--bg:#F3F7F1;--fg:#1E2A1D;--a:#2F7D32;--b:#1D63A8;--c:#9A5B00;--d:#7A3FB0;--e:#B3261E"><b>green</b> <span>light</span></div>
+	<div class="pal" style="--bg:#FFF7E8;--fg:#3D2A0C;--a:#A05F00;--b:#7A4B00;--c:#0A6A93;--d:#8E3AB8;--e:#B83A26"><b>amber</b> <span>light</span></div>
+	<div class="pal" style="--bg:#FFFFFF;--fg:#141414;--a:#000000;--b:#2B2B2B;--c:#8A5600;--d:#6E44A8;--e:#C0392B"><b>mono</b> <span>light</span></div>
+	<div class="pal" style="--bg:#FFFBEB;--fg:#1F1F1F;--a:#14710A;--b:#036A96;--c:#A34D14;--d:#644AC9;--e:#CB3A2A"><b>dracula</b> <span>light</span></div>
+	<div class="pal" style="--bg:#FDF6E3;--fg:#3D525A;--a:#6F8000;--b:#1F76B5;--c:#B54312;--d:#5F64B4;--e:#C42D2A"><b>solarized</b> <span>light</span></div>
+	<div class="pal" style="--bg:#FBF1C7;--fg:#3C3836;--a:#79740E;--b:#076678;--c:#AF3A03;--d:#8F3F71;--e:#9D0006"><b>gruvbox</b> <span>light</span></div>
+	<div class="pal" style="--bg:#FBF1C7;--fg:#654735;--a:#6C782E;--b:#45707A;--c:#AB520A;--d:#945E80;--e:#C14A4A"><b>gruvbox-material</b> <span>light</span></div>
 </div>
 
 <style>{`
@@ -41,17 +48,13 @@ theme's colours too.
 
 ### Light and dark
 
-Give `theme` two names, the light one first, and Kolahal follows the phone's dark mode, switching
-as soon as the phone does:
+The phone's dark mode picks the version: dark when it is on, light when it is off, switching as
+soon as the phone does. To keep the dark version whatever the phone says, turn on **Always dark**
+in **Settings → Look & feel**, or:
 
 ```sh
-theme gruvbox-light/gruvbox
-config set theme.always-dark on   # keep the dark one, whatever the phone's mode
+config set theme.always-dark on
 ```
-
-Any two themes pair, yours too. In **Settings → Look & feel**, the first strip picks the theme and
-**When the phone is light** the other half; **Same** there means one theme always. **Always the dark
-one** shows up while a pair is set.
 
 ### Your own themes
 
@@ -70,6 +73,10 @@ The colours, from the top of the builder:
 | Accent | the prompt, `$` and highlights (Settings use it too) |
 | Links, Info, Script output, Errors | links and feed items; notes from Kolahal; your scripts' lines; errors |
 | Personal apps, Work apps, Private space | apps in each profile, if you have them |
+
+**Dark** and **Light** at the top switch which version the colours change; the preview shows that
+version. A theme you made before themes had a light version looks the same in both modes until
+you change its light one.
 
 Give it a name (lowercase letters, digits and hyphens) and tap **Save and use**. It then sits with
 the built-in themes in the theme strip and in `theme <name>`. Tap it under **Your themes** to change

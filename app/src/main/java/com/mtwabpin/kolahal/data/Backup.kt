@@ -87,7 +87,7 @@ class Backup(private val context: Context) {
         (root["themes"] as? Map<*, *>)?.forEach { (name, roles) ->
             val colors = (roles as? Map<*, *>)?.entries?.mapNotNull { (role, hex) ->
                 hex?.toString()?.let(CustomThemes::parseHex)?.let { role.toString() to it }
-            }?.toMap()?.filterKeys { it in CustomThemes.ROLES }
+            }?.toMap()?.filterKeys(CustomThemes::isKey)
             val n = name?.toString()?.lowercase()
             if (n != null && CustomThemes.NAME.matches(n) && n !in Keys.BUILT_IN_THEMES && colors != null && CustomThemes.ROLES.all { it in colors }) {
                 CustomThemes.save(context, n, colors)

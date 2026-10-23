@@ -73,12 +73,13 @@ class ThemeBuilderTest {
     private val save get() = compose.onNodeWithText("Save and use")
 
     @Test fun aNewThemeStartsFromTheOneInUseAndIsUsedWhenSaved() {
-        Term.palette = Palettes.dracula
+        config.set(Keys.THEME, "dracula")
         open(null)
         compose.onNodeWithTag("theme-name").assert(hasText("my-theme"))
         name("tb-test")
         save.performClick()
-        assertEquals(Palettes.colorsOf(Palettes.dracula), CustomThemes.colors("tb-test"))
+        // Both of its versions.
+        assertEquals(Palettes.themeColors("dracula"), CustomThemes.colors("tb-test"))
         assertEquals("tb-test", config[Keys.THEME])
         assertTrue(File(app.filesDir, "themes/tb-test.json").exists())
     }
@@ -88,7 +89,22 @@ class ThemeBuilderTest {
         compose.onNodeWithText("gruvbox").performScrollTo().performClick()
         name("tb-test")
         save.performClick()
-        assertEquals(Palettes.colorsOf(Palettes.gruvbox), CustomThemes.colors("tb-test"))
+        assertEquals(Palettes.themeColors("gruvbox"), CustomThemes.colors("tb-test"))
+    }
+
+    /** Dark and Light switch which version the colours change; each is saved. */
+    @Test fun theLightVersionIsChangedOnItsOwn() {
+        open(null)
+        name("tb-test")
+        compose.onNodeWithTag("version Light").performClick()
+        compose.onNode(hasScrollToKeyAction()).performScrollToKey("background")
+        compose.onNodeWithTag("role background").performClick()
+        compose.onNode(hasSetTextAction() and hasText("#", substring = true)).performTextReplacement("#FAFAF0")
+        compose.onNodeWithText("Done").performClick()
+        save.performClick()
+        val saved = CustomThemes.colors("tb-test")!!
+        assertEquals(0xFFFAFAF0.toInt(), CustomThemes.light(saved)!!.getValue("background"))
+        assertEquals(Palettes.colorsOf(Palettes.green).getValue("background"), saved.getValue("background"))
     }
 
     /** A colour typed in the picker shows at once, in its row and in the preview, and is saved. */
@@ -135,7 +151,9 @@ class ThemeBuilderTest {
         save.performClick()
         assertNull(CustomThemes.colors("tb-test"))
         assertFalse(File(app.filesDir, "themes/tb-test.json").exists())
-        assertEquals(Palettes.colorsOf(Palettes.amber), CustomThemes.colors("tb-renamed"))
+        // Saved with a light version, the same as its dark one: it looked the same in both modes before.
+        val amber = Palettes.colorsOf(Palettes.amber)
+        assertEquals(amber + amber.mapKeys { CustomThemes.LIGHT + it.key }, CustomThemes.colors("tb-renamed"))
         assertEquals("tb-renamed", config[Keys.THEME])
     }
 
@@ -157,6 +175,8 @@ class ThemeBuilderTest {
         assertTrue("tb-test" in Keys.THEME.choices)
         assertTrue(config.set(Keys.THEME, "tb-test"))
         assertEquals(Palettes.solarized, Palettes.named("tb-test"))
+        // Without a light version, the same in both modes.
+        assertEquals(Palettes.solarized, Palettes.named("tb-test", dark = false))
         // At start: every complete file is read, a broken one skipped.
         File(app.filesDir, "themes/tb-renamed.json").writeText("{ \"background\": \"#000000\" }")
         CustomThemes.load(app)

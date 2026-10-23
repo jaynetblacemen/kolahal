@@ -28,6 +28,24 @@ class CustomThemesTest {
         assertEquals(colors, CustomThemes.decode(text))
     }
 
+    @Test fun aLightVersionTravelsInTheSameFile() {
+        val both = colors + colors.mapKeys { CustomThemes.LIGHT + it.key }.mapValues { it.value or 0x00F0F0F0 }
+        val text = CustomThemes.encode(both)
+        assertTrue(text, text.contains("\"light-background\""))
+        assertEquals(both, CustomThemes.decode(text))
+        assertEquals(colors.mapValues { it.value or 0x00F0F0F0 }, CustomThemes.light(both))
+    }
+
+    /** Made before themes had a light version, or with only part of one: the same in both modes. */
+    @Test fun noOrHalfALightVersionIsNone() {
+        assertNull(CustomThemes.light(colors))
+        val half = colors + mapOf(CustomThemes.LIGHT + "background" to 0xFFFFFFFF.toInt())
+        assertEquals(colors, CustomThemes.decode(CustomThemes.encode(colors) .replace("\n}", ",\n  \"light-background\": \"#FFFFFF\"\n}")))
+        assertNull(CustomThemes.light(half))
+        assertFalse(CustomThemes.isKey("light-nope"))
+        assertTrue(CustomThemes.isKey("light-background"))
+    }
+
     @Test fun hexCodes() {
         assertEquals("#0B0D0B", CustomThemes.hex(0xFF0B0D0B.toInt()))
         assertEquals(0xFF8FD18A.toInt(), CustomThemes.parseHex("#8fd18a"))

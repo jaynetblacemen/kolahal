@@ -46,6 +46,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -72,7 +75,6 @@ import androidx.core.graphics.ColorUtils
 import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.data.CustomThemes
 import com.mtwabpin.kolahal.data.Keys
-import com.mtwabpin.kolahal.data.ThemeChoice
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 
 /** What each colour role is called in the builder, and what it colours. */
@@ -101,12 +103,18 @@ private val ROLE_TEXT = mapOf(
 fun ThemeBuilderScreen(vm: TerminalViewModel) {
     val context = LocalContext.current
     val editing = remember { vm.themeBuilderName.value }
-    // Which half of a light/dark pair is showing: a new theme takes its place.
-    val dark = androidx.compose.foundation.isSystemInDarkTheme() || vm.config[Keys.THEME_ALWAYS_DARK]
-    // The draft: a copy of the theme being changed, or of the theme in use.
+    // The draft: both versions of the theme being changed, or of the theme in use. One of yours
+    // made before themes had a light version starts with the light one the same as the dark.
     val draft = remember {
-        mutableStateMapOf<String, Int>().apply { putAll(editing?.let(CustomThemes::colors) ?: Palettes.colorsOf(Term.palette)) }
+        mutableStateMapOf<String, Int>().apply {
+            val start = editing?.let(CustomThemes::colors) ?: Palettes.themeColors(vm.config[Keys.THEME])
+            putAll(start)
+            if (CustomThemes.light(start) == null) CustomThemes.ROLES.forEach { put(CustomThemes.LIGHT + it, start.getValue(it)) }
+        }
     }
+    // Which version the colours below change; the preview shows it.
+    var light by rememberSaveable { mutableStateOf(false) }
+    fun keyOf(role: String) = if (light) CustomThemes.LIGHT + role else role
     var name by rememberSaveable { mutableStateOf(editing ?: newName()) }
     var picking by remember { mutableStateOf<String?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -139,8 +147,7 @@ fun ThemeBuilderScreen(vm: TerminalViewModel) {
                         CustomThemes.save(context, name, draft.toMap())
                         // Renamed: the old file goes, and the new name is used.
                         if (editing != null && editing != name) CustomThemes.delete(context, editing)
-                        // In a light/dark pair it takes its own place, or else the half showing now.
-                        vm.setConfig(Keys.THEME, ThemeChoice.saved(vm.config[Keys.THEME], editing, name, dark))
+                        vm.setConfig(Keys.THEME, name)
                         vm.closeScreen()
                     },
                     enabled = nameError == null,
@@ -149,7 +156,21 @@ fun ThemeBuilderScreen(vm: TerminalViewModel) {
             },
         ) { padding ->
             Column(Modifier.fillMaxSize().padding(padding)) {
-                ThemePreview(Palettes.fromColors(draft), Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth())
+                ThemePreview(
+                    Palettes.fromColors(if (light) CustomThemes.light(draft) ?: draft else draft),
+                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(),
+                )
+                // Every theme has a dark and a light version: the phone's dark mode picks one.
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    listOf(false to "Dark", true to "Light").forEachIndexed { i, (isLight, label) ->
+                        SegmentedButton(
+                            selected = light == isLight,
+                            onClick = { light = isLight },
+                            shape = SegmentedButtonDefaults.itemShape(i, 2),
+                            modifier = Modifier.testTag("version $label"),
+                        ) { Text(label) }
+                    }
+                }
                 LazyColumn(Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp)) {
                     item(key = "name") {
                         OutlinedTextField(
@@ -168,9 +189,10 @@ fun ThemeBuilderScreen(vm: TerminalViewModel) {
                         GroupHeader("Start from")
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             (Keys.BUILT_IN_THEMES + CustomThemes.names.filter { it != editing }).forEach { other ->
-                                val p = Palettes.named(other)
+                                val p = Palettes.named(other, dark = !light)
                                 AssistChip(
-                                    onClick = { draft.putAll(Palettes.colorsOf(p)) },
+                                    // Both versions: a theme's dark and light colours go together.
+                                    onClick = { draft.putAll(Palettes.themeColors(other)) },
                                     label = { Text(other) },
                                     leadingIcon = { Box(Modifier.size(16.dp).background(p.prompt, CircleShape).border(3.dp, p.bg, CircleShape)) },
                                 )
@@ -180,7 +202,7 @@ fun ThemeBuilderScreen(vm: TerminalViewModel) {
                     item(key = "h:colours") { GroupHeader("Colours") }
                     items(CustomThemes.ROLES, key = { it }) { role ->
                         val (title, help) = ROLE_TEXT.getValue(role)
-                        val colour = draft.getValue(role)
+                        val colour = draft.getValue(keyOf(role))
                         val index = CustomThemes.ROLES.indexOf(role)
                         Box(Modifier.padding(bottom = androidx.compose.material3.ListItemDefaults.SegmentedGap)) {
                             SegmentedListItem(
@@ -202,11 +224,15 @@ fun ThemeBuilderScreen(vm: TerminalViewModel) {
         }
 
         picking?.let { role ->
-            // The same role in every built-in theme, then the draft's other colours: easy to match.
-            val swatches = remember(role) {
-                (Keys.BUILT_IN_THEMES.map { Palettes.colorsOf(Palettes.named(it)).getValue(role) } + draft.values).distinct()
+            val key = keyOf(role)
+            // The same role in every built-in theme (this version first), then the draft's other colours: easy to match.
+            val swatches = remember(key) {
+                (Keys.BUILT_IN_THEMES.map { Palettes.colorsOf(Palettes.named(it, dark = !light)).getValue(role) } +
+                    Keys.BUILT_IN_THEMES.map { Palettes.colorsOf(Palettes.named(it, dark = light)).getValue(role) } + draft.values).distinct()
             }
-            ColourSheet(role, draft.getValue(role), swatches, onChange = { draft[role] = it }, onDismiss = { picking = null })
+            androidx.compose.runtime.key(key) {
+                ColourSheet(role, draft.getValue(key), swatches, onChange = { draft[key] = it }, onDismiss = { picking = null })
+            }
         }
 
         if (confirmDelete && editing != null) {
@@ -218,10 +244,9 @@ fun ThemeBuilderScreen(vm: TerminalViewModel) {
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            // Half of a pair: the other half stays, alone.
-                            val left = ThemeChoice.without(vm.config[Keys.THEME], editing)
+                            val inUse = vm.config[Keys.THEME] == editing
                             CustomThemes.delete(context, editing)
-                            if (left == null) vm.resetConfig(Keys.THEME) else vm.setConfig(Keys.THEME, left)
+                            if (inUse) vm.resetConfig(Keys.THEME)
                             vm.closeScreen()
                         },
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),

@@ -9,7 +9,7 @@ import com.mtwabpin.kolahal.terminal.Screen
 /** Human titles for settings; the description comes from the key's help text. */
 internal val TITLES = mapOf(
     "theme.name" to "Theme",
-    "theme.always-dark" to "Always the dark one",
+    "theme.always-dark" to "Always dark",
     "screen.bars" to "Full screen",
     "font.family" to "Font",
     "font.sans" to "Phone's font",
@@ -99,8 +99,6 @@ private val SHOWN_WHEN: Map<ConfigKey<*>, (Config) -> Boolean> = run {
     fun choice(key: ConfigKey.Choice, test: (String) -> Boolean): (Config) -> Boolean = { test(it[key]) }
     mapOf(
         Keys.SEARCH_URL to choice(Keys.SEARCH_ENGINE) { it == "custom" },
-        // Only a light/dark pair has a dark one to keep.
-        Keys.THEME_ALWAYS_DARK to choice(Keys.THEME) { com.mtwabpin.kolahal.data.ThemeChoice.light(it) != null },
         Keys.LAUNCH_INSTANT_MIN to choice(Keys.LAUNCH_INSTANT) { it != "off" },
         Keys.SUGGESTION_ROWS to choice(Keys.SUGGESTIONS_STYLE) { it == "chips" },
         // Only the list shows descriptions.
