@@ -135,6 +135,10 @@ class HomeScreenTest {
             assertEquals(25f, height(output).value, 1f)
             compose.runOnIdle { Term.tallerTaps = false }
             assertEquals(25f, height(command).value, 1f)
+            // Set shorter than a line of text with its padding: as short as the text allows, tappable or not.
+            compose.runOnIdle { Term.lineHeight = 10 }
+            assertTrue(height(output).value < 20f)
+            assertEquals(height(output).value, height(command).value, 0.5f)
         } finally {
             Term.tallerTaps = true
             Term.lineHeight = 30

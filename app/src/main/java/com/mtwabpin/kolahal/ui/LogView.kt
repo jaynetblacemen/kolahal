@@ -65,9 +65,11 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextDecoration
@@ -182,6 +184,12 @@ fun LogLine(
     val iconKey = entry.ctx.values[LogContext.ICON]?.takeIf { entry.kind == LogKind.SCRIPT && NotifIcons.has(context, it) }
     val inline = remember(iconKey) { iconKey?.let(::notifIconContent) ?: emptyMap() }
 
+    // log.line-height below a line of text and its padding: no padding, and no leading above the
+    // first line or under the last, so lines are as short as the text itself allows.
+    // (Half a dp of slack: the default 25 is a line of 14sp text with its padding, give or take.)
+    val dense = with(androidx.compose.ui.platform.LocalDensity.current) {
+        (Term.lineHeight + 0.5f).dp.toPx() < (Term.fontSize * TEXT_LINE).sp.toPx() + (2 * LINE_PADDING).dp.toPx()
+    }
     // Lines that do something get a larger touch target than plain output (log.taller-taps).
     val actionable = entry.kind == LogKind.COMMAND || entry.ctx.values.keys.any { it in ACTIONABLE_KEYS }
     val minHeight = when {
@@ -250,20 +258,20 @@ fun LogLine(
                 },
             )
             // Room for the gutter bar; without it the text lines up with the header and dividers.
-            .padding(start = if (gutter) 10.dp else 0.dp, top = 3.dp, bottom = 3.dp),
+            .padding(start = if (gutter) 10.dp else 0.dp, top = if (dense) 0.dp else LINE_PADDING.dp, bottom = if (dense) 0.dp else LINE_PADDING.dp),
     ) {
         Box(Modifier.weight(1f)) {
             when {
                 // Parsed once per entry: it decodes JSON and looks up every app.
                 isGrid -> AppGrid(remember(entry.id, entry.ctx) { apps(entry) }, onAppTap, onAppLongPress)
-                desc != null -> TwoColumns(entry, desc, marks)
+                desc != null -> TwoColumns(entry, desc, marks, dense)
                 else -> {
                     val text = remember(entry, Term.palette, indents, row.unread, iconKey, marks) {
                         markMatches(renderLine(entry, indents, row.unread, iconKey != null), marks)
                     }
-                    if (image == null) Text(text, style = entry.style(), inlineContent = inline)
+                    if (image == null) Text(text, style = entry.style().dense(dense), inlineContent = inline)
                     else Column {
-                        if (entry.text.isNotEmpty()) Text(text, style = entry.style(), inlineContent = inline)
+                        if (entry.text.isNotEmpty()) Text(text, style = entry.style().dense(dense), inlineContent = inline)
                         LogImage(image, Modifier.padding(vertical = 4.dp))
                     }
                 }
@@ -296,14 +304,14 @@ private val ACTIONABLE_KEYS = setOf(
 
 /** `help`, `config` and `script ls` rows: name on the left, description wrapping on the right. */
 @Composable
-private fun TwoColumns(entry: LogEntry, desc: String, marks: List<String> = emptyList()) {
+private fun TwoColumns(entry: LogEntry, desc: String, marks: List<String> = emptyList(), dense: Boolean = false) {
     Row(Modifier.fillMaxWidth()) {
         Text(
             markMatches(AnnotatedString(entry.text), marks),
-            style = entry.style().copy(color = Term.fg, fontWeight = FontWeight.Bold),
+            style = entry.style().copy(color = Term.fg, fontWeight = FontWeight.Bold).dense(dense),
             modifier = Modifier.weight(0.46f).padding(end = 8.dp),
         )
-        Text(markMatches(AnnotatedString(desc), marks), style = Term.text.copy(color = Term.dim), modifier = Modifier.weight(0.54f))
+        Text(markMatches(AnnotatedString(desc), marks), style = Term.text.copy(color = Term.dim).dense(dense), modifier = Modifier.weight(0.54f))
     }
 }
 
@@ -401,6 +409,14 @@ private fun NotifIcon(key: String) {
     }
     icon?.let { Image(it, contentDescription = null, colorFilter = ColorFilter.tint(Term.dim), modifier = Modifier.fillMaxSize()) }
 }
+
+/** A log line's text height, in em ([Term.text]'s line height), and the padding above and below it (dp). */
+private const val TEXT_LINE = 1.36f
+private const val LINE_PADDING = 3
+
+/** Short lines (log.line-height below the text's own): no leading above the first line or under the last. */
+private fun TextStyle.dense(on: Boolean) =
+    if (on) copy(lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both)) else this
 
 /** The terminal's text style, or always the terminal font for a line that lines columns up ([LogContext.MONO]). */
 private fun LogEntry.style() = if (ctx.values.containsKey(LogContext.MONO)) Term.code else Term.text
