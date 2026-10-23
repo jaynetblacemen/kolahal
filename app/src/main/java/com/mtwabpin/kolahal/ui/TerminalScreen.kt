@@ -87,7 +87,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     val entries by vm.entries.collectAsStateWithLifecycle()
     val apps by vm.apps.collectAsStateWithLifecycle()
     // An install or update may change icons: suggestions.icons loads them again.
-    if (preview == null) LaunchedEffect(apps) { AppIcons.clear() }
+    val packageChanges by com.mtwabpin.kolahal.apps.AppRepository.get(androidx.compose.ui.platform.LocalContext.current).packageChanges.collectAsStateWithLifecycle()
+    if (preview == null) LaunchedEffect(packageChanges) { AppIcons.sync(packageChanges) }
     val profiles by vm.profiles.collectAsStateWithLifecycle()
     val unlocks by vm.unlocksToday.collectAsStateWithLifecycle()
     val status by vm.status.collectAsStateWithLifecycle()
@@ -418,7 +419,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                     .border(1.dp, Term.prompt.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
                     .clickable(onClickLabel = "jump to the newest lines") { pinned = true; scope.launch { listState.animateScrollToItem(0) } },
             ) {
-                TintedIcon(R.drawable.ic_arrow_down, Term.prompt, 24.dp)
+                TintedIcon(R.drawable.ic_arrow_down, Term.prompt, 24.dp, description = "Jump to the newest lines")
             }
         }
         // [selector] selector.rail: fluid full-list app selector on the log's right edge, keyboard down only.

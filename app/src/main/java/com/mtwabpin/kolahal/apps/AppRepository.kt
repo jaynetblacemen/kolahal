@@ -20,6 +20,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** Which profile an app lives in. [tag] is the short indicator printed in the terminal. */
@@ -116,8 +117,14 @@ class AppRepository private constructor(private val context: Context) {
 
     private var soon: kotlinx.coroutines.Job? = null
 
+    private val _packageChanges = MutableStateFlow(0)
+
+    /** Bumped when an app is installed, updated or removed: its icon may have changed. */
+    val packageChanges: StateFlow<Int> = _packageChanges.asStateFlow()
+
     /** An install or update sends several callbacks in a row: one reload once they stop. */
     private fun refreshSoon() {
+        _packageChanges.update { it + 1 }
         soon?.cancel()
         soon = scope.launch {
             kotlinx.coroutines.delay(300)

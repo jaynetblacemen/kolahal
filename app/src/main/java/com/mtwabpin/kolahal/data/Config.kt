@@ -256,7 +256,8 @@ class Config private constructor(private val prefs: SharedPreferences) {
     /** Returns false if [raw] is not a valid value for [key]. */
     fun <T> set(key: ConfigKey<T>, raw: String): Boolean {
         val value = key.parse(raw) ?: return false
-        prefs.edit { putString(key.key, key.format(value)) }
+        // The default again is no change: no ↺, no `*`, not in backups, and a later new default applies.
+        prefs.edit { if (value == key.default) remove(key.key) else putString(key.key, key.format(value)) }
         _version.update { it + 1 }
         return true
     }

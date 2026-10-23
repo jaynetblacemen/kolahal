@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -31,8 +33,21 @@ object AppIcons {
         override fun sizeOf(key: String, value: ImageBitmap) = value.width * value.height * 4
     }
 
-    /** Icons can change when an app updates; the next load fetches them again. */
-    fun clear() = cache.evictAll()
+    /** The [com.mtwabpin.kolahal.apps.AppRepository.packageChanges] count the cache was filled at. */
+    private var filledAt = -1
+
+    /** Bumped when the icons are dropped, so the ones on screen load again. */
+    var generation by mutableIntStateOf(0)
+        private set
+
+    /** Icons can change when an app is installed or updated: drops them once [packageChanges] moves. */
+    fun sync(packageChanges: Int) {
+        if (filledAt != -1 && filledAt != packageChanges) {
+            cache.evictAll()
+            generation++
+        }
+        filledAt = packageChanges
+    }
 
     fun cached(app: AppEntry, px: Int): ImageBitmap? = cache.get("${app.key}@$px")
 
@@ -53,8 +68,9 @@ object AppIcons {
 fun AppIcon(app: AppEntry, size: Dp, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val px = with(LocalDensity.current) { size.roundToPx() }.coerceAtLeast(1)
-    val icon by produceState(AppIcons.cached(app, px), app.key, px) {
-        if (value == null) value = withContext(Dispatchers.IO) { AppIcons.load(context.applicationContext, app, px) }
+    // The old icon stays up while a dropped one loads again ([AppIcons.generation]).
+    val icon by produceState(AppIcons.cached(app, px), app.key, px, AppIcons.generation) {
+        value = AppIcons.cached(app, px) ?: withContext(Dispatchers.IO) { AppIcons.load(context.applicationContext, app, px) }
     }
     val bitmap = icon
     if (bitmap == null) Box(modifier.size(size)) else Image(bitmap, contentDescription = null, modifier = modifier.size(size))

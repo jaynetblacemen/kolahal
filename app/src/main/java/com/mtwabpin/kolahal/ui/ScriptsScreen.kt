@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -222,10 +223,10 @@ fun ScriptsScreen(
     GuiTheme {
         val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
         val snackbar = remember { SnackbarHostState() }
-        LaunchedEffect(notice) { notice?.let { snackbar.showSnackbar(it) } }
+        LaunchedEffect(notice) { notice?.let { snackbar.showSnackbar(it.text) } }
 
         Scaffold(
-            modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
+            modifier = Modifier.imePadding().nestedScroll(scroll.nestedScrollConnection),
             containerColor = MaterialTheme.colorScheme.surface,
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
@@ -571,9 +572,9 @@ fun ScriptLibraryScreen(vm: TerminalViewModel) {
     GuiTheme {
         val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
         val snackbar = remember { SnackbarHostState() }
-        LaunchedEffect(notice) { notice?.let { snackbar.showSnackbar(it) } }
+        LaunchedEffect(notice) { notice?.let { snackbar.showSnackbar(it.text) } }
         Scaffold(
-            modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
+            modifier = Modifier.imePadding().nestedScroll(scroll.nestedScrollConnection),
             containerColor = MaterialTheme.colorScheme.surface,
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {

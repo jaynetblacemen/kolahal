@@ -48,6 +48,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.delay
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 /** What a tap on a header item does. */
 enum class HeaderTarget { CLOCK, UNLOCKS, BATTERY, NETWORK, ALARM, SETTINGS, TODO }
@@ -172,6 +174,8 @@ internal fun Header(
         value: String,
         valueColor: Color = Term.fg,
         icon: (@Composable () -> Unit)? = null,
+        /** What a screen reader says for an item its icon alone shows (⚙, the network kind). */
+        description: String? = null,
         onClick: () -> Unit,
     ) {
         Row(
@@ -180,6 +184,7 @@ internal fun Header(
             modifier = Modifier
                 // Comfortable touch target even for short items like ⚙, without spreading the header out.
                 .clickable(onClickLabel = label.ifEmpty { null }, onClick = onClick)
+                .then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier)
                 .heightIn(min = HEADER_ROW)
                 .widthIn(min = 44.dp)
                 .padding(horizontal = 6.dp),
@@ -270,6 +275,7 @@ internal fun Header(
                 Item(
                     "net", if (useIcons && netIcon != null) "" else status.network, if (offline) Term.error else Term.fg,
                     icon = netIcon?.let { res -> { Glyph(res, if (offline) Term.error else Term.fg) } },
+                    description = "network ${status.network}",
                 ) { onTarget(HeaderTarget.NETWORK) }
             }
             if (config[Keys.HEADER_ALARM] && status.nextAlarm != null) {
@@ -278,7 +284,7 @@ internal fun Header(
             if (config[Keys.HEADER_TODO] && todoCount > 0) {
                 Item("todo", todoCount.toString(), icon = { Glyph(R.drawable.ic_check) }) { onTarget(HeaderTarget.TODO) }
             }
-            Item("", if (useIcons) "" else "⚙", Term.dim, icon = { Glyph(R.drawable.ic_settings) }) { onTarget(HeaderTarget.SETTINGS) }
+            Item("", if (useIcons) "" else "⚙", Term.dim, icon = { Glyph(R.drawable.ic_settings) }, description = "Settings") { onTarget(HeaderTarget.SETTINGS) }
             if (config[Keys.HEADER_PROFILES]) {
                 profiles.filter { it.kind != ProfileKind.PERSONAL && it.kind != ProfileKind.CLONE }.forEach { p ->
                     val color = if (p.quiet) Term.dim else Term.profileColor(p.kind)

@@ -186,7 +186,9 @@ internal fun GotoLineDialog(lineCount: Int, onDismiss: () -> Unit, onGo: (Int) -
     val line = text.trim().toIntOrNull()?.takeIf { it in 1..lineCount }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
-    AlertDialog(
+    // The GUI theme's full colour scheme: the editor's own sets only a few roles, and a dialog drawn
+    // with the rest is unreadable on a light theme.
+    GuiTheme { AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Go to line") },
         text = {
@@ -210,7 +212,7 @@ internal fun GotoLineDialog(lineCount: Int, onDismiss: () -> Unit, onGo: (Int) -
         },
         confirmButton = { TextButton(onClick = { line?.let(onGo) }, enabled = line != null) { Text("Go") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
+    ) }
 }
 
 /**

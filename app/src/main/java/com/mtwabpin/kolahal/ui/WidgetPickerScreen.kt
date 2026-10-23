@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -82,6 +83,8 @@ private class ProviderGroup(
     val icon: ImageBitmap?,
     val work: ProfileKind?,
     val providers: List<ProviderEntry>,
+    /** [providers]' labels in lowercase, loaded once for the search. */
+    val names: List<String>,
 )
 
 private fun Drawable.toImage(maxPx: Int): ImageBitmap? = runCatching {
@@ -101,7 +104,8 @@ private fun loadGroups(context: Context, widgets: WidgetHost, profiles: List<Pro
         val label = ai?.let { pm.getApplicationLabel(it).toString() } ?: pkg
         val icon = ai?.let { runCatching { pm.getUserBadgedIcon(pm.getApplicationIcon(it), user) }.getOrNull() }?.toImage(iconPx)
         val kind = profiles.firstOrNull { it.serial == serial }?.kind?.takeIf { it != ProfileKind.PERSONAL }
-        ProviderGroup("$pkg:$serial", label, icon, kind, list.sortedBy { it.info.loadLabel(pm).lowercase() })
+        val named = list.map { it to it.info.loadLabel(pm).toString().lowercase() }.sortedBy { it.second }
+        ProviderGroup("$pkg:$serial", label, icon, kind, named.map { it.first }, named.map { it.second })
     }.sortedWith(compareBy({ it.label.lowercase() }, { it.work?.ordinal ?: -1 }))
 }
 
@@ -127,7 +131,7 @@ fun WidgetPickerScreen(vm: TerminalViewModel, onPick: (ProviderEntry) -> Unit) {
     GuiTheme {
         val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
         Scaffold(
-            modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
+            modifier = Modifier.imePadding().nestedScroll(scroll.nestedScrollConnection),
             containerColor = MaterialTheme.colorScheme.surface,
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
@@ -144,8 +148,8 @@ fun WidgetPickerScreen(vm: TerminalViewModel, onPick: (ProviderEntry) -> Unit) {
                 groups?.let { all ->
                     if (q.isEmpty()) all else all.mapNotNull { g ->
                         if (g.label.lowercase().contains(q)) g
-                        else g.providers.filter { it.info.loadLabel(context.packageManager).lowercase().contains(q) }
-                            .takeIf { it.isNotEmpty() }?.let { ProviderGroup(g.key, g.label, g.icon, g.work, it) }
+                        else g.providers.indices.filter { g.names[it].contains(q) }
+                            .takeIf { it.isNotEmpty() }?.let { found -> ProviderGroup(g.key, g.label, g.icon, g.work, found.map(g.providers::get), found.map(g.names::get)) }
                     }
                 }
             }

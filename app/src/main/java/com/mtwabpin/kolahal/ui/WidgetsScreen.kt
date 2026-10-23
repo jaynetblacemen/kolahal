@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.BorderStroke
@@ -107,15 +108,17 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
 
     val panel = remember(all) { WidgetOrder.inLocation(all, WidgetLocation.PANEL) }
     val pending = remember(all) { WidgetOrder.sorted(all.filter { it.pending }) }
-    val labels = remember(all, providersVersion) {
-        all.associate { w -> w.key to (w.id?.let { widgets.info(it) }?.loadLabel(context.packageManager) ?: w.provider.substringAfterLast('.')) }
+    // Each label is a binder call and a load: only again when widgets come or go, not on every resize step.
+    val placed = remember(all) { all.map { Triple(it.key, it.id, it.provider) } }
+    val labels = remember(placed, providersVersion) {
+        placed.associate { (key, id, provider) -> key to (id?.let { widgets.info(it) }?.loadLabel(context.packageManager) ?: provider.substringAfterLast('.')) }
     }
     val chosen = panel.firstOrNull { it.key == selected }
 
     GuiTheme {
         val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
         Scaffold(
-            modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
+            modifier = Modifier.imePadding().nestedScroll(scroll.nestedScrollConnection),
             containerColor = MaterialTheme.colorScheme.surface,
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {

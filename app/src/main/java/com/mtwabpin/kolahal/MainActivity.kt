@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,6 +41,7 @@ import com.mtwabpin.kolahal.ui.WidgetPickerScreen
 import com.mtwabpin.kolahal.ui.WidgetsScreen
 import com.mtwabpin.kolahal.widgets.WidgetBinder
 import com.mtwabpin.kolahal.widgets.WidgetHost
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 
 class MainActivity : ComponentActivity() {
     private val vm: TerminalViewModel by viewModels()
@@ -133,6 +135,9 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             KolahalTheme {
+                // GUI screens keep what they remember (filters, search, scroll) while the editor or
+                // another screen is in front; going home starts them afresh.
+                val saved = rememberSaveableStateHolder()
                 val editing by vm.editing.collectAsStateWithLifecycle()
                 val script = editing
                 // A launcher never "goes back" off the home screen; the editor installs its own handler.
@@ -153,7 +158,16 @@ class MainActivity : ComponentActivity() {
                     )
                 } else {
                     val screen by vm.screen.collectAsStateWithLifecycle()
-                    when (screen) {
+                    LaunchedEffect(screen) {
+                        if (screen == Screen.TERMINAL) Screen.entries.forEach { saved.removeState(it.name) }
+                    }
+                    if (screen == Screen.TERMINAL) HomePager(vm) {
+                        TerminalScreen(
+                            vm,
+                            onRequestNotifications = ::requestNotifications,
+                            onPickFolder = { pickFolder.launch(null) },
+                        )
+                    } else saved.SaveableStateProvider(screen.name) { when (screen) {
                         Screen.SETTINGS -> SettingsOverHome(
                             vm,
                             onExportBackup = { exportBackup.launch(Backup.FILE_NAME) },
@@ -175,14 +189,8 @@ class MainActivity : ComponentActivity() {
                         Screen.WIDGETS -> WidgetsScreen(vm, onReAdd = { entry, w -> widgetBinder.add(entry, w.key) })
                         Screen.WIDGET_PICKER -> WidgetPickerScreen(vm, onPick = { widgetBinder.add(it) })
                         Screen.THEME_BUILDER -> com.mtwabpin.kolahal.ui.ThemeBuilderScreen(vm)
-                        Screen.TERMINAL -> HomePager(vm) {
-                            TerminalScreen(
-                                vm,
-                                onRequestNotifications = ::requestNotifications,
-                                onPickFolder = { pickFolder.launch(null) },
-                            )
-                        }
-                    }
+                        Screen.TERMINAL -> Unit
+                    } }
                 }
             }
         }

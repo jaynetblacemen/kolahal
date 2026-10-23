@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -66,6 +67,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -182,10 +184,10 @@ fun SettingsScreen(
       Box(Modifier.fillMaxSize()) {
         val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
         val snackbar = remember { SnackbarHostState() }
-        LaunchedEffect(notice) { notice?.let { snackbar.showSnackbar(it) } }
+        LaunchedEffect(notice) { notice?.let { snackbar.showSnackbar(it.text) } }
 
         Scaffold(
-            modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
+            modifier = Modifier.imePadding().nestedScroll(scroll.nestedScrollConnection),
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = shown),
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
@@ -554,6 +556,8 @@ internal fun SettingItem(
                                 if (dragging) vm.peek(TerminalViewModel.Peek(key.key, peekTyping))
                                 else if (vm.peek.value?.key == key.key) vm.peek(null)
                             }
+                            // Leaving mid-drag (Home, another screen) never finishes the change: drop the preview.
+                            DisposableEffect(key) { onDispose { config.preview(key, null) } }
                             Slider(
                                 state = slider,
                                 onValueChange = {

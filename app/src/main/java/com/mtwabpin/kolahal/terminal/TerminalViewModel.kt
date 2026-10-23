@@ -810,9 +810,17 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** Scripts for the manager screen. */
     val scriptList: StateFlow<List<Script>> get() = scriptCache
 
-    private val _notice = MutableStateFlow<String?>(null)
+    /** A message for the GUI screens; [seq] tells the same text twice apart, so both show. */
+    data class Notice(val text: String, val seq: Long)
+
+    private val _notice = MutableStateFlow<Notice?>(null)
+    private var noticeSeq = 0L
     /** Short result message shown on the GUI screens (also logged to the terminal). */
-    val notice: StateFlow<String?> = _notice.asStateFlow()
+    val notice: StateFlow<Notice?> = _notice.asStateFlow()
+
+    private fun show(text: String) {
+        _notice.value = Notice(text, ++noticeSeq)
+    }
 
     /** Pages opened from other pages (Settings → Script manager); Back returns along it. */
     private val backStack = ArrayDeque<Screen>()
@@ -851,6 +859,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     /** Back from a page: the page it was opened from, or the terminal. */
     fun closeScreen() {
+        _notice.value = null
         val previous = synchronized(backStack) { backStack.removeLastOrNull() } ?: Screen.TERMINAL
         _screen.value = previous
         if (previous == Screen.SCRIPTS) refreshScripts()
@@ -860,7 +869,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     private fun refreshScripts() = io { scriptCache.value = scripts.all() }
 
     private fun notice(text: String, error: Boolean = false) {
-        _notice.value = text
+        show(text)
         logs.add(if (error) LogKind.ERROR else LogKind.INFO, text)
     }
 
@@ -955,11 +964,11 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun newScript(name: String, lang: ScriptLang, asCommand: Boolean) {
         val clean = name.trim().lowercase()
         if (!Regex("^[a-z0-9_-]{1,40}$").matches(clean)) {
-            _notice.value = "names: lowercase letters, digits, - and _"
+            show("names: lowercase letters, digits, - and _")
             return
         }
         if (clean in CommandProcessor.COMMAND_NAMES) {
-            _notice.value = "'$clean' is a built-in command, pick another name"
+            show("'$clean' is a built-in command, pick another name")
             return
         }
         io {
