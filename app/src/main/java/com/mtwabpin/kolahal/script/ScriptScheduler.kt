@@ -195,11 +195,14 @@ object ScriptScheduler {
         }
     }
 
+    /** Whether this thread is running a command a script sent ([sentByScript]). */
+    internal val runningSentCommand: Boolean get() = byScript.get() == true
+
     private fun remoteData(context: Context, block: Data.Builder.() -> Unit): Data =
         Data.Builder()
             .putString(RemoteListenableWorker.ARGUMENT_PACKAGE_NAME, context.packageName)
             .putString(RemoteListenableWorker.ARGUMENT_CLASS_NAME, RemoteWorkerService::class.java.name)
-            .apply { if (byScript.get() == true) putBoolean(ScriptWorker.KEY_BY_SCRIPT, true) }
+            .apply { if (runningSentCommand) putBoolean(ScriptWorker.KEY_BY_SCRIPT, true) }
             .apply(block)
             .build()
 }

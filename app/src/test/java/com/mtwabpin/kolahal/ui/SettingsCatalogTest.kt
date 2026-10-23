@@ -1,6 +1,8 @@
 package com.mtwabpin.kolahal.ui
 
 import com.mtwabpin.kolahal.data.ConfigKey
+import com.mtwabpin.kolahal.data.Keys
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -19,5 +21,12 @@ class SettingsCatalogTest {
             assertNotNull("$name is on no page", key)
             assertTrue("$name is not a slider", key is ConfigKey.Num)
         }
+    }
+
+    @Test fun everySettingIsOnAPageButConfigOnlyOnes() {
+        val shown = allCategories().flatMap { it.keys }
+        assertEquals(Keys.ALL.toSet() - Keys.CONFIG_ONLY, shown.toSet())
+        assertTrue(Keys.LOG_KEEP_LINES in Keys.CONFIG_ONLY)
+        assertTrue(Keys.LOG_KEEP_LINES in Keys.ALL)
     }
 }

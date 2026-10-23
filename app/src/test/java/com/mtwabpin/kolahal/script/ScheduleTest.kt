@@ -2,7 +2,9 @@ package com.mtwabpin.kolahal.script
 
 import com.mtwabpin.kolahal.terminal.CommandParsing
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -23,6 +25,23 @@ class ScheduleTest {
         // Clocks go back at 03:00 on 2026-10-25 in Berlin, so 22:00 -> 08:00 is 11 real hours.
         val berlin = ZonedDateTime.of(2026, 10, 24, 22, 0, 0, 0, ZoneId.of("Europe/Berlin"))
         assertEquals(11 * 60 * 60_000L, ScriptScheduler.millisUntil("08:00", berlin))
+    }
+
+    @Test fun commandsSentByScriptsMarkTheRunsTheyStart() {
+        assertFalse(ScriptScheduler.runningSentCommand)
+        assertEquals("ran", ScriptScheduler.sentByScript {
+            assertTrue(ScriptScheduler.runningSentCommand)
+            ScriptScheduler.sentByScript { assertTrue(ScriptScheduler.runningSentCommand) }
+            assertTrue(ScriptScheduler.runningSentCommand)
+            "ran"
+        })
+        assertFalse(ScriptScheduler.runningSentCommand)
+        runCatching { ScriptScheduler.sentByScript { error("failed") } }
+        assertFalse(ScriptScheduler.runningSentCommand)
+        // Only on the thread that runs the command.
+        var elsewhere = true
+        ScriptScheduler.sentByScript { Thread { elsewhere = ScriptScheduler.runningSentCommand }.apply { start(); join() } }
+        assertFalse(elsewhere)
     }
 
     @Test fun normalizeTime() {

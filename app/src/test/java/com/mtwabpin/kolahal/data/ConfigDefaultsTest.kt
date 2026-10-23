@@ -13,4 +13,13 @@ class ConfigDefaultsTest {
         assertEquals("none", Keys.GESTURE_SWIPE_UP.default)
         assertEquals(false, Keys.HEADER_DEVICE.default)
     }
+
+    @Test fun logKeepsFiveThousandLinesUnlessChanged() {
+        assertEquals(5000, Keys.LOG_KEEP_LINES.default)
+        assertEquals(500, Keys.LOG_KEEP_LINES.parse("500"))
+        assertEquals(50_000, Keys.LOG_KEEP_LINES.parse("50000"))
+        assertEquals(null, Keys.LOG_KEEP_LINES.parse("499"))
+        assertEquals(null, Keys.LOG_KEEP_LINES.parse("50001"))
+        assertEquals(Keys.LOG_KEEP_LINES, Keys.byName("LOG.KEEP-LINES"))
+    }
 }
