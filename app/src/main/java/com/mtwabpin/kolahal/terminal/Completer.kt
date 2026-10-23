@@ -35,6 +35,8 @@ class Completer(private val context: Context, private val data: Data) {
         val todos: List<com.mtwabpin.kolahal.productivity.Todo>
         val notes: List<com.mtwabpin.kolahal.productivity.Note>
         val reminders: List<com.mtwabpin.kolahal.productivity.Reminder>
+        /** Where the log's lines came from, newest first ([LogFilter]). */
+        val logSources: List<String> get() = emptyList()
     }
 
     private val config = Config.get(context)
@@ -283,6 +285,9 @@ class Completer(private val context: Context, private val data: Data) {
                 else -> subs(ProductivityCommands.TODO_SUBCOMMANDS)
             }
             "notes" -> if (sub == "rm") items(data.notes.mapIndexed { i, n -> i + 1 to n.text }) else subs(ProductivityCommands.NOTES_SUBCOMMANDS)
+            "log" -> if (parts.size == 3 && parts[1] == "only") {
+                LogFilter.suggestions(parts[2], data.logSources).take(12).map { Suggestion.Completion(it.label, "log only ${it.word}") }
+            } else emptyList()
             "remind" -> when {
                 sub == "rm" -> items(data.reminders.mapIndexed { i, r -> i + 1 to r.text })
                 parts.size == 2 -> (listOf("rm") + listOf("10m", "30m", "1h", "tomorrow 9:00"))

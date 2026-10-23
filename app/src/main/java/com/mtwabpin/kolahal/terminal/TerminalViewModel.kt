@@ -111,6 +111,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         override val todos get() = todoCache
         override val notes get() = noteCache
         override val reminders get() = reminderCache
+        override val logSources get() = this@TerminalViewModel.logSources
     })
 
     /** Scripts, refreshed off the main thread whenever the log changes (every script action logs). */
@@ -145,6 +146,25 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     private val _entries = MutableStateFlow<List<LogEntry>>(emptyList())
     val entries: StateFlow<List<LogEntry>> = _entries.asStateFlow()
+
+    private val _filter = MutableStateFlow(logs.filter?.let(LogFilter::parse))
+    /** `log only …`: the log shows only these lines until ✕, Back, `log all` or another command. */
+    val filter: StateFlow<LogFilter?> = _filter.asStateFlow()
+
+    private val _filterCount = MutableStateFlow(0)
+    /** How many lines [filter] lets through, for its bar. */
+    val filterCount: StateFlow<Int> = _filterCount.asStateFlow()
+
+    /** Where the log's lines came from, newest first: `/@` and `log only` suggest them. */
+    @Volatile private var logSources: List<String> = emptyList()
+
+    override fun filterLog(filter: LogFilter?) {
+        if (_filter.value == filter) return
+        _filter.value = filter
+        // Kept until cleared, through leaving home and a restart.
+        logs.filter = filter?.let { if (it is LogFilter.OfKind) it.word else it.label }
+        requestReload()
+    }
 
     private val _headerCollapsed = MutableStateFlow(false)
     /** header.autohide: the header shrinks to one line while the log is in use. */
@@ -291,6 +311,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         if (!incremental) _hiddenLines.value = withContext(Dispatchers.IO) { logs.hiddenCount() }
         if (!incremental || fresh.any { it.kind == LogKind.COMMAND }) history = withContext(Dispatchers.IO) { logs.commandHistory() }
         if (!incremental || fresh.any(::touchesProductivity)) refreshProductivity()
+        if (!incremental || fresh.any { it.source != null && it.source !in logSources }) logSources = withContext(Dispatchers.IO) { logs.sources() }
         // A locked private space hides its apps; its lines (launches, notifications) hide with it.
         val locked = lockedPrivate(appsRepo.profiles.value)
         val list = if (locked.isEmpty()) all else all.filterNot { it.ctx.userSerial in locked }
@@ -302,8 +323,17 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             fullAt = now
         }
         loaded = all
-        _entries.value = list
-        _rows.value = withContext(Dispatchers.Default) { buildRows(list, seenUpTo, unreadUntil) }
+        // `log only …`: its lines from the whole log, not just this page (which may hold none of them).
+        val filter = _filter.value
+        val shown = if (filter == null) list else {
+            val found = withContext(Dispatchers.IO) {
+                logs.search(emptyList(), limit = pageLimit, skip = if (locked.isEmpty()) null else { e -> e.ctx.userSerial in locked }, match = filter::matches)
+            }
+            _filterCount.value = found.total
+            found.entries.asReversed()
+        }
+        _entries.value = shown
+        _rows.value = withContext(Dispatchers.Default) { buildRows(shown, seenUpTo, unreadUntil) }
     }
 
     /** A line after which the todo, note, reminder or feed caches may be out of date. */
@@ -337,7 +367,10 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     // ---- log search: `/words` at the prompt -------------------------------------------------
 
     /** What `/words` found: [rows] oldest first, as the log lists them; no [words] yet shows a hint. */
-    data class LogSearch(val words: List<String>, val rows: List<LogRow>, val total: Int, val searched: Int)
+    data class LogSearch(val words: List<String>, val rows: List<LogRow>, val total: Int, val searched: Int, val sources: List<LogFilter> = emptyList()) {
+        /** Nothing typed yet (or only `@`): a hint shows instead of results. */
+        val isEmpty: Boolean get() = words.isEmpty() && sources.isEmpty()
+    }
 
     private val _search = MutableStateFlow<LogSearch?>(null)
     /** The log search while the prompt starts with `/`; null otherwise. */
@@ -359,15 +392,21 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                     try {
                         _search.value = when {
                             words == null -> null
-                            words.isEmpty() -> LogSearch(words, emptyList(), 0, 0)
-                            else -> withContext(Dispatchers.IO) {
-                                val job = currentCoroutineContext()[kotlinx.coroutines.Job]
-                                val found = logs.search(
-                                    words,
-                                    skip = if (locked.isEmpty()) null else { e -> e.ctx.userSerial in locked },
-                                    keepGoing = { job?.isActive != false },
-                                )
-                                LogSearch(words, buildRows(found.entries.asReversed()), found.total, found.searched)
+                            else -> {
+                                // `@xkcd`, `@feeds`: only lines from there (any of them).
+                                val (at, plain) = words.partition { it.startsWith("@") }
+                                val sources = at.mapNotNull(LogFilter::parse)
+                                if (plain.isEmpty() && sources.isEmpty()) LogSearch(emptyList(), emptyList(), 0, 0)
+                                else withContext(Dispatchers.IO) {
+                                    val job = currentCoroutineContext()[kotlinx.coroutines.Job]
+                                    val found = logs.search(
+                                        plain,
+                                        skip = if (locked.isEmpty()) null else { e -> e.ctx.userSerial in locked },
+                                        match = if (sources.isEmpty()) null else { e -> sources.any { it.matches(e) } },
+                                        keepGoing = { job?.isActive != false },
+                                    )
+                                    LogSearch(plain, buildRows(found.entries.asReversed()), found.total, found.searched, sources)
+                                }
                             }
                         }
                     } catch (e: kotlinx.coroutines.CancellationException) {
@@ -569,7 +608,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** A completion fills the prompt; in `launch.instant all` a line it leaves with nothing to choose runs (`torch on`). */
     private fun pickCompletion(replacement: String) {
         setText(replacement)
-        if (replacement.trim().contains(' ')) instantRun(replacement)
+        if (searchWords(replacement) == null && replacement.trim().contains(' ')) instantRun(replacement)
     }
 
     fun onSuggestion(s: Suggestion) {
@@ -586,7 +625,14 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         input = TextFieldValue(text, TextRange(text.length))
     }
 
-    fun suggestions(text: String): List<Suggestion> = if (searchWords(text) != null) emptyList() else completer.suggestions(text)
+    fun suggestions(text: String): List<Suggestion> {
+        if (searchWords(text) == null) return completer.suggestions(text)
+        // `/@xk`: the sources to search in.
+        val token = text.removePrefix("/").substringAfterLast(' ')
+        if (!token.startsWith("@")) return emptyList()
+        val before = text.dropLast(token.length)
+        return LogFilter.suggestions(token, logSources).take(12).map { Suggestion.Completion("@${it.word}", "$before@${it.word} ") }
+    }
 
     // ---- log line interaction -------------------------------------------------------------
 
@@ -602,6 +648,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         override fun runCommand(cmd: String) = this@TerminalViewModel.runCommand(cmd)
         override fun openEditorAt(script: Script, line: Int?) = this@TerminalViewModel.openEditorAt(script, line)
         override fun startActivity(intent: Intent) = this@TerminalViewModel.startActivity(intent)
+        override fun filterLog(filter: LogFilter?) = this@TerminalViewModel.filterLog(filter)
     })
 
     /** Single tap: the most likely action for this line. */

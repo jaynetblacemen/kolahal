@@ -160,8 +160,16 @@ class LogRepository private constructor(private val context: Context) {
      * Lines with every one of [words] (ignoring case) in their text, source, link, script or second
      * column, newest first: all the log keeps, lines a fresh screen hid included. At most [limit] are
      * returned; [Found.total] counts them all. [skip] leaves lines out (a locked private space's).
+     * With [match], only the lines it takes are searched (`/@xkcd`, `log only xkcd`); with no words,
+     * all of those are found.
      */
-    fun search(words: List<String>, limit: Int = 500, skip: ((LogEntry) -> Boolean)? = null, keepGoing: () -> Boolean = { true }): Found {
+    fun search(
+        words: List<String>,
+        limit: Int = 500,
+        skip: ((LogEntry) -> Boolean)? = null,
+        match: ((LogEntry) -> Boolean)? = null,
+        keepGoing: () -> Boolean = { true },
+    ): Found {
         val found = ArrayList<LogEntry>()
         var total = 0
         var searched = 0
@@ -182,12 +190,14 @@ class LogRepository private constructor(private val context: Context) {
                     shown.contains(w, ignoreCase = true) || source?.contains(w, ignoreCase = true) == true || rawCtx?.contains(w, ignoreCase = true) == true
                 }
                 // Only a line from a profile ([LogContext.USER]) can be skipped: the others aren't parsed unless they match.
-                if (!candidate && (skip == null || rawCtx?.contains("\"${LogContext.USER}\"") != true)) {
+                // With [match], every line is parsed: only the ones it takes count as searched.
+                if (!candidate && match == null && (skip == null || rawCtx?.contains("\"${LogContext.USER}\"") != true)) {
                     searched++
                     continue
                 }
                 val e = LogEntry(c.getLong(0), c.getLong(1), LogKind.of(c.getString(2)), source, text, LogContext.fromJson(c.getString(5)))
                 if (skip?.invoke(e) == true) continue
+                if (match != null && !match(e)) continue
                 searched++
                 if (!candidate || !words.all { w -> searchable(e).any { it.contains(w, ignoreCase = true) } }) continue
                 total++
@@ -196,6 +206,17 @@ class LogRepository private constructor(private val context: Context) {
         }
         return Found(found, total, searched)
     }
+
+    /** Where lines came from (scripts, feeds, apps), most recent first: `/@` and `log only` suggest them. */
+    fun sources(): List<String> = db.readableDatabase.rawQuery(
+        "SELECT source FROM logs WHERE source IS NOT NULL AND id > ? GROUP BY source ORDER BY MAX(id) DESC",
+        arrayOf(prefs.getLong(KEY_CLEARED_UP_TO, 0L).toString()),
+    ).use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
+
+    /** `log only …`, as typed ([com.mtwabpin.kolahal.terminal.LogFilter.parse]); it stays until cleared. */
+    var filter: String?
+        get() = prefs.getString(KEY_FILTER, null)
+        set(value) = prefs.edit { if (value == null) remove(KEY_FILTER) else putString(KEY_FILTER, value) }
 
     /** What a search looks in: what the line shows (a script line's body too, styles aside), where it came from and where it leads. */
     private fun searchable(e: LogEntry): List<String> =
@@ -415,6 +436,7 @@ class LogRepository private constructor(private val context: Context) {
         private const val KEY_TRIMMED_AT = "trimmed_at"
         private const val KEY_SEEN_UP_TO = "seen_up_to"
         private const val KEY_HISTORY_FROM = "history_from"
+        private const val KEY_FILTER = "filter"
         const val ACTION_LOGS_CHANGED = "com.mtwabpin.kolahal.LOGS_CHANGED"
         const val EXTRA_RESTRUCTURE = "restructure"
 

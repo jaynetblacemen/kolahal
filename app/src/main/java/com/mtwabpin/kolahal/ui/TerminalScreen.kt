@@ -162,6 +162,10 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     val search by vm.search.collectAsStateWithLifecycle()
     // Not while the widgets page is showing: Back there returns to the terminal.
     if (preview == null) BackHandler(enabled = search != null && LocalTerminalShown.current) { vm.escape() }
+    val filter by vm.filter.collectAsStateWithLifecycle()
+    val filterCount by vm.filterCount.collectAsStateWithLifecycle()
+    // Back leaves `log only …` as it leaves a search.
+    if (preview == null) BackHandler(enabled = search == null && filter != null && LocalTerminalShown.current) { vm.filterLog(null) }
     // A result tapped: once its line is loaded, scroll to it (a few newer lines below it) and mark it a moment.
     val jumpTo by vm.jumpTo.collectAsStateWithLifecycle()
     var flash by remember { mutableStateOf<Long?>(null) }
@@ -317,7 +321,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         // measured first, so a long suggestion list can't push the prompt off the screen.
         Column(Modifier.weight(1f).fillMaxWidth()) {
         Box(Modifier.weight(1f).fillMaxWidth()) {
-        val results = search?.takeIf { it.words.isNotEmpty() && preview == null }
+        val results = search?.takeIf { !it.isEmpty && preview == null }
         if (results != null) LogSearchResults(
             search = results,
             timeFormat = lineTimeFormat,
@@ -437,7 +441,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         }
         // [/selector]
         }
-        search?.let { LogSearchSummary(it) }
+        search?.let { LogSearchSummary(it) } ?: filter?.let { LogFilterBar(it, filterCount, onClear = { vm.filterLog(null) }) }
         // suggestions.auto: hidden on an idle home; shown while typing, or whenever there is input
         // (so hardware-keyboard typing still gets them).
         val suggestionsAuto = remember(configVersion) { config[Keys.SUGGESTIONS_AUTO] }

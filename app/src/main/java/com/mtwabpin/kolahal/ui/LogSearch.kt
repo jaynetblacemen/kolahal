@@ -1,6 +1,11 @@
 package com.mtwabpin.kolahal.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -11,13 +16,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mtwabpin.kolahal.apps.AppEntry
@@ -25,6 +37,7 @@ import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogEntry
 import com.mtwabpin.kolahal.data.LogKind
 import com.mtwabpin.kolahal.data.shownText
+import com.mtwabpin.kolahal.terminal.LogFilter
 import com.mtwabpin.kolahal.terminal.LogRow
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import java.text.SimpleDateFormat
@@ -127,10 +140,11 @@ private fun FoundIn(entry: LogEntry, words: List<String>, modifier: Modifier) {
 @Composable
 fun LogSearchSummary(search: TerminalViewModel.LogSearch, modifier: Modifier = Modifier) {
     val shown = remember(search.rows) { search.rows.count { it is LogRow.Entry } }
+    val from = if (search.sources.isEmpty()) "" else " from " + search.sources.joinToString(" or ") { it.label }
     val text = when {
-        search.words.isEmpty() -> "Search the log: type words after / to find lines, commands, sources and links"
-        search.total == 0 -> "No line has “${search.words.joinToString(" ")}” · Esc or back to close"
-        else -> "${search.total} of ${search.searched} lines" +
+        search.isEmpty -> "Search the log: type words after / to find lines, commands, sources and links · @ and a name searches one source's lines"
+        search.total == 0 -> "No line$from" + (if (search.words.isEmpty()) "" else " has “${search.words.joinToString(" ")}”") + " · Esc or back to close"
+        else -> "${search.total} of ${search.searched} lines$from" +
             (if (shown < search.total) " · the newest $shown here" else "") +
             " · tap one to see it in the log"
     }
@@ -139,4 +153,35 @@ fun LogSearchSummary(search: TerminalViewModel.LogSearch, modifier: Modifier = M
         style = Term.text.copy(color = Term.dim, fontSize = (Term.fontSize - 1).sp),
         modifier = modifier.fillMaxWidth().testTag("log-search-summary").padding(horizontal = 12.dp, vertical = 4.dp),
     )
+}
+
+/** Above the prompt while `log only …` is on: what the log shows, and ✕ to show every line again. */
+@Composable
+fun LogFilterBar(filter: LogFilter, count: Int, onClear: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.fillMaxWidth().background(Term.surface).testTag("log-filter").padding(start = 12.dp),
+    ) {
+        Text(
+            buildAnnotatedString {
+                append("only ")
+                withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append(filter.label) }
+                append(" · $count line" + if (count == 1) "" else "s")
+            },
+            style = Term.text.copy(color = Term.dim, fontSize = (Term.fontSize - 1).sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            "✕",
+            style = Term.text.copy(color = Term.fg),
+            modifier = Modifier
+                .clickable(onClick = onClear)
+                .semantics { contentDescription = "Show every line" }
+                .heightIn(min = 40.dp)
+                .wrapContentHeight()
+                .padding(horizontal = 16.dp),
+        )
+    }
 }

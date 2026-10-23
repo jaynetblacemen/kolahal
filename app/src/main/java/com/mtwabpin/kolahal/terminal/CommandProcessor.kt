@@ -73,6 +73,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             last != null && last.second == LogKind.COMMAND && last.third == typed -> last.first
             else -> logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
         }
+        // A command you run ends `log only`: what you typed, and what it prints, must show.
+        if (!ScriptScheduler.runningSentCommand && typed.substringBefore(' ').lowercase() != "log") ui.filterLog(null)
         // What it prints, now or later (a script, a feed fetch), is marked as its output.
         logs.withCause(commandId) { runLogged(typed, expand) }
     }
@@ -107,6 +109,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "help", "?" -> help()
                 "unlocks" -> unlocks(args)
                 "clear", "cls" -> clear(args)
+                "log" -> logFilter(args)
                 "fresh" -> ui.freshScreen()
                 "restart", "reboot" -> restart(args)
                 "history" -> history()
@@ -436,6 +439,15 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         }
     }
 
+    /** `log only xkcd` · `log only feeds`: the log shows those lines alone, until `log all` (or ✕, Back, another command). */
+    private fun logFilter(args: List<String>) {
+        when (args.firstOrNull()) {
+            "only" -> ui.filterLog(LogFilter.parse(args.drop(1).joinToString(" ")) ?: return error("Usage: log only <script, feed or app | commands, scripts, feeds, notifications, apps, calls, reminders>"))
+            "all" -> ui.filterLog(null)
+            else -> error("Usage: log only <name|kind> · log all")
+        }
+    }
+
     /** `clear` screen · `clear history` ↑ recall · `clear all` everything (log + history). */
     private fun clear(args: List<String>) {
         when (args.firstOrNull()) {
@@ -555,6 +567,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("url", "url <address>", "Open a link"),
             CommandSpec("history", "history", "Recent commands (tap to reuse)"),
             CommandSpec("clear", "clear [history|all]", "Clear the screen, the ↑ history, or both"),
+            CommandSpec("log", "log [only <name|kind>|all]", "Only one script's, feed's or app's lines, or one kind's"),
             CommandSpec("fresh", "fresh", "Start a clean screen now, like log.fresh; earlier lines are one tap away (not logged)"),
             CommandSpec("restart", "restart [scripts]", "Restart the launcher, or stop running scripts"),
             CommandSpec("status", "status [clear <name|all>]", "Header lines pinned by scripts"),

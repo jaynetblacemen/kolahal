@@ -47,6 +47,8 @@ class LogLineActions(private val context: Context, private val processor: Comman
         fun runCommand(cmd: String)
         fun openEditorAt(script: Script, line: Int?)
         fun startActivity(intent: Intent)
+        /** `log only …` from a line's long-press. */
+        fun filterLog(filter: LogFilter?)
     }
 
     private val logs = LogRepository.get(context)
@@ -179,6 +181,8 @@ class LogLineActions(private val context: Context, private val processor: Comman
                 host.io { ids.forEach(logs::delete) }
             }
         }
+        // Only this line's script, feed or app (or its kind), until the bar's ✕.
+        LogFilter.forLine(entry)?.let { f -> actions += LogAction("Only ${f.label}") { host.filterLog(f) } }
         actions += LogAction("Copy text") { copy(ctx.copy?.let(StyledText::plain) ?: entry.shownText, sensitive(entry)) }
         danger += LogAction("Delete line", destructive = true) { host.io { logs.delete(entry.id) } }
         return actions + danger

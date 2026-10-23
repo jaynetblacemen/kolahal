@@ -25,6 +25,8 @@ interface TerminalUi {
     fun requestCallLogPermission() {}
     /** ACCESS_LOCAL_NETWORK (Android 17+) for `local-network`. */
     fun requestLocalNetworkPermission() {}
+    /** `log only …` ([filter]) or `log all` (null): the lines the log shows. */
+    fun filterLog(filter: LogFilter?) {}
 }
 
 data class CommandSpec(val name: String, val usage: String, val help: String)

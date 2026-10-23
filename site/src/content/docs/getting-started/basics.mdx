@@ -142,11 +142,27 @@ it leads: `/weather` finds the weather script's lines, `/github.com` the lines t
 ```sh
 /battery              # every line about the battery
 /hacker news rust     # feed items from Hacker News that mention Rust
+/@xkcd                # every line from the xkcd script
+/@hackernews rust     # Rust, only in Hacker News's lines
+/@scripts error       # errors from any script
 ```
+
+`@` and a name keeps only the lines from there: a script, a feed or an app, as the name at the end
+of its lines reads, any case and without spaces. Or a whole kind: `@commands` (what you typed and
+what it printed), `@scripts`, `@feeds`, `@notifications`, `@apps` (installs and updates), `@calls`,
+`@reminders`. Typing `/@` suggests them; two `@`s find lines from either.
 
 Tap a line to see it in the log, among the lines around it. `Enter` puts the keyboard away so
 more results fit; `Esc`, back or clearing the prompt ends the search. Long-press and swipes work as
 they do in the log.
+
+### Only one source's lines
+
+Long-press a line and pick **Only xkcd** (its script, feed or app; a command line offers **Only
+commands**), or type `log only xkcd` or `log only feeds`. The log then shows just those lines, new
+ones as they come, with a bar above the prompt saying so. It stays, through leaving home and a
+restart, until ✕ on the bar, back, `log all`, or running another command, so what you type always
+shows.
 
 ### Pipes
 
