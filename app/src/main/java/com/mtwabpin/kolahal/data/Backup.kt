@@ -54,7 +54,13 @@ class Backup(private val context: Context) {
             // Themes made in the theme builder: name to colours by role, as "#RRGGBB".
             "themes" to CustomThemes.themes.value.mapValues { (_, colors) -> colors.mapValues { CustomThemes.hex(it.value) } },
         )
-        Files.writeText(context, uri, Json.stringify(data))
+        val text = Json.stringify(data)
+        val mb = text.toByteArray().size / (1024 * 1024)
+        check(mb < Files.MAX_BACKUP_BYTES / (1024 * 1024)) {
+            "the backup would be $mb MB, more than the ${Files.MAX_BACKUP_BYTES / (1024 * 1024)} MB a backup can be imported at: " +
+                "lower log.keep-lines or clear the log (clear all), then export again"
+        }
+        Files.writeText(context, uri, text)
         return all.size
     }
 
@@ -119,9 +125,8 @@ class Backup(private val context: Context) {
             val name = m["name"]?.toString()?.lowercase()
             val lang = m["lang"]?.toString()?.let(ScriptLang::of)
             val code = m["code"]?.toString()
-            if (name == null || lang == null || code == null || !NAME.matches(name) || name in BUILT_INS ||
-                com.mtwabpin.kolahal.script.ScriptNames.clash(context, name) != null
-            ) {
+            // Your own scripts: a name an app also has stays (it arrives switched off, as all do).
+            if (name == null || lang == null || code == null || !NAME.matches(name) || name in BUILT_INS) {
                 skipped += "script ${m["name"]}"
                 return@forEach
             }

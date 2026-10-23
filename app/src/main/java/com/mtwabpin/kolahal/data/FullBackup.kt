@@ -42,6 +42,13 @@ object FullBackup {
     private const val SCRIPT_SCOPE = "script:"
     private val BUILT_INS get() = com.mtwabpin.kolahal.terminal.CommandProcessor.RESERVED_NAMES
 
+    /**
+     * kv scopes about this phone: the last call and the apps it has seen (another phone's would log
+     * every app as installed or updated), daily notes and settings copied for the :script process.
+     * They don't go into a backup, and a restore keeps this phone's.
+     */
+    private val DEVICE_SCOPES = listOf("calls", "packages", "worker", SharedSettings.SCOPE)
+
     fun export(context: Context): Map<String, Any?> {
         // Rows too big for a cursor would make the whole export fail.
         runCatching { KvStore.repairOversized(context) }
@@ -53,7 +60,7 @@ object FullBackup {
             tables[t.name] = if (t.name == "logs") rows.filterNot(::private) else if (t.name != "kv") rows else rows.filter { row ->
                 val scope = row["scope"] as? String ?: return@filter false
                 // The copy of recent notifications kept for scripts stays on the device.
-                if (scope == KolahalNotificationListener.MIRROR_SCOPE) return@filter false
+                if (scope == KolahalNotificationListener.MIRROR_SCOPE || scope in DEVICE_SCOPES) return@filter false
                 // Script secrets never leave the phone (and only its Keystore key can read them anyway).
                 if (scope.startsWith(SecretStore.SCOPE_PREFIX)) return@filter false
                 if (!scope.startsWith(SCRIPT_SCOPE)) return@filter true
@@ -82,12 +89,15 @@ object FullBackup {
         for (t in TABLES) {
             // A backup never brings secrets: only this phone's are kept.
             val list = (tables[t.name] as? List<*>)?.filterIsInstance<Map<*, *>>()
-                ?.filterNot { t.name == "kv" && it["scope"]?.toString().orEmpty().startsWith(SecretStore.SCOPE_PREFIX) } ?: continue
+                ?.filterNot { t.name == "kv" && it["scope"]?.toString().orEmpty().let { s -> s.startsWith(SecretStore.SCOPE_PREFIX) || s in DEVICE_SCOPES } } ?: continue
             val db = t.db(context)
             db.transaction {
                 if (t.name == "kv") {
                     // Keep this device's script stores (re-attached by name afterwards) and script secrets.
-                    db.delete("kv", "scope NOT LIKE ? AND scope NOT LIKE ?", arrayOf("$SCRIPT_SCOPE%", "${SecretStore.SCOPE_PREFIX}%"))
+                    db.delete(
+                        "kv", "scope NOT LIKE ? AND scope NOT LIKE ? AND scope NOT IN (${DEVICE_SCOPES.joinToString { "?" }})",
+                        arrayOf("$SCRIPT_SCOPE%", "${SecretStore.SCOPE_PREFIX}%") + DEVICE_SCOPES,
+                    )
                 } else {
                     db.delete(t.name, null, null)
                 }

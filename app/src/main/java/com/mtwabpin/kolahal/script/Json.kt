@@ -8,6 +8,18 @@ import org.json.JSONTokener
 object Json {
     fun parse(text: String): Any? = fromOrg(JSONTokener(text).nextValue())
 
+    /**
+     * [parse] for scripts (`json.decode`): JSON only. Android's reader also takes a bare word or
+     * trailing text, which would turn an HTML error page into a string instead of an error.
+     */
+    fun decode(text: String): Any? {
+        val tokener = JSONTokener(text)
+        val value = tokener.nextValue()
+        if (value is String && !text.trimStart().startsWith('"')) throw org.json.JSONException("Not JSON: ${text.trimStart().take(20)}")
+        if (tokener.nextClean() != 0.toChar()) throw org.json.JSONException("Unexpected text after the JSON value")
+        return fromOrg(value)
+    }
+
     fun stringify(value: Any?): String = when (val v = toOrg(value)) {
         is JSONObject, is JSONArray -> v.toString()
         is String -> JSONObject.quote(v)

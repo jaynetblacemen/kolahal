@@ -417,6 +417,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         if (exact && exactAlarms == false) io { com.mtwabpin.kolahal.productivity.ReminderScheduler.rescheduleAll(context) }
         exactAlarms = exact
         io { logs.trimIfDue(config[Keys.LOG_KEEP_DAYS]) }
+        // Daily times drift (late runs, a daylight-saving change): anchored again every few hours.
+        io { ScriptScheduler.syncAllIfDue(context) }
         // A crash in the script process doesn't restart home: its report is announced here.
         io { runCatching { com.mtwabpin.kolahal.CrashReports.announce(context) } }
         // Coming back from an app is a fresh look at home: show the full header again.
@@ -942,7 +944,14 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         val parts = raw.split(',', ' ').filter { it.isNotBlank() }
         val times = parts.mapNotNull(ScriptScheduler::normalizeTime)
         if (times.size != parts.size) return false
-        updateScript(s) { scripts.setAtTimes(s.id, times.distinct().sorted()) }
+        updateScript(s) {
+            scripts.setAtTimes(s.id, times.distinct().sorted())
+            // Times switch it on, as a timer does, but allow nothing it asks for: that stays a tap away.
+            if (times.isNotEmpty() && !s.enabled) {
+                scripts.setEnabled(s.id, true)
+                scripts.byId(s.id)?.let { ScriptAccess.askForNew(context, it) }
+            }
+        }
         return true
     }
 

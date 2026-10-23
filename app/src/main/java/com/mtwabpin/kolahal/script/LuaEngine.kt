@@ -162,7 +162,7 @@ class LuaEngine : ScriptEngine {
         )
         lua.table(
             "json",
-            "decode" to { l: Lua -> l.pushValue(Json.parse(l.checkString(1))); 1 },
+            "decode" to { l: Lua -> l.pushValue(Json.decode(l.checkString(1))); 1 },
             "encode" to { l: Lua -> l.push(Json.stringify(Json.normalizeLua(l.toObject(1)))); 1 },
         )
     }

@@ -26,6 +26,11 @@ object ScriptScheduler {
     const val MIN_INTERVAL_MIN = 15
     private const val MAX_INLINE_CODE = 8_000
     private const val MAX_DRIFT_MS = 10 * 60_000L
+    private const val DAY_MS = 24 * 3_600_000L
+    /** A daily job this late after its time is still that day's run. */
+    private const val LATE_RUN_MS = 6 * 3_600_000L
+    private const val RECHECK_MS = 6 * 3_600_000L
+    private const val KEY_SYNCED_AT = "synced_at"
 
     private fun uniqueName(id: Long) = "script-$id"
 
@@ -76,9 +81,14 @@ object ScriptScheduler {
         for (time in wanted) {
             val info = runCatching { wm.getWorkInfosForUniqueWork(dailyName(script.id, time)).get() }
                 .getOrNull()?.firstOrNull()
+            val next = now + millisUntil(time)
+            val due = info?.nextScheduleTimeMillis ?: 0L
             val drifted = info != null && info.state == WorkInfo.State.ENQUEUED &&
-                info.nextScheduleTimeMillis > now && // overdue jobs are about to run: leave them
-                abs(info.nextScheduleTimeMillis - (now + millisUntil(time))) > MAX_DRIFT_MS
+                due > now && // overdue jobs are about to run: leave them
+                abs(due - next) > MAX_DRIFT_MS &&
+                // Today's run, late (it waited for the network or Doze): moved to tomorrow, today
+                // would have none. It runs; a later check brings the next one back to its time.
+                due - (next - DAY_MS) !in 0..LATE_RUN_MS
             if (info == null || info.state.isFinished || drifted) enqueueDaily(context, wm, script.id, time)
         }
     }
@@ -114,8 +124,18 @@ object ScriptScheduler {
         return Duration.between(now, next).toMillis()
     }
 
+    /**
+     * [syncAll] if the last was over [RECHECK_MS] ago: a launcher that runs for days would
+     * otherwise leave daily times drifting, and an hour off after a daylight-saving change.
+     */
+    fun syncAllIfDue(context: Context) {
+        val last = context.getSharedPreferences("daily_schedule", Context.MODE_PRIVATE).getLong(KEY_SYNCED_AT, 0L)
+        if (System.currentTimeMillis() - last !in 0 until RECHECK_MS) syncAll(context)
+    }
+
     /** Re-syncs every script; one bad script can't stop the rest. */
     fun syncAll(context: Context) {
+        context.getSharedPreferences("daily_schedule", Context.MODE_PRIVATE).edit { putLong(KEY_SYNCED_AT, System.currentTimeMillis()) }
         val wm = WorkManager.getInstance(context)
         ScriptRepository.get(context).all().forEach { s ->
             runCatching {

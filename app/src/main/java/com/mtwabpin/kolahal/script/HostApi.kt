@@ -161,7 +161,7 @@ class HostApi(
         val text = redact(raw)
         if (scriptId != null && !headerWritten) {
             headerWritten = true
-            val time = com.mtwabpin.kolahal.data.Config.get(context).shortTime()
+            val time = com.mtwabpin.kolahal.data.SharedSettings.shortTime(context)
             buffer(LogKind.INFO, "── $scriptName · $time ──", LogContext(baseCtx + mapOf(LogContext.RUN_HEADER to "1")))
         }
         buffer(LogKind.SCRIPT, text, LogContext(baseCtx + safeCtx(ctx, text).mapValues { redact(it.value) }))
@@ -306,12 +306,16 @@ class HostApi(
     fun rssFresh(url: String): Map<String, Any?> {
         val feed = fetchFeed(url)
         val key = urlKey("rss.seen:", url)
-        val seen = pendingSeen[key] ?: readSeen(key)
-        val seenSet = seen.toHashSet()
-        val fresh = feed.items.filter { it.id !in seenSet }
-        // Never forget an id the feed still lists: a feed longer than MAX_SEEN would otherwise
-        // push its own old items out and report them as new on the next run.
-        pendingSeen[key] = (fresh.map { it.id } + seen).take(maxOf(MAX_SEEN, feed.items.size + 100))
+        // JavaScript runs host calls side by side: two rss.fresh finishing together must not lose ids.
+        val fresh = synchronized(pendingSeen) {
+            val seen = pendingSeen[key] ?: readSeen(key)
+            val seenSet = seen.toHashSet()
+            feed.items.filter { it.id !in seenSet }.also { fresh ->
+                // Never forget an id the feed still lists: a feed longer than MAX_SEEN would otherwise
+                // push its own old items out and report them as new on the next run.
+                pendingSeen[key] = (fresh.map { it.id } + seen).take(maxOf(MAX_SEEN, feed.items.size + 100))
+            }
+        }
         return feed.copy(items = fresh).toMap()
     }
 
@@ -322,7 +326,7 @@ class HostApi(
     }
 
     /** Persists deferred state after a successful run (so a failing script re-sees its items). */
-    fun commit() {
+    fun commit() = synchronized(pendingSeen) {
         pendingSeen.forEach { (key, ids) -> store.set(key, Json.stringify(ids)) }
         pendingSeen.clear()
     }
@@ -471,7 +475,13 @@ class HostApi(
         // A body near the store's value cap isn't cached; it would be refused anyway.
         val body = resp["body"] as? String
         if (resp["ok"] == true && (body?.length ?: 0) < KvStore.MAX_VALUE / 2) {
-            runCatching { store.set(key, Json.stringify(mapOf("at" to System.currentTimeMillis(), "body" to body))) }
+            val entry = Json.stringify(mapOf("at" to System.currentTimeMillis(), "body" to body))
+            // Cached responses count toward the store's limits. Full, the other ones make room: they
+            // are only a cache, and a store left full would refuse the script's own values.
+            runCatching { store.set(key, entry) }.recoverCatching {
+                store.deleteStartingWith("http.cache:", except = key)
+                store.set(key, entry)
+            }
         }
         return resp + ("cached" to false)
     }

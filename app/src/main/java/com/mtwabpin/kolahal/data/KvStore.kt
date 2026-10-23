@@ -48,6 +48,13 @@ class KvStore(context: Context, private val scope: String) {
         }
     }
 
+    /** Deletes every key starting with [prefix] but [except]. */
+    fun deleteStartingWith(prefix: String, except: String? = null) {
+        db.writableDatabase.delete(
+            "kv", "scope = ? AND substr(k, 1, ${prefix.length}) = ? AND k != ?", arrayOf(scope, prefix, except.orEmpty()),
+        )
+    }
+
     companion object {
         /** Largest value a key may hold (characters); keeps every row readable through a cursor. */
         const val MAX_VALUE = 1024 * 1024

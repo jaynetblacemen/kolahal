@@ -55,6 +55,8 @@ object RssParser {
                         inItem = true
                         title = null; link = null; id = null; date = null; summary = null
                     }
+                    // An Atom entry's <source> describes the feed it came from: not its title or id.
+                    inItem && name == "source" -> readText(parser)
                     name == "title" -> readText(parser).let { if (inItem) title = it else if (feedTitle == null) feedTitle = it }
                     name == "link" -> {
                         val href = parser.getAttributeValue(null, "href")
@@ -80,7 +82,7 @@ object RssParser {
                     items += Item(
                         title = t.ifEmpty { link ?: "(untitled)" },
                         link = link,
-                        id = id ?: link ?: t,
+                        id = id?.takeIf { it.isNotBlank() } ?: link ?: t,
                         date = date,
                         summary = summary,
                     )

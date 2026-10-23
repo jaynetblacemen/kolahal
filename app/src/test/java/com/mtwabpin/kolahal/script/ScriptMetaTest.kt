@@ -39,6 +39,12 @@ class ScriptMetaTest {
         assertFalse(ScriptMeta.isCommand("-- @on boot"))
     }
 
+    @Test fun anEmptyDescTakesNothingFromTheNextLine() {
+        assertNull(ScriptMeta.description("-- @desc\nlocal x = 1"))
+        assertNull(ScriptMeta.description("-- @desc   \nlocal x = 1"))
+        assertEquals("tabs too", ScriptMeta.description("--\t@desc\ttabs too"))
+    }
+
     @Test fun allEventsAccepted() =
         assertEquals(ScriptMeta.EVENTS, ScriptMeta.events("// @on " + ScriptMeta.EVENTS.reversed().joinToString(",")))
 

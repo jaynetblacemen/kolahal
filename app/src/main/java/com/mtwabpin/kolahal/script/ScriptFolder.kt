@@ -26,7 +26,7 @@ class ScriptFolder(private val context: Context) {
         uri?.takeIf { it != tree }?.let { old ->
             runCatching { context.contentResolver.releasePersistableUriPermission(old, flags) }
         }
-        prefs.edit { putString(KEY_URI, tree.toString()) }
+        prefs.edit { putString(KEY_URI, tree.toString()).remove(KEY_EXPORTED) }
     }
 
     private fun folder(): DocumentFile {
@@ -42,14 +42,10 @@ class ScriptFolder(private val context: Context) {
         val all = scripts.all()
         // One listing instead of a provider round-trip per findFile() call.
         val files = dir.listFiles().associateBy { it.name }
-        // Remove files of scripts that the previous export listed but that no longer exist.
-        val previous = files[MANIFEST]?.let { readManifest(it.uri) }.orEmpty()
+        // Remove the files of scripts deleted on this phone since its last export. Only those: the
+        // folder can hold scripts another phone exported that this one doesn't have.
         val current = all.map { "${it.name}.${it.lang.ext}" }.toSet()
-        previous.keys.filterNotNull().forEach { name ->
-            val m = previous[name] ?: return@forEach
-            val fileName = "$name.${m["lang"]}"
-            if (fileName !in current) files[fileName]?.delete()
-        }
+        prefs.getStringSet(KEY_EXPORTED, emptySet()).orEmpty().filter { it !in current }.forEach { files[it]?.delete() }
         for (s in all) {
             val fileName = "${s.name}.${s.lang.ext}"
             val file = files[fileName] ?: dir.createFile(MIME_TEXT, fileName)
@@ -94,7 +90,7 @@ class ScriptFolder(private val context: Context) {
             if (file.isDirectory) continue
             val name = fileName.substringBeforeLast('.').lowercase()
             // Same rules as a backup: no names of built-in commands.
-            if (!NAME.matches(name) || ScriptNames.clash(context, name) != null) {
+            if (!NAME.matches(name) || name in com.mtwabpin.kolahal.terminal.CommandProcessor.RESERVED_NAMES) {
                 skipped += fileName
                 continue
             }
@@ -156,6 +152,8 @@ class ScriptFolder(private val context: Context) {
 
     private companion object {
         const val KEY_URI = "uri"
+        /** The files this phone's last export wrote. */
+        private const val KEY_EXPORTED = "exported"
         const val MANIFEST = "kolahal.json"
         const val MIME_TEXT = "application/octet-stream"
         val NAME = Regex("^[a-z0-9_-]{1,40}$")

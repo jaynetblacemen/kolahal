@@ -21,7 +21,7 @@ package com.mtwabpin.kolahal.script
  */
 object ScriptMeta {
     private val command = Regex("""^\s*(--|//)\s*@command\b""", RegexOption.MULTILINE)
-    private val desc = Regex("""^\s*(--|//)\s*@desc\s+(.+)$""", RegexOption.MULTILINE)
+    private val desc = Regex("""^\s*(--|//)[ \t]*@desc[ \t]+(.+)$""", RegexOption.MULTILINE)
     private val usageLine = Regex("""^\s*(--|//)\s*@usage\b[ \t]*(.*)$""", RegexOption.MULTILINE)
     private val argRef = Regex("""\b(args|argline)\b""")
     private val on = Regex("""^\s*(--|//)\s*@on\b(.*)$""", RegexOption.MULTILINE)
@@ -47,7 +47,7 @@ object ScriptMeta {
 
     fun isCommand(code: String) = command.containsMatchIn(code)
 
-    fun description(code: String): String? = desc.find(code)?.groupValues?.get(2)?.trim()
+    fun description(code: String): String? = desc.find(code)?.groupValues?.get(2)?.trim()?.ifEmpty { null }
 
     /** The text after a `@<name>` directive, or null when there is none (or it is empty). */
     private fun value(code: String, name: String): String? =

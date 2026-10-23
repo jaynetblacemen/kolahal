@@ -69,6 +69,8 @@ class ScriptLibrary(private val context: Context) {
      * later app update can tell "update available" from "you edited it".
      */
     fun install(entry: Entry): Script {
+        // A command script by a built-in's name could never run by it.
+        require(entry.name !in com.mtwabpin.kolahal.terminal.CommandProcessor.RESERVED_NAMES) { "'${entry.name}' is a built-in command" }
         val repo = ScriptRepository.get(context)
         val code = code(entry)
         val existing = repo.byName(entry.name)

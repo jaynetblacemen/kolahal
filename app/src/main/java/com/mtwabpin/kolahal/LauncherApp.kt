@@ -96,6 +96,20 @@ class LauncherApp : Application(), Configuration.Provider {
                 }
             }
         }
+        scope.launch {
+            config.version.map { config[Keys.CLOCK_24H] }.distinctUntilChanged().collect {
+                runCatching { com.mtwabpin.kolahal.data.SharedSettings.set(this@LauncherApp, Keys.CLOCK_24H, it) }
+            }
+        }
+        // A new time zone, or the clock set by hand, moves every daily time: anchor them again.
+        ContextCompat.registerReceiver(this, object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                scope.launch { runCatching { ScriptScheduler.syncAll(this@LauncherApp) } }
+            }
+        }, IntentFilter().apply {
+            addAction(Intent.ACTION_TIMEZONE_CHANGED)
+            addAction(Intent.ACTION_TIME_CHANGED)
+        }, ContextCompat.RECEIVER_NOT_EXPORTED)
         // Wi-Fi only or not changes every feed's schedule, whether set, reset or restored.
         scope.launch {
             config.version.map { config[Keys.FEEDS_WIFI] }.distinctUntilChanged().drop(1).collect {

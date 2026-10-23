@@ -35,6 +35,13 @@ class LogTrimTest {
         assertEquals("$token output 100", outputs.first())
     }
 
+    @Test fun aTrimThatRemovesLinesTellsHomeToReload() {
+        repeat(510) { logs.add(LogKind.OUTPUT, "$token output $it") }
+        val before = logs.structure
+        logs.trim(keep = 500)
+        assertTrue(logs.structure > before)
+    }
+
     @Test fun theTrimUsesTheSettingEveryProcessReads() {
         logs.keepLines = 500
         assertEquals(500, logs.keepLines)

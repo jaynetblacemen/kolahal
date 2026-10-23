@@ -282,13 +282,10 @@ class LogRepository private constructor(private val context: Context) {
         trim(maxAgeDays = maxAgeDays)
     }
 
-    /**
-     * `log.keep-lines`, for every process. The :script process doesn't see settings changes, so home
-     * copies the setting here, into the database both read.
-     */
+    /** `log.keep-lines`, for every process ([SharedSettings]). */
     var keepLines: Int
-        get() = KvStore(context, KV_SCOPE).get(KEY_KEEP_LINES)?.toIntOrNull() ?: Keys.LOG_KEEP_LINES.default
-        set(value) = KvStore(context, KV_SCOPE).set(KEY_KEEP_LINES, value.toString())
+        get() = SharedSettings.get(context, Keys.LOG_KEEP_LINES)
+        set(value) = SharedSettings.set(context, Keys.LOG_KEEP_LINES, value)
 
     /**
      * Keeps the newest [keep] lines and, counted apart, the newest [keep] typed commands, so a script
@@ -298,16 +295,17 @@ class LogRepository private constructor(private val context: Context) {
     fun trim(keep: Int = keepLines, maxAgeDays: Int? = null) {
         val w = db.writableDatabase
         val command = LogKind.COMMAND.key
-        w.execSQL(
-            "DELETE FROM logs WHERE kind != ? AND id <= (SELECT id FROM logs WHERE kind != ? ORDER BY id DESC LIMIT 1 OFFSET ?)",
-            arrayOf<Any>(command, command, keep),
-        )
-        var removed = changes(w)
-        w.execSQL(
-            "DELETE FROM logs WHERE kind = ? AND id <= (SELECT id FROM logs WHERE kind = ? ORDER BY id DESC LIMIT 1 OFFSET ?)",
-            arrayOf<Any>(command, command, keep),
-        )
-        removed += changes(w)
+        // The count comes from the statement itself: `SELECT changes()` would run on another
+        // connection of the pool and always say 0, and home would never reload.
+        fun delete(kind: String) = w.compileStatement(
+            "DELETE FROM logs WHERE kind $kind ? AND id <= (SELECT id FROM logs WHERE kind $kind ? ORDER BY id DESC LIMIT 1 OFFSET ?)",
+        ).use { st ->
+            st.bindString(1, command)
+            st.bindString(2, command)
+            st.bindLong(3, keep.toLong())
+            st.executeUpdateDelete()
+        }
+        var removed = delete("!=") + delete("=")
         if (maxAgeDays != null) {
             val cutoff = System.currentTimeMillis() - maxAgeDays * 86_400_000L
             // Commands are kept (↑ history); only their output ages out.
@@ -315,9 +313,6 @@ class LogRepository private constructor(private val context: Context) {
         }
         if (removed > 0) restructured()
     }
-
-    private fun changes(w: android.database.sqlite.SQLiteDatabase): Int =
-        w.rawQuery("SELECT changes()", null).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
 
     fun maxId(): Long = db.readableDatabase.rawQuery("SELECT COALESCE(MAX(id), 0) FROM logs", null)
         .use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
@@ -390,8 +385,6 @@ class LogRepository private constructor(private val context: Context) {
             return 2 + values.entries.sumOf { (k, v) -> quoted(k) + 1 + quoted(v) } + maxOf(values.size - 1, 0)
         }
 
-        private const val KV_SCOPE = "logs"
-        private const val KEY_KEEP_LINES = "keep-lines"
         private const val KEY_CLEARED_UP_TO = "cleared_up_to"
         private const val KEY_HIDDEN_UP_TO = "hidden_up_to"
         private const val KEY_TRIMMED_AT = "trimmed_at"
