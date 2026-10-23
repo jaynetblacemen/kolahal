@@ -180,6 +180,7 @@ class LuaEngine : ScriptEngine {
             "underline" to { l: Lua -> l.styled(StyledText.Style.UNDERLINE) },
             "strike" to { l: Lua -> l.styled(StyledText.Style.STRIKE) },
             "code" to { l: Lua -> l.styled(StyledText.Style.CODE) },
+            "color" to { l: Lua -> l.pushValue(StyledText.colour(colourNamed(l.toString(1)), l.toString(2) ?: "nil")); 1 },
             "list" to { l: Lua ->
                 val items = (if (!l.isTable(1)) null else when (val v = Json.normalizeLua(l.toMap(1))) {
                     is List<*> -> v.map { it.toString() }
@@ -204,6 +205,10 @@ class LuaEngine : ScriptEngine {
 
     private fun Lua.checkString(index: Int): String =
         toString(index) ?: throw IllegalArgumentException("argument #$index must be a string")
+
+    /** `fmt.color(role, text)`'s role, or an error naming the ones there are. */
+    private fun colourNamed(role: String?): StyledText.Colour = role?.let(StyledText.Colour::named)
+        ?: throw IllegalArgumentException("fmt.color: no colour '$role'; use ${StyledText.Colour.entries.joinToString { it.role }}")
 
     /** `fmt.<style>(text)`: the text with [style] on it. */
     private fun Lua.styled(style: StyledText.Style): Int {

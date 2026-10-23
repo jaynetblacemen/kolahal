@@ -15,7 +15,10 @@ import java.io.File
  */
 object CustomThemes {
     /** Colour roles, in the builder's order. */
-    val ROLES = listOf("background", "surface", "text", "muted", "accent", "link", "info", "script", "error", "personal", "work", "private")
+    val ROLES = listOf("background", "surface", "text", "muted", "accent", "link", "info", "script", "error", "good", "warn", "personal", "work", "private")
+
+    /** Roles added later, and the role a theme made before them takes them from. */
+    private val LATER = mapOf("good" to "personal", "warn" to "work")
 
     /** A theme's name: lowercase letters, digits and hyphens, like the built-in ones. */
     val NAME = Regex("[a-z0-9][a-z0-9-]{0,23}")
@@ -30,9 +33,20 @@ object CustomThemes {
     fun light(colors: Map<String, Int>): Map<String, Int>? =
         ROLES.associateWith { colors[LIGHT + it] ?: return null }
 
-    /** [colors] with a light version only if it is whole: half of one would be read as none. */
-    private fun whole(colors: Map<String, Int>): Map<String, Int> =
-        colors.filterKeys { it in ROLES } + (light(colors)?.mapKeys { LIGHT + it.key } ?: emptyMap())
+    /**
+     * [colors] with a light version only if it is whole: half of one would be read as none. Roles
+     * added later ([LATER]) that a theme doesn't have yet come from their nearest role, in both versions.
+     */
+    private fun whole(colors: Map<String, Int>): Map<String, Int> {
+        val filled = HashMap(colors)
+        for ((role, from) in LATER) for (prefix in listOf("", LIGHT)) {
+            if (prefix + role !in filled) filled[prefix + from]?.let { filled[prefix + role] = it }
+        }
+        return filled.filterKeys { it in ROLES } + (light(filled)?.mapKeys { LIGHT + it.key } ?: emptyMap())
+    }
+
+    /** [colors] as a whole theme ([whole]), or null when a role of its dark version is missing. */
+    fun complete(colors: Map<String, Int>): Map<String, Int>? = whole(colors).takeIf { c -> ROLES.all { it in c } }
 
     /** A key a theme's file may hold: a role of either version. */
     fun isKey(key: String) = key in ROLES || (key.startsWith(LIGHT) && key.removePrefix(LIGHT) in ROLES)
@@ -57,8 +71,8 @@ object CustomThemes {
     }
 
     fun save(context: Context, name: String, colors: Map<String, Int>) {
-        require(NAME.matches(name) && ROLES.all { it in colors }) { "not a theme: $name" }
-        val kept = whole(colors)
+        val kept = complete(colors)
+        require(NAME.matches(name) && kept != null) { "not a theme: $name" }
         File(dir(context).apply { mkdirs() }, "$name.json").writeText(encode(kept))
         _themes.value = _themes.value + (name to kept)
     }
@@ -77,7 +91,7 @@ object CustomThemes {
     /** The colours in [text] ([encode]'s form); null unless every role of the dark version is there. */
     fun decode(text: String): Map<String, Int>? {
         val found = ROLE_COLOUR.findAll(text).associate { it.groupValues[1] to (0xFF000000 or it.groupValues[2].toLong(16)).toInt() }
-        return whole(found).takeIf { colors -> ROLES.all { it in colors } }
+        return complete(found)
     }
 
     /** "#0B0D0B" (no alpha: themes are opaque). */

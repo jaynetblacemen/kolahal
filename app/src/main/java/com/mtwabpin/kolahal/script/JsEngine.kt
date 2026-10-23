@@ -126,6 +126,12 @@ class JsEngine : ScriptEngine {
             function("underline") { args -> StyledText.wrap(StyledText.Style.UNDERLINE, args.str(0) ?: "undefined") }
             function("strike") { args -> StyledText.wrap(StyledText.Style.STRIKE, args.str(0) ?: "undefined") }
             function("code") { args -> StyledText.wrap(StyledText.Style.CODE, args.str(0) ?: "undefined") }
+            function("color") { args ->
+                val role = args.str(0)
+                val colour = role?.let(StyledText.Colour::named)
+                    ?: throw IllegalArgumentException("fmt.color: no colour '$role'; use ${StyledText.Colour.entries.joinToString { it.role }}")
+                StyledText.colour(colour, args.str(1) ?: "undefined")
+            }
             function("list") { args ->
                 val items = args.getOrNull(0) as? List<*> ?: throw IllegalArgumentException("fmt.list expects an array of items")
                 StyledText.list(items.map(::render), numbered = args.getOrNull(1) == true)

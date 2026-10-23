@@ -33,7 +33,7 @@ class ThemeVersionsTest {
             val p = Palettes.named(name, dark = false)
             assertTrue("$name text", contrast(p.fg, p.bg) >= 7f)
             assertTrue("$name muted", contrast(p.dim, p.bg) >= 4f)
-            for ((role, c) in listOf("accent" to p.prompt, "error" to p.error, "info" to p.info, "link" to p.link, "script" to p.script, "work" to p.work, "private" to p.private)) {
+            for ((role, c) in listOf("accent" to p.prompt, "error" to p.error, "info" to p.info, "link" to p.link, "script" to p.script, "work" to p.work, "private" to p.private, "good" to p.good, "warn" to p.warn)) {
                 assertTrue("$name $role", contrast(c, p.bg) >= 3f)
             }
         }

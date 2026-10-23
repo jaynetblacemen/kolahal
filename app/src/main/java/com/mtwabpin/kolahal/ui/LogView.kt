@@ -484,8 +484,22 @@ private fun AnnotatedString.Builder.appendStyled(text: String, base: SpanStyle, 
 
 private fun AnnotatedString.Builder.appendSpans(spans: List<StyledText.Span>, base: SpanStyle, strong: Color?) {
     for (span in spans) {
-        if (span.styles.isEmpty()) withStyle(base) { append(span.text) } else withStyle(base.merge(styleOf(span.styles, strong))) { append(span.text) }
+        if (span.styles.isEmpty() && span.colour == null) withStyle(base) { append(span.text) }
+        else withStyle(base.merge(styleOf(span.styles, strong)).merge(SpanStyle(color = colourOf(span.colour)))) { append(span.text) }
     }
+}
+
+/** A script's colour by role, from the theme in use (its dark or light version). */
+private fun colourOf(colour: StyledText.Colour?): Color = when (colour) {
+    null -> Color.Unspecified
+    StyledText.Colour.ACCENT -> Term.prompt
+    StyledText.Colour.LINK -> Term.link
+    StyledText.Colour.INFO -> Term.info
+    StyledText.Colour.MUTED -> Term.dim
+    StyledText.Colour.TEXT -> Term.fg
+    StyledText.Colour.GOOD -> Term.palette.good
+    StyledText.Colour.WARN -> Term.palette.warn
+    StyledText.Colour.BAD -> Term.error
 }
 
 private fun styleOf(styles: Set<StyledText.Style>, strong: Color?): SpanStyle {

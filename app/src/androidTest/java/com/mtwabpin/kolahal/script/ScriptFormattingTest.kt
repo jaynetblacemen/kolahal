@@ -68,6 +68,17 @@ class ScriptFormattingTest {
         assertEquals("a b", lua("""fmt.plain(fmt.bold("a") .. " " .. fmt.code("b"))"""))
     }
 
+    @Test fun coloursByTheThemesRoles() {
+        lua("""log(fmt.color("good", "▲ 2%") .. " " .. fmt.color("bad", "▼ 1%"))""")
+        val spans = StyledText.lines(lines().single().text).single().spans
+        assertEquals(listOf(StyledText.Colour.GOOD, null, StyledText.Colour.BAD), spans.map { it.colour })
+        js("""log(fmt.color("warn", "low"))""")
+        assertEquals(StyledText.Colour.WARN, StyledText.lines(lines().last().text).single().spans.single().colour)
+        // No colour by value: the theme picks every colour.
+        val error = runCatching { lua("""fmt.color("#ff0000", "x")""") }.exceptionOrNull()?.message.orEmpty()
+        assertTrue(error, error.contains("no colour"))
+    }
+
     @Test fun javaScriptHasTheSame() {
         js("""md.log("*hi*", "1. a\n2. b"); log(fmt.bold("x"), fmt.list(["p", "q"])); log(fmt.plain(fmt.strike("s")))""")
         assertEquals(listOf("hi\n1. a\n2. b", "x\n• p\n• q", "s"), lines().map { it.shownText })

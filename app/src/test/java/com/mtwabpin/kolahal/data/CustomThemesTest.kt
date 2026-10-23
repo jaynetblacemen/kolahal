@@ -46,6 +46,15 @@ class CustomThemesTest {
         assertTrue(CustomThemes.isKey("light-background"))
     }
 
+    /** Made before good and warn: they come from personal and work, in both versions. */
+    @Test fun aThemeFromBeforeGoodAndWarnGetsThem() {
+        val old = colors - "good" - "warn"
+        val read = CustomThemes.decode(CustomThemes.encode(colors).lines().filterNot { "\"good\"" in it || "\"warn\"" in it }.joinToString("\n"))!!
+        assertEquals(old.getValue("personal"), read.getValue("good"))
+        assertEquals(old.getValue("work"), read.getValue("warn"))
+        assertEquals(colors.keys, CustomThemes.complete(old)!!.keys)
+    }
+
     @Test fun hexCodes() {
         assertEquals("#0B0D0B", CustomThemes.hex(0xFF0B0D0B.toInt()))
         assertEquals(0xFF8FD18A.toInt(), CustomThemes.parseHex("#8fd18a"))

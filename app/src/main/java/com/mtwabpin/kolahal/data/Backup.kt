@@ -89,7 +89,7 @@ class Backup(private val context: Context) {
                 hex?.toString()?.let(CustomThemes::parseHex)?.let { role.toString() to it }
             }?.toMap()?.filterKeys(CustomThemes::isKey)
             val n = name?.toString()?.lowercase()
-            if (n != null && CustomThemes.NAME.matches(n) && n !in Keys.BUILT_IN_THEMES && colors != null && CustomThemes.ROLES.all { it in colors }) {
+            if (n != null && CustomThemes.NAME.matches(n) && n !in Keys.BUILT_IN_THEMES && colors != null && CustomThemes.complete(colors) != null) {
                 CustomThemes.save(context, n, colors)
             } else skipped += "theme $name"
         }

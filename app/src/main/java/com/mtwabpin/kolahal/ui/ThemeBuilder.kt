@@ -88,6 +88,8 @@ private val ROLE_TEXT = mapOf(
     "info" to ("Info" to "Notes from Kolahal"),
     "script" to ("Script output" to "Lines your scripts write"),
     "error" to ("Errors" to "Errors and failed commands"),
+    "good" to ("Good" to "Scripts' up, done and passing: fmt.color(\"good\", …)"),
+    "warn" to ("Warning" to "Scripts' warnings, short of an error: fmt.color(\"warn\", …)"),
     "personal" to ("Personal apps" to "Your own apps"),
     "work" to ("Work apps" to "Apps in a work profile, marked [W]"),
     "private" to ("Private space" to "Apps in the private space, marked [S]"),

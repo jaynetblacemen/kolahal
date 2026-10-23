@@ -146,8 +146,14 @@ the line is read as a style.
 | `fmt.underline(text)` | underlined |
 | `fmt.strike(text)` | struck through |
 | `fmt.code(text)` | on a shaded chip, in the terminal font |
+| `fmt.color(role, text)` | in one of the theme's colours: `accent`, `link`, `info`, `muted`, `text`, `good`, `warn` or `bad` |
 | `fmt.list(items, numbered?)` | one item per line, bulleted, or numbered `1.`, `2.` … with `true`: for a body |
 | `fmt.plain(text)` | the text without its styles |
+
+Colours go by role, never by value: the theme picks each one, in its dark and its light version,
+so a line reads on every theme. `good` is for up, done or passing, `warn` for something short of
+an error, `bad` for down or failed (the theme's error colour). Let the text say it too (`▲`, `▼`,
+"down"): a colour alone is easy to miss.
 
 Styles show only in the log: notifications, header lines, Copy text and search see the plain text.
 A styled string is ordinary text with invisible marks around the styled parts, so shorten text
@@ -159,12 +165,14 @@ before styling it; cut in the middle of a mark, a style runs on to the end of th
 ```lua
 log(fmt.bold(item.score) .. " · " .. item.title, nil, { url = item.link })
 log("Today", fmt.list({ "standup " .. fmt.code("10:00"), "review" }, true))
+log("BTC 67,120 USD " .. fmt.color("good", "▲ 1.2%"))
 ```
 </TabItem>
 <TabItem label="JavaScript">
 ```js
 log(`${fmt.bold(item.score)} · ${item.title}`, null, { url: item.link });
 log("Today", fmt.list([`standup ${fmt.code("10:00")}`, "review"], true));
+log(`BTC 67,120 USD ${fmt.color("good", "▲ 1.2%")}`);
 ```
 </TabItem>
 </Tabs>

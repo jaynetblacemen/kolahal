@@ -39,6 +39,15 @@ class StyledTextTest {
         assertFalse(StyledText.plain(half).any { it.isSurrogate() })
     }
 
+    @Test fun coloursByRoleNest() {
+        val text = StyledText.colour(StyledText.Colour.BAD, "down " + StyledText.colour(StyledText.Colour.MUTED, "(2m)") + " now")
+        val spans = StyledText.lines(text).single().spans
+        assertEquals(listOf(StyledText.Colour.BAD, StyledText.Colour.MUTED, StyledText.Colour.BAD), spans.map { it.colour })
+        assertEquals("down (2m) now", StyledText.plain(text))
+        assertEquals(StyledText.Colour.GOOD, StyledText.Colour.named(" Good "))
+        assertEquals(null, StyledText.Colour.named("#ff0000"))
+    }
+
     @Test fun lists() {
         val bullets = StyledText.list(listOf("milk", "bread"), numbered = false)
         assertEquals("• milk\n• bread", StyledText.plain(bullets))
