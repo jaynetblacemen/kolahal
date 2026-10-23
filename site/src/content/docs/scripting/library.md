@@ -50,13 +50,14 @@ line to drop the points filter.
 ## releases
 
 **GitHub releases.** Watches repositories through their release Atom feeds and notifies about each
-new release. The first check of a repo only records what exists, so you aren't flooded.
+new release: Kolahal, Neovim and Termux to start with. The first check of a repo only records what
+exists, so you aren't flooded.
 
 ```sh
 releases                     # check now
 releases add neovim/neovim
 releases rm neovim/neovim
-releases list
+releases list                # the watched repos; tap one for its releases
 ```
 
 ## reddit

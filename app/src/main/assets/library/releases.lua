@@ -16,7 +16,7 @@
 -- The first check of a repo only records what exists, so you are not
 -- flooded with old releases.
 
-local DEFAULT_REPOS = { "neovim/neovim", "termux/termux-app" }
+local DEFAULT_REPOS = { "mtwabpin/kolahal", "neovim/neovim", "termux/termux-app" }
 
 -- ---------------------------------------------------------------- helpers
 
@@ -46,7 +46,11 @@ local repos = loadRepos()
 
 if cmd == "list" then
   if #repos == 0 then return "no repos watched; try: releases add owner/repo" end
-  return table.concat(repos, "\n")
+  -- A line per repo, each alike; tapping one opens its releases.
+  for _, repo in ipairs(repos) do
+    log(repo, nil, { url = "https://github.com/" .. repo .. "/releases" })
+  end
+  return
 end
 
 if cmd == "add" or cmd == "rm" then
