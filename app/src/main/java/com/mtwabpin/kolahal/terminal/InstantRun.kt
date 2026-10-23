@@ -30,7 +30,7 @@ object InstantRun {
         "cls" to "clear", "reboot" to "restart", "notifications-feed" to "notifs", "web" to "url", "g" to "search",
         "youtube" to "yt", "map" to "maps", "store" to "play", "screentime" to "usage", "dial" to "call",
         "text" to "sms", "contact" to "contacts", "prefs" to "settings", "time" to "date", "set" to "config",
-        "vol" to "volume", "bluetooth" to "bt",
+        "vol" to "volume", "bluetooth" to "bt", "neofetch" to "fetch", "fastfetch" to "fetch",
     )
 
     fun canonical(head: String): String = head.lowercase().let { SYNONYMS[it] ?: it }

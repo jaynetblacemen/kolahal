@@ -108,6 +108,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 in AppCommands.NAMES -> appCommands.run(name, args)
                 "help", "?" -> help()
                 "unlocks" -> unlocks(args)
+                "fetch", "neofetch", "fastfetch" -> fetch()
                 "clear", "cls" -> clear(args)
                 "log" -> logFilter(args)
                 "fresh" -> ui.freshScreen()
@@ -448,6 +449,13 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         }
     }
 
+    /** `fetch`: this phone and Kolahal at a glance ([Fetch]), lined up in the terminal font. */
+    private fun fetch() {
+        val (device, rows) = Fetch.facts(context)
+        val at = System.currentTimeMillis()
+        logs.addAll(Fetch.layout(device, rows, Fetch.columns(context)).map { LogRepository.Pending(LogKind.OUTPUT, it, null, LogContext(LogContext.ALIGNED), at) })
+    }
+
     /** `clear` screen · `clear history` ↑ recall · `clear all` everything (log + history). */
     private fun clear(args: List<String>) {
         when (args.firstOrNull()) {
@@ -543,6 +551,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("work", "work [on|off|status]", "Pause / resume the work profile"),
             CommandSpec("private", "private [on|off|status]", "Lock / unlock private space"),
             CommandSpec("unlocks", "unlocks [<days>]", "Unlock counts"),
+            CommandSpec("fetch", "fetch", "This phone and Kolahal at a glance, fastfetch style"),
             CommandSpec("script", "script <sub> <name>", "Subcommands: ls lib install get new edit run every at notify on off access allow deny secret triggers mv rm cat dir export import"),
             CommandSpec("=", "= <expr>", "Calculator · = 5 km in mi · = 72 f to c · = 100 usd in eur"),
             CommandSpec("lua", "lua <code>", "Evaluate Lua 5.4"),
