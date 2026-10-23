@@ -120,3 +120,106 @@ class CompleterTest {
         assertTrue(idle.toString(), idle.size <= config[Keys.SUGGESTIONS] && idle.all { it is Suggestion.App })
     }
 }
+
+/** The completions review (0.4.3): synonyms, ordering, case, what each argument offers, icons. */
+@RunWith(AndroidJUnit4::class)
+class CompleterReviewTest {
+    private val context = InstrumentationRegistry.getInstrumentation().targetContext
+    private val config = Config.get(context)
+    private val apps = AppRepository.get(context)
+
+    private var history = emptyList<String>()
+    private var todos = emptyList<Todo>()
+    private var library = listOf("hn", "xkcd")
+    private var shared = listOf("moon")
+    private val completer = Completer(context, object : Completer.Data {
+        override val history get() = this@CompleterReviewTest.history
+        override val scripts = listOf(
+            Script(1, "ona", com.mtwabpin.kolahal.data.ScriptLang.LUA, "-- @command\n-- @desc Says hi\nreturn 1", 0, true, false, null, null),
+            Script(2, "offb", com.mtwabpin.kolahal.data.ScriptLang.LUA, "return 1", 0, false, false, null, null),
+        )
+        override val commandNames = listOf("ona")
+        override val scriptUsages = emptyMap<String, String>()
+        override val scriptDescriptions = mapOf("ona" to "Says hi")
+        override val statusNames = emptySet<String>()
+        override val feeds = emptyList<com.mtwabpin.kolahal.feeds.FeedInfo>()
+        override val todos get() = this@CompleterReviewTest.todos
+        override val notes = emptyList<com.mtwabpin.kolahal.productivity.Note>()
+        override val reminders = emptyList<com.mtwabpin.kolahal.productivity.Reminder>()
+        override val libraryNames get() = library
+        override val sharedNames get() = shared
+    })
+
+    @Before fun setUp() {
+        apps.refresh()
+        val deadline = System.currentTimeMillis() + 5_000
+        while (apps.apps.value.isEmpty() && System.currentTimeMillis() < deadline) Thread.sleep(50)
+    }
+
+    @After fun tearDown() = Keys.ALL.forEach(config::reset)
+
+    private fun rows(text: String) = completer.suggestions(text).filterIsInstance<Suggestion.Completion>()
+    private fun lines(text: String) = rows(text).map { it.replacement.trim() }
+    private fun labels(text: String) = completer.suggestions(text).map { it.label }
+
+    @Test fun synonymsCompleteLikeTheirCommandAndKeepTheirSpelling() {
+        assertTrue(lines("ls wor").toString(), "ls work" in lines("ls wor"))
+        assertTrue(lines("cls hi").toString(), "cls history" in lines("cls hi"))
+        assertTrue(lines("screentime ").toString(), "screentime 7" in lines("screentime "))
+    }
+
+    @Test fun aWholeCommandsOptionsComeBeforeLongerCommands() {
+        val first = completer.suggestions("feed").first()
+        assertEquals("feed add", first.label)
+        assertTrue(labels("feed").toString(), "feeds" in labels("feed"))
+    }
+
+    /** Among the commands; an app Enter would launch still comes before them. */
+    @Test fun commandsUsedLatelyComeFirst() {
+        history = listOf("todo milk", "help")
+        assertEquals("todo", rows("t").first().label)
+        history = emptyList()
+        assertEquals("torch", rows("t").first().label)
+    }
+
+    @Test fun namesMatchInAnyCase() {
+        assertTrue(labels("theme Am").toString(), "amber" in labels("theme Am"))
+        assertTrue(labels("config set Font.S").toString(), "font.size" in labels("config set Font.S"))
+        assertTrue(lines("script every ona ").toString(), "script every ona 1h" in lines("script every ona "))
+    }
+
+    @Test fun scriptSubcommandsOfferWhatTheyTake() {
+        assertEquals(listOf("script install xkcd"), lines("script install x"))
+        assertEquals(listOf("script get moon"), lines("script get m"))
+        assertTrue(lines("script ls ").isEmpty())
+        assertEquals(listOf("script on offb"), lines("script on "))
+        assertEquals(listOf("script off ona"), lines("script off "))
+        assertTrue(lines("script notify ona ").containsAll(listOf("script notify ona on", "script notify ona off")))
+    }
+
+    @Test fun valuesAfterAnId() {
+        assertTrue(lines("feed notify 3 ").containsAll(listOf("feed notify 3 on", "feed notify 3 off")))
+        assertTrue(lines("feed every 3 ").toString(), "feed every 3 30m" in lines("feed every 3 "))
+        assertTrue(lines("config set gesture.double-tap ").containsAll(listOf("config set gesture.double-tap lock", "config set gesture.double-tap none")))
+        assertTrue(lines("remind ").toString(), "remind exact" in lines("remind "))
+        assertTrue(labels("agenda ").toString(), labels("agenda ").containsAll(listOf("today", "3 days")))
+    }
+
+    @Test fun staleNumberedLinesAndCoveredLinesAreLeftOut() {
+        val now = System.currentTimeMillis()
+        todos = listOf(Todo(1, "milk", false, now, null))
+        history = listOf("todo done 3", "todo done 1")
+        assertEquals(listOf("todo done 1"), lines("todo done "))
+        val app = apps.apps.value.first { it.profile.kind == ProfileKind.PERSONAL && it.label.length >= 4 }
+        history = listOf("open ${app.label.lowercase()}")
+        assertTrue(lines("open ${app.label.take(4)}").none { it.equals("open ${app.label}", ignoreCase = true) })
+    }
+
+    @Test fun personalAppsCarryNoTagAndRowsHaveIcons() {
+        val app = apps.apps.value.first { it.profile.kind == ProfileKind.PERSONAL && it.label.length >= 4 }
+        assertTrue(labels("info ${app.label.take(4)}").toString(), app.label in labels("info ${app.label.take(4)}"))
+        assertTrue(rows("log only ").all { it.icon == com.mtwabpin.kolahal.R.drawable.ic_visibility })
+        assertEquals("Says hi", rows("on").first { it.label == "ona" }.help)
+        assertEquals(com.mtwabpin.kolahal.R.drawable.ic_code, rows("on").first { it.label == "ona" }.icon)
+    }
+}

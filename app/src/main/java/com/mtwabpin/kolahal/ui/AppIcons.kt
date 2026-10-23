@@ -81,9 +81,13 @@ fun AppIcon(app: AppEntry, size: Dp, modifier: Modifier = Modifier) {
  * so every label starts in the same column. Drawn in the prompt colour, like the `$` it replaces.
  */
 @Composable
-fun CommandIcon(size: Dp, modifier: Modifier = Modifier) {
+fun CommandIcon(size: Dp, modifier: Modifier = Modifier) = KindIcon(com.mtwabpin.kolahal.R.drawable.ic_stat_terminal, size, modifier)
+
+/** A suggestion's icon for what kind of thing it is (a feed, a script, a contact), in the prompt colour like [CommandIcon]. */
+@Composable
+fun KindIcon(id: Int, size: Dp, modifier: Modifier = Modifier) {
     androidx.compose.material3.Icon(
-        androidx.compose.ui.res.painterResource(com.mtwabpin.kolahal.R.drawable.ic_stat_terminal),
+        androidx.compose.ui.res.painterResource(id),
         contentDescription = null,
         tint = Term.prompt,
         modifier = modifier.size(size),

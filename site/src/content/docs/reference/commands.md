@@ -14,7 +14,7 @@ optional, and `a|b` means one of.
 | --- | --- | --- |
 | `open <app>[:shortcut] [-w\|-p\|-s]` | `launch` | launch an app, or one of its shortcuts (`open maps:home`) |
 | `shortcuts <app>` | | an app's launcher shortcuts; tap one to start it |
-| `apps [work\|personal\|private\|hidden] [-l]` | `ls` | app grid (`-l`: one per line; `-a`: include hidden) |
+| `apps [work\|personal\|private\|hidden] [-l\|-a]` | `ls` | app grid (`-l`: one per line; `-a`: include hidden) |
 | `info <app> [-w]` | | open app info |
 | `uninstall <app> [-w]` | | uninstall an app |
 | `hide <app> [-w]` | | hide an app from lists and search |
@@ -50,9 +50,9 @@ optional, and `a|b` means one of.
 
 | Usage | Aliases | Description |
 | --- | --- | --- |
-| `feed [add <url>\|rm\|fetch\|read\|open\|notify\|every] [<id>]` | `feeds` | RSS/Atom subscriptions with unread counts |
+| `feed [add <url>\|ls\|rm\|fetch\|read\|all\|open\|notify\|every\|on\|off] [<id>]` | `feeds` | RSS/Atom subscriptions with unread counts |
 | `rss <url>` | | fetch a feed into the log once |
-| `notifs [all\|enable\|mute <app>\|muted\|clear]` | `notifications-feed` | your notifications in the terminal |
+| `notifs [all\|enable\|mute <app>\|unmute <app>\|muted\|log [on\|off]\|clear]` | `notifications-feed` | your notifications in the terminal |
 
 `feed` subcommands:
 

@@ -405,12 +405,12 @@ class ControlCommands(private val context: Context) {
             CommandSpec("next", "next", "Next track"),
             CommandSpec("prev", "prev", "Previous track"),
             CommandSpec("torch", "torch [on|off]", "Flashlight (no args toggles)"),
-            CommandSpec("volume", "volume [0-100|up|down|mute]", "Media volume"),
+            CommandSpec("volume", "volume [0-100|up|down|mute|unmute]", "Media volume"),
             CommandSpec("ring", "ring [normal|vibrate|silent]", "Ringer mode (silent needs DND access)"),
-            CommandSpec("dnd", "dnd [on|off|alarms|none|access]", "Do Not Disturb (no args toggles)"),
-            CommandSpec("brightness", "brightness [0-100|up|down|auto]", "Screen brightness (needs modify system settings)"),
-            CommandSpec("rotate", "rotate [on|off]", "Auto-rotate (no args toggles)"),
-            CommandSpec("screen-timeout", "screen-timeout [30s|1m|5m…]", "Screen off timeout"),
+            CommandSpec("dnd", "dnd [on|off|alarms|none|status|access]", "Do Not Disturb (no args toggles)"),
+            CommandSpec("brightness", "brightness [0-100|up|down|auto|access]", "Screen brightness (needs modify system settings)"),
+            CommandSpec("rotate", "rotate [on|off|status]", "Auto-rotate (no args toggles)"),
+            CommandSpec("screen-timeout", "screen-timeout [15s|30s|1m|2m|5m|10m|30m]", "Screen off timeout"),
             CommandSpec("wifi", "wifi", "Wi-Fi panel"),
             CommandSpec("bt", "bt", "Bluetooth settings"),
             CommandSpec("nfc", "nfc", "NFC panel"),
@@ -438,6 +438,6 @@ class ControlCommands(private val context: Context) {
 
         /** Argument completions for the suggestion strip: (label, replacement line). */
         fun suggest(head: String, arg: String): List<Pair<String, String>> =
-            ARGS[head].orEmpty().filter { it.startsWith(arg) && it != arg }.map { it to "$head $it" }
+            ARGS[head].orEmpty().filter { it.startsWith(arg, ignoreCase = true) && !it.equals(arg, ignoreCase = true) }.map { it to "$head $it" }
     }
 }

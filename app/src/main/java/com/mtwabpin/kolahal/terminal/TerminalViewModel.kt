@@ -106,7 +106,10 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         override val scripts get() = scriptCache.value
         override val commandNames get() = _commandNames.value
         override val scriptUsages get() = this@TerminalViewModel.scriptUsages
+        override val scriptDescriptions get() = this@TerminalViewModel.scriptDescriptions
         override val statusNames get() = _statuses.value.keys
+        override val libraryNames get() = this@TerminalViewModel.libraryNames
+        override val sharedNames get() = _shared.value.entries.map { it.name }
         override val feeds get() = feedCache
         override val todos get() = todoCache
         override val notes get() = noteCache
@@ -124,9 +127,16 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** Usage lines of the command scripts that have a known one (see [ScriptMeta.usage]), set with [commandNames]. */
     @Volatile private var scriptUsages: Map<String, String> = emptyMap()
 
+    /** `@desc` of the command scripts that have one, for their suggestion rows; set with [commandNames]. */
+    @Volatile private var scriptDescriptions: Map<String, String> = emptyMap()
+
+    /** The bundled library's script names, read once (`script install` completes them). */
+    private val libraryNames: List<String> by lazy { com.mtwabpin.kolahal.script.ScriptLibrary(context).entries.map { it.name } }
+
     private fun setCommandScripts(list: List<Script>) {
         val commands = list.filter { it.enabled && ScriptMeta.isCommand(it.code) }
         scriptUsages = commands.mapNotNull { s -> ScriptMeta.usage(s.code, s.name)?.let { s.name to it } }.toMap()
+        scriptDescriptions = commands.mapNotNull { s -> ScriptMeta.description(s.code)?.let { s.name to it } }.toMap()
         _commandNames.value = commands.map { it.name }
     }
 
@@ -870,7 +880,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         add(LogAction("Feeds", icon = icon(R.drawable.ic_rss)) { openScreen(Screen.FEEDS) })
         add(LogAction("Scripts", icon = icon(R.drawable.ic_code)) { openScreen(Screen.SCRIPTS) })
         if (com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE) {
-            add(LogAction("Lock screen", icon = icon(R.drawable.ic_power)) { if (!com.mtwabpin.kolahal.gesture.LockService.lock()) runCommand("lock") })
+            add(LogAction("Lock screen", icon = icon(R.drawable.ic_lock)) { if (!com.mtwabpin.kolahal.gesture.LockService.lock()) runCommand("lock") })
         }
     }
 

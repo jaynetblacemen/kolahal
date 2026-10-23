@@ -30,8 +30,18 @@ sealed interface Suggestion {
         override val key get() = "a:" + app.key
     }
 
-    /** [app]: the app this completion is about (`uninstall maps`, `open maps:…`), for its icon. */
-    data class Completion(override val label: String, val replacement: String, val app: AppEntry? = null) : Suggestion {
+    /**
+     * [app]: the app this completion is about (`uninstall maps`, `open maps:…`), for its icon; else
+     * [icon], a drawable for what kind of thing it is (a feed, a script, a contact), else the
+     * terminal glyph. [help]: shown beside it, when the command and config descriptions don't apply.
+     */
+    data class Completion(
+        override val label: String,
+        val replacement: String,
+        val app: AppEntry? = null,
+        val icon: Int? = null,
+        val help: String? = null,
+    ) : Suggestion {
         override val key get() = "c:" + replacement.trimEnd()
     }
 }

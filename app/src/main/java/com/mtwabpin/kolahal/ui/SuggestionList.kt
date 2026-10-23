@@ -29,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.key
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -44,6 +43,22 @@ import com.mtwabpin.kolahal.apps.ProfileKind
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.terminal.CommandProcessor
 import com.mtwabpin.kolahal.terminal.Suggestion
+
+/** A profile tag at the end of a completion's label (`Maps [W]`), as app rows show it. */
+private val LABEL_TAG = Regex(" \\[([PWSC])]$")
+
+/** [label] with a trailing profile tag in that profile's colour, small and bold, as app rows draw theirs. */
+@Composable
+private fun taggedLabel(label: String): androidx.compose.ui.text.AnnotatedString {
+    val tag = LABEL_TAG.find(label) ?: return androidx.compose.ui.text.AnnotatedString(label)
+    val kind = ProfileKind.entries.first { it.tag == tag.groupValues[1] }
+    return androidx.compose.ui.text.buildAnnotatedString {
+        append(label.substring(0, tag.range.first))
+        withStyle(androidx.compose.ui.text.SpanStyle(color = Term.profileColor(kind), fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp)) {
+            append(tag.value)
+        }
+    }
+}
 
 /** Short help shown next to a completion: a command's description, or a config key's. */
 internal fun completionHelp(label: String, replacement: String): String? {
@@ -126,18 +141,22 @@ fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppL
                         val firstLine = if (wrapHelp) Modifier.alignBy(FirstBaseline) else Modifier
                         // With icons on, a terminal icon takes the `$`'s place so labels line up with apps.
                         if (icons) {
-                            if (s.app != null) AppIcon(s.app, iconSize) else CommandIcon(iconSize)
+                            when {
+                                s.app != null -> AppIcon(s.app, iconSize)
+                                s.icon != null -> KindIcon(s.icon, iconSize)
+                                else -> CommandIcon(iconSize)
+                            }
                             Spacer(Modifier.width(8.dp))
                         } else {
                             Text("$ ", style = Term.text.copy(color = Term.prompt, fontWeight = FontWeight.Bold), modifier = firstLine)
                         }
                         Text(
-                            s.label,
+                            taggedLabel(s.label),
                             style = Term.text.copy(color = Term.fg, fontWeight = if (first) FontWeight.Bold else FontWeight.Normal),
                             maxLines = 1,
                             modifier = firstLine,
                         )
-                        val help = completionHelp(s.label, s.replacement)
+                        val help = s.help ?: completionHelp(s.label, s.replacement)
                         Text(
                             if (help == null) "" else if (wrapHelp) help else "  $help",
                             style = Term.text.copy(color = Term.dim, fontSize = (Term.fontSize - 2).sp),
@@ -225,7 +244,12 @@ private fun SuggestionChip(index: Int, s: Suggestion, onPick: (Suggestion) -> Un
                 val iconSize = minOf(Term.fontSize + 6, Term.chipHeight - 4).dp
                 if (icons) {
                     val app = (s as? Suggestion.App)?.app ?: (s as? Suggestion.Completion)?.app
-                    if (app != null) AppIcon(app, iconSize) else CommandIcon(iconSize)
+                    val kind = (s as? Suggestion.Completion)?.icon
+                    when {
+                        app != null -> AppIcon(app, iconSize)
+                        kind != null -> KindIcon(kind, iconSize)
+                        else -> CommandIcon(iconSize)
+                    }
                     Spacer(Modifier.width(6.dp))
                 }
                 // Commands carry the prompt's `$`, so "maps" (command) and "Maps" (app) read apart.
@@ -233,7 +257,7 @@ private fun SuggestionChip(index: Int, s: Suggestion, onPick: (Suggestion) -> Un
                 if (s is Suggestion.Completion && !icons) {
                     Text("$ ", style = Term.text.copy(color = Term.prompt, fontWeight = FontWeight.Bold))
                 }
-                Text(s.label, style = Term.text.copy(color = if (s is Suggestion.App) Term.fg else Term.dim))
+                Text(taggedLabel(s.label), style = Term.text.copy(color = if (s is Suggestion.App) Term.fg else Term.dim))
                 // The profile tag follows the name, as in the log.
                 if (tag != null && tag != ProfileKind.PERSONAL.tag) {
                     Spacer(Modifier.width(6.dp))
