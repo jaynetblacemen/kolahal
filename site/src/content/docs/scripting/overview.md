@@ -183,7 +183,10 @@ Scripts run in a separate `:script` process, so a crashing engine can't take dow
 - **60 seconds** per run, and a **64 MB** memory cap. In Lua, `string.rep`
   refuses results over 16 MB, and a run whose memory grows past 256 MB between checks is stopped
   (the script process is restarted).
-- At most **500 log lines** per run; past that one line says the rest weren't logged.
+- At most **500 log lines** and **256K characters** per run, error lines and each line's link and
+  other details included; past either, one line says the rest weren't logged.
+- At most **10 commands** per run with `launcher.run`. A script started by another script's
+  `launcher.run` can't send any, so scripts can't start each other without end.
 - **Lua**: a fresh state per run. `java`, `io`, `package`, `require`, `debug`, `dofile`, `loadfile`
   and process-level `os` functions are removed (`os.time`, `os.date`, `os.clock`, `os.difftime`
   remain), and only text chunks can be loaded. The timeout and memory cap are enforced by an

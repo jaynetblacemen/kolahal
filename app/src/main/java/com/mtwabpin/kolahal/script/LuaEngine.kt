@@ -47,7 +47,7 @@ class LuaEngine : ScriptEngine {
                         System.currentTimeMillis() > killAt -> "still running after timeout"
                         else -> null
                     } ?: continue
-                    runCatching { host.logError("${host.scriptName}: $reason, killed script process") }
+                    runCatching { host.logStopped("${host.scriptName}: $reason, killed script process") }
                     if (Application.getProcessName().endsWith(":script")) Process.killProcess(Process.myPid())
                     return@thread
                 }

@@ -127,7 +127,8 @@ red for errors. Hide it with `log.gutter off`. Output older than the latest comm
   "▴ N earlier lines" to bring it back. `fresh` does the same on demand (and isn't logged itself). Script lines that arrived while you were away stay visible.
 - When you scroll up, a ↓ button jumps back to the newest lines. Repeating a command with nothing
   printed in between (`settings`, `settings`) doesn't add another line.
-- Scroll to the top to load older entries. Entries older than `log.keep-days` (60) are trimmed.
+- Scroll to the top to load older entries. Entries older than `log.keep-days` (60), and past the
+  newest `log.keep-lines` (5000), are trimmed. Typed commands are counted apart, so ↑ history stays.
 - `clear` clears the screen, `clear history` forgets the ↑ history but keeps the log, and
   `clear all` removes both.
 

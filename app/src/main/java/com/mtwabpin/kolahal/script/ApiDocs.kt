@@ -82,7 +82,7 @@ object ApiDocs {
         ApiDoc("notifications.recent", "notifications.recent(n?=20) -> [{ pkg, app, title, text, time }]", "Newest first, up to 50 (needs notification access)"),
 
         ApiDoc("launcher", "launcher", "Drive the launcher: run", kind = NS),
-        ApiDoc("launcher.run", "launcher.run(command) -> bool", "Run a terminal command (needs @uses commands); only when started from the prompt"),
+        ApiDoc("launcher.run", "launcher.run(command) -> bool", "Run a terminal command (needs @uses commands); only when started from the prompt, at most 10 per run"),
 
         ApiDoc("json", "json", "JSON: encode, decode", LUA, NS),
         ApiDoc("json.encode", "json.encode(value) -> string", "Serialize a table/value to JSON", LUA),

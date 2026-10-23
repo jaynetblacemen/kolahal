@@ -36,6 +36,8 @@ class HostApi(
     private val notifyEnabled: Boolean,
     /** Started by the user from the prompt (not a timer): may drive the launcher with launcher.run. */
     private val interactive: Boolean = false,
+    /** Started by another script's launcher.run: it may not send commands itself, so scripts can't start each other without end. */
+    private val byScript: Boolean = false,
     /** What the script declares and the user allows ([ScriptAccess]); null for code typed at the prompt, which may use anything. */
     private val grants: ScriptAccess.Grants? = null,
     /** The script's `@secret` names and the values you set for them ([SecretStore]); null for code typed at the prompt. */
@@ -118,15 +120,23 @@ class HostApi(
     private val pending = ArrayList<LogRepository.Pending>()
     private var lastFlush = System.currentTimeMillis()
 
-    /** Lines this run has logged; past [MAX_LINES_PER_RUN] the rest are dropped with one note. */
+    /**
+     * Lines this run has logged, and their characters as stored; past [MAX_LINES_PER_RUN] or
+     * [MAX_CHARS_PER_RUN] the rest are dropped with one note. Error lines count too.
+     */
     private var lines = 0
+    private var chars = 0
+    private var full = false
 
     private fun buffer(kind: LogKind, text: String, ctx: LogContext) {
         synchronized(pending) {
-            if (++lines > MAX_LINES_PER_RUN) {
-                if (lines == MAX_LINES_PER_RUN + 1) {
-                    pending += LogRepository.Pending(LogKind.INFO, "More than $MAX_LINES_PER_RUN lines in one run: the rest aren't logged", scriptName, LogContext(baseCtx), System.currentTimeMillis())
-                }
+            if (full) return
+            lines++
+            chars += minOf(text.length, LogRepository.MAX_FIELD) + minOf(ctx.values.entries.sumOf { (k, v) -> k.length + v.length }, LogRepository.MAX_FIELD)
+            if (lines > MAX_LINES_PER_RUN || chars > MAX_CHARS_PER_RUN) {
+                full = true
+                val what = if (lines > MAX_LINES_PER_RUN) "$MAX_LINES_PER_RUN lines" else "${MAX_CHARS_PER_RUN / 1024}K characters"
+                pending += LogRepository.Pending(LogKind.INFO, "More than $what in one run: the rest aren't logged", scriptName, LogContext(baseCtx), System.currentTimeMillis())
                 return
             }
             pending += LogRepository.Pending(kind, text, scriptName, ctx, System.currentTimeMillis())
@@ -185,7 +195,11 @@ class HostApi(
         return text.trimEnd().endsWith("…") && c.startsWith(bare(text.trimEnd().removeSuffix("…")))
     }
 
-    fun logError(text: String) {
+    /** `console.error`, and calls the launcher refuses: counted with the run's other lines. */
+    fun logError(text: String) = buffer(LogKind.ERROR, redact(text), LogContext(baseCtx))
+
+    /** The watchdog's last line before it stops the process: written at once, whatever the run logged. */
+    fun logStopped(text: String) {
         flush()
         logs.add(LogKind.ERROR, redact(text), scriptName, LogContext(baseCtx))
     }
@@ -406,12 +420,23 @@ class HostApi(
         return (runCatching { Json.parse(raw) as? List<*> }.getOrNull() ?: emptyList<Any?>()).take(limit.coerceIn(0, 50))
     }
 
+    /** Commands this run has sent with launcher.run. */
+    private var commands = 0
+
     /** Runs a terminal command in the launcher. Only for scripts started from the prompt. */
     fun runCommand(command: String): Boolean {
         // Commands, and through them other scripts, only for scripts that declare it and are allowed it.
         if (!may("commands", "launcher.run")) return false
         if (!interactive) {
             logError("launcher.run is only available when the script is run from the prompt")
+            return false
+        }
+        if (byScript) {
+            logError("launcher.run isn't available to a script another script started")
+            return false
+        }
+        if (++commands > MAX_COMMANDS_PER_RUN) {
+            if (commands == MAX_COMMANDS_PER_RUN + 1) logError("launcher.run: more than $MAX_COMMANDS_PER_RUN commands in one run; the rest don't run")
             return false
         }
         // A command goes to the terminal, its log and its history, and on to apps and sites: never a secret.
@@ -477,5 +502,9 @@ class HostApi(
         private val client get() = Net.client
         /** Lines one run may log; a runaway loop stops filling the log here. */
         const val MAX_LINES_PER_RUN = 500
+        /** Characters one run may log, its lines' links and other context included. */
+        const val MAX_CHARS_PER_RUN = 256 * 1024
+        /** Commands one run may send with launcher.run; each one's output is logged by home. */
+        const val MAX_COMMANDS_PER_RUN = 10
     }
 }

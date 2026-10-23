@@ -41,6 +41,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             ctx, name, script?.id,
             notifyEnabled = script?.notify ?: true,
             interactive = repl || inputData.getBoolean(KEY_INTERACTIVE, false),
+            byScript = inputData.getBoolean(KEY_BY_SCRIPT, false),
             grants = script?.grants,
             secrets = script?.let { s -> ScriptMeta.secrets(s.code).let { d -> HostApi.Secrets(d, SecretStore(ctx).usable(s.name, d)) } },
         )
@@ -131,6 +132,8 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         const val KEY_ARGS = "args"
         const val KEY_NAME = "name"
         const val KEY_INTERACTIVE = "interactive"
+        /** Started by a command another script sent with launcher.run. */
+        const val KEY_BY_SCRIPT = "by_script"
         /** JSON object for the script's `event` global (event-triggered runs only). */
         const val KEY_EVENT = "event"
         const val TIMEOUT_MS = 60_000L

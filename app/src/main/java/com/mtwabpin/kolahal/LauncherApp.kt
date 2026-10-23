@@ -20,6 +20,12 @@ import com.mtwabpin.kolahal.script.Net
 import com.mtwabpin.kolahal.script.ScriptScheduler
 import com.mtwabpin.kolahal.unlock.UnlockCounter
 import com.mtwabpin.kolahal.status.DeviceStatus
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 class LauncherApp : Application(), Configuration.Provider {
 
@@ -76,5 +82,17 @@ class LauncherApp : Application(), Configuration.Provider {
             override fun onReceive(context: Context, intent: Intent) =
                 if (intent.getBooleanExtra(LogRepository.EXTRA_RESTRUCTURE, false)) logs.onExternalRestructure() else logs.onExternalChange()
         }, IntentFilter(LogRepository.ACTION_LOGS_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)
+
+        // The :script process doesn't see settings changes: home copies `log.keep-lines` where it can
+        // read it, and trims to it now and whenever it changes.
+        val config = Config.get(this)
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            config.version.map { config[Keys.LOG_KEEP_LINES] }.distinctUntilChanged().collect { keep ->
+                runCatching {
+                    logs.keepLines = keep
+                    logs.trim(keep)
+                }
+            }
+        }
     }
 }

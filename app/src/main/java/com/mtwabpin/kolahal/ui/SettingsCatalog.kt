@@ -197,10 +197,10 @@ private val CATEGORIES = listOf(
     ),
 )
 
-/** Keys no page lists (e.g. added later) still get a home under "More". */
+/** Keys no page lists (e.g. added later) still get a home under "More"; [Keys.CONFIG_ONLY] ones don't. */
 private val OTHER: Category by lazy {
     val listed = CATEGORIES.flatMap { it.keys }.toSet()
-    Category("other", "More", "Everything else", R.drawable.ic_tune, listOf(null to Keys.ALL.filter { it !in listed }))
+    Category("other", "More", "Everything else", R.drawable.ic_tune, listOf(null to Keys.ALL.filter { it !in listed && it !in Keys.CONFIG_ONLY }))
 }
 
 /** The feeds category: shown in the Feeds tab ([categorySettings]), not in the Settings list. */

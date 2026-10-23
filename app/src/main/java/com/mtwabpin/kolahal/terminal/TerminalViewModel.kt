@@ -216,7 +216,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** launcher.run(cmd) from scripts the user started (see HostApi.runCommand). */
     private val runCommandReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(c: android.content.Context, intent: Intent) {
-            intent.getStringExtra(HostApi.EXTRA_COMMAND)?.let(::runCommand)
+            intent.getStringExtra(HostApi.EXTRA_COMMAND)?.let { runCommand(it, byScript = true) }
         }
     }
 
@@ -747,11 +747,11 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         }
     }
 
-    /** Runs a command as if typed (without alias expansion). */
-    fun runCommand(cmd: String) {
+    /** Runs [cmd] as if typed (without alias expansion); [byScript]: a script sent it, and the scripts it starts can't send more. */
+    fun runCommand(cmd: String, byScript: Boolean = false) {
         collapseHeader()
         _events.tryEmit(UiEvent.ScrollToBottom)
-        io { processor.run(cmd, expand = false) }
+        io { if (byScript) ScriptScheduler.sentByScript { processor.run(cmd, expand = false) } else processor.run(cmd, expand = false) }
     }
 
     fun saveFontSize(size: Int) {

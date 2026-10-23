@@ -72,6 +72,7 @@ The `theme` and `font` commands are unchanged.
 | `log.line-height` | number 10–56 | `25` | minimum height (dp) of a log line; tappable lines get +10, two-column rows +14. Script status lines in the header use it too |
 | `chips.height` | number 20–64 | `48` | height (dp) of suggestion and app-grid chips |
 | `log.keep-days` | number 1–365 | `60` | delete log lines older than this many days (checked at least twice a day) |
+| `log.keep-lines` | number 500–50000 | `5000` | delete the oldest log lines past this many. Typed commands are counted apart, so ↑ history stays. Only with `config set`: the settings screen doesn't show it |
 | `log.fresh` | number 0–240 | `10` | start home with a clean screen after this many minutes away (0: never); earlier output is one tap away. `fresh` does it now |
 | `feeds.log` | bool | `on` | post new feed items in the log |
 | `feeds.log-lines` | 1–50 | `10` | new items per feed and refresh shown in the log; the rest is one "+N more" line |

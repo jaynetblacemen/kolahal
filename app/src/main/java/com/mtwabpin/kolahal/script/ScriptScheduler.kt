@@ -178,10 +178,28 @@ object ScriptScheduler {
         return true
     }
 
+    /** Set on the thread running a command a script sent with launcher.run ([sentByScript]). */
+    private val byScript = ThreadLocal<Boolean>()
+
+    /**
+     * Runs [block], a command a script sent with launcher.run: the runs it starts are marked
+     * ([ScriptWorker.KEY_BY_SCRIPT]) and may not send commands themselves.
+     */
+    fun <T> sentByScript(block: () -> T): T {
+        val previous = byScript.get()
+        byScript.set(true)
+        try {
+            return block()
+        } finally {
+            byScript.set(previous)
+        }
+    }
+
     private fun remoteData(context: Context, block: Data.Builder.() -> Unit): Data =
         Data.Builder()
             .putString(RemoteListenableWorker.ARGUMENT_PACKAGE_NAME, context.packageName)
             .putString(RemoteListenableWorker.ARGUMENT_CLASS_NAME, RemoteWorkerService::class.java.name)
+            .apply { if (byScript.get() == true) putBoolean(ScriptWorker.KEY_BY_SCRIPT, true) }
             .apply(block)
             .build()
 }

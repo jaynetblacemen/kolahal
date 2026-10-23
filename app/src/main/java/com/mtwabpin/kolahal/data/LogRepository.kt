@@ -281,19 +281,36 @@ class LogRepository private constructor(private val context: Context) {
         trim(maxAgeDays = maxAgeDays)
     }
 
-    /** Keeps the newest [keep] lines and drops anything older than [maxAgeDays]. */
-    /** [maxAgeDays] only from the UI process (the :script process has a stale settings copy). */
-    fun trim(keep: Int = 5000, maxAgeDays: Int? = null) {
+    /**
+     * `log.keep-lines`, for every process. The :script process doesn't see settings changes, so home
+     * copies the setting here, into the database both read.
+     */
+    var keepLines: Int
+        get() = KvStore(context, KV_SCOPE).get(KEY_KEEP_LINES)?.toIntOrNull() ?: Keys.LOG_KEEP_LINES.default
+        set(value) = KvStore(context, KV_SCOPE).set(KEY_KEEP_LINES, value.toString())
+
+    /**
+     * Keeps the newest [keep] lines and, counted apart, the newest [keep] typed commands, so a script
+     * that logs a lot can't push out ↑ history. Drops anything older than [maxAgeDays], which only
+     * the UI process passes (the :script process has a stale settings copy).
+     */
+    fun trim(keep: Int = keepLines, maxAgeDays: Int? = null) {
         val w = db.writableDatabase
+        val command = LogKind.COMMAND.key
         w.execSQL(
-            "DELETE FROM logs WHERE id <= (SELECT id FROM logs ORDER BY id DESC LIMIT 1 OFFSET ?)",
-            arrayOf(keep),
+            "DELETE FROM logs WHERE kind != ? AND id <= (SELECT id FROM logs WHERE kind != ? ORDER BY id DESC LIMIT 1 OFFSET ?)",
+            arrayOf<Any>(command, command, keep),
         )
         var removed = changes(w)
+        w.execSQL(
+            "DELETE FROM logs WHERE kind = ? AND id <= (SELECT id FROM logs WHERE kind = ? ORDER BY id DESC LIMIT 1 OFFSET ?)",
+            arrayOf<Any>(command, command, keep),
+        )
+        removed += changes(w)
         if (maxAgeDays != null) {
             val cutoff = System.currentTimeMillis() - maxAgeDays * 86_400_000L
             // Commands are kept (↑ history); only their output ages out.
-            removed += w.delete("logs", "ts < ? AND kind != ?", arrayOf(cutoff.toString(), LogKind.COMMAND.key))
+            removed += w.delete("logs", "ts < ? AND kind != ?", arrayOf(cutoff.toString(), command))
         }
         if (removed > 0) restructured()
     }
@@ -338,13 +355,42 @@ class LogRepository private constructor(private val context: Context) {
     /** Caps a line's text: one huge value (an HTTP body, a script's log(bigString)) must stay readable. */
     private fun clip(s: String) = if (s.length <= MAX_FIELD) s else s.take(MAX_FIELD - 1) + "…"
 
-    private fun clip(ctx: LogContext): LogContext =
-        if (ctx.values.values.none { it.length > MAX_FIELD / 4 }) ctx
-        else LogContext(ctx.values.mapValues { (_, v) -> if (v.length > MAX_FIELD / 4) v.take(MAX_FIELD / 4 - 1) + "…" else v })
+    /**
+     * Caps a line's context: each value at a quarter of [MAX_FIELD], and all of it, as JSON, at
+     * [MAX_FIELD] so it reads back whole. Values past that are left out, the first ones kept.
+     */
+    private fun clip(ctx: LogContext): LogContext {
+        if (ctx.values.values.none { it.length > MAX_FIELD / 4 } && jsonLength(ctx.values) <= MAX_FIELD) return ctx
+        val kept = LinkedHashMap<String, String>()
+        var left = MAX_FIELD - 2
+        for ((k, v) in ctx.values) {
+            val value = if (v.length > MAX_FIELD / 4) v.take(MAX_FIELD / 4 - 1) + "…" else v
+            val size = jsonLength(mapOf(k to value)) - 1
+            if (size > left) continue
+            kept[k] = value
+            left -= size
+        }
+        return LogContext(kept)
+    }
 
     companion object {
         /** Characters kept per stored field; far below the 2 MB SQLite cursor window. */
         const val MAX_FIELD = 64 * 1024
+
+        /** Length of [values] written as a JSON object by [LogContext.toJson] (org.json's escapes). */
+        internal fun jsonLength(values: Map<String, String>): Int {
+            fun quoted(s: String) = 2 + s.sumOf { c ->
+                when {
+                    c == '"' || c == '\\' || c == '/' || c == '\t' || c == '\b' || c == '\n' || c == '\r' || c == '\u000c' -> 2
+                    c < ' ' || c == '\u2028' || c == '\u2029' -> 6
+                    else -> 1
+                }
+            }
+            return 2 + values.entries.sumOf { (k, v) -> quoted(k) + 1 + quoted(v) } + maxOf(values.size - 1, 0)
+        }
+
+        private const val KV_SCOPE = "logs"
+        private const val KEY_KEEP_LINES = "keep-lines"
         private const val KEY_CLEARED_UP_TO = "cleared_up_to"
         private const val KEY_HIDDEN_UP_TO = "hidden_up_to"
         private const val KEY_TRIMMED_AT = "trimmed_at"
