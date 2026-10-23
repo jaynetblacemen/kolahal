@@ -11,6 +11,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.multiprocess.RemoteListenableWorker
 import androidx.work.multiprocess.RemoteWorkerService
+import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.data.ScriptRepository
@@ -158,6 +159,7 @@ object ScriptScheduler {
                     putLong(ScriptWorker.KEY_SCRIPT_ID, script.id)
                     putBoolean(ScriptWorker.KEY_INTERACTIVE, interactive)
                     if (args.isNotEmpty()) putStringArray(ScriptWorker.KEY_ARGS, args.toTypedArray())
+                    fromCommand(context)
                 })
                 .build()
         )
@@ -192,6 +194,7 @@ object ScriptScheduler {
                     putString(ScriptWorker.KEY_LANG, lang.ext)
                     putString(ScriptWorker.KEY_CODE, code)
                     name?.let { putString(ScriptWorker.KEY_NAME, it) }
+                    fromCommand(context)
                 })
                 .build()
         )
@@ -217,6 +220,11 @@ object ScriptScheduler {
 
     /** Whether this thread is running a command a script sent ([sentByScript]). */
     internal val runningSentCommand: Boolean get() = byScript.get() == true
+
+    /** A run a typed command starts: its lines are that command's output ([LogContext.FROM]). */
+    private fun Data.Builder.fromCommand(context: Context) {
+        LogRepository.get(context).currentCause?.let { putLong(ScriptWorker.KEY_FROM, it) }
+    }
 
     private fun remoteData(context: Context, block: Data.Builder.() -> Unit): Data =
         Data.Builder()

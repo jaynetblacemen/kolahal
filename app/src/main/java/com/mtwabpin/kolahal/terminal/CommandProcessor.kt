@@ -66,7 +66,18 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         // `fresh` isn't logged at all: it would put a line straight back on the clean screen.
         // Nor is a line holding a script secret's value: the log, and the history built from it, never see it.
         val secret = ScriptCommands.carriesSecret(typed) || (expand && ScriptCommands.carriesSecret(expandAliases(typed)))
-        if (typed.lowercase() != "fresh" && !secret && logs.last() != (LogKind.COMMAND to typed)) logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
+        val last = logs.last()
+        val commandId = when {
+            typed.lowercase() == "fresh" || secret -> null
+            // Its output joins the line already there.
+            last != null && last.second == LogKind.COMMAND && last.third == typed -> last.first
+            else -> logs.add(LogKind.COMMAND, typed, ctx = LogContext.of(LogContext.COMMAND to typed))
+        }
+        // What it prints, now or later (a script, a feed fetch), is marked as its output.
+        logs.withCause(commandId) { runLogged(typed, expand) }
+    }
+
+    private fun runLogged(typed: String, expand: Boolean) {
         // Aliases first, so `alias hf = help | grep feed` pipes too.
         val stages = Pipes.split(if (expand) expandAliases(typed) else typed)
         if (stages.size > 1) {

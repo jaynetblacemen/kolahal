@@ -44,6 +44,8 @@ class HostApi(
     private val grants: ScriptAccess.Grants? = null,
     /** The script's `@secret` names and the values you set for them ([SecretStore]); null for code typed at the prompt. */
     private val secrets: Secrets? = null,
+    /** The typed command's line that started this run: its lines are that command's output. */
+    private val from: Long? = null,
 ) {
     class Secrets(val declared: List<ScriptMeta.Secret>, val values: Map<String, String>)
 
@@ -116,7 +118,8 @@ class HostApi(
         private set
 
     private val baseCtx: Map<String, String> =
-        if (scriptId != null) mapOf(LogContext.SCRIPT to scriptName) else emptyMap()
+        (if (scriptId != null) mapOf(LogContext.SCRIPT to scriptName) else emptyMap()) +
+            (from?.let { mapOf(LogContext.FROM to it.toString()) } ?: emptyMap())
 
     // Script lines are batched: one transaction and one UI refresh per ~300 ms instead of per line.
     private val pending = ArrayList<LogRepository.Pending>()
@@ -509,7 +512,7 @@ class HostApi(
         const val EXTRA_COMMAND = "command"
         private val RESERVED_CTX = setOf(
             LogContext.ICON, LogContext.RUN, LogContext.COMMAND, LogContext.SCRIPT, LogContext.LINE, LogContext.APPS,
-            LogContext.RUN_HEADER, LogContext.DESC, LogContext.PKG, LogContext.CLS, LogContext.USER,
+            LogContext.RUN_HEADER, LogContext.FROM, LogContext.DESC, LogContext.PKG, LogContext.CLS, LogContext.USER,
             // Set by log() itself, from its arguments.
             LogContext.TITLE, LogContext.BODY,
             // Tap / long-press actions: a script must not be able to forge a dial, a live

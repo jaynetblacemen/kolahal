@@ -37,12 +37,12 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         if (targets.isEmpty()) return Result.success()
 
         val results = FeedFetcher(ctx).fetchAll(targets)
-        report(ctx, results, explicit = force || feedId >= 0)
+        report(ctx, results, explicit = force || feedId >= 0, from = inputData.getLong(KEY_FROM, -1L).takeIf { it >= 0 })
         return Result.success()
     }
 
-    /** One header for the whole run, then up to `feeds.log-lines` lines per feed. */
-    private fun report(ctx: Context, results: List<FeedFetcher.Result>, explicit: Boolean) {
+    /** Up to `feeds.log-lines` lines per feed; [from], the `feed fetch` line they answer. */
+    private fun report(ctx: Context, results: List<FeedFetcher.Result>, explicit: Boolean, from: Long?) {
         val config = Config.get(ctx)
         val repo = FeedRepository.get(ctx)
         val toLog = config[Keys.FEEDS_LOG]
@@ -54,7 +54,7 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             // Re-read so a title learned during this fetch is used.
             val feed = repo.byId(r.feed.id) ?: r.feed
             val source = feed.shortName
-            val feedCtx = mapOf(CTX_FEED to feed.id.toString())
+            val feedCtx = mapOf(CTX_FEED to feed.id.toString()) + (from?.let { mapOf(LogContext.FROM to it.toString()) } ?: emptyMap())
             if (r.error != null) {
                 // Scheduled failures stay in last_status; only a fetch the user asked for is logged.
                 if (explicit) {
@@ -116,6 +116,7 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     companion object {
         const val KEY_FEED_ID = "feed_id"
         const val KEY_FORCE = "force"
+        const val KEY_FROM = "from"
 
         /** Log context key carrying the feed id on feed lines. */
         const val CTX_FEED = "feed"

@@ -66,6 +66,12 @@ data class LogContext(val values: Map<String, String> = emptyMap()) {
         /** Source line of a script error (tap opens the editor there). */
         const val LINE = "line"
         /**
+         * The id of the command line whose run logged this line, wherever it landed: a script's or a
+         * feed's lines come when the work is done, after other lines. "Delete command and output"
+         * takes them along.
+         */
+        const val FROM = "from"
+        /**
          * The `── name · 22:40 ──` line that started a script run or a feed fetch until 0.4.1. Each
          * line has its time and name now; old ones are deleted ([Db]) and not restored from backups.
          */

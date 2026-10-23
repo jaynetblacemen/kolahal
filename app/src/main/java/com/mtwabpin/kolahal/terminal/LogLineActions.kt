@@ -110,8 +110,8 @@ class LogLineActions(private val context: Context, private val processor: Comman
         if (command != null) {
             actions += LogAction("Run again") { host.setText(command); host.submit() }
             actions += LogAction("Edit in prompt") { host.setText(command); host.emit(UiEvent.FocusPrompt) }
-        } else if (entry.kind != LogKind.SCRIPT) {
-            // Plain output: offer the command that printed it.
+        } else if (entry.kind != LogKind.SCRIPT || LogContext.FROM in ctx.values) {
+            // Output, a script's too when a command started its run: offer the command that printed it.
             producingCommand(entry)?.let { cmd ->
                 actions += LogAction("Run '${cmd.text}' again") { host.setText(cmd.text); host.submit() }
                 actions += LogAction("Edit '${cmd.text}' in prompt") { host.setText(cmd.text); host.emit(UiEvent.FocusPrompt) }
@@ -207,9 +207,10 @@ class LogLineActions(private val context: Context, private val processor: Comman
         add(LogAction("Uninstall", destructive = true) { host.io { appsRepo.uninstall(app) } })
     }
 
-    /** The command line above [entry] in its block (null for script output or orphan lines). */
+    /** The command line that printed [entry]: the one it is marked with, or above it in its block (older lines). */
     private fun producingCommand(entry: LogEntry): LogEntry? {
         val all = host.entries
+        entry.ctx.values[LogContext.FROM]?.toLongOrNull()?.let { from -> return all.firstOrNull { it.id == from } }
         val index = all.indexOfFirst { it.id == entry.id }
         if (index < 0) return null
         for (i in index - 1 downTo 0) {
@@ -221,17 +222,22 @@ class LogLineActions(private val context: Context, private val processor: Comman
     }
 
     /**
-     * A command line plus the output that followed it: up to the next command or a pause longer
-     * than [GROUP_GAP_MS], as the log groups it (a call or install line later on isn't output).
-     * Script lines are left out.
+     * A command line plus its output: the lines marked as its output ([LogContext.FROM]), wherever
+     * they landed (a script's lines come when its run is done, after other lines).
      */
     private fun blockOf(command: LogEntry): List<LogEntry> {
         val all = host.entries
         val start = all.indexOfFirst { it.id == command.id }
         if (start < 0) return listOf(command)
+        val after = all.subList(start + 1, all.size)
+        val id = command.id.toString()
+        val marked = after.filter { it.ctx.values[LogContext.FROM] == id }
+        if (marked.isNotEmpty()) return listOf(command) + marked
+        // Lines from before 0.4.2 carry no mark: the ones that followed it, up to the next command
+        // or a pause longer than [GROUP_GAP_MS], as the log groups them; script lines left out.
         val block = arrayListOf(command)
         var previous = command
-        for (e in all.subList(start + 1, all.size)) {
+        for (e in after) {
             if (e.kind == LogKind.COMMAND || e.ts - previous.ts > GROUP_GAP_MS) break
             if (e.kind != LogKind.SCRIPT) block += e
             previous = e

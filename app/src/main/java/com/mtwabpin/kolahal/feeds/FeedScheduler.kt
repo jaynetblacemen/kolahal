@@ -55,7 +55,13 @@ object FeedScheduler {
     fun fetchNow(context: Context, feedId: Long? = null) {
         val request = OneTimeWorkRequestBuilder<FeedWorker>()
             .setConstraints(network)
-            .setInputData(workDataOf(FeedWorker.KEY_FEED_ID to (feedId ?: -1L), FeedWorker.KEY_FORCE to true))
+            .setInputData(
+                workDataOf(
+                    FeedWorker.KEY_FEED_ID to (feedId ?: -1L), FeedWorker.KEY_FORCE to true,
+                    // `feed fetch`: what it finds is the command's output.
+                    FeedWorker.KEY_FROM to (com.mtwabpin.kolahal.data.LogRepository.get(context).currentCause ?: -1L),
+                ),
+            )
             .addTag(UNIQUE_NAME)
             .build()
         val name = if (feedId == null) NOW_NAME else "$NOW_NAME-$feedId"

@@ -53,7 +53,8 @@ class TerminalFixesTest {
     @After fun tearDown() {
         Keys.ALL.forEach(config::reset)
         AppPrefs.get(app).setAlias("text", null)
-        scripts.byName("tfcat")?.let { scripts.delete(it.id) }
+        listOf("tfcat", "tftag").forEach { n -> scripts.byName(n)?.let { scripts.delete(it.id) } }
+        logs.recent(100).filter { it.text.startsWith("tf ") || it.text.startsWith("echo tf ") || it.text.startsWith("tftag") }.forEach { logs.delete(it.id) }
         muted.unmute(gone)
     }
 
@@ -73,8 +74,8 @@ class TerminalFixesTest {
         return vm
     }
 
-    private fun waitUntil(what: String, check: () -> Boolean) {
-        val until = System.currentTimeMillis() + 5_000
+    private fun waitUntil(what: String, ms: Long = 5_000, check: () -> Boolean) {
+        val until = System.currentTimeMillis() + ms
         while (!check() && System.currentTimeMillis() < until) Thread.sleep(50)
         assertTrue(what, check())
     }
@@ -163,6 +164,35 @@ class TerminalFixesTest {
         }
     }
 
+    /** What a typed command prints, now or from a script it starts, is marked as its output. */
+    @Test fun outputIsMarkedWithItsCommand() {
+        scripts.create("tftag", ScriptLang.LUA, "-- @command\nlog('tf tagged ' .. argline)")
+        val before = logs.maxId()
+        processor.run("echo tf echoed")
+        processor.run("tftag x")
+        val commands = logs.recent(50).filter { it.id > before && it.kind == LogKind.COMMAND }.associate { it.text to it.id.toString() }
+        assertEquals(commands["echo tf echoed"], logs.recent(50).single { it.text == "tf echoed" }.ctx.values[LogContext.FROM])
+        waitUntil("the script's line", ms = 20_000) { logs.recent(50).any { it.text == "tf tagged x" } }
+        assertEquals(commands["tftag x"], logs.recent(50).single { it.text == "tf tagged x" }.ctx.values[LogContext.FROM])
+    }
+
+    /** `xkcd random`: its comic comes when the script is done, maybe under other lines; it still goes with it. */
+    @Test fun deleteCommandAndOutputTakesOutputThatCameLater() {
+        val command = logs.add(LogKind.COMMAND, "tf xkcd random")
+        // The script's own timer run, right under the command: not its output.
+        logs.add(LogKind.SCRIPT, "tf timer comic", "tfx")
+        val other = logs.add(LogKind.COMMAND, "tf echo")
+        logs.add(LogKind.OUTPUT, "tf echoed", ctx = LogContext.of(LogContext.FROM to other.toString()))
+        logs.add(LogKind.SCRIPT, "tf random comic", "tfx", LogContext.of(LogContext.FROM to command.toString()))
+        val vm = viewModel()
+        waitUntil("the lines load") { vm.entries.value.any { it.text == "tf random comic" } }
+        val delete = vm.actionsFor(vm.entries.value.single { it.id == command }).single { it.label == "Delete command and output" }
+        instrumentation.runOnMainSync { delete.run() }
+        waitUntil("the output goes") { logs.recent(50).none { it.text == "tf random comic" } }
+        assertEquals(listOf("tf timer comic", "tf echo", "tf echoed"), logs.recent(50).map { it.text }.filter { it.startsWith("tf ") })
+    }
+
+    /** Lines from before 0.4.2 carry no mark: the lines after the command, as the log groups them. */
     @Test fun deleteCommandAndOutputStopsWhereTheGroupDoes() {
         val now = System.currentTimeMillis()
         logs.addAll(

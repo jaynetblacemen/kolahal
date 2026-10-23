@@ -29,8 +29,9 @@ class LogRepository private constructor(private val context: Context) {
         source: String? = null,
         ctx: LogContext = LogContext.EMPTY,
     ): Long {
+        val tagged = caused(ctx)
         capture.get()?.let { buffer ->
-            buffer += Pending(kind, text, source, ctx, System.currentTimeMillis())
+            buffer += Pending(kind, text, source, tagged, System.currentTimeMillis())
             return -1
         }
         val id = db.writableDatabase.insert("logs", null, ContentValues().apply {
@@ -38,7 +39,7 @@ class LogRepository private constructor(private val context: Context) {
             put("kind", kind.key)
             put("source", source)
             put("text", clip(text))
-            put("ctx", clip(ctx).toJson())
+            put("ctx", clip(tagged).toJson())
         })
         changed()
         return id
@@ -56,6 +57,28 @@ class LogRepository private constructor(private val context: Context) {
     }
 
     data class Pending(val kind: LogKind, val text: String, val source: String?, val ctx: LogContext, val ts: Long)
+
+    /** The command line being run on this thread ([withCause]); lines added meanwhile carry its id. */
+    private val cause = ThreadLocal<Long?>()
+
+    /** The command line lines added on this thread now belong to ([LogContext.FROM]), if any. */
+    val currentCause: Long? get() = cause.get()
+
+    /** Runs [block] with every line added on this thread marked as [commandId]'s output. */
+    fun <T> withCause(commandId: Long?, block: () -> T): T {
+        val previous = cause.get()
+        cause.set(commandId)
+        try {
+            return block()
+        } finally {
+            cause.set(previous)
+        }
+    }
+
+    private fun caused(ctx: LogContext): LogContext {
+        val id = cause.get() ?: return ctx
+        return if (LogContext.FROM in ctx.values) ctx else ctx + mapOf(LogContext.FROM to id.toString())
+    }
 
     /** Per-thread output buffer for pipes; lines added on other threads are written as usual. */
     private val capture = ThreadLocal<MutableList<Pending>?>()
@@ -76,7 +99,7 @@ class LogRepository private constructor(private val context: Context) {
     fun addAll(lines: List<Pending>) {
         if (lines.isEmpty()) return
         capture.get()?.let { buffer ->
-            buffer += lines
+            buffer += lines.map { it.copy(ctx = caused(it.ctx)) }
             return
         }
         val w = db.writableDatabase
@@ -87,7 +110,7 @@ class LogRepository private constructor(private val context: Context) {
                     put("kind", p.kind.key)
                     put("source", p.source)
                     put("text", clip(p.text))
-                    put("ctx", clip(p.ctx).toJson())
+                    put("ctx", clip(caused(p.ctx)).toJson())
                 })
             }
         }
@@ -258,9 +281,9 @@ class LogRepository private constructor(private val context: Context) {
     }
 
     /** The newest line, to avoid logging the same command twice in a row with nothing in between. */
-    fun last(): Pair<LogKind, String>? = db.readableDatabase.rawQuery(
-        "SELECT kind, text FROM logs WHERE id > ? ORDER BY id DESC LIMIT 1", arrayOf(visibleAfter().toString()),
-    ).use { c -> if (c.moveToFirst()) LogKind.of(c.getString(0)) to c.getString(1) else null }
+    fun last(): Triple<Long, LogKind, String>? = db.readableDatabase.rawQuery(
+        "SELECT id, kind, text FROM logs WHERE id > ? ORDER BY id DESC LIMIT 1", arrayOf(visibleAfter().toString()),
+    ).use { c -> if (c.moveToFirst()) Triple(c.getLong(0), LogKind.of(c.getString(1)), c.getString(2)) else null }
 
     /** Hides everything currently on screen; command history is kept for recall. */
     fun clearScreen() {

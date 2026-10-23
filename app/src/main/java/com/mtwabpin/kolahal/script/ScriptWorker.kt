@@ -36,19 +36,22 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         val repl = script == null
         val args = inputData.getNullableStringArray(KEY_ARGS)?.filterNotNull().orEmpty()
         val event = inputData.getString(KEY_EVENT)?.let { runCatching { Json.parse(it) as? Map<*, *> }.getOrNull() }
+        val from = inputData.getLong(KEY_FROM, -1L).takeIf { it >= 0 }
 
         val host = HostApi(
             ctx, name, script?.id,
             notifyEnabled = script?.notify ?: true,
             interactive = repl || inputData.getBoolean(KEY_INTERACTIVE, false),
             byScript = inputData.getBoolean(KEY_BY_SCRIPT, false),
+            from = from,
             grants = script?.grants,
             secrets = script?.let { s -> ScriptMeta.secrets(s.code).let { d -> HostApi.Secrets(d, SecretStore(ctx).usable(s.name, d)) } },
         )
         val engine = ScriptEngine.forLang(lang)
         val started = System.currentTimeMillis()
         val errorCtx = LogContext(
-            if (script != null) mapOf(LogContext.SCRIPT to script.name) else emptyMap()
+            (if (script != null) mapOf(LogContext.SCRIPT to script.name) else emptyMap()) +
+                (from?.let { mapOf(LogContext.FROM to it.toString()) } ?: emptyMap())
         )
         val status = try {
             val result = withTimeout(TIMEOUT_MS + 2_000) {
@@ -59,7 +62,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
                 val shown = host.redact(result)
                 logs.add(LogKind.OUTPUT, shown, name, LogContext.of(LogContext.COPY to shown) + errorCtx.values)
             } else if (repl && host.effects == 0) {
-                logs.add(LogKind.OUTPUT, "nil", name)
+                logs.add(LogKind.OUTPUT, "nil", name, errorCtx)
             }
             host.commit()
             "ok in ${System.currentTimeMillis() - started}ms"
@@ -136,6 +139,8 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         const val KEY_BY_SCRIPT = "by_script"
         /** JSON object for the script's `event` global (event-triggered runs only). */
         const val KEY_EVENT = "event"
+        /** The typed command's line that started this run ([LogContext.FROM]). */
+        const val KEY_FROM = "from"
         const val TIMEOUT_MS = 60_000L
     }
 }
