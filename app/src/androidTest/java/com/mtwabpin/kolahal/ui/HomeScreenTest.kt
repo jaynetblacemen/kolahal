@@ -15,6 +15,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -117,6 +118,22 @@ class HomeScreenTest {
         compose.onNodeWithTag("header-compact").assertDoesNotExist()
         compose.runOnIdle { config.set(Keys.HEADER_SHOW, "on") }
         compose.onNodeWithTag("header-compact").assertExists()
+    }
+
+    /** The header's ⚙ shows no word; a screen reader still has one to say. */
+    @Test fun headerSettingsHasANameForScreenReaders() {
+        lateinit var vm: TerminalViewModel
+        compose.runOnUiThread { vm = TerminalViewModel(app, androidx.lifecycle.SavedStateHandle()) }
+        // As Settings shows home, not typing: the emulator's keyboard, up or not, would otherwise
+        // decide between the full header and the one-line one (which has no ⚙).
+        compose.setContent {
+            KolahalTheme {
+                Box(Modifier.size(360.dp, 700.dp)) {
+                    TerminalScreen(vm, onRequestNotifications = {}, onPickFolder = {}, preview = TerminalViewModel.Peek(null, typing = false))
+                }
+            }
+        }
+        compose.onNodeWithContentDescription("Settings").assertExists()
     }
 
     @Test fun dollarOpensQuickActions() {

@@ -203,6 +203,20 @@ internal object SelectorMath {
             else -> 0f
         }
     }
+
+    /** What a move feels like: nothing, a letter passed along the edge, an app passed in the list, or a switch between the two. */
+    enum class Feel { NONE, LETTER, APP, SWITCH }
+
+    /**
+     * The feel of a move to [row] in [section], from [lastRow] in [lastSection] (-1: the first
+     * move), [selecting] in the list or along the letters, [wasSelecting] before it.
+     */
+    fun feel(selecting: Boolean, wasSelecting: Boolean, row: Int, lastRow: Int, section: Int, lastSection: Int): Feel = when {
+        selecting != wasSelecting -> Feel.SWITCH
+        selecting -> if (row != lastRow && lastRow != -1) Feel.APP else Feel.NONE
+        section != lastSection && lastSection != -1 -> Feel.LETTER
+        else -> Feel.NONE
+    }
 }
 
 private enum class Mode { CLOSED, SCRUB, SELECT, OPEN }
@@ -449,10 +463,11 @@ fun AppSelector(
                             val section = entries[f].sectionIndex
                             // Feel where the finger is: crossing between the letters and the list, a
                             // firm tick per letter along the edge, a light one per app in the list.
-                            when {
-                                selecting != wasSelecting -> haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                                selecting -> if (f != tickedRow && tickedRow != -1) haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
-                                section != lastSection && lastSection != -1 -> haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                            when (SelectorMath.feel(selecting, wasSelecting, f, tickedRow, section, lastSection)) {
+                                SelectorMath.Feel.SWITCH -> haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                                SelectorMath.Feel.APP -> haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+                                SelectorMath.Feel.LETTER -> haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                SelectorMath.Feel.NONE -> Unit
                             }
                             wasSelecting = selecting
                             tickedRow = f

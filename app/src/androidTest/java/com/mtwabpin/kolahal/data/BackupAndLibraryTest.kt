@@ -170,6 +170,45 @@ class BackupAndLibraryTest {
         file.delete()
     }
 
+    /** Your own script whose name an app also has comes back from a backup (switched off, as all do). */
+    @Test fun aScriptNamedLikeAnAppComesBack() {
+        val apps = com.mtwabpin.kolahal.apps.AppRepository.get(context)
+        apps.refresh()
+        val until = System.currentTimeMillis() + 5_000
+        while (apps.apps.value.isEmpty() && System.currentTimeMillis() < until) Thread.sleep(50)
+        val name = apps.apps.value.map { it.label.lowercase().replace(Regex("[^a-z0-9]"), "") }
+            .first { it.length in 3..40 && it !in com.mtwabpin.kolahal.terminal.CommandProcessor.RESERVED_NAMES && scripts.byName(it) == null }
+        assertNotNull(com.mtwabpin.kolahal.script.ScriptNames.clash(context, name))
+        val file = File(context.cacheDir, "kolahal-backup-app-name.json")
+        try {
+            scripts.create(name, ScriptLang.LUA, "return 1")
+            Backup(context).export(Uri.fromFile(file))
+            scripts.byName(name)?.let { scripts.delete(it.id) }
+            val r = Backup(context).import(Uri.fromFile(file))
+            assertTrue(r.skipped.toString(), r.skipped.none { name in it })
+            assertFalse(scripts.byName(name)!!.enabled)
+        } finally {
+            scripts.byName(name)?.let { scripts.delete(it.id) }
+            file.delete()
+        }
+    }
+
+    /** What this phone knows of its own calls and apps stays out of a backup, and a restore keeps it. */
+    @Test fun thisPhonesRecordsStayOutOfBackups() {
+        val packages = KvStore(context, "packages")
+        packages.set("bk-device", "this phone")
+        val file = File(context.cacheDir, "kolahal-backup-device.json")
+        try {
+            Backup(context).export(Uri.fromFile(file))
+            assertFalse(file.readText().contains("bk-device"))
+            Backup(context).import(Uri.fromFile(file))
+            assertEquals("this phone", packages.get("bk-device"))
+        } finally {
+            packages.set("bk-device", null)
+            file.delete()
+        }
+    }
+
     @Test fun libraryLuaScriptsCompile() {
         val lib = ScriptLibrary(context)
         val lua = lib.entries.filter { it.lang == ScriptLang.LUA }

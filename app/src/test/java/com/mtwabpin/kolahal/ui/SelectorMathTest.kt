@@ -132,4 +132,37 @@ class SelectorMathTest {
         assertEquals(com.mtwabpin.kolahal.data.Keys.SELECTOR_RAIL.help, completionHelp("selector.rail", "config set selector.rail "))
         assertNull(completionHelp("on", "config set selector.rail on"))
     }
+
+    /** One finger's path: (in the list, row, section) per move, felt as the selector does. */
+    private fun feels(vararg moves: Triple<Boolean, Int, Int>): List<SelectorMath.Feel> {
+        var wasSelecting = false
+        var lastRow = -1
+        var lastSection = -1
+        return moves.map { (selecting, row, section) ->
+            SelectorMath.feel(selecting, wasSelecting, row, lastRow, section, lastSection).also {
+                wasSelecting = selecting
+                lastRow = row
+                lastSection = section
+            }
+        }
+    }
+
+    @Test fun lettersAppsAndTheSwitchEachHaveAFeel() {
+        val edge = { row: Int, section: Int -> Triple(false, row, section) }
+        val list = { row: Int, section: Int -> Triple(true, row, section) }
+        assertEquals(
+            listOf(
+                SelectorMath.Feel.NONE, // touching down
+                SelectorMath.Feel.NONE, // another app, the same letter
+                SelectorMath.Feel.LETTER,
+                SelectorMath.Feel.SWITCH, // into the list
+                SelectorMath.Feel.APP,
+                SelectorMath.Feel.NONE, // still on that app
+                SelectorMath.Feel.APP, // a new letter in the list is still an app
+                SelectorMath.Feel.SWITCH, // back to the letters
+                SelectorMath.Feel.LETTER,
+            ),
+            feels(edge(0, 0), edge(3, 0), edge(5, 1), list(5, 1), list(6, 1), list(6, 1), list(7, 2), edge(9, 3), edge(12, 4)),
+        )
+    }
 }
