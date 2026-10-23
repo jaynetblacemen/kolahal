@@ -12,12 +12,15 @@
 //
 // On a timer (no arguments) it pins today's summary as a status line.
 
+// A failure: what didn't work, in the theme's bad colour, and why under it.
+const fail = (what, why) => log(fmt.color("bad", what), why);
+
 const line = (argline || "").trim();
 
 const setDefault = line.match(/^--default\s+(.+)$/);
 if (setDefault) {
   store.set("city", setDefault[1].trim());
-  return `default city set to ${setDefault[1].trim()}`;
+  return log(`Default city: ${fmt.bold(setDefault[1].trim())}`);
 }
 
 const city = line || store.get("city") || "London";
@@ -47,7 +50,7 @@ try {
   const geo = await getJson(
     `https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=${encodeURIComponent(city)}`
   );
-  if (!geo.results || geo.results.length === 0) return `forecast: no place named '${city}'`;
+  if (!geo.results || geo.results.length === 0) return fail("No forecast", `no place named '${city}'`);
   place = geo.results[0];
   data = await getJson(
     "https://api.open-meteo.com/v1/forecast" +
@@ -56,11 +59,11 @@ try {
       "&timezone=auto&forecast_days=3"
   );
 } catch (e) {
-  return `forecast: ${e.message || e}`;
+  return fail("No forecast", `${e.message || e}`);
 }
 
 const d = data.daily;
-if (!d || !d.time || d.time.length === 0) return "forecast: no data";
+if (!d || !d.time || d.time.length === 0) return fail("No forecast", "Open-Meteo sent no days");
 
 const names = ["today", "tomorrow"];
 const where = [place.name, place.country_code].filter(Boolean).join(", ");

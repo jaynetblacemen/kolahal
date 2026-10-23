@@ -14,6 +14,9 @@
 const LANG = "en"; // change for another language edition, e.g. "de", "hi"
 const MAX_CHARS = 600;
 const base = `https://${LANG}.wikipedia.org`;
+// A failure: what didn't work, in the theme's bad colour, and why under it.
+const fail = (what, why) => log(fmt.color("bad", what), why);
+
 const topic = (argline || "").trim();
 
 async function summary(title) {
@@ -55,9 +58,9 @@ try {
     }
   }
 } catch (e) {
-  return `wikipedia: ${e.message || e}`;
+  return fail("No article", `${e.message || e}`);
 }
-if (!page) return `wikipedia: nothing found for '${topic}'`;
+if (!page) return log(fmt.color("muted", `Wikipedia has nothing for '${topic}'`));
 
 const link =
   (page.content_urls && page.content_urls.mobile && page.content_urls.mobile.page) ||

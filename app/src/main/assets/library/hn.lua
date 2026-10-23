@@ -15,7 +15,7 @@ local MAX_LINES = 10
 -- produces one short line instead of a stack trace.
 local ok, feed = pcall(rss.fresh, FEED)
 if not ok then
-  log("hn: could not fetch feed (" .. tostring(feed) .. ")")
+  log(fmt.color("bad", "Couldn't fetch Hacker News"), tostring(feed))
   return
 end
 

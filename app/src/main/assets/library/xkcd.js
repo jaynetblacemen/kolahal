@@ -9,6 +9,9 @@
 // On a timer (no arguments) it notifies only when a new comic is out.
 // The comic shows in the log under its title; tap the title to open it on xkcd.com.
 
+// A failure: what didn't work, in the theme's bad colour, and why under it.
+const fail = (what, why) => log(fmt.color("bad", what), why);
+
 const arg = (argline || "").trim().toLowerCase();
 
 async function comic(num) {
@@ -31,10 +34,10 @@ try {
   } else if (arg === "") {
     c = await comic(null);
   } else {
-    return "usage: xkcd | xkcd <number> | xkcd random";
+    return log(fmt.color("muted", "usage: xkcd | xkcd <number> | xkcd random"));
   }
 } catch (e) {
-  return `xkcd: ${e.message || e}`;
+  return fail("No comic", `${e.message || e}`);
 }
 
 const link = `https://xkcd.com/${c.num}/`;

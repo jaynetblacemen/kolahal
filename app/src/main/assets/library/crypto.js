@@ -15,6 +15,9 @@
 const DEFAULT_IDS = ["bitcoin", "ethereum"];
 const SYMBOLS = { bitcoin: "BTC", ethereum: "ETH", solana: "SOL", dogecoin: "DOGE", litecoin: "LTC", monero: "XMR", cardano: "ADA", ripple: "XRP" };
 
+// A failure: what didn't work, in the theme's bad colour, and why under it.
+const fail = (what, why) => log(fmt.color("bad", what), why);
+
 const words = (argline || "").trim().split(/[\s,]+/).filter(Boolean);
 let vs = "usd";
 const ids = [];
@@ -32,16 +35,16 @@ let r;
 try {
   r = await http.get(url, { Accept: "application/json" });
 } catch (e) {
-  return `crypto: network error (${e.message || e})`;
+  return fail("No prices", `network error: ${e.message || e}`);
 }
-if (r.status === 429) return "crypto: rate limited by CoinGecko, try again in a minute";
-if (!r.ok) return `crypto: HTTP ${r.status}`;
+if (r.status === 429) return log(fmt.color("warn", "CoinGecko says wait"), "too many requests: try again in a minute");
+if (!r.ok) return fail("No prices", `CoinGecko answered HTTP ${r.status}`);
 
 let prices;
 try {
   prices = JSON.parse(r.body);
 } catch (e) {
-  return "crypto: unexpected response";
+  return fail("No prices", "CoinGecko sent something unexpected");
 }
 
 // 67123.4 -> "67,123.40"; tiny prices keep more decimals.
@@ -59,7 +62,7 @@ const parts = [];
 for (const id of ids) {
   const p = prices[id];
   if (!p || p[vs] == null) {
-    log(`${id}: unknown coin or currency`);
+    fail(`${id}: no such coin`, `or no ${vs.toUpperCase()} price for it`);
     continue;
   }
   const change = p[`${vs}_24h_change`];

@@ -9,20 +9,16 @@
 -- As a command it prints your IP. On a timer it notifies when the IP changes
 -- (handy for spotting VPN drops) and pins it as a status line.
 
+-- A failure: what didn't work, in the theme's bad colour, and why under it.
+local function fail(what, why) log(fmt.color("bad", what), why) end
+
 local ok, r = pcall(http.get, "https://api.ipify.org?format=json")
-if not ok then
-  log("ip: network error (" .. tostring(r) .. ")")
-  return
-end
-if not r.ok then
-  log("ip: HTTP " .. tostring(r.status))
-  return
-end
+if not ok then return fail("No IP address", "network error: " .. tostring(r)) end
+if not r.ok then return fail("No IP address", "ipify answered HTTP " .. tostring(r.status)) end
 
 local okJson, data = pcall(json.decode, r.body or "")
 if not okJson or type(data) ~= "table" or type(data.ip) ~= "string" then
-  log("ip: unexpected response")
-  return
+  return fail("No IP address", "ipify sent something unexpected")
 end
 
 local ip = data.ip

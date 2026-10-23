@@ -19,7 +19,8 @@ end
 
 if event == nil then
   local last = store.get("last")
-  return last or "no charging session yet — plug in the charger"
+  if last then log("Last charge", last) else log(fmt.color("muted", "No charging session yet: plug in the charger")) end
+  return
 end
 
 local level = event.level or device.battery().level

@@ -22,13 +22,17 @@ local function trim(s)
   return (s:gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
+-- A failure: what didn't work, in the theme's bad colour, and why under it.
+local function fail(what, why) log(fmt.color("bad", what), why) end
+
 local line = trim(argline or "")
 
 -- Save a default city.
 local saved = line:match("^%-%-default%s+(.+)$")
 if saved then
   store.set("city", trim(saved))
-  return "default city set to " .. trim(saved)
+  log("Default city: " .. fmt.bold(trim(saved)))
+  return
 end
 
 local city = line ~= "" and line or (store.get("city") or "")
@@ -36,18 +40,16 @@ local city = line ~= "" and line or (store.get("city") or "")
 local url = "https://wttr.in/" .. urlencode(city) .. "?format=3"
 
 local ok, r = pcall(http.get, url, { ["Accept-Language"] = "en" })
-if not ok then
-  return "weather: network error (" .. tostring(r) .. ")"
-end
-if not r.ok then
-  return "weather: HTTP " .. tostring(r.status)
-end
+if not ok then return fail("No weather", "network error: " .. tostring(r)) end
+if not r.ok then return fail("No weather", "wttr.in answered HTTP " .. tostring(r.status)) end
 
 local text = trim(r.body or "")
 if text == "" or text:find("Unknown location", 1, true) then
-  return "weather: unknown location '" .. city .. "'"
+  return fail("No weather", "wttr.in doesn't know '" .. city .. "'")
 end
 
 -- Only background runs (no arguments) update the pinned status line.
 if line == "" then status(text) end
-return text
+-- "Pune: ⛅️ +31°C": the place is the title, the weather under it.
+local place, now = text:match("^(.-):%s*(.+)$")
+log(place or text, now and (now:gsub("%s+", " ")))

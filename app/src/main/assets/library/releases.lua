@@ -32,6 +32,8 @@ local function saveRepos(list)
   store.set("repos", table.concat(list, "\n"))
 end
 
+local function hint(text) log(fmt.color("muted", text)) end
+
 local function indexOf(list, value)
   for i, v in ipairs(list) do
     if v:lower() == value:lower() then return i end
@@ -45,7 +47,7 @@ local cmd, arg = (argline or ""):match("^%s*(%S*)%s*(.-)%s*$")
 local repos = loadRepos()
 
 if cmd == "list" then
-  if #repos == 0 then return "no repos watched; try: releases add owner/repo" end
+  if #repos == 0 then return hint("No repos watched: releases add owner/repo") end
   -- A line per repo, each alike; tapping one opens its releases.
   for _, repo in ipairs(repos) do
     log(repo, nil, { url = "https://github.com/" .. repo .. "/releases" })
@@ -55,31 +57,30 @@ end
 
 if cmd == "add" or cmd == "rm" then
   if not arg:match("^[%w%.%-_]+/[%w%.%-_]+$") then
-    return "usage: releases " .. cmd .. " owner/repo"
+    return hint("usage: releases " .. cmd .. " owner/repo")
   end
   local i = indexOf(repos, arg)
   if cmd == "add" then
-    if i then return arg .. " is already watched" end
+    if i then return hint(arg .. " is watched already") end
     repos[#repos + 1] = arg
     saveRepos(repos)
-    return "watching " .. arg .. " (" .. #repos .. " repos)"
+    return log("Watching " .. fmt.bold(arg), #repos .. " repos", { url = "https://github.com/" .. arg .. "/releases" })
   else
-    if not i then return arg .. " is not watched" end
+    if not i then return hint(arg .. " isn't watched") end
     table.remove(repos, i)
     saveRepos(repos)
-    return "stopped watching " .. arg
+    return log("Stopped watching " .. fmt.bold(arg), #repos .. " repos left")
   end
 end
 
 if cmd ~= "" then
-  return "usage: releases [add|rm owner/repo | list]"
+  return hint("usage: releases [add|rm owner/repo | list]")
 end
 
 -- ---------------------------------------------------------------- check
 
 if #repos == 0 then
-  log("releases: no repos watched; try: releases add owner/repo")
-  return
+  return hint("No repos watched: releases add owner/repo")
 end
 
 local total = 0
@@ -87,7 +88,7 @@ for _, repo in ipairs(repos) do
   local url = "https://github.com/" .. repo .. "/releases.atom"
   local ok, feed = pcall(rss.fresh, url)
   if not ok then
-    log(repo, fmt.color("bad", "fetch failed") .. " (" .. tostring(feed) .. ")")
+    log(repo, fmt.color("bad", "couldn't fetch its releases") .. ": " .. tostring(feed))
   else
     local items = feed.items or {}
     local firstKey = "init:" .. repo

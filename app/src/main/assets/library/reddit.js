@@ -12,12 +12,15 @@
 // the subreddit's RSS feed when Reddit blocks anonymous JSON requests.
 // Tap a line to open the discussion; long-press to copy the link.
 
+// A failure: what didn't work, in the theme's bad colour, and why under it.
+const fail = (what, why) => log(fmt.color("bad", what), why);
+
 const LIMIT = 5;
 const UA = { "User-Agent": "android:kolahal-launcher:0.1 (by /u/kolahal)" }; // Reddit rejects generic agents
 const sub = (argline || "").trim().replace(/^\/?r\//i, "") || "android";
 
 if (!/^[A-Za-z0-9_]{2,21}$/.test(sub)) {
-  return `reddit: invalid subreddit '${sub}'`;
+  return fail("No posts", `'${sub}' isn't a subreddit name`);
 }
 
 // Compact score: 12345 -> 12.3k
@@ -28,18 +31,18 @@ let r = null;
 try {
   r = await http.get(`https://www.reddit.com/r/${sub}/top.json?limit=${LIMIT}&t=day&raw_json=1`, UA);
 } catch (e) {
-  return `reddit: network error (${e.message || e})`;
+  return fail("No posts", `network error: ${e.message || e}`);
 }
-if (r.status === 404) return `reddit: r/${sub} not found`;
+if (r.status === 404) return fail("No posts", `there is no r/${sub}`);
 
 if (r.ok) {
   let posts;
   try {
     posts = JSON.parse(r.body).data.children.map((c) => c.data);
   } catch (e) {
-    return "reddit: unexpected response";
+    return fail("No posts", "Reddit sent something unexpected");
   }
-  if (posts.length === 0) return `r/${sub}: no posts today`;
+  if (posts.length === 0) return log(fmt.color("muted", `r/${sub}: no posts today`));
   for (const p of posts.slice(0, LIMIT)) {
     const link = "https://www.reddit.com" + p.permalink;
     log(p.title, `${fmt.bold(short(p.score))} ▲ · ${p.num_comments} comments`, { url: link, copy: link });
@@ -52,10 +55,10 @@ let feed;
 try {
   feed = await rss.fetch(`https://www.reddit.com/r/${sub}/top/.rss?t=day&limit=${LIMIT}`);
 } catch (e) {
-  return `reddit: HTTP ${r.status}; RSS fallback failed too (${e.message || e})`;
+  return fail("No posts", `Reddit answered HTTP ${r.status}, and its feed failed too: ${e.message || e}`);
 }
 const items = feed.items || [];
-if (items.length === 0) return `r/${sub}: no posts today (or the subreddit is private)`;
+if (items.length === 0) return log(fmt.color("muted", `r/${sub}: no posts today (or the subreddit is private)`));
 for (const item of items.slice(0, LIMIT)) {
   log(item.title || "(untitled)", { url: item.link, copy: item.link });
 }

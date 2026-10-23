@@ -12,15 +12,18 @@
 //
 // Rates update once a day, so a timer more often than every few hours is wasted.
 
+// A failure: what didn't work, in the theme's bad colour, and why under it.
+const fail = (what, why) => log(fmt.color("bad", what), why);
+
 const words = (argline || "").trim().split(/\s+/).filter(Boolean);
 
 let amount = 1;
 if (words.length > 0 && /^[\d.,]+$/.test(words[0])) amount = parseFloat(words.shift().replace(/,/g, ""));
-if (!isFinite(amount)) return "exchange: bad amount";
+if (!isFinite(amount)) return fail("No conversion", "that amount isn't a number");
 
 const codes = words.map((w) => w.toUpperCase());
 if (codes.some((c) => !/^[A-Z]{3}$/.test(c))) {
-  return "usage: exchange [amount] <from> [to…]   e.g. exchange 100 usd inr";
+  return log(fmt.color("muted", "usage: exchange [amount] <from> [to…], e.g. exchange 100 usd inr"));
 }
 const background = codes.length === 0;
 const from = codes[0] || "USD";
@@ -31,17 +34,17 @@ let r;
 try {
   r = await http.get(`https://open.er-api.com/v6/latest/${from}`);
 } catch (e) {
-  return `exchange: network error (${e.message || e})`;
+  return fail("No rates", `network error: ${e.message || e}`);
 }
-if (!r.ok) return `exchange: HTTP ${r.status}`;
+if (!r.ok) return fail("No rates", `open.er-api.com answered HTTP ${r.status}`);
 
 let data;
 try {
   data = JSON.parse(r.body);
 } catch (e) {
-  return "exchange: unexpected response";
+  return fail("No rates", "open.er-api.com sent something unexpected");
 }
-if (data.result !== "success") return `exchange: unknown currency ${from}`;
+if (data.result !== "success") return fail("No rates", `no currency ${from}`);
 
 // 1234567.891 -> "1,234,567.89"
 function num(n) {
@@ -56,7 +59,7 @@ const parts = [];
 for (const to of targets) {
   const rate = data.rates[to];
   if (rate == null) {
-    log(`${to}: unknown currency`);
+    fail(`${to}: no such currency`);
     continue;
   }
   const value = num(amount * rate);

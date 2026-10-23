@@ -429,7 +429,12 @@ private fun renderLine(entry: LogEntry, indents: LineIndents, unread: Boolean, i
                 if (unread) withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("• ") }
                 // A line a script logged is a title: bold, its body muted under it.
                 val title = entry.ctx.values.containsKey(LogContext.TITLE)
-                appendStyled(entry.text, SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.script, fontWeight = if (title) FontWeight.Bold else null))
+                // A title is bold already: its bold parts stand out in the text colour.
+                appendStyled(
+                    entry.text,
+                    SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.script, fontWeight = if (title) FontWeight.Bold else null),
+                    strong = Term.fg,
+                )
                 // The source goes at the end, muted, like other indicators (`… machine. · wikipedia`),
                 // so wrapped lines use the full width. A no-break space keeps the dot with the name.
                 entry.source?.let { src ->
@@ -466,8 +471,8 @@ private fun renderLine(entry: LogEntry, indents: LineIndents, unread: Boolean, i
 }
 
 /**
- * [text] with its [StyledText] styles over [base]: bold also takes [strong] when given (muted
- * text bolds to the text colour), code shows on a shaded chip. A list item shows its bullet or
+ * [text] with its [StyledText] styles over [base]: bold also takes [strong] when given (a muted
+ * body or a bold title bolds to the text colour), code shows on a shaded chip. A list item shows its bullet or
  * number in the accent colour.
  */
 private fun AnnotatedString.Builder.appendStyled(text: String, base: SpanStyle, strong: Color? = null) {

@@ -45,6 +45,17 @@ local function describe(days, label)
   return label .. ": " .. (-days) .. " days ago"
 end
 
+-- A countdown as a line: past ones muted, this week's in the warning colour, today's in the good
+-- one; [under] (its date) below it.
+local function show(text, days, under)
+  if days < 0 then text = fmt.color("muted", text)
+  elseif days == 0 then text = fmt.color("good", text)
+  elseif days <= 7 then text = fmt.color("warn", text) end
+  log(text, under)
+end
+
+local function usage() log(fmt.color("muted", "usage: countdown YYYY-MM-DD | add YYYY-MM-DD label | rm N")) end
+
 local function load()
   local raw = store.get("items")
   if not raw then return {} end
@@ -67,34 +78,36 @@ local cmd, rest = (argline or ""):match("^%s*(%S*)%s*(.-)%s*$")
 
 if cmd == "add" then
   local date, label = rest:match("^(%S+)%s*(.*)$")
-  if not parseDate(date) then return "usage: countdown add YYYY-MM-DD label" end
+  if not parseDate(date) then return usage() end
   if label == nil or label == "" then label = date end
   local list = load()
   list[#list + 1] = { date = date, label = label }
   save(sorted(list))
-  return describe(daysUntil(parseDate(date)), label)
+  local days = daysUntil(parseDate(date))
+  return show(describe(days, label), days, "saved · " .. date)
 end
 
 if cmd == "rm" then
   local n = tonumber(rest)
   local list = sorted(load())
-  if not n or not list[n] then return "usage: countdown rm N (see: countdown)" end
+  if not n or not list[n] then return log(fmt.color("muted", "no countdown #" .. (rest ~= "" and rest or "?") .. ": countdown lists them")) end
   local removed = table.remove(list, n)
   save(list)
-  return "removed " .. removed.label
+  return log("Removed " .. fmt.bold(removed.label), removed.date)
 end
 
 if cmd ~= "" then
   local t = parseDate(cmd)
-  if not t then return "usage: countdown YYYY-MM-DD | add YYYY-MM-DD label | rm N" end
-  return describe(daysUntil(t), rest ~= "" and rest or cmd)
+  if not t then return usage() end
+  local days = daysUntil(t)
+  return show(describe(days, rest ~= "" and rest or cmd), days)
 end
 
 -- No arguments: list saved countdowns and pin the nearest upcoming one.
 local list = sorted(load())
 if #list == 0 then
   status(nil)
-  return "no countdowns saved; try: countdown add 2026-12-25 Christmas"
+  return log(fmt.color("muted", "No countdowns yet: countdown add 2026-12-25 Christmas"))
 end
 
 local nearest = nil
@@ -102,12 +115,7 @@ for i, item in ipairs(list) do
   local t = parseDate(item.date)
   if t then
     local days = daysUntil(t)
-    -- Past ones muted, this week's in the warning colour, today's in the good one; the date under it.
-    local text = i .. ". " .. describe(days, item.label)
-    if days < 0 then text = fmt.color("muted", text)
-    elseif days == 0 then text = fmt.color("good", text)
-    elseif days <= 7 then text = fmt.color("warn", text) end
-    log(text, item.date)
+    show(i .. ". " .. describe(days, item.label), days, item.date)
     if days >= 0 and nearest == nil then nearest = describe(days, item.label) end
   end
 end

@@ -13,6 +13,9 @@
 // Times are local to the location (timezone=auto), so no device timezone
 // handling is needed. On a timer (e.g. daily at 05:00) it pins a status line.
 
+// A failure: what didn't work, in the theme's bad colour, and why under it.
+const fail = (what, why) => log(fmt.color("bad", what), why);
+
 const line = (argline || "").trim();
 
 async function getJson(url) {
@@ -27,7 +30,7 @@ try {
   if (coords) {
     const lat = parseFloat(coords[1]);
     const lng = parseFloat(coords[2]);
-    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return "sun: coordinates out of range";
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return fail("No sun times", "latitude goes to ±90 and longitude to ±180");
     store.set("lat", String(lat));
     store.set("lng", String(lng));
     store.set("place", `${lat}, ${lng}`);
@@ -35,7 +38,7 @@ try {
     const geo = await getJson(
       `https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=${encodeURIComponent(line)}`
     );
-    if (!geo.results || geo.results.length === 0) return `sun: no place named '${line}'`;
+    if (!geo.results || geo.results.length === 0) return fail("No sun times", `no place named '${line}'`);
     const p = geo.results[0];
     store.set("lat", String(p.latitude));
     store.set("lng", String(p.longitude));
@@ -44,14 +47,14 @@ try {
 
   const lat = store.get("lat");
   const lng = store.get("lng");
-  if (!lat || !lng) return "sun: no location yet; try: sun <city> or sun <lat> <lng>";
+  if (!lat || !lng) return log(fmt.color("muted", "No location yet: sun <city> or sun <lat> <lng>"));
 
   const data = await getJson(
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
       "&daily=sunrise,sunset,daylight_duration&timezone=auto&forecast_days=1"
   );
   const d = data.daily;
-  if (!d || !d.sunrise || d.sunrise.length === 0) return "sun: no data";
+  if (!d || !d.sunrise || d.sunrise.length === 0) return fail("No sun times", "Open-Meteo sent no times");
 
   // "2026-10-16T06:12" -> "06:12"
   const hhmm = (iso) => (iso ? iso.slice(11, 16) : "--:--");
@@ -63,5 +66,5 @@ try {
   log(store.get("place") || `${lat}, ${lng}`, `sunrise ${fmt.bold(rise)} · sunset ${fmt.bold(set)}${length}`);
   status(`Sun ${rise}–${set}`);
 } catch (e) {
-  return `sun: ${e.message || e}`;
+  return fail("No sun times", `${e.message || e}`);
 }

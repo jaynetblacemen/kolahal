@@ -8,21 +8,24 @@
 //
 // On a timer (e.g. every morning) it also sends the quote as a notification.
 
+// A failure: what didn't work, in the theme's bad colour, and why under it.
+const fail = (what, why) => log(fmt.color("bad", what), why);
+
 let r;
 try {
   r = await http.get("https://zenquotes.io/api/random");
 } catch (e) {
-  return `quote: network error (${e.message || e})`;
+  return fail("No quote", `network error: ${e.message || e}`);
 }
-if (!r.ok) return `quote: HTTP ${r.status}`;
+if (!r.ok) return fail("No quote", `ZenQuotes answered HTTP ${r.status}`);
 
 let q;
 try {
   q = JSON.parse(r.body)[0];
 } catch (e) {
-  return "quote: unexpected response";
+  return fail("No quote", "ZenQuotes sent something unexpected");
 }
-if (!q || !q.q) return "quote: empty response";
+if (!q || !q.q) return fail("No quote", "ZenQuotes sent an empty answer");
 
 const author = q.a || "Unknown";
 const text = `“${q.q.trim()}” — ${author}`;
