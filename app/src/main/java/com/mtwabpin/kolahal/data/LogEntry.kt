@@ -115,5 +115,5 @@ data class LogEntry(
     val ctx: LogContext,
 )
 
-/** What the line shows: its text, and a script line's body under it. */
-val LogEntry.shownText: String get() = ctx.body?.let { "$text\n$it" } ?: text
+/** What the line shows, as plain text: its text, and a script line's body under it. */
+val LogEntry.shownText: String get() = StyledText.plain(ctx.body?.let { "$text\n$it" } ?: text)

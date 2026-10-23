@@ -7,6 +7,7 @@ import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
 import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.data.ScriptRepository
+import com.mtwabpin.kolahal.data.StyledText
 import com.mtwabpin.kolahal.notify.Notifier
 import okhttp3.Headers.Companion.toHeaders
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -175,6 +176,13 @@ class HostApi(
     fun logs(titles: List<String>) = titles.forEach { log(it) }
 
     /**
+     * `md.log(title, body?, ctx?)`: [log] with Markdown read in the title (styles) and the body
+     * (styles and list items). Secrets are hidden first, so Markdown can't split one apart.
+     */
+    fun logMarkdown(title: String, body: String? = null, ctx: Map<*, *>? = null) =
+        log(Markdown.inline(redact(title)), body?.let { Markdown.block(redact(it)) }, ctx)
+
+    /**
      * Context a script may attach to its lines. Launcher-internal keys (tap-to-run commands, script
      * identity, app grids, error lines) are dropped, so a script can't plant a one-tap `clear all`.
      */
@@ -195,7 +203,8 @@ class HostApi(
      */
     private fun honestCopy(copy: String, text: String, url: String?): Boolean {
         if (copy == url) return true
-        fun bare(s: String) = s.filterNot { it.isWhitespace() || it == ',' }
+        // As they read: styles and list marks aside.
+        fun bare(s: String) = StyledText.plain(s).filterNot { it.isWhitespace() || it == ',' }
         val c = bare(copy)
         if (c.isEmpty()) return false
         if (bare(text).contains(c)) return true
@@ -219,7 +228,7 @@ class HostApi(
         if (!notifyEnabled) return false
         // Opening the link sends what it holds to its site: the same rule as a request.
         val url = values[LogContext.URL]?.let(Net::webUrl)?.also { u -> u.toHttpUrlOrNull()?.let { checkSecrets(it.host, listOf(u)) } }
-        val posted = Notifier.post(context, scriptName, redact(title), redact(body), url)
+        val posted = Notifier.post(context, scriptName, StyledText.plain(redact(title)), StyledText.plain(redact(body)), url)
         if (!posted) notifyBlocked = true
         return posted
     }
@@ -354,7 +363,8 @@ class HostApi(
         }
         // Header line switched off: the script runs on, its line just doesn't show.
         if (grants?.allows(ScriptAccess.HEADER) == false) return
-        val value = text?.let(::redact)?.lines()?.firstOrNull()?.take(STATUS_MAX)?.takeIf { it.isNotBlank() }
+        // A header line is plain text: styles only show in the log.
+        val value = text?.let(::redact)?.let(StyledText::plain)?.lines()?.firstOrNull()?.take(STATUS_MAX)?.takeIf { it.isNotBlank() }
         KvStore(context, STATUS_SCOPE).set(scriptName, value)
         logs.onStatusChanged()
     }

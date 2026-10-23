@@ -24,6 +24,7 @@ import com.mtwabpin.kolahal.apps.AppEntry
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogEntry
 import com.mtwabpin.kolahal.data.LogKind
+import com.mtwabpin.kolahal.data.shownText
 import com.mtwabpin.kolahal.terminal.LogRow
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import java.text.SimpleDateFormat
@@ -105,7 +106,7 @@ fun LogSearchResults(
 @Composable
 private fun FoundIn(entry: LogEntry, words: List<String>, modifier: Modifier) {
     val text = remember(entry, words) {
-        val shown = listOfNotNull(entry.text, entry.ctx.body, entry.source.takeIf { entry.kind == LogKind.SCRIPT }, entry.ctx.values[LogContext.DESC])
+        val shown = listOfNotNull(entry.shownText, entry.source.takeIf { entry.kind == LogKind.SCRIPT }, entry.ctx.values[LogContext.DESC])
         val unseen = words.filter { w -> shown.none { it.contains(w, ignoreCase = true) } }
         if (unseen.isEmpty()) null
         else listOfNotNull(entry.ctx.url?.let { it to it }, entry.source?.let { it to "from $it" }, entry.ctx.script?.let { it to "from $it" })

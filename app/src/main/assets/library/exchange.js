@@ -44,13 +44,13 @@ try {
 if (data.result !== "success") return `exchange: unknown currency ${from}`;
 
 // 1234567.891 -> "1,234,567.89"
-function fmt(n) {
+function num(n) {
   const digits = n >= 100 ? 2 : n >= 1 ? 3 : 5;
   const [int, frac] = n.toFixed(digits).split(".");
   return int.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + (frac ? "." + frac : "");
 }
 // Whole amounts print without decimals: "100 USD", not "100.00 USD".
-const amountText = Number.isInteger(amount) ? fmt(amount).split(".")[0] : fmt(amount);
+const amountText = Number.isInteger(amount) ? num(amount).split(".")[0] : num(amount);
 
 const parts = [];
 for (const to of targets) {
@@ -59,9 +59,9 @@ for (const to of targets) {
     log(`${to}: unknown currency`);
     continue;
   }
-  const value = fmt(amount * rate);
+  const value = num(amount * rate);
   log(`${amountText} ${from} = ${value} ${to}`, { copy: value.replace(/,/g, "") });
-  parts.push(`${to} ${fmt(rate)}`);
+  parts.push(`${to} ${num(rate)}`);
 }
 
 if (background && parts.length > 0) status(`${from}: ` + parts.join(" · "));

@@ -152,9 +152,11 @@ class LogRepository private constructor(private val context: Context) {
                 val text = c.getString(4)
                 val source = c.getString(3)
                 // JSON escapes slashes in links; matching the raw row first spares parsing most of them.
-                val rawCtx = c.getString(5)?.replace("\\/", "/")
+                // Styled text matches as it reads: a word across a style's edge is still the word.
+                val rawCtx = c.getString(5)?.replace("\\/", "/")?.let(StyledText::plain)
+                val shown = StyledText.plain(text)
                 val candidate = words.all { w ->
-                    text.contains(w, ignoreCase = true) || source?.contains(w, ignoreCase = true) == true || rawCtx?.contains(w, ignoreCase = true) == true
+                    shown.contains(w, ignoreCase = true) || source?.contains(w, ignoreCase = true) == true || rawCtx?.contains(w, ignoreCase = true) == true
                 }
                 // Only a line from a profile ([LogContext.USER]) can be skipped: the others aren't parsed unless they match.
                 if (!candidate && (skip == null || rawCtx?.contains("\"${LogContext.USER}\"") != true)) {
@@ -172,9 +174,9 @@ class LogRepository private constructor(private val context: Context) {
         return Found(found, total, searched)
     }
 
-    /** What a search looks in: what the line shows, where it came from and where it leads. */
+    /** What a search looks in: what the line shows (a script line's body too, styles aside), where it came from and where it leads. */
     private fun searchable(e: LogEntry): List<String> =
-        listOfNotNull(e.text, e.source, e.ctx.url, e.ctx.script, e.ctx.values[LogContext.DESC])
+        listOfNotNull(e.shownText, e.source, e.ctx.url, e.ctx.script, e.ctx.values[LogContext.DESC])
 
     /** Whether a fresh screen ([hideScreen]) keeps line [id] out of view. */
     fun isHidden(id: Long): Boolean = id <= prefs.getLong(KEY_HIDDEN_UP_TO, 0L) && id > prefs.getLong(KEY_CLEARED_UP_TO, 0L)

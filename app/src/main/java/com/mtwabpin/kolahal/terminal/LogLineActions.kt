@@ -17,6 +17,7 @@ import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.data.ScriptRepository
 import com.mtwabpin.kolahal.data.shownText
+import com.mtwabpin.kolahal.data.StyledText
 import com.mtwabpin.kolahal.notifications.NotifPrefs
 import com.mtwabpin.kolahal.notifications.NotificationActions
 import com.mtwabpin.kolahal.script.Json
@@ -138,7 +139,7 @@ class LogLineActions(private val context: Context, private val processor: Comman
         }
         ctx.url?.let { url ->
             actions += LogAction("Open link") { openLink(ctx) }
-            actions += LogAction("Share link") { share(entry.text, url) }
+            actions += LogAction("Share link") { share(StyledText.plain(entry.text), url) }
             actions += LogAction("Copy link") { copy(url) }
         }
         ctx.image?.takeIf { it != ctx.url }?.let { image -> actions += LogAction("Open image") { openUrl(image) } }
@@ -178,7 +179,7 @@ class LogLineActions(private val context: Context, private val processor: Comman
                 host.io { ids.forEach(logs::delete) }
             }
         }
-        actions += LogAction("Copy text") { copy(ctx.copy ?: entry.shownText, sensitive(entry)) }
+        actions += LogAction("Copy text") { copy(ctx.copy?.let(StyledText::plain) ?: entry.shownText, sensitive(entry)) }
         danger += LogAction("Delete line", destructive = true) { host.io { logs.delete(entry.id) } }
         return actions + danger
     }

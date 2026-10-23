@@ -11,6 +11,7 @@ import party.iroiro.luajava.Lua
 import party.iroiro.luajava.lua54.Lua54
 import kotlin.concurrent.thread
 import kotlin.coroutines.coroutineContext
+import com.mtwabpin.kolahal.data.StyledText
 
 /**
  * Native Lua 5.4 through LuaJava. Each run gets a fresh, sandboxed state:
@@ -94,10 +95,8 @@ class LuaEngine : ScriptEngine {
 
     private fun bindHost(lua: Lua, host: HostApi) {
         lua.global("log") { l ->
-            // log(title, body?, ctx?); a table second is the ctx: log(title, ctx).
-            val tableSecond = l.getTop() >= 2 && l.isTable(2)
-            val body = if (l.getTop() >= 2 && !tableSecond && !l.isNil(2)) l.toString(2) else null
-            host.log(l.toString(1) ?: "nil", body, l.mapArg(if (tableSecond) 2 else 3))
+            val (title, body, ctx) = l.logArgs()
+            host.log(title, body, ctx)
             0
         }
         lua.global("logs") { l ->
@@ -170,6 +169,29 @@ class LuaEngine : ScriptEngine {
             "set" to { l: Lua -> host.storeSet(l.checkString(1), if (l.isNil(2)) null else l.toString(2)); 0 },
         )
         lua.table(
+            "md",
+            "log" to { l: Lua -> l.logArgs().let { (title, body, ctx) -> host.logMarkdown(title, body, ctx) }; 0 },
+            "escape" to { l: Lua -> l.pushValue(Markdown.escape(l.toString(1) ?: "")); 1 },
+        )
+        lua.table(
+            "fmt",
+            "bold" to { l: Lua -> l.styled(StyledText.Style.BOLD) },
+            "italic" to { l: Lua -> l.styled(StyledText.Style.ITALIC) },
+            "underline" to { l: Lua -> l.styled(StyledText.Style.UNDERLINE) },
+            "strike" to { l: Lua -> l.styled(StyledText.Style.STRIKE) },
+            "code" to { l: Lua -> l.styled(StyledText.Style.CODE) },
+            "list" to { l: Lua ->
+                val items = (if (!l.isTable(1)) null else when (val v = Json.normalizeLua(l.toMap(1))) {
+                    is List<*> -> v.map { it.toString() }
+                    is Map<*, *> -> if (v.isEmpty()) emptyList() else null
+                    else -> null
+                }) ?: throw IllegalArgumentException("fmt.list expects a list of items")
+                l.pushValue(StyledText.list(items, numbered = l.getTop() >= 2 && l.toBoolean(2)))
+                1
+            },
+            "plain" to { l: Lua -> l.pushValue(StyledText.plain(l.toString(1) ?: "")); 1 },
+        )
+        lua.table(
             "secrets",
             "get" to { l: Lua -> l.pushValue(host.secretGet(l.checkString(1))); 1 },
         )
@@ -182,6 +204,19 @@ class LuaEngine : ScriptEngine {
 
     private fun Lua.checkString(index: Int): String =
         toString(index) ?: throw IllegalArgumentException("argument #$index must be a string")
+
+    /** `fmt.<style>(text)`: the text with [style] on it. */
+    private fun Lua.styled(style: StyledText.Style): Int {
+        pushValue(StyledText.wrap(style, toString(1) ?: "nil"))
+        return 1
+    }
+
+    /** `(title, body?, ctx?)` as log and md.log take them; a table second is the ctx: log(title, ctx). */
+    private fun Lua.logArgs(): Triple<String, String?, Map<*, *>?> {
+        val tableSecond = getTop() >= 2 && isTable(2)
+        val body = if (getTop() >= 2 && !tableSecond && !isNil(2)) toString(2) else null
+        return Triple(toString(1) ?: "nil", body, mapArg(if (tableSecond) 2 else 3))
+    }
 
     private fun Lua.mapArg(index: Int): Map<*, *>? =
         if (getTop() >= index && isTable(index)) Json.normalizeLua(toMap(index)) as? Map<*, *> else null

@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import com.mtwabpin.kolahal.data.StyledText
 
 /**
  * QuickJS through quickjs-kt. Network helpers are `async` so scripts can `await` them
@@ -51,10 +52,8 @@ class JsEngine : ScriptEngine {
 
     private fun bindHost(js: QuickJs, host: HostApi) {
         js.function("log") { args ->
-            // log(title, body?, ctx?); an object second is the ctx: log(title, ctx).
-            val second = args.getOrNull(1)
-            if (second is Map<*, *>) host.log(args.str(0) ?: "undefined", null, second)
-            else host.log(args.str(0) ?: "undefined", second?.let(::render), args.getOrNull(2) as? Map<*, *>)
+            val (title, body, ctx) = logArgs(args)
+            host.log(title, body, ctx)
         }
         js.function("logs") { args ->
             // logs(["a", "b"]) or logs("a", "b"): one title line each.
@@ -117,6 +116,22 @@ class JsEngine : ScriptEngine {
             function("get") { args -> host.storeGet(args.req(0)) }
             function("set") { args -> host.storeSet(args.req(0), args.str(1)) }
         }
+        js.define("md") {
+            function("log") { args -> logArgs(args).let { (title, body, ctx) -> host.logMarkdown(title, body, ctx) } }
+            function("escape") { args -> Markdown.escape(args.str(0).orEmpty()) }
+        }
+        js.define("fmt") {
+            function("bold") { args -> StyledText.wrap(StyledText.Style.BOLD, args.str(0) ?: "undefined") }
+            function("italic") { args -> StyledText.wrap(StyledText.Style.ITALIC, args.str(0) ?: "undefined") }
+            function("underline") { args -> StyledText.wrap(StyledText.Style.UNDERLINE, args.str(0) ?: "undefined") }
+            function("strike") { args -> StyledText.wrap(StyledText.Style.STRIKE, args.str(0) ?: "undefined") }
+            function("code") { args -> StyledText.wrap(StyledText.Style.CODE, args.str(0) ?: "undefined") }
+            function("list") { args ->
+                val items = args.getOrNull(0) as? List<*> ?: throw IllegalArgumentException("fmt.list expects an array of items")
+                StyledText.list(items.map(::render), numbered = args.getOrNull(1) == true)
+            }
+            function("plain") { args -> StyledText.plain(args.str(0).orEmpty()) }
+        }
         js.define("secrets") {
             function("get") { args -> host.secretGet(args.req(0)) }
         }
@@ -126,6 +141,13 @@ class JsEngine : ScriptEngine {
     private val httpSlots = Semaphore(4)
 
     private suspend fun <T> io(block: () -> T): T = httpSlots.withPermit { withContext(Dispatchers.IO) { block() } }
+
+    /** `(title, body?, ctx?)` as log and md.log take them; an object second is the ctx: log(title, ctx). */
+    private fun logArgs(args: Array<Any?>): Triple<String, String?, Map<*, *>?> {
+        val second = args.getOrNull(1)
+        return if (second is Map<*, *>) Triple(args.str(0) ?: "undefined", null, second)
+        else Triple(args.str(0) ?: "undefined", second?.let(::render), args.getOrNull(2) as? Map<*, *>)
+    }
 
     private fun Array<Any?>.str(i: Int): String? = getOrNull(i)?.let { if (it is String) it else render(it) }
 

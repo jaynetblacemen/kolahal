@@ -45,14 +45,14 @@ try {
 }
 
 // 67123.4 -> "67,123.40"; tiny prices keep more decimals.
-function fmt(n) {
+function num(n) {
   if (n >= 1) {
     const [int, frac] = n.toFixed(2).split(".");
     return int.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "." + frac;
   }
   return n.toPrecision(4);
 }
-const compact = (n) => (n >= 1000 ? (n / 1000).toFixed(1) + "k" : fmt(n));
+const compact = (n) => (n >= 1000 ? (n / 1000).toFixed(1) + "k" : num(n));
 const arrow = (c) => (c >= 0 ? "▲" : "▼") + Math.abs(c).toFixed(1) + "%";
 
 const parts = [];
@@ -64,7 +64,7 @@ for (const id of ids) {
   }
   const change = p[`${vs}_24h_change`];
   const sym = SYMBOLS[id] || id.toUpperCase();
-  log(`${sym} ${fmt(p[vs])} ${vs.toUpperCase()}` + (change != null ? `  ${arrow(change)} 24h` : ""), {
+  log(`${sym} ${num(p[vs])} ${vs.toUpperCase()}` + (change != null ? `  ${arrow(change)} 24h` : ""), {
     url: `https://www.coingecko.com/en/coins/${id}`,
   });
   parts.push(`${sym} ${compact(p[vs])}` + (change != null ? ` ${arrow(change)}` : ""));

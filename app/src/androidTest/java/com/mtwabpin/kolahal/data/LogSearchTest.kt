@@ -32,6 +32,11 @@ class LogSearchTest {
         assertEquals(3, logs.search(listOf(token)).total)
     }
 
+    @Test fun aScriptLinesBodyIsSearchedToo() {
+        added += logs.add(LogKind.SCRIPT, "title", "s", LogContext.of(LogContext.TITLE to "1", LogContext.BODY to "$token in the body"))
+        assertEquals(setOf("title"), texts(token))
+    }
+
     @Test fun everyWordMustMatchIgnoringCase() {
         add("$token Battery LOW")
         add("$token battery full")
