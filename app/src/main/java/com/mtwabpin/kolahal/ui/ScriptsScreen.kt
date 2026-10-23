@@ -36,6 +36,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -160,6 +161,7 @@ fun ScriptsScreen(
     var adding by remember { mutableStateOf(false) }
     var sheetId by rememberSaveable { mutableStateOf<Long?>(null) }
     var consentFor by remember { mutableStateOf<Script?>(null) }
+    var resetting by remember { mutableStateOf<LibRow?>(null) }
     var filters by rememberSaveable { mutableStateOf(listOf<String>()) }
     var query by rememberSaveable { mutableStateOf("") }
     var searching by rememberSaveable { mutableStateOf(false) }
@@ -327,10 +329,18 @@ fun ScriptsScreen(
                             secretsSet = info.secrets.map { it.name } - missingKeys[s.name].orEmpty().toSet(),
                             expanded = expandAll != (s.id in flipped),
                             updateAvailable = libByName[s.name]?.state == ScriptLibrary.State.UPDATE_AVAILABLE || s.name in sharedUpdates,
+                            library = libByName[s.name]?.state?.takeIf { it != ScriptLibrary.State.NOT_INSTALLED },
                             onExpand = { flipped = if (s.id in flipped) flipped - s.id else flipped + s.id },
                             onClick = { sheetId = s.id },
                             onEnabled = { setEnabled(s, it) },
                             onRun = { vm.runScriptNow(s) },
+                            onAccess = { item, on -> vm.setScriptAccess(s, item, on) },
+                            onNotify = { vm.setScriptNotify(s, it) },
+                            onReset = {
+                                val lib = libByName[s.name] ?: return@ScriptCard
+                                // Edits are lost: ask first. An older copy of yours had none.
+                                if (lib.state == ScriptLibrary.State.MODIFIED) resetting = lib else vm.installFromLibrary(lib.entry)
+                            },
                         )
                     }
                 }
@@ -364,6 +374,10 @@ fun ScriptsScreen(
                     ActionGroup(addActions(vm, onNew = { adding = false; creating = true }, onImportFiles = { adding = false; onImportFiles() }, close = { adding = false }))
                 }
             }
+        }
+
+        resetting?.let { lib ->
+            ResetDialog(lib, onDismiss = { resetting = null }) { resetting = null; vm.installFromLibrary(lib.entry) }
         }
 
         consentFor?.let { s ->
@@ -432,19 +446,26 @@ private fun ScriptCard(
     secretsSet: List<String>,
     expanded: Boolean,
     updateAvailable: Boolean,
+    /** Its copy from the library, edited or not; null for a script of your own. */
+    library: ScriptLibrary.State?,
     onExpand: () -> Unit,
     onClick: () -> Unit,
     onEnabled: (Boolean) -> Unit,
     onRun: () -> Unit,
+    onAccess: (String, Boolean) -> Unit,
+    onNotify: (Boolean) -> Unit,
+    onReset: () -> Unit,
 ) {
     val s = info.script
     val colors = MaterialTheme.colorScheme
     val failed = s.failed()
     val summary = buildList {
-        add(schedule(s, info.isCommand, info.events))
+        // Events switched off don't run it: left out.
+        add(schedule(s, info.isCommand, info.events.filter { s.grants.allows(it) }))
         add(s.lastRun?.let { (if (failed) "failed " else "ran ") + relative(it, short = true) } ?: "never run")
         if (missingKeys.isNotEmpty()) add("needs " + missingKeys.joinToString(", "))
         if (updateAvailable) add("update available")
+        if (library == ScriptLibrary.State.MODIFIED) add("edited")
     }.joinToString(" · ")
     Surface(
         onClick = onClick,
@@ -492,14 +513,26 @@ private fun ScriptCard(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 20.dp, end = 8.dp),
             )
-            if (expanded) ScriptDetails(info, line, secretsSet)
+            if (expanded) ScriptDetails(info, line, secretsSet, library, onAccess, onNotify, onReset)
         }
     }
 }
 
+/**
+ * A card's details: its header line, description, next run and usage, a pill for each thing it may
+ * do (on or off, a tap switches it), its secrets, and Reset for an edited or older library copy.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ScriptDetails(info: ScriptInfo, line: String?, secretsSet: List<String>) {
+private fun ScriptDetails(
+    info: ScriptInfo,
+    line: String?,
+    secretsSet: List<String>,
+    library: ScriptLibrary.State?,
+    onAccess: (String, Boolean) -> Unit,
+    onNotify: (Boolean) -> Unit,
+    onReset: () -> Unit,
+) {
     val s = info.script
     val colors = MaterialTheme.colorScheme
     val grants = s.grants
@@ -521,34 +554,49 @@ private fun ScriptDetails(info: ScriptInfo, line: String?, secretsSet: List<Stri
             Fact("Next run", if (exact) time else "about $time")
         }
         info.usage?.let { Fact("Usage", it) }
-        if (info.events.isNotEmpty()) Fact("Runs on", info.events.joinToString(", ") { if (grants.allows(it)) it else "$it (switched off)" })
-        // What it declares, and internet or its header line when they are switched off.
-        val access = ScriptAccess.items(s.code).filter { it !in info.events && (it in grants.declared || !grants.allows(it)) }
-        if (access.isNotEmpty()) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                for (item in access) {
-                    val allowed = grants.allows(item)
-                    val name = USES_SHORT[item] ?: ScriptAccess.label(item).lowercase()
-                    Surface(shape = MaterialTheme.shapes.small, color = if (allowed) colors.secondaryContainer else colors.surfaceContainerHighest) {
-                        Text(
-                            when {
-                                allowed -> name
-                                item in grants.undecided -> "$name · not allowed yet"
-                                else -> "$name · off"
-                            },
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (allowed) colors.onSecondaryContainer else colors.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                        )
-                    }
+        // Everything it may do, as in its sheet's Access: internet, its header line, notifications,
+        // what it declares with @uses, and its @on events. A tap switches one.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            for (item in ScriptAccess.items(s.code)) {
+                val name = when {
+                    item in info.events -> "on $item"
+                    else -> USES_SHORT[item] ?: ScriptAccess.label(item).lowercase()
                 }
+                val allowed = grants.allows(item)
+                AccessPill(if (item in grants.undecided) "$name · not allowed yet" else name, allowed) { onAccess(item, !allowed) }
+                if (item == ScriptAccess.HEADER) AccessPill("notifies", s.notify) { onNotify(!s.notify) }
             }
         }
         if (info.secrets.isNotEmpty()) {
             Fact("Secrets", info.secrets.joinToString(", ") { d -> d.name + if (d.name in secretsSet) " (set)" else " (not set)" })
         }
         if (s.failed()) Text(s.lastStatus.orEmpty(), style = MaterialTheme.typography.bodySmall, color = colors.error)
+        // A library script edited, or from an older Kolahal: back to this version's copy.
+        if (library == ScriptLibrary.State.MODIFIED || library == ScriptLibrary.State.UPDATE_AVAILABLE) {
+            OutlinedButton(onClick = onReset) {
+                Icon(painterResource(R.drawable.ic_refresh), null, Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text("Reset to the library's")
+            }
+        }
     }
+}
+
+/** One thing a script may do: ✓ and filled when on, ✕ and outlined when off; a tap switches it. */
+@Composable
+private fun AccessPill(label: String, on: Boolean, onToggle: () -> Unit) {
+    FilterChip(
+        selected = on,
+        onClick = onToggle,
+        label = { Text(label) },
+        leadingIcon = {
+            Icon(
+                painterResource(if (on) R.drawable.ic_check else R.drawable.ic_close),
+                contentDescription = if (on) "on" else "off",
+                modifier = Modifier.size(FilterChipDefaults.IconSize),
+            )
+        },
+    )
 }
 
 @Composable
@@ -785,7 +833,7 @@ private fun ScriptSheet(
                     ScriptLibrary.State.UPDATE_AVAILABLE ->
                         FilledTonalButton(onClick = { vm.installFromLibrary(lib.entry) }) { Text("Update from library") }
                     ScriptLibrary.State.MODIFIED ->
-                        TextButton(onClick = { confirmReplace = true }) { Text("Replace with library version") }
+                        TextButton(onClick = { confirmReplace = true }) { Text("Reset to the library's") }
                     else -> Unit
                 }
                 TextButton(
@@ -816,18 +864,7 @@ private fun ScriptSheet(
     }
 
     if (confirmReplace && lib != null) {
-        AlertDialog(
-            onDismissRequest = { confirmReplace = false },
-            title = { Text("Replace ${s.name}.${s.lang.ext}?") },
-            text = { Text("Your copy differs from the library's. Its code is replaced and your changes are lost. Export it first to keep a copy.") },
-            confirmButton = {
-                TextButton(
-                    onClick = { confirmReplace = false; vm.installFromLibrary(lib.entry) },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                ) { Text("Replace") }
-            },
-            dismissButton = { TextButton(onClick = { confirmReplace = false }) { Text("Cancel") } },
-        )
+        ResetDialog(lib, onDismiss = { confirmReplace = false }) { confirmReplace = false; vm.installFromLibrary(lib.entry) }
     }
 
     if (confirmDelete) {
@@ -845,6 +882,20 @@ private fun ScriptSheet(
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
         )
     }
+}
+
+/** Resetting an edited library script to the library's copy: the edits go, so it asks first. */
+@Composable
+private fun ResetDialog(lib: LibRow, onDismiss: () -> Unit, onReset: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Reset ${lib.entry.file}?") },
+        text = { Text("Your copy differs from the library's. Its code becomes the library's and your changes are lost; its timers and switches stay. Export it first to keep a copy.") },
+        confirmButton = {
+            TextButton(onClick = onReset, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Reset") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 /**

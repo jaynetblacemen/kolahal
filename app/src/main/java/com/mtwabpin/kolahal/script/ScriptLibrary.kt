@@ -85,10 +85,37 @@ class ScriptLibrary(private val context: Context) {
         return repo.byId(script.id)!!.also { ScriptScheduler.sync(context, it) }
     }
 
+    /**
+     * The library's copies you never edited follow the app: when a new Kolahal brings new copies
+     * (or a different library), each one still as it was installed becomes the new one, timers and
+     * switches kept. Edited copies are left alone ([State.MODIFIED]; Reset brings the library's).
+     * Returns the names updated; once per library, so it costs nothing on a usual start.
+     */
+    fun updateUnedited(): List<String> {
+        val fingerprint = entries.joinToString("\n") { it.file + ":" + code(it).hashCode() }.hashCode()
+        if (prefs.getInt(KEY_LIBRARY, 0) == fingerprint) return emptyList()
+        val installed = ScriptRepository.get(context).all()
+        val updated = entries.filter { state(it, installed) == State.UPDATE_AVAILABLE }
+            .mapNotNull { e -> runCatching { install(e) }.getOrNull()?.name }
+        prefs.edit { putInt(KEY_LIBRARY, fingerprint) }
+        if (updated.isNotEmpty()) {
+            com.mtwabpin.kolahal.data.LogRepository.get(context).add(
+                com.mtwabpin.kolahal.data.LogKind.INFO,
+                "Library scripts updated with Kolahal: " + updated.joinToString(", "),
+            )
+        }
+        return updated
+    }
+
     private val prefs by lazy { context.getSharedPreferences("script_library", Context.MODE_PRIVATE) }
 
     private fun installedOriginal(name: String): String? = prefs.getString("installed:$name", null)
 
     /** The script named [name] is no longer the library's copy (renamed or deleted). */
     fun forget(name: String) = prefs.edit { remove("installed:$name") }
+
+    private companion object {
+        /** The library [updateUnedited] last brought copies up to (a fingerprint of its files). */
+        const val KEY_LIBRARY = "library"
+    }
 }

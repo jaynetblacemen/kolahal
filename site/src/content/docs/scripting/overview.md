@@ -55,7 +55,9 @@ timer turns a disabled script back on; `script off <name>` disables it without l
 last run's result. The script manager (`scripts`, or the **Scripts** tab in Settings) shows a card per
 script: its title, how it runs and how its last run went (red if it failed), **Run** for a command,
 and its on/off switch. The arrow on a card, or the one at the top for all of them, shows its details:
-its header line, next run, usage, events and what it may use. Chips filter the cards (commands,
+its header line, next run, usage, and a pill for everything it may do (internet, its header line,
+notifications, what it declares, its events): ✓ when on, ✕ when off, and a tap switches it. A
+library script you edited (its summary says "edited") gets **Reset to the library's** there too. Chips filter the cards (commands,
 timers, events, in the header, failed, off, needs a key, and what they use), and the search icon finds one by name.
 Tap a card for **Run**, **Edit**, **Export**, access, notifications, timers and **Delete**.
 **Add script** writes a new one, or takes one from the library, from
@@ -222,7 +224,7 @@ log. Code you type at the prompt (`lua`, `js`, `=`) may use everything.
 ### Switching access off
 
 Each script has an **Access** group in its sheet (Scripts → tap the script), with a switch for
-everything it can use. Switched off, a script gets nothing where nothing is an honest answer, and
+everything it can use; the pills in its card's details switch the same things. Switched off, a script gets nothing where nothing is an honest answer, and
 stops where it isn't:
 
 | Switch | Switched off, the script… |

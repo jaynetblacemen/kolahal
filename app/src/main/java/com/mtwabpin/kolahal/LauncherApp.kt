@@ -62,6 +62,8 @@ class LauncherApp : Application(), Configuration.Provider {
         // Re-anchor daily script times (periodic work drifts), restore schedules after updates, trim old log.
         Thread {
             runCatching { CrashReports.announce(this) }
+            // Library scripts nobody edited follow the app's library.
+            runCatching { com.mtwabpin.kolahal.script.ScriptLibrary(this).updateUnedited() }
             runCatching { ScriptScheduler.syncAll(this) }
             runCatching { com.mtwabpin.kolahal.feeds.FeedScheduler.sync(this) }
             runCatching { com.mtwabpin.kolahal.productivity.ReminderScheduler.rescheduleAll(this) }

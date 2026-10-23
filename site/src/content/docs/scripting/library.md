@@ -15,12 +15,13 @@ More scripts, shared by people who use Kolahal, are in **Scripts → Add script 
 `script get` ([getting scripts from others](/scripting/overview/#getting-scripts-from-others)).
 
 Installing sets the script's suggested timers and notification flag. They are only suggestions:
-change them with `script every`, `script at` and `script notify`, or in the script manager. After
-an app update, `script lib` shows **(update available)** for scripts you haven't edited and
-**(edited)** for ones you have. Installing again updates a copy you haven't edited.
-A copy you edited, or your own script with the same name, is only replaced
-when you ask: `script install weather --replace`, or **Replace with library version** in its sheet
-in the script manager. Export it first to keep your version.
+change them with `script every`, `script at` and `script notify`, or in the script manager.
+
+A copy you haven't edited follows Kolahal: when an update brings a newer one, it replaces yours by
+itself (its timers and switches stay), and the log says which scripts it updated. A copy you
+edited stays yours, marked **(edited)** in `script lib` and "edited" in the script manager. It is
+only replaced when you ask: `script install weather --replace`, or **Reset to the library's** in its
+card's details or its sheet. Export it first to keep your version.
 
 None of the network scripts need an API key.
 
