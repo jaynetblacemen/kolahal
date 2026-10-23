@@ -240,11 +240,14 @@ private class SelectorState {
 }
 
 private val ROW_H = 38.dp
+/** Past the strip's inner side by this much, the finger is picking from the list, not sliding the edge. */
+private val LEAVE = 32.dp
 private val STRIP_W = 36.dp
 private val TOP_GAP = 8.dp
 /** Leaves the "jump to latest" button in the log's bottom-right corner reachable. */
 private val BOTTOM_GAP = 72.dp
-private const val HOLD_MS = 450L
+/** Held still this long on an app while picking: its actions. Long enough to find it on the far side first. */
+private const val HOLD_MS = 800L
 private const val IDLE_MS = 4_000L
 private const val FRAME_MS = 16L
 
@@ -343,7 +346,8 @@ fun AppSelector(
         val panelXPx = if (left) containerW - panelWPx else 0f
         val stripXPx = if (left) 0f else containerW - stripWPx
         val exclusionPx = with(density) { 200.dp.toPx() }
-        val leavePx = with(density) { 10.dp.toPx() }
+        // How far off the edge picking starts: a thumb drifts a little while it slides along the edge.
+        val leavePx = with(density) { LEAVE.toPx() }
         val slopPx = with(density) { 8.dp.toPx() }
         val edgeZonePx = with(density) { 56.dp.toPx() }
         val edgeMaxSpeed = with(density) { 1.1.dp.toPx() } // px per ms at full depth

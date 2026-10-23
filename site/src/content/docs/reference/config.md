@@ -72,8 +72,8 @@ The `theme` and `font` commands are unchanged.
 | `log.dim` | bool | `on` | dim output older than the latest command |
 | `log.spacing` | number 0–40 | `5` | gap (dp) above each output group: a command and its output, or a background batch (feeds, scripts) |
 | `log.gutter` | bool | `on` | thin colour bar at the left of each log line: green for commands, script colour for background output, red for errors |
-| `log.line-height` | number 10–56 | `25` | minimum height (dp) of a log line; tappable lines get +10, two-column rows +14 (`log.taller-taps`). Below a line of text and its padding (about 25 at text size 14), lines lose the padding and are as short as the text allows. Script status lines in the header use it too |
-| `log.taller-taps` | bool | `on` | lines you can tap a little taller than the others, easier to hit; off makes every line the same height |
+| `log.line-height` | number 10–56 | `22` | minimum height (dp) of a log line; with `log.taller-taps`, tappable lines get +10 and two-column rows +14. Up to 3 dp above and below a line, less as it nears one line of text (19 at text size 14), none at it; lower still, lines are as short as the text allows. Script status lines in the header use it too |
+| `log.taller-taps` | bool | `off` | lines you can tap a little taller than the others, easier to hit; off makes every line the same height |
 | `chips.height` | number 20–64 | `48` | height (dp) of suggestion and app-grid chips |
 | `log.keep-days` | number 1–365 | `60` | delete log lines older than this many days (checked at least twice a day) |
 | `log.keep-lines` | number 500–50000 | `5000` | delete the oldest log lines past this many. Typed commands are counted apart, so ↑ history stays. Only with `config set`: the settings screen doesn't show it |

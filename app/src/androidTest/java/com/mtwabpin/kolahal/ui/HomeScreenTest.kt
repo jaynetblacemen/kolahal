@@ -140,8 +140,8 @@ class HomeScreenTest {
             assertTrue(height(output).value < 20f)
             assertEquals(height(output).value, height(command).value, 0.5f)
         } finally {
-            Term.tallerTaps = true
-            Term.lineHeight = 30
+            Term.tallerTaps = Keys.LOG_TALLER_TAPS.default
+            Term.lineHeight = Keys.LOG_LINE_HEIGHT.default
             logs.delete(command)
             logs.delete(output)
         }

@@ -12,8 +12,10 @@ class ConfigDefaultsTest {
         // Swiping up is off until it is given an action: it fires by accident easily.
         assertEquals("none", Keys.GESTURE_SWIPE_UP.default)
         assertEquals(false, Keys.HEADER_DEVICE.default)
-        // 5 from 0.4.3: groups closer together.
+        // From 0.4.3: groups closer together, and lines a line of text and a little room, all alike.
         assertEquals(5, Keys.LOG_SPACING.default)
+        assertEquals(22, Keys.LOG_LINE_HEIGHT.default)
+        assertEquals(false, Keys.LOG_TALLER_TAPS.default)
     }
 
     @Test fun logKeepsFiveThousandLinesUnlessChanged() {

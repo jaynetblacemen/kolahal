@@ -195,10 +195,10 @@ object Term {
     var fontFamily by mutableStateOf<FontFamily>(FontFamily.Monospace)
 
     /** Minimum height (dp) of a plain log line (`log.line-height`); tappable lines get +10, two-column rows +14 ([tallerTaps]). */
-    var lineHeight by mutableIntStateOf(30)
+    var lineHeight by mutableIntStateOf(22)
 
     /** `log.taller-taps`: tappable lines and two-column rows taller than [lineHeight]; off, every line is that tall. */
-    var tallerTaps by mutableStateOf(true)
+    var tallerTaps by mutableStateOf(false)
 
     /** Minimum height (dp) of suggestion and app-grid chips (`chips.height`). */
     var chipHeight by mutableIntStateOf(48)
