@@ -79,7 +79,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         logs.withCause(commandId) { runLogged(typed, expand) }
     }
 
-    private fun runLogged(typed: String, expand: Boolean) {
+    /** What the command prints is written together ([LogRepository.batched]): one write for a page of output, not one per line. */
+    private fun runLogged(typed: String, expand: Boolean) = logs.batched {
         // Aliases first, so `alias hf = help | grep feed` pipes too; its definition keeps the pipe.
         val expanded = if (expand) expandAliases(typed) else typed
         val stages = if (expanded.substringBefore(' ').lowercase() == "alias") listOf(expanded) else Pipes.split(expanded)
@@ -90,7 +91,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 onSuccess = { logs.addAll(it) },
                 onFailure = { logs.addAll(captured); error(it.message ?: "Bad pipe") },
             )
-            return
+            return@batched
         }
         execute(typed, expand)
     }

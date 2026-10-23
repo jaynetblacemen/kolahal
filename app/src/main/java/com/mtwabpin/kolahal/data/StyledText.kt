@@ -59,6 +59,9 @@ object StyledText {
 
     private val HIGH = Character.highSurrogate(BASE)
 
+    /** An SQLite GLOB pattern that any text with a marker in it matches. */
+    val GLOB: String = "*[${char(BASE)}-${char(LAST)}]*"
+
     private val NUMBER = Regex("^(\\d{1,4}[.)]) ")
 
     /**

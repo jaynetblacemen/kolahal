@@ -57,4 +57,43 @@ class LogSearchTest {
         assertEquals(listOf("$token personal"), found.entries.map { it.text })
         assertTrue(found.searched > 0)
     }
+
+    // The database rules most lines out before they are read (a LIKE per word): what that must not miss.
+
+    /** Styled text matches as it reads: a word across a style's edge is still the word. */
+    @Test fun aWordAcrossAStyleEdgeIsFound() {
+        add("$token ab" + StyledText.wrap(StyledText.Style.BOLD, "cd") + "ef")
+        assertEquals(1, logs.search(listOf("bcde")).total)
+        added += logs.add(LogKind.SCRIPT, "t", "s", LogContext.of(LogContext.TITLE to "1", LogContext.BODY to "$token xy" + StyledText.wrap(StyledText.Style.ITALIC, "z") + "w"))
+        assertEquals(1, logs.search(listOf("yzw")).total)
+    }
+
+    /** JSON escapes the slashes in a link. */
+    @Test fun aLinkWithSlashesIsFound() {
+        add("three", ctx = LogContext.of(LogContext.URL to "https://example.com/$token/path"))
+        assertEquals(setOf("three"), texts("com/$token/path"))
+    }
+
+    @Test fun likeWildcardsAreLiteral() {
+        add("$token 100%")
+        add("$token 100x")
+        add("$token a_b")
+        add("$token axb")
+        assertEquals(setOf("$token 100%"), texts("100%"))
+        assertEquals(setOf("$token a_b"), texts("a_b"))
+    }
+
+    @Test fun nonAsciiWordsIgnoreCase() {
+        add("$token Éclair")
+        assertEquals(setOf("$token Éclair"), texts("éclair"))
+        assertEquals(setOf("$token Éclair"), texts(token, "ÉCLAIR"))
+    }
+
+    @Test fun everyLineCountsAsSearched() {
+        repeat(3) { add("$token $it") }
+        val found = logs.search(listOf(token))
+        assertEquals(3, found.total)
+        assertTrue(found.searched >= 3)
+        assertTrue(logs.search(listOf("zz${token}zz")).searched >= 3)
+    }
 }

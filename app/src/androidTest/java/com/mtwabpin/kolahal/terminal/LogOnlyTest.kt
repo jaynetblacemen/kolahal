@@ -60,9 +60,14 @@ class LogOnlyTest {
         assertEquals(2, vm.filterCount.value)
         // It stays: a new home (after a restart) still shows only those lines.
         assertEquals(LogFilter.Named("loxkcd"), viewModel().filter.value)
-        // New lines from there come in as they are logged.
+        // New lines from there come in as they are logged, and count; others don't.
         logs.add(LogKind.SCRIPT, "lo third comic", "loxkcd", LogContext.of(LogContext.SCRIPT to "loxkcd"))
         waitUntil("the new line") { vm.entries.value.lastOrNull()?.text == "lo third comic" }
+        waitUntil("counted") { vm.filterCount.value == 3 }
+        logs.add(LogKind.SCRIPT, "lo another release", "loreleases", LogContext.of(LogContext.SCRIPT to "loreleases"))
+        Thread.sleep(400)
+        assertEquals(listOf("lo first comic", "lo second comic", "lo third comic"), vm.entries.value.map { it.text })
+        assertEquals(3, vm.filterCount.value)
         // Another command ends it, so it and what it prints show.
         vm.runCommand("echo lo done")
         waitUntil("everything again") { vm.filter.value == null && vm.entries.value.any { it.text == "lo a release" } }

@@ -35,11 +35,27 @@ class LogTrimTest {
         assertEquals("$token output 100", outputs.first())
     }
 
-    @Test fun aTrimThatRemovesLinesTellsHomeToReload() {
-        repeat(510) { logs.add(LogKind.OUTPUT, "$token output $it") }
-        val before = logs.structure
+    /** A trim says how far it reached, so home keeps a page the trim didn't touch. */
+    @Test fun aTrimReportsHowFarItReached() {
+        val ids = (0 until 510).map { logs.add(LogKind.OUTPUT, "$token output $it") }
+        val structure = logs.structure
         logs.trim(keep = 500)
-        assertTrue(logs.structure > before)
+        assertEquals(structure, logs.structure)
+        assertTrue(logs.trimmedUpTo >= ids[9])
+        assertTrue(logs.trimmedUpTo < ids[10])
+        assertEquals(500, mine().size)
+    }
+
+    /** Home trims on its own as the log grows, so notifications can't pile up between script runs. */
+    @Test fun homeTrimsOnItsOwnAfterEnoughLines() {
+        logs.keepLines = 500
+        repeat(LogRepository.TRIM_EVERY) { logs.add(LogKind.OUTPUT, "$token output $it") }
+        logs.trimIfOverdue()
+        val mine = mine()
+        assertTrue(mine.size.toString(), mine.size <= 500)
+        repeat(600) { logs.add(LogKind.OUTPUT, "$token more $it") }
+        logs.trimIfOverdue()
+        assertEquals(500, mine().size)
     }
 
     @Test fun theTrimUsesTheSettingEveryProcessReads() {

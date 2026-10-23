@@ -29,34 +29,95 @@ class LogRepository private constructor(private val context: Context) {
         source: String? = null,
         ctx: LogContext = LogContext.EMPTY,
     ): Long {
-        val tagged = caused(ctx)
+        val line = Pending(kind, text, source, caused(ctx), System.currentTimeMillis())
         capture.get()?.let { buffer ->
-            buffer += Pending(kind, text, source, tagged, System.currentTimeMillis())
+            buffer += line
             return -1
         }
-        val id = db.writableDatabase.insert("logs", null, ContentValues().apply {
-            put("ts", System.currentTimeMillis())
-            put("kind", kind.key)
-            put("source", source)
-            put("text", clip(text))
-            put("ctx", clip(tagged).toJson())
-        })
+        batch.get()?.let { b ->
+            b.add(line)
+            return -1
+        }
+        val id = insert(db.writableDatabase, line)
+        writes.incrementAndGet()
         changed()
         return id
     }
+
+    private fun insert(w: android.database.sqlite.SQLiteDatabase, p: Pending): Long = w.insert("logs", null, ContentValues().apply {
+        put("ts", p.ts)
+        put("kind", p.kind.key)
+        put("source", p.source)
+        put("text", clip(p.text))
+        put("ctx", clip(p.ctx).toJson())
+    })
 
     /**
      * Like [add], but first removes earlier lines with the same kind and text, so a repeated
      * event (launching the same app again) keeps a single line, moved to the bottom.
      */
     fun addReplacing(kind: LogKind, text: String, ctx: LogContext = LogContext.EMPTY): Long {
-        if (capture.get() != null) return add(kind, text, ctx = ctx)
-        // The earlier line moves to the bottom: more than an append for home's incremental load.
-        if (db.writableDatabase.delete("logs", "kind = ? AND text = ?", arrayOf(kind.key, text)) > 0) structure++
+        if (capture.get() == null) {
+            val ids = db.readableDatabase.rawQuery("SELECT id FROM logs WHERE kind = ? AND text = ?", arrayOf(kind.key, text))
+                .use { c -> buildList { while (c.moveToNext()) add(c.getLong(0)) } }
+            if (ids.isNotEmpty()) {
+                db.writableDatabase.delete("logs", "kind = ? AND text = ?", arrayOf(kind.key, text))
+                noteRemoved(ids)
+            }
+        }
         return add(kind, text, ctx = ctx)
     }
 
     data class Pending(val kind: LogKind, val text: String, val source: String?, val ctx: LogContext, val ts: Long)
+
+    /** Lines added on one thread while [batched] runs, written together: when it ends, or [BATCH_MS] after the first one waiting. */
+    private inner class Batch {
+        private val lines = ArrayList<Pending>()
+        private var due: java.util.concurrent.ScheduledFuture<*>? = null
+
+        @Synchronized fun add(line: Pending) {
+            lines += line
+            if (due == null) due = flusher.schedule({ flush() }, BATCH_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+        }
+
+        @Synchronized fun flush() {
+            due?.cancel(false)
+            due = null
+            if (lines.isEmpty()) return
+            val out = ArrayList(lines)
+            lines.clear()
+            write(out)
+        }
+    }
+
+    private val batch = ThreadLocal<Batch?>()
+    private val flusher = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "log-batch").apply { isDaemon = true } }
+
+    /**
+     * Runs [block] with the lines it adds on this thread written together: in one transaction when
+     * it ends, or every [BATCH_MS] while it runs, so a slow command still shows its output as it
+     * goes. A command that prints fifty lines then costs one write, not fifty. Lines added on
+     * other threads are written as usual; inside a [capture], nothing is written at all.
+     */
+    fun <T> batched(block: () -> T): T {
+        if (batch.get() != null || capture.get() != null) return block()
+        val b = Batch()
+        batch.set(b)
+        try {
+            return block()
+        } finally {
+            batch.set(null)
+            b.flush()
+        }
+    }
+
+    /** Inserts [lines] in one transaction and announces them once. */
+    private fun write(lines: List<Pending>) {
+        val w = db.writableDatabase
+        w.transaction { for (p in lines) insert(w, p) }
+        writes.addAndGet(lines.size)
+        changed()
+    }
 
     /** The command line being run on this thread ([withCause]); lines added meanwhile carry its id. */
     private val cause = ThreadLocal<Long?>()
@@ -98,28 +159,22 @@ class LogRepository private constructor(private val context: Context) {
     /** Inserts several lines in one transaction with a single change notification. */
     fun addAll(lines: List<Pending>) {
         if (lines.isEmpty()) return
+        val tagged = lines.map { it.copy(ctx = caused(it.ctx)) }
         capture.get()?.let { buffer ->
-            buffer += lines.map { it.copy(ctx = caused(it.ctx)) }
+            buffer += tagged
             return
         }
-        val w = db.writableDatabase
-        w.transaction {
-            for (p in lines) {
-                w.insert("logs", null, ContentValues().apply {
-                    put("ts", p.ts)
-                    put("kind", p.kind.key)
-                    put("source", p.source)
-                    put("text", clip(p.text))
-                    put("ctx", clip(caused(p.ctx)).toJson())
-                })
-            }
+        batch.get()?.let { b ->
+            tagged.forEach(b::add)
+            return
         }
-        changed()
+        write(tagged)
     }
 
     /**
-     * Bumped by every change other than new lines at the end (deletes, hides, clears, trims, a
-     * line moved down): home then reloads the page instead of fetching only the new lines.
+     * Bumped by a change in the middle of the log that home can't apply to its page by itself (a
+     * restore, a hide, a clear): it then reads the page again. Lines removed ([takeRemoved]) and
+     * trims ([trimmedUpTo]) are told apart, so the page is only read again when they reach into it.
      */
     @Volatile var structure = 0L
         private set
@@ -129,14 +184,62 @@ class LogRepository private constructor(private val context: Context) {
         changed(restructure = true)
     }
 
-    /** The newest [limit] visible lines, oldest first; only those after [afterId] when given. */
-    fun recent(limit: Int = 400, afterId: Long = 0L): List<LogEntry> {
+    /**
+     * Lines removed from the middle of the log (a swiped line, a launch line moved to the bottom),
+     * numbered: home drops them from its page instead of reading it again, from the number it last
+     * applied ([removedSince]). The last [REMOVALS_KEPT] are remembered.
+     */
+    private val removals = ArrayDeque<Pair<Long, Long>>()
+
+    /** The number of the latest removal; 0 before any. */
+    @Volatile var removedSeq = 0L
+        private set
+
+    /**
+     * Ids removed after removal number [since], or null when that is too long ago to know: the
+     * page must then be read again.
+     */
+    @Synchronized fun removedSince(since: Long): Set<Long>? {
+        if (since < removedSeq - removals.size) return null
+        return removals.filter { (seq, _) -> seq > since }.mapTo(HashSet()) { (_, id) -> id }
+    }
+
+    private fun noteRemoved(ids: Collection<Long>) {
+        if (ids.isEmpty()) return
+        if (!inMainProcess) return restructured()
+        synchronized(this) {
+            for (id in ids) {
+                removals.addLast(++removedSeq to id)
+                if (removals.size > REMOVALS_KEPT) removals.removeFirst()
+            }
+        }
+        // Inside a batch, the flush announces the change along with the lines it writes.
+        if (batch.get() == null) changed()
+    }
+
+    /**
+     * The id up to which trims have removed lines; only grows. A page whose oldest line is newer
+     * isn't touched by them, so home keeps it.
+     */
+    @Volatile var trimmedUpTo = 0L
+        private set
+
+    private fun trimmed(upTo: Long) {
+        trimmedUpTo = maxOf(trimmedUpTo, upTo)
+        changed(trimmedUpTo = upTo)
+    }
+
+    /**
+     * The newest [limit] visible lines, oldest first; only those after [afterId] when given, and
+     * only those before [beforeId] (an older page, read as the user scrolls back).
+     */
+    fun recent(limit: Int = 400, afterId: Long = 0L, beforeId: Long = Long.MAX_VALUE): List<LogEntry> {
         val out = ArrayList<LogEntry>()
         db.readableDatabase.rawQuery(
             // substr: a row over the 2 MB cursor window (written before lines were capped) can't be
             // read at all, and would break loading the log for good.
-            "SELECT id, ts, kind, source, substr(text, 1, $MAX_FIELD), substr(ctx, 1, $MAX_FIELD) FROM logs WHERE id > ? ORDER BY id DESC LIMIT ?",
-            arrayOf(maxOf(visibleAfter(), afterId).toString(), limit.toString()),
+            "SELECT id, ts, kind, source, substr(text, 1, $MAX_FIELD), substr(ctx, 1, $MAX_FIELD) FROM logs WHERE id > ? AND id < ? ORDER BY id DESC LIMIT ?",
+            arrayOf(maxOf(visibleAfter(), afterId).toString(), beforeId.toString(), limit.toString()),
         ).use { c ->
             while (c.moveToNext()) {
                 out += LogEntry(
@@ -173,9 +276,29 @@ class LogRepository private constructor(private val context: Context) {
         val found = ArrayList<LogEntry>()
         var total = 0
         var searched = 0
+        var skipped = 0
+        val from = prefs.getLong(KEY_CLEARED_UP_TO, 0L).toString()
+        // Plain words are looked for by the database first, so only lines that may hold them are
+        // read: LIKE ignores case for ASCII only, and a quote or a backslash reads differently in
+        // the stored JSON. With [match], every line is read: the count of lines it takes is shown.
+        val narrow = match == null && words.isNotEmpty() && words.all { w -> w.all { it in ' '..'~' && it != '"' && it != '\\' } }
+        val where = StringBuilder("id > ?")
+        val args = arrayListOf(from)
+        if (narrow) {
+            // A styled line may hold a word across a style's edge, so it is read and checked whole.
+            // JSON escapes the slashes in a link.
+            val every = words.joinToString(" AND ") { "(text LIKE ? ESCAPE '\\' OR source LIKE ? ESCAPE '\\' OR replace(ctx, '\\/', '/') LIKE ? ESCAPE '\\')" }
+            where.append(" AND (text GLOB ? OR ctx GLOB ? OR ($every))")
+            args += StyledText.GLOB
+            args += StyledText.GLOB
+            for (w in words) {
+                val like = "%" + w.replace("%", "\\%").replace("_", "\\_") + "%"
+                repeat(3) { args += like }
+            }
+        }
         db.readableDatabase.rawQuery(
-            "SELECT id, ts, kind, source, substr(text, 1, $MAX_FIELD), substr(ctx, 1, $MAX_FIELD) FROM logs WHERE id > ? ORDER BY id DESC",
-            arrayOf(prefs.getLong(KEY_CLEARED_UP_TO, 0L).toString()),
+            "SELECT id, ts, kind, source, substr(text, 1, $MAX_FIELD), substr(ctx, 1, $MAX_FIELD) FROM logs WHERE $where ORDER BY id DESC",
+            args.toTypedArray(),
         ).use { c ->
             while (c.moveToNext()) {
                 // A newer search (more typing, another log line) makes this one moot.
@@ -198,13 +321,21 @@ class LogRepository private constructor(private val context: Context) {
                     continue
                 }
                 val e = LogEntry(c.getLong(0), c.getLong(1), LogKind.of(c.getString(2)), source, text, LogContext.fromJson(c.getString(5)))
-                if (skip?.invoke(e) == true) continue
+                if (skip?.invoke(e) == true) {
+                    skipped++
+                    continue
+                }
                 if (match != null && !match(e)) continue
                 searched++
                 if (!candidate || !words.all { w -> searchable(e).any { it.contains(w, ignoreCase = true) } }) continue
                 total++
                 if (found.size < limit) found += e
             }
+        }
+        // The lines the database ruled out were searched too.
+        if (narrow) {
+            val all = db.readableDatabase.rawQuery("SELECT COUNT(*) FROM logs WHERE id > ?", arrayOf(from)).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+            searched = maxOf(searched, all - skipped)
         }
         return Found(found, total, searched)
     }
@@ -243,8 +374,7 @@ class LogRepository private constructor(private val context: Context) {
     }
 
     fun delete(id: Long) {
-        db.writableDatabase.delete("logs", "id = ?", arrayOf(id.toString()))
-        restructured()
+        if (db.writableDatabase.delete("logs", "id = ?", arrayOf(id.toString())) > 0) noteRemoved(listOf(id))
     }
 
     /** Puts a deleted line back with its original id, so it returns to the same place. */
@@ -330,6 +460,20 @@ class LogRepository private constructor(private val context: Context) {
         trim(maxAgeDays = maxAgeDays)
     }
 
+    /** Lines this process wrote since it last trimmed ([trimIfOverdue]). */
+    private val writes = java.util.concurrent.atomic.AtomicInteger()
+
+    /**
+     * `log.keep-lines` as the log grows: a trim once every [TRIM_EVERY] lines this process wrote,
+     * so notifications and commands can't pile up past the cap between script runs (which trim) and
+     * restarts. Home calls it off the main thread whenever the log changes.
+     */
+    fun trimIfOverdue() {
+        if (writes.get() < TRIM_EVERY) return
+        writes.set(0)
+        trim()
+    }
+
     /** `log.keep-lines`, for every process ([SharedSettings]). */
     var keepLines: Int
         get() = SharedSettings.get(context, Keys.LOG_KEEP_LINES)
@@ -343,23 +487,27 @@ class LogRepository private constructor(private val context: Context) {
     fun trim(keep: Int = keepLines, maxAgeDays: Int? = null) {
         val w = db.writableDatabase
         val command = LogKind.COMMAND.key
-        // The count comes from the statement itself: `SELECT changes()` would run on another
-        // connection of the pool and always say 0, and home would never reload.
-        fun delete(kind: String) = w.compileStatement(
-            "DELETE FROM logs WHERE kind $kind ? AND id <= (SELECT id FROM logs WHERE kind $kind ? ORDER BY id DESC LIMIT 1 OFFSET ?)",
-        ).use { st ->
-            st.bindString(1, command)
-            st.bindString(2, command)
-            st.bindLong(3, keep.toLong())
-            st.executeUpdateDelete()
+        var removed = 0
+        var upTo = 0L
+        // The newest line past the cap, of each kind: it and everything before it of that kind go.
+        for (kind in listOf("!=", "=")) {
+            val cut = w.rawQuery(
+                "SELECT id FROM logs WHERE kind $kind ? ORDER BY id DESC LIMIT 1 OFFSET ?", arrayOf(command, keep.toString()),
+            ).use { c -> if (c.moveToFirst()) c.getLong(0) else null } ?: continue
+            removed += w.delete("logs", "kind $kind ? AND id <= ?", arrayOf(command, cut.toString()))
+            upTo = maxOf(upTo, cut)
         }
-        var removed = delete("!=") + delete("=")
         if (maxAgeDays != null) {
             val cutoff = System.currentTimeMillis() - maxAgeDays * 86_400_000L
             // Commands are kept (↑ history); only their output ages out.
-            removed += w.delete("logs", "ts < ? AND kind != ?", arrayOf(cutoff.toString(), command))
+            val last = w.rawQuery("SELECT COALESCE(MAX(id), 0) FROM logs WHERE ts < ? AND kind != ?", arrayOf(cutoff.toString(), command))
+                .use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
+            if (last > 0) {
+                removed += w.delete("logs", "ts < ? AND kind != ?", arrayOf(cutoff.toString(), command))
+                upTo = maxOf(upTo, last)
+            }
         }
-        if (removed > 0) restructured()
+        if (removed > 0) trimmed(upTo)
     }
 
     fun maxId(): Long = db.readableDatabase.rawQuery("SELECT COALESCE(MAX(id), 0) FROM logs", null)
@@ -378,18 +526,26 @@ class LogRepository private constructor(private val context: Context) {
         _version.value++
     }
 
-    /** Another process changed more than the end of the log (a trim): reload the page. */
+    /** Another process changed the middle of the log: reload the page. */
     fun onExternalRestructure() = restructured()
+
+    /** Another process trimmed the log up to [upTo]: the page is read again only if it reached into it. */
+    fun onExternalTrim(upTo: Long) {
+        trimmedUpTo = maxOf(trimmedUpTo, upTo)
+        _version.value++
+    }
 
     /** Has home look again without a new line: a script run's result was just recorded after its last line. */
     fun touch() = changed()
 
-    private fun changed(restructure: Boolean = false) {
+    private fun changed(restructure: Boolean = false, trimmedUpTo: Long = 0L) {
         _version.value++
         // Other processes (scripts) tell home; home's own writes already bumped the version above.
         if (!inMainProcess) {
             context.sendBroadcast(
-                Intent(ACTION_LOGS_CHANGED).setPackage(context.packageName).putExtra(EXTRA_RESTRUCTURE, restructure),
+                Intent(ACTION_LOGS_CHANGED).setPackage(context.packageName)
+                    .putExtra(EXTRA_RESTRUCTURE, restructure)
+                    .putExtra(EXTRA_TRIMMED_UP_TO, trimmedUpTo),
             )
         }
     }
@@ -441,6 +597,16 @@ class LogRepository private constructor(private val context: Context) {
         private const val KEY_FILTER = "filter"
         const val ACTION_LOGS_CHANGED = "com.mtwabpin.kolahal.LOGS_CHANGED"
         const val EXTRA_RESTRUCTURE = "restructure"
+        const val EXTRA_TRIMMED_UP_TO = "trimmed_up_to"
+
+        /** A batched command's output reaches the log at least this often while it runs. */
+        private const val BATCH_MS = 250L
+
+        /** Lines written between the trims a process does on its own ([trimIfOverdue]). */
+        const val TRIM_EVERY = 200
+
+        /** Removals remembered for [removedSince]; more than home can fall behind by between two looks. */
+        private const val REMOVALS_KEPT = 500
 
         @SuppressLint("StaticFieldLeak") // application context only
 

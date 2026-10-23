@@ -296,26 +296,58 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** The newest line loaded so far, kept across an emptied page ([onPause] records it as seen). */
     @Volatile private var newestLoaded: Long? = null
     private var loadedStructure = -1L
-    private var loadedLimit = 0
+    private var loadedTrimmed = -1L
+    /** The last removal ([LogRepository.removedSeq]) dropped from the page. */
+    private var removedSeen = 0L
+    /** No visible line is older than the page's first: scrolling back has nothing more to read. */
+    private var logStart = false
     private var fullAt = 0L
     private var scriptsPrint: String? = null
+    /** `log only …`'s lines as last shown, with the filter and the page size they were found for. */
+    private var filtered: List<LogEntry> = emptyList()
+    private var filteredFor: LogFilter? = null
+    private var filteredLimit = 0
 
     /**
-     * Brings the log up to date. Usually only the lines after the newest one shown are read; the
-     * whole page is read again after a delete, hide or clear, when the page size changes, and once
-     * a minute (another process may have trimmed old lines). Scripts, history and the todo and
-     * feed caches are read only when something they show could have changed.
+     * Brings the log up to date. Usually only the lines after the newest one shown are read; an
+     * older page is read as the user scrolls back, and lines removed (a swipe, a launch line moved
+     * down) are dropped from the page. The whole page is read again after a change in its middle
+     * (a restore, a hide, a clear), when a trim reached into it, and once a minute (another process
+     * may have changed what this one didn't see). Scripts, history and the todo and feed caches are
+     * read only when something they show could have changed.
      */
     private suspend fun reload() {
         val now = System.currentTimeMillis()
+        // Home keeps the log at its cap as it grows: a trim every few hundred lines it wrote.
+        withContext(Dispatchers.IO) { logs.trimIfOverdue() }
         val structure = logs.structure
+        val trimmed = logs.trimmedUpTo
+        // The removals up to this number are applied below; a later one may be seen twice, harmlessly.
+        val removedSeq = logs.removedSeq
+        val removed = logs.removedSince(removedSeen)
+        val gone = removed ?: emptySet()
         // One limit for this reload: loadOlder may raise pageLimit while it is suspended, and the
         // reload that asks for must then read the longer page, not find this one already at it.
         val limit = pageLimit
         val newest = loaded.lastOrNull()?.id
-        val incremental = newest != null && structure == loadedStructure && limit == loadedLimit && now - fullAt < FULL_RELOAD_MS
-        val fresh = withContext(Dispatchers.IO) { if (incremental) logs.recent(limit, afterId = newest) else logs.recent(limit) }
-        val all = if (incremental) (loaded + fresh).takeLast(limit) else fresh
+        val oldest = loaded.firstOrNull()?.id
+        val incremental = newest != null && oldest != null && structure == loadedStructure && trimmed < oldest &&
+            removed != null && now - fullAt < FULL_RELOAD_MS
+        val fresh = withContext(Dispatchers.IO) { if (incremental) logs.recent(limit, afterId = newest!!) else logs.recent(limit) }
+        var start = logStart
+        val all = if (!incremental) {
+            start = fresh.size < limit
+            fresh
+        } else {
+            val kept = if (gone.isEmpty()) loaded else loaded.filterNot { it.id in gone }
+            val have = kept.size + fresh.size
+            // Scrolled back (or a search result shown): the lines before the page, up to the new limit.
+            val before = (kept.firstOrNull() ?: fresh.firstOrNull())?.id
+            val older = if (have >= limit || start || before == null) emptyList() else {
+                withContext(Dispatchers.IO) { logs.recent(limit - have, beforeId = before) }.also { if (it.size < limit - have) start = true }
+            }
+            (older + kept + fresh).takeLast(limit)
+        }
         val print = withContext(Dispatchers.IO) { scripts.fingerprint() }
         if (print != scriptsPrint) {
             val scriptList = withContext(Dispatchers.IO) { scripts.all() }
@@ -324,33 +356,54 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             scriptsPrint = print
         }
         _statuses.value = withContext(Dispatchers.IO) { KvStore(context, HostApi.STATUS_SCOPE).all() }
-        if (!incremental) _hiddenLines.value = withContext(Dispatchers.IO) { logs.hiddenCount() }
+        if (!incremental || trimmed != loadedTrimmed) _hiddenLines.value = withContext(Dispatchers.IO) { logs.hiddenCount() }
         if (!incremental || fresh.any { it.kind == LogKind.COMMAND }) history = withContext(Dispatchers.IO) { logs.commandHistory() }
         if (!incremental || fresh.any(::touchesProductivity)) refreshProductivity()
         if (!incremental || fresh.any { it.source != null && it.source !in logSources }) logSources = withContext(Dispatchers.IO) { logs.sources() }
         // A locked private space hides its apps; its lines (launches, notifications) hide with it.
         val locked = lockedPrivate(appsRepo.profiles.value)
         val list = if (locked.isEmpty()) all else all.filterNot { it.ctx.userSerial in locked }
-        // Only now: cancelled earlier (a newer change came in), the next reload reads these lines
-        // again and refreshes history, todos and the hidden count for them.
+        // `log only …`: its lines from the whole log, not just this page (which may hold none of
+        // them). New lines are checked as they come; the log is searched whole when the page is read
+        // whole, when the filter or the page size changed, and after a line was removed.
+        val filter = _filter.value
+        var count = _filterCount.value
+        val shown = when {
+            filter == null -> list
+            incremental && filter == filteredFor && limit <= filteredLimit && gone.isEmpty() -> {
+                val more = (if (locked.isEmpty()) fresh else fresh.filterNot { it.ctx.userSerial in locked }).filter(filter::matches)
+                count += more.size
+                (filtered + more).takeLast(limit)
+            }
+            else -> {
+                val job = currentCoroutineContext()[kotlinx.coroutines.Job]
+                val found = withContext(Dispatchers.IO) {
+                    logs.search(
+                        emptyList(), limit = limit, skip = if (locked.isEmpty()) null else { e -> e.ctx.userSerial in locked },
+                        match = filter::matches, keepGoing = { job?.isActive != false },
+                    )
+                }
+                count = found.total
+                found.entries.asReversed()
+            }
+        }
+        // Only now, past the last read: cancelled earlier (a newer change came in), the next reload
+        // reads these lines again and refreshes history, todos and the hidden count for them.
         if (!incremental) {
             loadedStructure = structure
-            loadedLimit = limit
             fullAt = now
         }
+        loadedTrimmed = trimmed
+        removedSeen = removedSeq
+        logStart = start
         loaded = all
         // The newest line there is, filter or not: what a pause records as seen. Kept when the page
         // is empty (`fresh`, `clear`): those lines were seen before they were hidden.
         all.lastOrNull()?.let { newestLoaded = it.id }
-        // `log only …`: its lines from the whole log, not just this page (which may hold none of them).
-        val filter = _filter.value
-        val shown = if (filter == null) list else {
-            val found = withContext(Dispatchers.IO) {
-                logs.search(emptyList(), limit = limit, skip = if (locked.isEmpty()) null else { e -> e.ctx.userSerial in locked }, match = filter::matches)
-            }
-            _filterCount.value = found.total
-            found.entries.asReversed()
-        }
+        filtered = if (filter == null) emptyList() else shown
+        filteredFor = filter
+        filteredLimit = limit
+        _filterCount.value = count
         _entries.value = shown
         _rows.value = withContext(Dispatchers.Default) { buildRows(shown, seenUpTo, unreadUntil) }
     }

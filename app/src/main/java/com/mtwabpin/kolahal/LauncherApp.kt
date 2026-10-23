@@ -61,6 +61,8 @@ class LauncherApp : Application(), Configuration.Provider {
 
         // Re-anchor daily script times (periodic work drifts), restore schedules after updates, trim old log.
         Thread {
+            // First: the first log line with a notification icon would otherwise list the saved icons on the main thread.
+            runCatching { com.mtwabpin.kolahal.notifications.NotifIcons.preload(this) }
             runCatching { CrashReports.announce(this) }
             // Library scripts nobody edited follow the app's library.
             runCatching { com.mtwabpin.kolahal.script.ScriptLibrary(this).updateUnedited() }
@@ -77,13 +79,18 @@ class LauncherApp : Application(), Configuration.Provider {
                     prefs.edit { putLong("repaired_for", version) }
                 }
             }
-            runCatching { com.mtwabpin.kolahal.notifications.NotifIcons.preload(this) }
         }.start()
 
         val logs = LogRepository.get(this)
         ContextCompat.registerReceiver(this, object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) =
-                if (intent.getBooleanExtra(LogRepository.EXTRA_RESTRUCTURE, false)) logs.onExternalRestructure() else logs.onExternalChange()
+            override fun onReceive(context: Context, intent: Intent) {
+                val trimmed = intent.getLongExtra(LogRepository.EXTRA_TRIMMED_UP_TO, 0L)
+                when {
+                    intent.getBooleanExtra(LogRepository.EXTRA_RESTRUCTURE, false) -> logs.onExternalRestructure()
+                    trimmed > 0 -> logs.onExternalTrim(trimmed)
+                    else -> logs.onExternalChange()
+                }
+            }
         }, IntentFilter(LogRepository.ACTION_LOGS_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)
 
         // The :script process doesn't see settings changes: home copies `log.keep-lines` where it can

@@ -1,0 +1,86 @@
+package com.mtwabpin.kolahal.terminal
+
+import android.app.Application
+import androidx.lifecycle.SavedStateHandle
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.mtwabpin.kolahal.data.Db
+import com.mtwabpin.kolahal.data.LogKind
+import com.mtwabpin.kolahal.data.LogRepository
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/** How home's page of the log follows the log: older pages, moved and deleted lines. */
+@RunWith(AndroidJUnit4::class)
+class LogPagingTest {
+    private val instrumentation = InstrumentationRegistry.getInstrumentation()
+    private val app = instrumentation.targetContext.applicationContext as Application
+    private val logs = LogRepository.get(app)
+    private val token = "pg${System.nanoTime()}"
+    private var first = Long.MAX_VALUE
+
+    @After fun tearDown() {
+        // By hand, not line by line: a few hundred lines were added.
+        if (first != Long.MAX_VALUE) Db.get(app).writableDatabase.delete("logs", "id >= ?", arrayOf(first.toString()))
+    }
+
+    private fun viewModel(): TerminalViewModel {
+        lateinit var vm: TerminalViewModel
+        instrumentation.runOnMainSync { vm = TerminalViewModel(app, SavedStateHandle()) }
+        return vm
+    }
+
+    private fun waitUntil(what: String, check: () -> Boolean) {
+        val until = System.currentTimeMillis() + 8_000
+        while (!check() && System.currentTimeMillis() < until) Thread.sleep(50)
+        assertTrue(what, check())
+    }
+
+    private fun add(text: String): Long = logs.add(LogKind.OUTPUT, text).also { first = minOf(first, it) }
+
+    @Test fun scrollingBackAddsOlderLinesAndTheNewestStays() {
+        repeat(450) { add("$token $it") }
+        val vm = viewModel()
+        waitUntil("the newest page") { vm.entries.value.lastOrNull()?.text == "$token 449" }
+        val page = vm.entries.value
+        assertEquals(400, page.size)
+        assertEquals("$token 50", page.first().text)
+        vm.loadOlder()
+        waitUntil("the older page") { vm.entries.value.any { it.text == "$token 0" } }
+        assertEquals("$token 449", vm.entries.value.last().text)
+        assertTrue(vm.entries.value.size >= 450)
+        // A line arriving meanwhile joins the longer page.
+        add("$token 450")
+        waitUntil("the new line") { vm.entries.value.last().text == "$token 450" }
+        assertTrue(vm.entries.value.any { it.text == "$token 0" })
+        // Back at the newest lines, the page shrinks again.
+        vm.atNewest()
+        waitUntil("the short page") { vm.entries.value.size == 400 }
+        assertEquals("$token 450", vm.entries.value.last().text)
+    }
+
+    @Test fun aMovedLaunchLineShowsOnceAtTheBottom() {
+        val vm = viewModel()
+        first = minOf(first, logs.addReplacing(LogKind.INFO, "$token launched"))
+        waitUntil("the launch line") { vm.entries.value.lastOrNull()?.text == "$token launched" }
+        add("$token after")
+        waitUntil("the next line") { vm.entries.value.lastOrNull()?.text == "$token after" }
+        logs.addReplacing(LogKind.INFO, "$token launched")
+        waitUntil("moved down") { vm.entries.value.lastOrNull()?.text == "$token launched" }
+        assertEquals(1, vm.entries.value.count { it.text == "$token launched" })
+        assertEquals("$token after", vm.entries.value[vm.entries.value.size - 2].text)
+    }
+
+    @Test fun aDeletedLineLeavesThePage() {
+        val vm = viewModel()
+        val id = add("$token stays")
+        val going = add("$token goes")
+        waitUntil("both") { vm.entries.value.lastOrNull()?.id == going }
+        logs.delete(going)
+        waitUntil("one gone") { vm.entries.value.lastOrNull()?.id == id }
+        assertTrue(vm.entries.value.none { it.id == going })
+    }
+}
