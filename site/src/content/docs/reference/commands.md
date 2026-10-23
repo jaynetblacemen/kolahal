@@ -182,6 +182,7 @@ Script names use lowercase letters, digits, `-` and `_` (up to 40), and can't be
 | `font [<name>\|import\|sans [off\|prompt\|all]]` | | terminal font: `system` `jetbrains-mono` `fira-code` `ibm-plex-mono` `source-code-pro` `custom`; no args lists them (tap to apply), `import` picks a .ttf/.otf; `sans prompt` or `sans all` uses the phone's font for the prompt or everything (`font.sans`) |
 | `echo <text>` | | print text |
 | `date` | `time` | current date and time |
+| `cal [<month>] [<year>]` | | the month as a calendar, today in bold: `cal`, `cal dec`, `cal dec 2027`, `cal 2027-12` |
 
 ## widgets
 
