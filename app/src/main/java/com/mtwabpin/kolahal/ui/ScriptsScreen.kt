@@ -570,7 +570,8 @@ private fun ScriptDetails(
         if (info.secrets.isNotEmpty()) {
             Fact("Secrets", info.secrets.joinToString(", ") { d -> d.name + if (d.name in secretsSet) " (set)" else " (not set)" })
         }
-        if (s.failed()) Text(s.lastStatus.orEmpty(), style = MaterialTheme.typography.bodySmall, color = colors.error)
+        // The last run's failure, worded as the editor words it ("Line 7: …", "Stopped: …").
+        if (s.failed()) Text(EditorLogic.runResult(s.lastStatus, com.mtwabpin.kolahal.script.ScriptWorker.TIMEOUT_MS / 1000, tapHint = false).text, style = MaterialTheme.typography.bodySmall, color = colors.error)
         // A library script edited, or from an older Kolahal: back to this version's copy.
         if (library == ScriptLibrary.State.MODIFIED || library == ScriptLibrary.State.UPDATE_AVAILABLE) {
             OutlinedButton(onClick = onReset) {
