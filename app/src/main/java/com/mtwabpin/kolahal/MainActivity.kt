@@ -253,6 +253,8 @@ class MainActivity : ComponentActivity() {
 
     private fun applyTheme() {
         Term.palette = Palettes.named(vm.config[Keys.THEME], darkTheme())
+        // An old page only behind a light version (a theme made dark in both stays flat).
+        Term.paper = if (darkTheme() || Term.bg.luminance() < 0.5f) 0 else vm.config[Keys.THEME_PAPER]
         Term.fontSize = vm.config[Keys.FONT_SIZE]
         val font = vm.config[Keys.FONT]
         val family = TermFonts.family(this, font)
@@ -261,7 +263,7 @@ class MainActivity : ComponentActivity() {
         Term.sans = Term.Sans.of(vm.config[Keys.FONT_SANS])
         Term.lineHeight = vm.config[Keys.LOG_LINE_HEIGHT]
         Term.chipHeight = vm.config[Keys.CHIP_HEIGHT]
-        window.decorView.setBackgroundColor(Term.bg.toArgb())
+        window.decorView.setBackgroundColor(Term.page.toArgb())
         applyBars()
     }
 

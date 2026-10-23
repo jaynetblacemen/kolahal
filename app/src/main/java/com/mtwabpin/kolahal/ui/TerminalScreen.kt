@@ -238,7 +238,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     Column(
         Modifier
             .fillMaxSize()
-            .background(Term.bg)
+            .page()
             .cutoutSafePadding()
             .navigationBarsPadding()
             .imePadding()

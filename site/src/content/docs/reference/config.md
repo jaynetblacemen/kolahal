@@ -58,6 +58,7 @@ The `theme` and `font` commands are unchanged.
 | --- | --- | --- | --- |
 | `theme.name` | choice: `green` `amber` `mono` `dracula` `solarized` `gruvbox` `gruvbox-material`, or [one you made](/guides/themes-and-settings/#your-own-themes) | `green` | colour theme (also `theme <name>`); its dark or [light version](/guides/themes-and-settings/#light-and-dark) follows the phone's dark mode |
 | `theme.always-dark` | bool | `off` | always the theme's dark version, whatever the phone's mode |
+| `theme.paper` | number 0–100 | `0` | an old book's page behind home in light versions: 0 is the flat colour, higher is older and more textured ([Paper](/guides/themes-and-settings/#paper)) |
 | `screen.bars` | choice: `show` `hide` `immersive` | `immersive` | full screen: hide the status bar, or both system bars (immersive); swipe from the edge to peek |
 | `font.family` | choice: `system` `jetbrains-mono` `fira-code` `ibm-plex-mono` `source-code-pro` `custom` | `jetbrains-mono` | terminal font (also `font <name>`); `custom` is a .ttf/.otf imported with `font import` |
 | `font.sans` | choice: `off` `prompt` `all` | `off` | the phone's own font instead of the terminal font: for the prompt, or for all of the terminal (also `font sans <mode>`); lists that line up columns and the script editor stay in the terminal font |

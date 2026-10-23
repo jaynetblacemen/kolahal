@@ -229,7 +229,8 @@ fun LogLine(
                     swipeScope.launch { swipe.snapTo(swipe.value + dx) }
                 }
             }
-            .background(Term.bg)
+            // Solid only while swiped, over what the swipe shows; otherwise home's page shows through.
+            .drawBehind { if (swipe.value != 0f) drawRect(Term.page) }
             .fillMaxWidth()
             .heightIn(min = minHeight)
             .then(if (dim && row.dimmed) Modifier.alpha(0.62f) else Modifier)

@@ -403,7 +403,7 @@ fun AppSelector(
                         )
                     }
                     .size(bubbleSize)
-                    .background(Term.bg, CircleShape)
+                    .background(Term.page, CircleShape)
                     .border(1.5.dp, Term.prompt, CircleShape),
             ) {
                 Text(

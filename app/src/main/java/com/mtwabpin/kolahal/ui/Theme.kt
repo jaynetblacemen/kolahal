@@ -200,7 +200,13 @@ object Term {
     /** Minimum height (dp) of suggestion and app-grid chips (`chips.height`). */
     var chipHeight by mutableIntStateOf(48)
 
+    /** `theme.paper` as home shows it ([Paper]): 0 in a dark version, or flat. */
+    var paper by mutableIntStateOf(0)
+
     val bg get() = palette.bg
+
+    /** Home's background where it must be one colour (a line being swiped, the window): the page under [paper]'s texture. */
+    val page: Color get() = if (paper > 0) Paper.base(bg, paper) else bg
     val surface get() = palette.surface
     val fg get() = palette.fg
     val dim get() = palette.dim
