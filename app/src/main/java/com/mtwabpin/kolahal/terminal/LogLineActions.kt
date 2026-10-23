@@ -211,16 +211,23 @@ class LogLineActions(private val context: Context, private val processor: Comman
         add(LogAction("Uninstall", destructive = true) { host.io { appsRepo.uninstall(app) } })
     }
 
-    /** The command line that printed [entry]: the one it is marked with, or above it in its block (older lines). */
+    /**
+     * The command line that printed [entry]: the one it is marked with, or, for a line from before
+     * the marks, the command its group starts with (a pause longer than [GROUP_GAP_MS] ends the
+     * group, as the log draws it). A line that came on its own, a tap launch or a call, has none.
+     */
     private fun producingCommand(entry: LogEntry): LogEntry? {
         val all = host.entries
         entry.ctx.values[LogContext.FROM]?.toLongOrNull()?.let { from -> return all.firstOrNull { it.id == from } }
         val index = all.indexOfFirst { it.id == entry.id }
         if (index < 0) return null
+        var next = entry
         for (i in index - 1 downTo 0) {
             val e = all[i]
-            // Timer script lines can land inside a block; they are not part of it.
+            if (next.ts - e.ts > GROUP_GAP_MS) return null
             if (e.kind == LogKind.COMMAND) return e
+            // Timer script lines can land inside a block; they are not part of it.
+            if (e.kind != LogKind.SCRIPT) next = e
         }
         return null
     }

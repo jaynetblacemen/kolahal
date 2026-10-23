@@ -79,6 +79,22 @@ class LogOnlyTest {
         waitUntil("everything again") { vm.filter.value == null && vm.entries.value.count { it.text.startsWith("lo ") } == 3 }
     }
 
+    /** A search result the filter would hide: showing it ends the filter, as running a command does. */
+    @Test fun showingAHiddenResultEndsTheFilter() {
+        val vm = viewModel()
+        vm.runCommand("log only loxkcd")
+        waitUntil("only its lines") { vm.entries.value.map { it.text } == listOf("lo first comic", "lo second comic") }
+        val release = logs.recent(50).single { it.text == "lo a release" }
+        instrumentation.runOnMainSync { vm.showInLog(release) }
+        waitUntil("everything again") { vm.filter.value == null && vm.entries.value.any { it.text == "lo a release" } }
+        // One the filter shows keeps it.
+        vm.runCommand("log only loxkcd")
+        waitUntil("only its lines again") { vm.filter.value != null }
+        instrumentation.runOnMainSync { vm.showInLog(logs.recent(50).single { it.text == "lo first comic" }) }
+        Thread.sleep(500)
+        assertEquals(LogFilter.Named("loxkcd"), vm.filter.value)
+    }
+
     @Test fun atNarrowsASearchToOneSource() {
         val vm = viewModel()
         waitUntil("the lines load") { vm.entries.value.any { it.text == "lo second comic" } }

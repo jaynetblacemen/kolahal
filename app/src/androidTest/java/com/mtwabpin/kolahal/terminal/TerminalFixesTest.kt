@@ -197,6 +197,40 @@ class TerminalFixesTest {
         assertEquals(listOf("tf timer comic", "tf echo", "tf echoed"), logs.recent(50).map { it.text }.filter { it.startsWith("tf ") })
     }
 
+    /** A line that came on its own (a tap launch, a call) long after a command isn't that command's output. */
+    @Test fun aLineOnItsOwnOffersNoCommandToRunAgain() {
+        val now = System.currentTimeMillis()
+        logs.addAll(
+            listOf(
+                LogRepository.Pending(LogKind.COMMAND, "tf battery", null, LogContext.EMPTY, now - 7_200_000),
+                // Its output from before the marks: within the group.
+                LogRepository.Pending(LogKind.OUTPUT, "tf 80%", null, LogContext.EMPTY, now - 7_199_000),
+                LogRepository.Pending(LogKind.INFO, "tf Launched Maps", null, LogContext.of(LogContext.PKG to "com.example.maps"), now),
+            ),
+        )
+        val vm = viewModel()
+        waitUntil("the lines load") { vm.entries.value.any { it.text == "tf Launched Maps" } }
+        val output = vm.entries.value.single { it.text == "tf 80%" }
+        assertTrue(vm.actionsFor(output).any { it.label == "Run 'tf battery' again" })
+        val launch = vm.entries.value.single { it.text == "tf Launched Maps" }
+        assertTrue(vm.actionsFor(launch).none { it.label.startsWith("Run '") })
+    }
+
+    /** A pause records the newest line as seen, though `fresh` emptied the screen: those lines were seen live. */
+    @Test fun aPauseAfterFreshStillCountsTheLinesAsSeen() {
+        val vm = viewModel()
+        val line = logs.add(LogKind.SCRIPT, "tf seen live", "tfs", LogContext.of(LogContext.SCRIPT to "tfs"))
+        waitUntil("the line loads") { vm.entries.value.any { it.id == line } }
+        instrumentation.runOnMainSync { vm.freshScreen() }
+        waitUntil("the screen is empty") { vm.entries.value.none { it.id == line } }
+        instrumentation.runOnMainSync { vm.onPause() }
+        try {
+            assertTrue(logs.seenUpTo >= line)
+        } finally {
+            logs.unhide()
+        }
+    }
+
     /** Lines from before 0.4.2 carry no mark: the lines after the command, as the log groups them. */
     @Test fun deleteCommandAndOutputStopsWhereTheGroupDoes() {
         val now = System.currentTimeMillis()

@@ -284,13 +284,17 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     @Volatile private var pageLimit = PAGE
 
     fun loadOlder() {
-        if (loaded.size < pageLimit || pageLimit >= MAX_PAGE) return
+        // With `log only …`, what shows is the filter's page, not the log's.
+        val shown = if (_filter.value == null) loaded.size else _entries.value.size
+        if (shown < pageLimit || pageLimit >= MAX_PAGE) return
         pageLimit += PAGE
         requestReload()
     }
 
     /** Every visible line loaded, before the private-space filter; what the next reload builds on. */
     private var loaded: List<LogEntry> = emptyList()
+    /** The newest line loaded so far, kept across an emptied page ([onPause] records it as seen). */
+    @Volatile private var newestLoaded: Long? = null
     private var loadedStructure = -1L
     private var loadedLimit = 0
     private var fullAt = 0L
@@ -305,10 +309,13 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     private suspend fun reload() {
         val now = System.currentTimeMillis()
         val structure = logs.structure
+        // One limit for this reload: loadOlder may raise pageLimit while it is suspended, and the
+        // reload that asks for must then read the longer page, not find this one already at it.
+        val limit = pageLimit
         val newest = loaded.lastOrNull()?.id
-        val incremental = newest != null && structure == loadedStructure && pageLimit == loadedLimit && now - fullAt < FULL_RELOAD_MS
-        val fresh = withContext(Dispatchers.IO) { if (incremental) logs.recent(pageLimit, afterId = newest) else logs.recent(pageLimit) }
-        val all = if (incremental) (loaded + fresh).takeLast(pageLimit) else fresh
+        val incremental = newest != null && structure == loadedStructure && limit == loadedLimit && now - fullAt < FULL_RELOAD_MS
+        val fresh = withContext(Dispatchers.IO) { if (incremental) logs.recent(limit, afterId = newest) else logs.recent(limit) }
+        val all = if (incremental) (loaded + fresh).takeLast(limit) else fresh
         val print = withContext(Dispatchers.IO) { scripts.fingerprint() }
         if (print != scriptsPrint) {
             val scriptList = withContext(Dispatchers.IO) { scripts.all() }
@@ -328,15 +335,18 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         // again and refreshes history, todos and the hidden count for them.
         if (!incremental) {
             loadedStructure = structure
-            loadedLimit = pageLimit
+            loadedLimit = limit
             fullAt = now
         }
         loaded = all
+        // The newest line there is, filter or not: what a pause records as seen. Kept when the page
+        // is empty (`fresh`, `clear`): those lines were seen before they were hidden.
+        all.lastOrNull()?.let { newestLoaded = it.id }
         // `log only …`: its lines from the whole log, not just this page (which may hold none of them).
         val filter = _filter.value
         val shown = if (filter == null) list else {
             val found = withContext(Dispatchers.IO) {
-                logs.search(emptyList(), limit = pageLimit, skip = if (locked.isEmpty()) null else { e -> e.ctx.userSerial in locked }, match = filter::matches)
+                logs.search(emptyList(), limit = limit, skip = if (locked.isEmpty()) null else { e -> e.ctx.userSerial in locked }, match = filter::matches)
             }
             _filterCount.value = found.total
             found.entries.asReversed()
@@ -431,6 +441,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun showInLog(entry: LogEntry) {
         setText("")
         _events.tryEmit(UiEvent.HideKeyboard)
+        // `log only …` would keep the line out of sight: it ends, as running a command ends it.
+        _filter.value?.let { if (!it.matches(entry)) filterLog(null) }
         io {
             if (logs.isHidden(entry.id)) logs.unhide()
             pageLimit = maxOf(pageLimit, (logs.countFrom(entry.id) + 20).coerceAtMost(MAX_PAGE))
@@ -451,7 +463,9 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     fun onPause() {
         _peek.value = null
-        _entries.value.lastOrNull()?.let { logs.seenUpTo = it.id }
+        // The newest line, not the last shown: after `fresh` nothing shows, and under `log only`
+        // the last shown line can be old; the lines before it were seen all the same.
+        newestLoaded?.let { logs.seenUpTo = it }
         pausedAt = System.currentTimeMillis()
     }
 
