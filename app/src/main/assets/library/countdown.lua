@@ -102,7 +102,12 @@ for i, item in ipairs(list) do
   local t = parseDate(item.date)
   if t then
     local days = daysUntil(t)
-    log(i .. ". " .. describe(days, item.label) .. " (" .. item.date .. ")")
+    -- Past ones muted, this week's in the warning colour, today's in the good one; the date under it.
+    local text = i .. ". " .. describe(days, item.label)
+    if days < 0 then text = fmt.color("muted", text)
+    elseif days == 0 then text = fmt.color("good", text)
+    elseif days <= 7 then text = fmt.color("warn", text) end
+    log(text, item.date)
     if days >= 0 and nearest == nil then nearest = describe(days, item.label) end
   end
 end

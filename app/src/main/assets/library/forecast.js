@@ -74,7 +74,9 @@ for (let i = 0; i < d.time.length; i++) {
   const lo = Math.round(d.temperature_2m_min[i]);
   const rain = d.precipitation_probability_max ? d.precipitation_probability_max[i] : null;
   const text =
-    `${fmt.bold(label)}: ${describe(d.weather_code[i])}, ${lo}–${hi}°C` + (rain != null ? `, rain ${rain}%` : "");
+    `${fmt.bold(label)}: ${describe(d.weather_code[i])}, ${lo}–${hi}°C` +
+    // A likely-rain day in the warning colour.
+    (rain != null ? `, ${rain >= 60 ? fmt.color("warn", `rain ${rain}%`) : `rain ${rain}%`}` : "");
   days.push(text);
   if (i === 0) todayLine = `${place.name}: ${describe(d.weather_code[i])} ${lo}–${hi}°C`;
 }

@@ -64,7 +64,9 @@ for (const id of ids) {
   }
   const change = p[`${vs}_24h_change`];
   const sym = SYMBOLS[id] || id.toUpperCase();
-  log(`${sym} ${num(p[vs])} ${vs.toUpperCase()}` + (change != null ? `  ${arrow(change)} 24h` : ""), {
+  // The day's change in the theme's good or bad colour; the arrow says it too.
+  const moved = change != null ? `  ${fmt.color(change >= 0 ? "good" : "bad", arrow(change))} 24h` : "";
+  log(`${sym} ${fmt.bold(num(p[vs]))} ${vs.toUpperCase()}` + moved, {
     url: `https://www.coingecko.com/en/coins/${id}`,
   });
   parts.push(`${sym} ${compact(p[vs])}` + (change != null ? ` ${arrow(change)}` : ""));

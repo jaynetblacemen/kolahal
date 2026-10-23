@@ -60,7 +60,7 @@ for (const to of targets) {
     continue;
   }
   const value = num(amount * rate);
-  log(`${amountText} ${from} = ${value} ${to}`, { copy: value.replace(/,/g, "") });
+  log(`${amountText} ${from} = ${fmt.bold(value)} ${to}`, { copy: value.replace(/,/g, "") });
   parts.push(`${to} ${num(rate)}`);
 }
 

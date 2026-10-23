@@ -36,13 +36,15 @@ if event.name == "unplug" then
   local since, from = tonumber(store.get("since")), tonumber(store.get("from"))
   store.set("since", nil)
   local line = "unplugged at " .. pct(level)
+  local detail = nil
   if since and level and from then
-    line = line .. string.format(" (%+d%% in %s)", math.floor(level - from), minutes(since))
+    detail = string.format("%+d%% in %s", math.floor(level - from), minutes(since))
   elseif since then
-    line = line .. " (after " .. minutes(since) .. ")"
+    detail = "after " .. minutes(since)
   end
-  store.set("last", os.date("%H:%M ") .. line)
-  log(line)
+  store.set("last", os.date("%H:%M ") .. line .. (detail and (" (" .. detail .. ")") or ""))
+  -- Below the low mark in the warning colour, otherwise the good one; how much it added under it.
+  log(fmt.color(level and level < LOW and "warn" or "good", line), detail)
   if level and level < LOW then
     notify("Battery at " .. pct(level), "Unplugged before it was charged — plug in again soon.")
   end

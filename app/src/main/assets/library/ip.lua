@@ -31,7 +31,7 @@ store.set("last", ip)
 
 if previous ~= nil and previous ~= ip then
   notify("Public IP changed", previous .. " → " .. ip, { copy = ip })
-  log("IP changed: " .. previous .. " → " .. ip, { copy = ip })
+  log(fmt.color("warn", "IP changed"), previous .. " → " .. fmt.bold(ip), { copy = ip })
 else
   log(ip, { copy = ip })
 end
