@@ -31,10 +31,20 @@ class AppSelectorTest {
         while (apps.apps.value.size < 5 && System.currentTimeMillis() < until) Thread.sleep(50)
     }
 
-    private fun show(left: Boolean, position: String) = compose.setContent {
+    private fun show(left: Boolean, position: String, list: List<com.mtwabpin.kolahal.apps.AppEntry> = apps.apps.value) = compose.setContent {
         Box(Modifier.size(360.dp, 700.dp)) {
-            AppSelector(apps.apps.value, emptySet(), onLaunch = {}, onLongPress = {}, heightDp = 300, left = left, position = position)
+            AppSelector(list, emptySet(), onLaunch = {}, onLongPress = {}, heightDp = 300, left = left, position = position)
         }
+    }
+
+    /** The app you're at sits level with the thumb: a short list (it can't scroll) with the strip high up too. */
+    @Test fun theListComesLevelWithTheFingerEvenWhenItCantScroll() {
+        show(left = false, position = "top", list = apps.apps.value.take(5))
+        val strip = compose.onNodeWithTag("app-selector")
+        strip.performTouchInput { down(center) }
+        val finger = strip.getUnclippedBoundsInRoot().let { (it.top + it.bottom) / 2 }
+        val panel = compose.onNodeWithTag("app-selector-panel").getUnclippedBoundsInRoot()
+        assertTrue("the panel (${panel.top}..${panel.bottom}) covers the finger ($finger)", panel.top <= finger && finger <= panel.bottom)
     }
 
     @Test fun offUnlessTurnedOn() {

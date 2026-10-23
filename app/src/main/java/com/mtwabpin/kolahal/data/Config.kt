@@ -107,7 +107,7 @@ object Keys {
     val LOG_DIM = ConfigKey.Bool("log.dim", true, "Dim output older than the latest command")
     val LOG_SPACING = ConfigKey.Num("log.spacing", 5, 0..40, "Gap (dp) above each output group: a command and its output, or a background batch (feeds, scripts)")
     val LOG_GUTTER = ConfigKey.Bool("log.gutter", true, "Thin colour bar at the left of each log line: green for commands, script colour for background output, red for errors")
-    val LOG_LINE_HEIGHT = ConfigKey.Num("log.line-height", 22, 10..56, "Minimum height (dp) of a log line and of script status lines in the header; tappable log lines get a little more")
+    val LOG_LINE_HEIGHT = ConfigKey.Num("log.line-height", 22, 10..56, "Minimum height (dp) of a log line and of script status lines in the header; lower than a line of text, lines get as short as the text allows")
     val LOG_TALLER_TAPS = ConfigKey.Bool("log.taller-taps", false, "Lines you can tap a little taller than the others, easier to hit; off makes every line the same height")
     val CHIP_HEIGHT = ConfigKey.Num("chips.height", 48, 20..64, "Height (dp) of suggestion chips and app-grid chips; list-style suggestion rows shrink with it below 44")
     val LOG_KEEP_DAYS = ConfigKey.Num("log.keep-days", 60, 1..365, "Delete log lines older than this many days")

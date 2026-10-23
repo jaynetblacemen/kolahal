@@ -83,8 +83,9 @@ object Fetch {
         val width = if (beside) cols - LOGO_WIDTH - GAP else cols
         val title = ellipsize("kolahal@$device", width)
         val info = buildList {
-            val at = title.indexOf('@')
-            add(StyledText.wrap(Style.BOLD, StyledText.colour(Colour.ACCENT, title.take(at))) + "@" + StyledText.wrap(Style.BOLD, StyledText.colour(Colour.ACCENT, title.drop(at + 1))))
+            // Cut short of its @ (a few columns, at a huge text size): the name alone, in one piece.
+            val accent = { s: String -> StyledText.wrap(Style.BOLD, StyledText.colour(Colour.ACCENT, s)) }
+            add(if ('@' in title) accent(title.substringBefore('@')) + "@" + accent(title.substringAfter('@')) else accent(title))
             add(StyledText.colour(Colour.MUTED, "─".repeat(title.length)))
             for (r in rows) {
                 add(StyledText.wrap(Style.BOLD, StyledText.colour(Colour.ACCENT, r.label.padEnd(LABEL_WIDTH))) + ellipsize(r.value, width - LABEL_WIDTH))

@@ -441,7 +441,7 @@ fun AppSelector(
                     val top = ((h - exclusionPx) / 2).coerceAtLeast(0f)
                     Rect(0f, top, c.size.width.toFloat(), min(h, top + exclusionPx))
                 }
-                .pointerInput(entries, rowPx, panelHPx, panelTopPx, stripHPx, left) {
+                .pointerInput(entries, rowPx, panelHPx, panelTopPx, stripTopPx, stripHPx, left) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         down.consume()
@@ -466,9 +466,10 @@ fun AppSelector(
                         fun update(now: Long) {
                             val cy = stripTopPx + y
                             state.fingerY = cy
-                            // The finger's height in the panel: the focused app is drawn level with it,
-                            // as Niagara does, so the eye never leaves the thumb's height.
-                            val yIn = (cy - panelTopPx).coerceIn(0f, panelHPx - 1f)
+                            // The finger's height in the panel (past its ends when the strip reaches
+                            // beyond it): the focused app is drawn level with it, as Niagara does, so the
+                            // eye never leaves the thumb's height.
+                            val yIn = cy - panelTopPx
                             if (!selecting) {
                                 // Along the strip, the whole list (its top the first app, its bottom the
                                 // last), brought level with the finger: scrolled, and past the list's ends

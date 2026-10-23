@@ -35,6 +35,15 @@ class FetchTest {
         assertTrue(lines.all { it.length <= 30 })
     }
 
+    /** A few columns (a huge text size on a narrow screen): cut short, never an error. */
+    @Test fun aTinyWidthStillLaysOut() {
+        for (cols in listOf(0, 3, 5, 9)) {
+            val lines = plain(Fetch.layout("Pixel 9", rows, cols))
+            assertTrue("$cols: ${lines.first()}", lines.first().startsWith("kola") || lines.first().startsWith("…") || lines.first().startsWith("▍"))
+        }
+        assertEquals("kola…", plain(Fetch.layout("Pixel 9", rows, cols = 5))[4])
+    }
+
     @Test fun theColoursAreTheThemesByRole() {
         val last = Fetch.layout("x", rows, cols = 40).last()
         assertEquals(8, StyledText.lines(last).single().spans.mapNotNull { it.colour }.distinct().size)
