@@ -12,6 +12,8 @@ class ConfigDefaultsTest {
         // Swiping up is off until it is given an action: it fires by accident easily.
         assertEquals("none", Keys.GESTURE_SWIPE_UP.default)
         assertEquals(false, Keys.HEADER_DEVICE.default)
+        // 5 from 0.4.3: groups closer together.
+        assertEquals(5, Keys.LOG_SPACING.default)
     }
 
     @Test fun logKeepsFiveThousandLinesUnlessChanged() {

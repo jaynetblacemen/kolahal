@@ -103,7 +103,7 @@ object Keys {
     val SELECTOR_HEIGHT = ConfigKey.Num("selector.height", 350, 200..900, "Height (dp) of the app selector band, low on the right edge: shorter means less thumb travel")
     val SHOW_TIMESTAMPS = ConfigKey.Choice("log.time", "all", listOf("off", "commands", "all"), "Right-aligned times on log lines")
     val LOG_DIM = ConfigKey.Bool("log.dim", true, "Dim output older than the latest command")
-    val LOG_SPACING = ConfigKey.Num("log.spacing", 10, 0..40, "Gap (dp) above each output group: a command and its output, or a background batch (feeds, scripts)")
+    val LOG_SPACING = ConfigKey.Num("log.spacing", 5, 0..40, "Gap (dp) above each output group: a command and its output, or a background batch (feeds, scripts)")
     val LOG_GUTTER = ConfigKey.Bool("log.gutter", true, "Thin colour bar at the left of each log line: green for commands, script colour for background output, red for errors")
     val LOG_LINE_HEIGHT = ConfigKey.Num("log.line-height", 25, 10..56, "Minimum height (dp) of a log line and of script status lines in the header; tappable log lines get a little more")
     val CHIP_HEIGHT = ConfigKey.Num("chips.height", 48, 20..64, "Height (dp) of suggestion chips and app-grid chips; list-style suggestion rows shrink with it below 44")
@@ -145,7 +145,7 @@ object Keys {
     )
 
     /** Settings only `config` changes: the Settings screen leaves them out. */
-    val CONFIG_ONLY: Set<ConfigKey<*>> = setOf(LOG_KEEP_LINES)
+    val CONFIG_ONLY: Set<ConfigKey<*>> = setOf(LOG_KEEP_LINES, THEME_PAPER)
 
     /** A setting by name; an old name ([RENAMED]) finds the setting under its new one. */
     fun byName(name: String): ConfigKey<*>? {

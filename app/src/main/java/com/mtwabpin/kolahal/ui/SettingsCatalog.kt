@@ -10,7 +10,6 @@ import com.mtwabpin.kolahal.terminal.Screen
 internal val TITLES = mapOf(
     "theme.name" to "Theme",
     "theme.always-dark" to "Always dark",
-    "theme.paper" to "Paper",
     "screen.bars" to "Full screen",
     "font.family" to "Font",
     "font.sans" to "Phone's font",
@@ -81,7 +80,6 @@ internal val TITLES = mapOf(
  */
 internal val PEEK_SLIDERS: Map<String, Boolean> = mapOf(
     Keys.FONT_SIZE.key to false,
-    Keys.THEME_PAPER.key to false,
     Keys.LOG_LINE_HEIGHT.key to false,
     Keys.LOG_SPACING.key to false,
     Keys.SELECTOR_HEIGHT.key to false,
@@ -144,7 +142,7 @@ private val CATEGORIES = listOf(
     Category(
         "look", "Look & feel", "Theme, font, text size, full screen", R.drawable.ic_palette,
         listOf(
-            "Terminal" to listOf(Keys.THEME, Keys.THEME_ALWAYS_DARK, Keys.THEME_PAPER, Keys.FONT, Keys.FONT_SANS, Keys.FONT_SIZE),
+            "Terminal" to listOf(Keys.THEME, Keys.THEME_ALWAYS_DARK, Keys.FONT, Keys.FONT_SANS, Keys.FONT_SIZE),
             "Screen" to listOf(Keys.STATUS_BAR),
         ),
     ),
