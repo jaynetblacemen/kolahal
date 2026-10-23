@@ -426,6 +426,9 @@ fun AppSelector(
                         var y = down.position.y
                         var selecting = false
                         var lastSection = -1
+                        // The row last felt as a tick (the list) and the state last felt (letters or list).
+                        var tickedRow = -1
+                        var wasSelecting = false
                         var focus = -1
                         var rowSince = SystemClock.uptimeMillis()
                         var anchorY = y
@@ -444,10 +447,16 @@ fun AppSelector(
                             state.contact = SelectorMath.contact(state.scrollPx, yIn, rowPx.toFloat())
                             val f = SelectorMath.focusedIndex(state.contact, count)
                             val section = entries[f].sectionIndex
-                            if (section != lastSection) {
-                                if (lastSection != -1) haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
-                                lastSection = section
+                            // Feel where the finger is: crossing between the letters and the list, a
+                            // firm tick per letter along the edge, a light one per app in the list.
+                            when {
+                                selecting != wasSelecting -> haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                                selecting -> if (f != tickedRow && tickedRow != -1) haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+                                section != lastSection && lastSection != -1 -> haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                             }
+                            wasSelecting = selecting
+                            tickedRow = f
+                            lastSection = section
                             // Any real movement (either axis) restarts the hold: sliding sideways
                             // along one row toward the panel is not "holding still".
                             if (f != focus || abs(y - anchorY) > slopPx || abs(x - anchorX) > slopPx) {
