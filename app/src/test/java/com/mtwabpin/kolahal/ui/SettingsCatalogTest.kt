@@ -2,6 +2,7 @@ package com.mtwabpin.kolahal.ui
 
 import com.mtwabpin.kolahal.data.ConfigKey
 import com.mtwabpin.kolahal.data.Keys
+import com.mtwabpin.kolahal.terminal.Screen
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -9,6 +10,10 @@ import org.junit.Test
 
 /** The Settings pages and the look settings that show home through them. */
 class SettingsCatalogTest {
+    @Test fun scriptsComeBeforeFeedsInTheTabs() {
+        assertEquals(listOf(Screen.SETTINGS, Screen.SCRIPTS, Screen.FEEDS), FEATURE_TABS)
+    }
+
     @Test fun everyEyeIsOnARealPage() {
         val ids = allCategories().map { it.id }
         for (page in PEEK_PAGES.keys) assertTrue("no page called $page", page in ids)

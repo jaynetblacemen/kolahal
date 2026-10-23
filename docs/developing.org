@@ -46,7 +46,7 @@ publishing.
 
 #+begin_example
 MainActivity (HOME) ── TerminalViewModel ── CommandProcessor
-   screens: Terminal (+ widgets page) · Settings · Feeds · Scripts · ScriptEditor · Widgets · Setup
+   screens: Terminal (+ widgets page) · Settings · Scripts · Feeds · ScriptEditor · Widgets · Setup
                                │
         AppRepository (LauncherApps, all profiles) + AppPrefs (hidden, labels, frecency, aliases)
         UnlockCounter · DeviceStatus · Config · Backup

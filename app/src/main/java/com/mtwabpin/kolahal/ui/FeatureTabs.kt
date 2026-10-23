@@ -31,10 +31,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /** The screens behind the gear, in tab order. */
-internal val FEATURE_TABS = listOf(Screen.SETTINGS, Screen.FEEDS, Screen.SCRIPTS)
+internal val FEATURE_TABS = listOf(Screen.SETTINGS, Screen.SCRIPTS, Screen.FEEDS)
 
 /**
- * Settings | Feeds | Scripts: one row at the top of each of the three screens. Switching replaces
+ * Settings | Scripts | Feeds: one row at the top of each of the three screens. Switching replaces
  * the screen ([TerminalViewModel.switchTab]), so Back leaves all three. Feeds shows its unread count.
  */
 @Composable
