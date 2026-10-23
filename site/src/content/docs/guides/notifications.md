@@ -24,7 +24,8 @@ To keep the log readable, Kolahal skips its own notifications, ongoing ones (mus
 foreground-service and group-summary notifications, low-importance (silent) channels, and
 notifications without a title or text. A chat app re-posting the same notification logs at most
 one line per 30 seconds, and an update with the same text as its last line none; dismissed and
-posted again later, it is new.
+posted again later, it is new. Other apps' silent updates (a timer counting down, a download's
+progress, a player's track) don't log at all.
 
 ```sh
 notifs                 # active notifications

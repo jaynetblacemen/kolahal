@@ -74,16 +74,19 @@ class KolahalNotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap?) {
         if (!accept(sbn, rankingMap)) return
         val n = toNotif(sbn)
-        val known = NotificationStore.find(n.key)?.let { !it.removed } == true
+        val shown = NotificationStore.find(n.key)?.takeIf { !it.removed }
         NotificationStore.put(n, sbn.notification.contentIntent)
         val extras = sbn.notification.extras
         // Download/upload progress and "alert once" updates re-post the same key many times a
         // second; keep the store current but don't spam the log or fire scripts for each tick.
+        // A chat's conversation is the exception: its silent update carries the next message.
         if (isQuietRepost(
-                known = known,
+                known = shown != null,
                 flags = sbn.notification.flags,
                 progressMax = extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0),
                 indeterminate = extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false),
+                message = isMessage(extras.getString(Notification.EXTRA_TEMPLATE), sbn.notification.category),
+                changed = shown != null && shown.line != n.line,
             )
         ) return
         mirror()
@@ -190,10 +193,26 @@ class KolahalNotificationListener : NotificationListenerService() {
 
         /**
          * Whether a post is an update of an already-shown notification that shouldn't be logged or
-         * trigger scripts: alert-once updates and progress notifications. New keys always count.
+         * trigger scripts: progress notifications, and alert-once updates unless a [message]'s
+         * text [changed] (a conversation's next message arrives as a silent update of the same
+         * notification; a timer or a player updating its text does too, but isn't a message).
+         * New keys always count.
          */
-        internal fun isQuietRepost(known: Boolean, flags: Int, progressMax: Int, indeterminate: Boolean): Boolean =
-            known && (flags and Notification.FLAG_ONLY_ALERT_ONCE != 0 || progressMax > 0 || indeterminate)
+        internal fun isQuietRepost(
+            known: Boolean,
+            flags: Int,
+            progressMax: Int,
+            indeterminate: Boolean,
+            message: Boolean = false,
+            changed: Boolean = false,
+        ): Boolean =
+            known && (progressMax > 0 || indeterminate || (flags and Notification.FLAG_ONLY_ALERT_ONCE != 0 && !(message && changed)))
+
+        /** A messaging-style notification ([Notification.EXTRA_TEMPLATE]) or one an app files as a message. */
+        internal fun isMessage(template: String?, category: String?): Boolean =
+            template == MESSAGING_TEMPLATE || category == Notification.CATEGORY_MESSAGE
+
+        private const val MESSAGING_TEMPLATE = "android.app.Notification\$MessagingStyle"
 
         @Volatile
         private var instance: WeakReference<KolahalNotificationListener>? = null
