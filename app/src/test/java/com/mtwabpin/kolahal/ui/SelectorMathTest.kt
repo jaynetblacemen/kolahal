@@ -64,26 +64,35 @@ class SelectorMathTest {
         assertTrue(SelectorMath.scrollFraction(SelectorMath.DEAD + u * (1 - 2 * SelectorMath.DEAD)) < u)
     }
 
-    @Test fun scrollOffsetCoversTheList() {
-        assertEquals(0f, SelectorMath.scrollOffset(0f, 100, 40f, 800f))
-        assertEquals(100 * 40f - 800f, SelectorMath.scrollOffset(1f, 100, 40f, 800f))
-        assertEquals(1600f, SelectorMath.scrollOffset(0.5f, 100, 40f, 800f))
-        // Fits in the window: never scrolls.
-        assertEquals(0f, SelectorMath.scrollOffset(1f, 10, 40f, 800f))
+    @Test fun theStripCoversTheWholeList() {
+        val rows = 100
+        // The strip's top is the first app, its bottom the last, its middle the middle one.
+        assertEquals(0, SelectorMath.focusedIndex(SelectorMath.alongList(SelectorMath.scrollFraction(0f), rows), rows))
+        assertEquals(rows - 1, SelectorMath.focusedIndex(SelectorMath.alongList(SelectorMath.scrollFraction(1f), rows), rows))
+        assertEquals(50, SelectorMath.focusedIndex(SelectorMath.alongList(SelectorMath.scrollFraction(0.5f), rows), rows))
     }
 
-    @Test fun focusFollowsTheFingerAcrossTheWholeList() {
+    /** As Niagara does: the focused app is drawn level with the thumb, wherever on the screen it is. */
+    @Test fun theFocusedAppIsLevelWithTheFinger() {
         val rows = 100
         val row = 40f
         val view = 800f
-        // Finger at the top of the strip → first app; at the bottom → last app.
-        val top = SelectorMath.contact(SelectorMath.scrollOffset(SelectorMath.scrollFraction(0f), rows, row, view), 0f, row)
-        assertEquals(0, SelectorMath.focusedIndex(top, rows))
-        val bottom = SelectorMath.contact(SelectorMath.scrollOffset(SelectorMath.scrollFraction(1f), rows, row, view), view - 1f, row)
-        assertEquals(rows - 1, SelectorMath.focusedIndex(bottom, rows))
-        // Middle of the strip → middle of the list.
-        val mid = SelectorMath.contact(SelectorMath.scrollOffset(SelectorMath.scrollFraction(0.5f), rows, row, view), view / 2, row)
-        assertEquals(50, SelectorMath.focusedIndex(mid, rows))
+        val max = SelectorMath.maxScroll(rows, row, view)
+        // Where a list position is drawn: its row, less the scroll, plus the panel's shift.
+        fun drawnAt(at: Float, listY: Float) = SelectorMath.place(listY, max).let { (scroll, shift) -> at * row - scroll + shift }
+        for ((fraction, finger) in listOf(0.5f to 600f, 0f to 600f, 1f to 100f, 0.02f to 750f)) {
+            val at = SelectorMath.alongList(fraction, rows)
+            val listY = SelectorMath.levelWith(at, finger, row)
+            // Level with the finger, at the list's ends too (the panel moves the rest of the way).
+            assertEquals("$fraction", finger, drawnAt(at, listY), 0.01f)
+            // So picking starts on the same app.
+            assertEquals(at, SelectorMath.contact(listY, finger, row), 0.01f)
+        }
+        // In the middle the list scrolls and the panel stays; at the top it can't, and the panel moves down.
+        assertEquals(0f, SelectorMath.place(SelectorMath.levelWith(50f, 600f, row), max).second)
+        assertEquals(600f, SelectorMath.place(SelectorMath.levelWith(0f, 600f, row), max).second)
+        // A short list never scrolls: the panel does it all.
+        assertEquals(0f, SelectorMath.place(SelectorMath.levelWith(5f, 100f, row), SelectorMath.maxScroll(10, row, view)).first)
         assertEquals(-1, SelectorMath.focusedIndex(Float.NaN, rows))
         assertEquals(-1, SelectorMath.focusedIndex(3f, 0))
         assertEquals(9, SelectorMath.focusedIndex(25f, 10))

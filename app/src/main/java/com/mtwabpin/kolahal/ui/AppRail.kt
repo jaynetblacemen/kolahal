@@ -49,6 +49,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -156,9 +157,20 @@ internal object SelectorMath {
         return 0.7f * u + 0.3f * smooth
     }
 
-    /** Scroll offset (px) for [fraction] of a list of [count] rows of [rowPx] in a [viewportPx] window. */
-    fun scrollOffset(fraction: Float, count: Int, rowPx: Float, viewportPx: Float): Float =
-        fraction.coerceIn(0f, 1f) * maxScroll(count, rowPx, viewportPx)
+    /** The list position (rows) [fraction] of the way along a list of [count]: 0 the first row's top, count the last's bottom. */
+    fun alongList(fraction: Float, count: Int): Float = (fraction * count).coerceIn(0f, max(0f, count - 0.01f))
+
+    /** Where the list must be (px) to draw list position [at] (rows) level with [yInPanel]: can be past either end. */
+    fun levelWith(at: Float, yInPanel: Float, rowPx: Float): Float = at * rowPx - yInPanel
+
+    /**
+     * The list at [listY] (px): scrolled as far as 0..[maxScrollPx] goes, and the panel moved the
+     * rest of the way (down when positive). Returns (scroll, shift).
+     */
+    fun place(listY: Float, maxScrollPx: Float): Pair<Float, Float> {
+        val scroll = listY.coerceIn(0f, maxScrollPx)
+        return scroll to scroll - listY
+    }
 
     fun maxScroll(count: Int, rowPx: Float, viewportPx: Float): Float = max(0f, count * rowPx - viewportPx)
 
@@ -227,15 +239,21 @@ private class SelectorState {
     var contact by mutableFloatStateOf(Float.NaN)
     /** Finger Y in the selector's coordinates (moves the handle). */
     var fingerY by mutableFloatStateOf(0f)
-    /** Where the focused row is, in the selector's coordinates (the letter bubble sits level with it). */
-    var focusY by mutableFloatStateOf(0f)
     /** Scroll offset (px) set by scrubbing. */
     var scrollPx = 0f
+    /**
+     * Where the list wants to be (px, as [scrollPx]) to put the focused app level with the finger;
+     * past the list's ends, the panel itself moves the rest of the way ([shiftPx]).
+     */
+    var listY = 0f
+    /** How far the panel is moved down (up when negative) for what scrolling couldn't do. */
+    var shiftPx by mutableFloatStateOf(0f)
     var interaction by mutableIntStateOf(0)
 
     fun close() {
         mode = Mode.CLOSED
         contact = Float.NaN
+        shiftPx = 0f
     }
 }
 
@@ -262,8 +280,8 @@ private fun LazyListState.scrollToPx(px: Float, rowPx: Int) {
  * Touch it and a panel slides in on the other side, the whole height, listing every app
  * (favourites first, then A–Z), away from the thumb. Sliding along the strip glides through the
  * whole list proportionally (its top is the first app, its bottom the last); the focused row is
- * magnified with its neighbours (fisheye) and a bubble beside the panel shows its section letter,
- * ticking once per section. Slide off the edge, toward the panel, to freeze the list and pick a
+ * magnified with its neighbours (fisheye), level with the thumb, and shows its section's letter,
+ * ticking once per section; past the list's ends the panel itself moves to keep it level. Slide off the edge, toward the panel, to freeze the list and pick a
  * row (auto-scrolling at the panel's ends); lift to launch, or hold still for its actions. Lifting
  * on the edge leaves the panel open as a normal list (fling, tap, long-press); an outside tap,
  * Back or 4 s idle closes it.
@@ -316,7 +334,8 @@ fun AppSelector(
         }
     }
 
-    BoxWithConstraints(modifier.fillMaxSize()) {
+    // The panel can move past the log's edges to keep the focused app level with the finger.
+    BoxWithConstraints(modifier.fillMaxSize().clipToBounds()) {
         val containerW = constraints.maxWidth.toFloat()
         val containerH = constraints.maxHeight.toFloat()
         // selector.height: a strip of the edge, in the thumb's reach (selector.position), instead of
@@ -337,11 +356,9 @@ fun AppSelector(
         val panelHPx = min(listHPx, (count * rowPx).toFloat()).coerceAtLeast(rowPx.toFloat())
         val panelTopPx = topPx + listHPx - panelHPx
         val stripWPx = with(density) { STRIP_W.toPx() }
-        val bubbleSize = 56.dp
-        val bubblePx = with(density) { bubbleSize.toPx() }
-        // On the other side from the strip, leaving room beside it for the letter bubble.
+        // On the other side from the strip.
         val panelW = with(density) { (containerW * 0.7f).toDp() }.coerceAtLeast(220.dp)
-            .coerceAtMost(maxWidth - STRIP_W - bubbleSize - 24.dp)
+            .coerceAtMost(maxWidth - STRIP_W - 24.dp)
         val panelWPx = with(density) { panelW.toPx() }
         val panelXPx = if (left) containerW - panelWPx else 0f
         val stripXPx = if (left) 0f else containerW - stripWPx
@@ -378,7 +395,7 @@ fun AppSelector(
             enter =
                 slideInHorizontally(spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)) { if (left) it / 4 else -it / 4 },
             exit = fadeOut(tween(140)) + slideOutHorizontally(tween(160)) { if (left) it / 4 else -it / 4 },
-            modifier = Modifier.offset { IntOffset(panelXPx.roundToInt(), panelTopPx.roundToInt()) },
+            modifier = Modifier.offset { IntOffset(panelXPx.roundToInt(), (panelTopPx + state.shiftPx).roundToInt()) },
         ) {
             val shape = if (left) RoundedCornerShape(topStart = 14.dp, bottomStart = 14.dp) else RoundedCornerShape(topEnd = 14.dp, bottomEnd = 14.dp)
             LazyColumn(
@@ -407,34 +424,6 @@ fun AppSelector(
                         onLongClick = { state.close(); longPress(entry.item) },
                     )
                 }
-            }
-        }
-
-        // Section letter bubble while scrubbing: beside the panel, level with the focused row, away
-        // from the thumb.
-        val bubble by remember(entries) {
-            derivedStateOf { entries.getOrNull(SelectorMath.focusedIndex(state.contact, entries.size))?.section }
-        }
-        if (state.mode == Mode.SCRUB) bubble?.let { letter ->
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .offset {
-                        val gapStart = if (left) stripWPx else panelWPx
-                        val gapEnd = if (left) containerW - panelWPx else containerW - stripWPx
-                        IntOffset(
-                            (gapStart + (gapEnd - gapStart - bubblePx) / 2).roundToInt(),
-                            (state.focusY - bubblePx / 2).coerceIn(0f, containerH - bubblePx).roundToInt(),
-                        )
-                    }
-                    .size(bubbleSize)
-                    .background(Term.page, CircleShape)
-                    .border(1.5.dp, Term.prompt, CircleShape),
-            ) {
-                Text(
-                    letter.toString(),
-                    style = Term.text.copy(color = Term.prompt, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize + 8).sp),
-                )
             }
         }
 
@@ -477,16 +466,22 @@ fun AppSelector(
                         fun update(now: Long) {
                             val cy = stripTopPx + y
                             state.fingerY = cy
+                            // The finger's height in the panel: the focused app is drawn level with it,
+                            // as Niagara does, so the eye never leaves the thumb's height.
+                            val yIn = (cy - panelTopPx).coerceIn(0f, panelHPx - 1f)
                             if (!selecting) {
-                                val f = SelectorMath.scrollFraction(y / stripHPx)
-                                state.scrollPx = SelectorMath.scrollOffset(f, count, rowPx.toFloat(), panelHPx)
-                                listState.scrollToPx(state.scrollPx, rowPx)
+                                // Along the strip, the whole list (its top the first app, its bottom the
+                                // last), brought level with the finger: scrolled, and past the list's ends
+                                // the panel moved.
+                                val at = SelectorMath.alongList(SelectorMath.scrollFraction(y / stripHPx), count)
+                                state.listY = SelectorMath.levelWith(at, yIn, rowPx.toFloat())
                             }
-                            // The strip maps onto the whole panel: a finger a third down the strip is
-                            // a third down the panel, however tall each is.
-                            val yIn = (y / stripHPx * panelHPx).coerceIn(0f, panelHPx - 1f)
-                            state.focusY = panelTopPx + yIn
-                            state.contact = SelectorMath.contact(state.scrollPx, yIn, rowPx.toFloat())
+                            val (scroll, shift) = SelectorMath.place(state.listY, maxScrollPx)
+                            state.scrollPx = scroll
+                            state.shiftPx = shift
+                            listState.scrollToPx(state.scrollPx, rowPx)
+                            // Picking: the app level with the finger, as it moves up and down.
+                            state.contact = SelectorMath.contact(state.listY, yIn, rowPx.toFloat())
                             val f = SelectorMath.focusedIndex(state.contact, count)
                             val section = entries[f].sectionIndex
                             // Feel where the finger is: crossing between the letters and the list, a
@@ -517,10 +512,10 @@ fun AppSelector(
                             while (true) {
                                 val now = SystemClock.uptimeMillis()
                                 val speed = if (selecting) {
-                                    SelectorMath.edgeSpeed(y / stripHPx * panelHPx, panelHPx, edgeZonePx, edgeMaxSpeed)
+                                    SelectorMath.edgeSpeed(stripTopPx + y - panelTopPx, panelHPx, edgeZonePx, edgeMaxSpeed)
                                 } else 0f
                                 val scrolling = speed != 0f &&
-                                    !(speed < 0f && state.scrollPx <= 0f) && !(speed > 0f && state.scrollPx >= maxScrollPx)
+                                    !(speed < 0f && state.listY <= 0f) && !(speed > 0f && state.listY >= maxScrollPx)
                                 val wait = when {
                                     scrolling -> FRAME_MS
                                     selecting -> (HOLD_MS - (now - rowSince)).coerceAtLeast(1L)
@@ -532,9 +527,8 @@ fun AppSelector(
                                     val t = SystemClock.uptimeMillis()
                                     if (scrolling) {
                                         // Near the panel's top or bottom: glide on, faster the deeper.
-                                        state.scrollPx = (state.scrollPx + speed * (t - lastFrame)).coerceIn(0f, maxScrollPx)
+                                        state.listY = (state.listY + speed * (t - lastFrame)).coerceIn(min(0f, state.listY), max(maxScrollPx, state.listY))
                                         lastFrame = t
-                                        listState.scrollToPx(state.scrollPx, rowPx)
                                         update(t)
                                         continue
                                     }
@@ -563,8 +557,11 @@ fun AppSelector(
                                         state.close()
                                         launch(app)
                                     } else {
-                                        // Lifted on the edge: leave the list open for a tap or a fling.
+                                        // Lifted on the edge: leave the list open for a tap or a fling, back
+                                        // in its place (scrolled as far as it went).
                                         state.contact = Float.NaN
+                                        state.listY = state.scrollPx
+                                        state.shiftPx = 0f
                                         state.mode = Mode.OPEN
                                         state.interaction++
                                     }
@@ -660,9 +657,15 @@ private fun SelectorRow(
             .combinedClickable(enabled = enabled, onClick = onClick, onLongClick = onLongClick)
             .padding(end = 12.dp),
     ) {
+        // Its section's letter where a section starts, and on the focused row, in the accent colour:
+        // the letter you are at, where you look.
         Text(
-            if (entry.sectionStart) entry.section.toString() else "",
-            style = Term.text.copy(color = if (entry.favourite) Term.prompt.copy(alpha = 0.7f) else Term.dim.copy(alpha = 0.7f), fontSize = (Term.fontSize - 3).sp),
+            if (entry.sectionStart || focused) entry.section.toString() else "",
+            style = Term.text.copy(
+                color = if (focused) Term.prompt else if (entry.favourite) Term.prompt.copy(alpha = 0.7f) else Term.dim.copy(alpha = 0.7f),
+                fontWeight = if (focused) FontWeight.Bold else null,
+                fontSize = (Term.fontSize - 3).sp,
+            ),
             modifier = Modifier.width(26.dp).padding(start = 10.dp),
             maxLines = 1,
         )
