@@ -120,6 +120,29 @@ class HomeScreenTest {
         compose.onNodeWithTag("header-compact").assertExists()
     }
 
+    /** log.taller-taps: a line you can tap is taller than plain output, unless it's turned off. */
+    @Test fun tappableLinesAreTallerUnlessTurnedOff() {
+        val logs = LogRepository.get(app)
+        val command = logs.add(com.mtwabpin.kolahal.data.LogKind.COMMAND, "lh echo")
+        val output = logs.add(com.mtwabpin.kolahal.data.LogKind.OUTPUT, "lh plain")
+        try {
+            Term.lineHeight = 25
+            Term.tallerTaps = true
+            show(360.dp, 700.dp)
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("line-$output").fetchSemanticsNodes().isNotEmpty() }
+            fun height(id: Long) = compose.onNodeWithTag("line-$id").getUnclippedBoundsInRoot().let { it.bottom - it.top }
+            assertEquals(35f, height(command).value, 1f)
+            assertEquals(25f, height(output).value, 1f)
+            compose.runOnIdle { Term.tallerTaps = false }
+            assertEquals(25f, height(command).value, 1f)
+        } finally {
+            Term.tallerTaps = true
+            Term.lineHeight = 30
+            logs.delete(command)
+            logs.delete(output)
+        }
+    }
+
     /** The header's ⚙ shows no word; a screen reader still has one to say. */
     @Test fun headerSettingsHasANameForScreenReaders() {
         lateinit var vm: TerminalViewModel

@@ -262,6 +262,7 @@ class MainActivity : ComponentActivity() {
         Term.fontFamily = family ?: FontFamily.Monospace
         Term.sans = Term.Sans.of(vm.config[Keys.FONT_SANS])
         Term.lineHeight = vm.config[Keys.LOG_LINE_HEIGHT]
+        Term.tallerTaps = vm.config[Keys.LOG_TALLER_TAPS]
         Term.chipHeight = vm.config[Keys.CHIP_HEIGHT]
         window.decorView.setBackgroundColor(Term.page.toArgb())
         applyBars()

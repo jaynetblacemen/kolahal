@@ -10,6 +10,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.em
@@ -181,9 +182,10 @@ fun LogLine(
     val iconKey = entry.ctx.values[LogContext.ICON]?.takeIf { entry.kind == LogKind.SCRIPT && NotifIcons.has(context, it) }
     val inline = remember(iconKey) { iconKey?.let(::notifIconContent) ?: emptyMap() }
 
-    // Lines that do something get a larger touch target than plain output.
+    // Lines that do something get a larger touch target than plain output (log.taller-taps).
     val actionable = entry.kind == LogKind.COMMAND || entry.ctx.values.keys.any { it in ACTIONABLE_KEYS }
     val minHeight = when {
+        !Term.tallerTaps -> Term.lineHeight.dp
         desc != null -> (Term.lineHeight + 14).dp
         actionable -> (Term.lineHeight + 10).dp
         else -> Term.lineHeight.dp
@@ -233,6 +235,7 @@ fun LogLine(
             .drawBehind { if (swipe.value != 0f) drawRect(Term.page) }
             .fillMaxWidth()
             .heightIn(min = minHeight)
+            .testTag("line-${entry.id}")
             .then(if (dim && row.dimmed) Modifier.alpha(0.62f) else Modifier)
             .background(if (highlighted) Term.surface else Color.Transparent)
             .then(if (!gutter) Modifier else Modifier.drawBehind {

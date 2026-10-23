@@ -34,6 +34,7 @@ internal val TITLES = mapOf(
     "log.spacing" to "Space between output groups (dp)",
     "log.gutter" to "Colour bar beside lines",
     "log.line-height" to "Line height (dp)",
+    "log.taller-taps" to "Taller tappable lines",
     "log.keep-days" to "Keep log for (days)",
     "log.fresh" to "Fresh screen after (minutes away)",
     "suggestions.auto" to "Only while typing",
@@ -165,7 +166,7 @@ private val CATEGORIES = listOf(
     Category(
         "log", "Log", "Times, spacing, line height, history", R.drawable.ic_stat_terminal,
         listOf(
-            "Display" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_GUTTER, Keys.LOG_SPACING, Keys.LOG_LINE_HEIGHT),
+            "Display" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_GUTTER, Keys.LOG_SPACING, Keys.LOG_LINE_HEIGHT, Keys.LOG_TALLER_TAPS),
             "History" to listOf(Keys.LOG_FRESH, Keys.LOG_KEEP_DAYS),
         ),
     ),
