@@ -311,7 +311,7 @@ fun ThemePreview(p: Palette, modifier: Modifier = Modifier) {
         Text("weather · Pune 27°C", style = line.copy(color = p.script))
         Text("3 feeds refreshed", style = line.copy(color = p.info))
         Text("Command not found: fo", style = line.copy(color = p.error))
-        Text("older output, dimmed · 9:30", style = line.copy(color = p.dim))
+        Text("Older output, dimmed · 9:30", style = line.copy(color = p.dim))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf("Maps" to p.personal, "W Gmail" to p.work, "S Bank" to p.private).forEach { (label, colour) ->
                 Text(label, style = line.copy(color = colour), modifier = Modifier.background(p.surface, RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 3.dp))

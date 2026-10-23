@@ -269,7 +269,7 @@ class AppCommands(
     /** `usage [days]`: foreground time per app from UsageStats (needs Usage Access). */
     private fun usage(args: List<String>) {
         if (!unlocks.hasUsageAccess()) {
-            logs.add(LogKind.ERROR, "Usage needs Usage Access — tap to grant it", ctx = LogContext.of(LogContext.RUN to "usage-access"))
+            logs.add(LogKind.ERROR, "Screen time needs usage access — tap to grant it", ctx = LogContext.of(LogContext.RUN to "usage-access"))
             return
         }
         val days = args.firstOrNull()?.toIntOrNull()?.coerceIn(1, 30) ?: 1

@@ -2,7 +2,7 @@
 -- @command
 -- @desc GitHub release watcher: releases [add|rm owner/repo | list]
 -- @usage [add <owner/repo>|rm <owner/repo>|list]
--- @title GitHub Releases
+-- @title GitHub releases
 -- @every 3h
 -- @notify
 --
@@ -57,7 +57,7 @@ end
 
 if cmd == "add" or cmd == "rm" then
   if not arg:match("^[%w%.%-_]+/[%w%.%-_]+$") then
-    return hint("usage: releases " .. cmd .. " owner/repo")
+    return hint("Usage: releases " .. cmd .. " owner/repo")
   end
   local i = indexOf(repos, arg)
   if cmd == "add" then
@@ -74,7 +74,7 @@ if cmd == "add" or cmd == "rm" then
 end
 
 if cmd ~= "" then
-  return hint("usage: releases [add|rm owner/repo | list]")
+  return hint("Usage: releases [add|rm owner/repo | list]")
 end
 
 -- ---------------------------------------------------------------- check
@@ -88,7 +88,7 @@ for _, repo in ipairs(repos) do
   local url = "https://github.com/" .. repo .. "/releases.atom"
   local ok, feed = pcall(rss.fresh, url)
   if not ok then
-    log(repo, fmt.color("bad", "couldn't fetch its releases") .. ": " .. tostring(feed))
+    log(repo, fmt.color("bad", "Couldn't fetch its releases") .. ": " .. tostring(feed))
   else
     local items = feed.items or {}
     local firstKey = "init:" .. repo
@@ -96,13 +96,13 @@ for _, repo in ipairs(repos) do
       -- First check: show the latest release, but don't notify.
       store.set(firstKey, "1")
       if #items > 0 then
-        log(repo, fmt.color("muted", "latest: ") .. (items[1].title or "?"), { url = items[1].link })
+        log(repo, fmt.color("muted", "Latest: ") .. (items[1].title or "?"), { url = items[1].link })
       end
     else
       for i, item in ipairs(items) do
         if i > 3 then break end -- a repo rarely has more than a few releases between runs
-        local title = item.title or "new release"
-        log(repo, fmt.color("good", "new: ") .. title, { url = item.link })
+        local title = item.title or "New release"
+        log(repo, fmt.color("good", "New: ") .. title, { url = item.link })
         notify(repo, title, { url = item.link })
         total = total + 1
       end

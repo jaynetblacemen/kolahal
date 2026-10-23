@@ -27,7 +27,7 @@ class WidgetBinder(private val activity: ComponentActivity, private val onAdded:
 
     private val bindLauncher = activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val req = pending ?: return@registerForActivityResult
-        if (result.resultCode == Activity.RESULT_OK) configure(req) else cancel(req, "widget not added")
+        if (result.resultCode == Activity.RESULT_OK) configure(req) else cancel(req, "Widget not added")
     }
 
     /** Starts adding [entry]; [replacing] is the key of a pending (restored) entry it fills in. */
@@ -44,7 +44,7 @@ class WidgetBinder(private val activity: ComponentActivity, private val onAdded:
             .putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, entry.info.provider)
             .putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER_PROFILE, entry.user)
             .putExtra(AppWidgetManager.EXTRA_APPWIDGET_OPTIONS, options)
-        runCatching { bindLauncher.launch(intent) }.onFailure { cancel(req, "can't ask to bind widgets: ${it.message}") }
+        runCatching { bindLauncher.launch(intent) }.onFailure { cancel(req, "Can't ask to bind widgets: ${it.message}") }
     }
 
     private fun configure(req: Request) {
@@ -53,7 +53,7 @@ class WidgetBinder(private val activity: ComponentActivity, private val onAdded:
         if (req.info.configure == null || optional) return finish(req)
         runCatching {
             widgets.host.startAppWidgetConfigureActivityForResult(activity, req.id, 0, REQUEST_CONFIGURE, null)
-        }.onFailure { cancel(req, "couldn't open the widget's setup: ${it.message ?: it.javaClass.simpleName}") }
+        }.onFailure { cancel(req, "Couldn't open the widget's setup: ${it.message ?: it.javaClass.simpleName}") }
     }
 
     /** Returns true when the result belonged to the configure step. */
@@ -61,7 +61,7 @@ class WidgetBinder(private val activity: ComponentActivity, private val onAdded:
         if (requestCode != REQUEST_CONFIGURE) return false
         val req = pending ?: return true
         // Some configure activities return a different id in the result; ours is the one we bound.
-        if (resultCode == Activity.RESULT_OK) finish(req) else cancel(req, "widget setup cancelled")
+        if (resultCode == Activity.RESULT_OK) finish(req) else cancel(req, "Widget setup cancelled")
         return true
     }
 
@@ -69,7 +69,7 @@ class WidgetBinder(private val activity: ComponentActivity, private val onAdded:
         pending = null
         widgets.place(req.id, req.info, req.replacing)
         widgets.widgets.value.firstOrNull { it.id == req.id }?.let(onAdded)
-        widgets.message("added ${req.info.loadLabel(activity.packageManager)}")
+        widgets.message("Added ${req.info.loadLabel(activity.packageManager)}")
     }
 
     private fun cancel(req: Request, why: String) {

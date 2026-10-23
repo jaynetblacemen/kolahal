@@ -213,7 +213,7 @@ fun FeedsScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
 
         if (adding) AddFeedDialog(repo, onDismiss = { adding = false }) { title ->
             adding = false
-            scope.launch { snackbar.showSnackbar("subscribed to $title — fetching…") }
+            scope.launch { snackbar.showSnackbar("Subscribed to $title — fetching…") }
         }
     }
 }
@@ -222,13 +222,13 @@ fun FeedsScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit) {
 private fun openItem(context: Context, scope: CoroutineScope, repo: FeedRepository, item: FeedItem, snackbar: SnackbarHostState) {
     val link = item.link
     if (link.isNullOrBlank()) {
-        scope.launch { snackbar.showSnackbar("this item has no link") }
+        scope.launch { snackbar.showSnackbar("This item has no link") }
     } else {
         try {
             context.startActivity(Intent(Intent.ACTION_VIEW, link.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (_: Exception) {
             // No handler, a malformed link, or a SecurityException from the target activity.
-            scope.launch { snackbar.showSnackbar("no app can open $link") }
+            scope.launch { snackbar.showSnackbar("No app can open $link") }
             return
         }
     }
@@ -535,7 +535,7 @@ private fun AddFeedDialog(repo: FeedRepository, onDismiss: () -> Unit, onAdded: 
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    if (repo.byUrl(normalized) != null) throw IllegalArgumentException("already subscribed to $normalized")
+                    if (repo.byUrl(normalized) != null) throw IllegalArgumentException("Already subscribed to $normalized")
                     val feed = repo.add(url)
                     FeedScheduler.sync(context)
                     FeedScheduler.fetchNow(context, feed.id)
@@ -543,7 +543,7 @@ private fun AddFeedDialog(repo: FeedRepository, onDismiss: () -> Unit, onAdded: 
                 }
             }
             busy = false
-            result.onSuccess(onAdded).onFailure { error = it.message ?: "couldn't add that feed" }
+            result.onSuccess(onAdded).onFailure { error = it.message ?: "Couldn't add that feed" }
         }
     }
 

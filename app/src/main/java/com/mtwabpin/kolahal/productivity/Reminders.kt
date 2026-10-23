@@ -73,7 +73,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 if (store.all().size >= ReminderScheduler.MAX_ALARMS) ReminderScheduler.rescheduleAll(context)
                 Notifier.postReminder(context, id, r.text)
                 LogRepository.get(context).add(
-                    LogKind.SCRIPT, "reminder: ${r.text}", "remind",
+                    LogKind.SCRIPT, "Reminder: ${r.text}", "remind",
                     // Tap puts a 10 minute snooze in the prompt.
                     LogContext.of(LogContext.COMMAND to "remind 10m ${r.text}", LogContext.COPY to r.text),
                 )

@@ -1,8 +1,8 @@
 // sun.js — today's sunrise, sunset and day length (Open-Meteo, no key).
 // @command
-// @desc sunrise/sunset: sun | sun <city> | sun <lat> <lng> (city/coords are saved)
+// @desc Sunrise and sunset: sun | sun <city> | sun <lat> <lng> (city/coords are saved)
 // @usage [<city>|<lat> <lng>]
-// @title Sunrise & Sunset
+// @title Sunrise and sunset
 // @at 05:00
 //
 // Usage:
@@ -30,7 +30,7 @@ try {
   if (coords) {
     const lat = parseFloat(coords[1]);
     const lng = parseFloat(coords[2]);
-    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return fail("No sun times", "latitude goes to ±90 and longitude to ±180");
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return fail("No sun times", "Latitude goes to ±90 and longitude to ±180");
     store.set("lat", String(lat));
     store.set("lng", String(lng));
     store.set("place", `${lat}, ${lng}`);
@@ -38,7 +38,7 @@ try {
     const geo = await getJson(
       `https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=${encodeURIComponent(line)}`
     );
-    if (!geo.results || geo.results.length === 0) return fail("No sun times", `no place named '${line}'`);
+    if (!geo.results || geo.results.length === 0) return fail("No sun times", `No place named '${line}'`);
     const p = geo.results[0];
     store.set("lat", String(p.latitude));
     store.set("lng", String(p.longitude));
@@ -63,7 +63,7 @@ try {
   const secs = d.daylight_duration ? d.daylight_duration[0] : null;
   const length = secs != null ? ` · ${Math.floor(secs / 3600)}h ${Math.round((secs % 3600) / 60)}m of daylight` : "";
 
-  log(store.get("place") || `${lat}, ${lng}`, `sunrise ${fmt.bold(rise)} · sunset ${fmt.bold(set)}${length}`);
+  log(store.get("place") || `${lat}, ${lng}`, `Sunrise ${fmt.bold(rise)} · sunset ${fmt.bold(set)}${length}`);
   status(`Sun ${rise}–${set}`);
 } catch (e) {
   return fail("No sun times", `${e.message || e}`);

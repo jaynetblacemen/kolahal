@@ -1,6 +1,6 @@
 -- weather.lua — current weather in one line from wttr.in (no API key).
 -- @command
--- @desc current weather: weather [city] | weather --default <city>
+-- @desc Current weather: weather [city] | weather --default <city>
 -- @usage [<city>|--default <city>]
 -- @title Weather
 -- @every 1h
@@ -40,7 +40,7 @@ local city = line ~= "" and line or (store.get("city") or "")
 local url = "https://wttr.in/" .. urlencode(city) .. "?format=3"
 
 local ok, r = pcall(http.get, url, { ["Accept-Language"] = "en" })
-if not ok then return fail("No weather", "network error: " .. tostring(r)) end
+if not ok then return fail("No weather", "Network error: " .. tostring(r)) end
 if not r.ok then return fail("No weather", "wttr.in answered HTTP " .. tostring(r.status)) end
 
 local text = trim(r.body or "")

@@ -35,7 +35,7 @@ object Pipes {
             "grep" -> {
                 val invert = "-v" in args
                 val pattern = args.filterNot { it == "-v" || it == "-i" }.joinToString(" ")
-                require(pattern.isNotEmpty()) { "usage: … | grep [-v] <pattern>" }
+                require(pattern.isNotEmpty()) { "Usage: … | grep [-v] <pattern>" }
                 val regex = runCatching { Regex(pattern, RegexOption.IGNORE_CASE) }
                     .getOrElse { Regex(Regex.escape(pattern), RegexOption.IGNORE_CASE) }
                 // A pattern that backtracks without end (`(.*.*)*x`) stops after a second

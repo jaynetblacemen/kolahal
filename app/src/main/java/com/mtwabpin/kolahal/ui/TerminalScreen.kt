@@ -370,8 +370,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             if (reversedRows.isEmpty() && hiddenLines == 0) {
                 item(key = "empty-hint") {
                     Text(
-                        "type an app name or a command · help lists everything · ↑ recalls history · " +
-                            "/ searches the log · Tap a line to act, long-press for more · ⚙ settings",
+                        "Type an app name or a command · help lists everything · ↑ recalls history · " +
+                            "/ searches the log · tap a line to act, long-press for more · ⚙ settings",
                         style = Term.text.copy(color = Term.dim),
                         modifier = Modifier.padding(vertical = 12.dp),
                     )

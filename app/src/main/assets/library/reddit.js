@@ -1,8 +1,8 @@
 // reddit.js — today's top posts of a subreddit (public JSON/RSS, no API key).
 // @command
-// @desc top posts today: reddit [subreddit] (default: android)
+// @desc Top posts today: reddit [subreddit] (default: android)
 // @usage [<subreddit>]
-// @title Reddit Top Posts
+// @title Reddit top posts
 //
 // Usage:
 //   reddit             top 5 posts of r/android today
@@ -31,9 +31,9 @@ let r = null;
 try {
   r = await http.get(`https://www.reddit.com/r/${sub}/top.json?limit=${LIMIT}&t=day&raw_json=1`, UA);
 } catch (e) {
-  return fail("No posts", `network error: ${e.message || e}`);
+  return fail("No posts", `Network error: ${e.message || e}`);
 }
-if (r.status === 404) return fail("No posts", `there is no r/${sub}`);
+if (r.status === 404) return fail("No posts", `There is no r/${sub}`);
 
 if (r.ok) {
   let posts;
@@ -45,7 +45,7 @@ if (r.ok) {
   if (posts.length === 0) return log(fmt.color("muted", `r/${sub}: no posts today`));
   for (const p of posts.slice(0, LIMIT)) {
     const link = "https://www.reddit.com" + p.permalink;
-    log(p.title, `${fmt.bold(short(p.score))} ▲ · ${p.num_comments} comments`, { url: link, copy: link });
+    log(p.title, `${fmt.bold(short(p.score))} points · ${p.num_comments} comments`, { url: link, copy: link });
   }
   return;
 }

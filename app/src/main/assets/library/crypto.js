@@ -1,8 +1,8 @@
 // crypto.js — cryptocurrency prices from CoinGecko (free public API, no key).
 // @command
-// @desc coin prices: crypto [ids…] [--vs eur] (default: bitcoin ethereum, usd)
+// @desc Coin prices: crypto [ids…] [--vs eur] (default: bitcoin ethereum, usd)
 // @usage [<ids…>] [--vs <currency>]
-// @title Crypto Prices
+// @title Crypto prices
 // @every 30m
 //
 // Usage:
@@ -10,7 +10,7 @@
 //   crypto solana dogecoin       other coins (CoinGecko ids)
 //   crypto bitcoin --vs eur      in another currency
 //
-// On a timer (no arguments) it pins a compact price line, e.g. "BTC 67.1k ▲1.2% · ETH 3.1k ▼0.4%".
+// On a timer (no arguments) it pins a compact price line, e.g. "BTC 67.1k ▲ 1.2% · ETH 3.1k ▼ 0.4%".
 
 const DEFAULT_IDS = ["bitcoin", "ethereum"];
 const SYMBOLS = { bitcoin: "BTC", ethereum: "ETH", solana: "SOL", dogecoin: "DOGE", litecoin: "LTC", monero: "XMR", cardano: "ADA", ripple: "XRP" };
@@ -35,9 +35,9 @@ let r;
 try {
   r = await http.get(url, { Accept: "application/json" });
 } catch (e) {
-  return fail("No prices", `network error: ${e.message || e}`);
+  return fail("No prices", `Network error: ${e.message || e}`);
 }
-if (r.status === 429) return log(fmt.color("warn", "CoinGecko says wait"), "too many requests: try again in a minute");
+if (r.status === 429) return log(fmt.color("warn", "CoinGecko says wait"), "Too many requests: try again in a minute");
 if (!r.ok) return fail("No prices", `CoinGecko answered HTTP ${r.status}`);
 
 let prices;
@@ -56,8 +56,9 @@ function num(n) {
   return n.toPrecision(4);
 }
 const compact = (n) => (n >= 1000 ? (n / 1000).toFixed(1) + "k" : num(n));
-const arrow = (c) => (c >= 0 ? "▲" : "▼") + Math.abs(c).toFixed(1) + "%";
+const arrow = (c) => (c >= 0 ? "▲ " : "▼ ") + Math.abs(c).toFixed(1) + "%";
 
+const rows = [];
 const parts = [];
 for (const id of ids) {
   const p = prices[id];
@@ -67,12 +68,19 @@ for (const id of ids) {
   }
   const change = p[`${vs}_24h_change`];
   const sym = SYMBOLS[id] || id.toUpperCase();
-  // The day's change in the theme's good or bad colour; the arrow says it too.
-  const moved = change != null ? `  ${fmt.color(change >= 0 ? "good" : "bad", arrow(change))} 24h` : "";
-  log(`${sym} ${fmt.bold(num(p[vs]))} ${vs.toUpperCase()}` + moved, {
-    url: `https://www.coingecko.com/en/coins/${id}`,
-  });
+  rows.push({ id, sym, price: num(p[vs]), change });
   parts.push(`${sym} ${compact(p[vs])}` + (change != null ? ` ${arrow(change)}` : ""));
+}
+// Lined up: the symbol padded to the longest, the price right-aligned, the day's change after it in
+// the theme's good or bad colour (the arrow says it too); mono keeps the terminal font for the columns.
+const symWidth = Math.max(0, ...rows.map((r) => r.sym.length));
+const priceWidth = Math.max(0, ...rows.map((r) => r.price.length));
+for (const r of rows) {
+  const moved = r.change != null ? `  ${fmt.color(r.change >= 0 ? "good" : "bad", arrow(r.change))} 24h` : "";
+  log(`${r.sym.padEnd(symWidth)}  ${fmt.bold(r.price.padStart(priceWidth))} ${vs.toUpperCase()}` + moved, {
+    url: `https://www.coingecko.com/en/coins/${r.id}`,
+    mono: "1",
+  });
 }
 
 if (words.length === 0 && parts.length > 0) status(parts.join(" · "));

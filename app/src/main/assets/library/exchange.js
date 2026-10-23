@@ -1,8 +1,8 @@
 // exchange.js — currency conversion with daily rates from open.er-api.com (no key).
 // @command
-// @desc convert currency: exchange [amount] <from> [to…] (e.g. exchange 100 usd inr eur)
+// @desc Convert currency: exchange [amount] <from> [to…] (e.g. exchange 100 usd inr eur)
 // @usage [<amount>] <from> [<to…>]
-// @title Currency Converter
+// @title Currency converter
 //
 // Usage:
 //   exchange 100 usd inr       100 US dollars in Indian rupees
@@ -19,11 +19,11 @@ const words = (argline || "").trim().split(/\s+/).filter(Boolean);
 
 let amount = 1;
 if (words.length > 0 && /^[\d.,]+$/.test(words[0])) amount = parseFloat(words.shift().replace(/,/g, ""));
-if (!isFinite(amount)) return fail("No conversion", "that amount isn't a number");
+if (!isFinite(amount)) return fail("No conversion", "That amount isn't a number");
 
 const codes = words.map((w) => w.toUpperCase());
 if (codes.some((c) => !/^[A-Z]{3}$/.test(c))) {
-  return log(fmt.color("muted", "usage: exchange [amount] <from> [to…], e.g. exchange 100 usd inr"));
+  return log(fmt.color("muted", "Usage: exchange [amount] <from> [to…], e.g. exchange 100 usd inr"));
 }
 const background = codes.length === 0;
 const from = codes[0] || "USD";
@@ -34,7 +34,7 @@ let r;
 try {
   r = await http.get(`https://open.er-api.com/v6/latest/${from}`);
 } catch (e) {
-  return fail("No rates", `network error: ${e.message || e}`);
+  return fail("No rates", `Network error: ${e.message || e}`);
 }
 if (!r.ok) return fail("No rates", `open.er-api.com answered HTTP ${r.status}`);
 
@@ -44,7 +44,7 @@ try {
 } catch (e) {
   return fail("No rates", "open.er-api.com sent something unexpected");
 }
-if (data.result !== "success") return fail("No rates", `no currency ${from}`);
+if (data.result !== "success") return fail("No rates", `No currency ${from}`);
 
 // 1234567.891 -> "1,234,567.89"
 function num(n) {
@@ -55,6 +55,7 @@ function num(n) {
 // Whole amounts print without decimals: "100 USD", not "100.00 USD".
 const amountText = Number.isInteger(amount) ? num(amount).split(".")[0] : num(amount);
 
+const rows = [];
 const parts = [];
 for (const to of targets) {
   const rate = data.rates[to];
@@ -62,9 +63,15 @@ for (const to of targets) {
     fail(`${to}: no such currency`);
     continue;
   }
-  const value = num(amount * rate);
-  log(`${amountText} ${from} = ${fmt.bold(value)} ${to}`, { copy: value.replace(/,/g, "") });
+  rows.push({ to, value: num(amount * rate) });
   parts.push(`${to} ${num(rate)}`);
+}
+// Several targets line up: the values right-aligned, in the terminal font (mono).
+const width = Math.max(0, ...rows.map((r) => r.value.length));
+for (const r of rows) {
+  const ctx = { copy: r.value.replace(/,/g, "") };
+  if (rows.length > 1) ctx.mono = "1";
+  log(`${amountText} ${from} = ${fmt.bold(r.value.padStart(width))} ${r.to}`, ctx);
 }
 
 if (background && parts.length > 0) status(`${from}: ` + parts.join(" · "));

@@ -12,7 +12,7 @@ Records the battery level each run and pins the change since the last run.
 
 ```lua
 -- batterylog.lua — run with: script every batterylog 30m
--- @desc battery level history
+-- @desc Battery level history
 
 local b = device.battery()
 if not b.level then return "battery level unknown" end
@@ -37,7 +37,7 @@ Checks several sites at once and notifies only when one goes down or comes back.
 
 ```js
 // uptime.js — script every uptime 15m · script notify uptime on
-// @desc site uptime checker
+// @desc Site uptime checker
 
 const SITES = ["https://example.com", "https://github.com", "https://lwn.net"];
 
@@ -76,7 +76,7 @@ own notes.)
 ```lua
 -- jot.lua
 -- @command
--- @desc quick notes: jot <text> | jot | jot rm N
+-- @desc Quick notes: jot <text> | jot | jot rm N
 
 local notes = json.decode(store.get("notes") or "[]")
 local function save() store.set("notes", json.encode(notes)) end
@@ -127,7 +127,7 @@ waiting.
 
 ```lua
 -- morning.lua — script at morning 07:30 · script notify morning on
--- @desc morning summary
+-- @desc Morning summary
 -- @uses notifications
 
 local parts = {}
@@ -155,7 +155,7 @@ and the like) must be typed, so they don't run from a script.
 ```lua
 -- routine.lua
 -- @command
--- @desc routine: the weather, the day's agenda, then the news app
+-- @desc Routine: the weather, the day's agenda, then the news app
 -- @uses commands
 
 launcher.run("weather")

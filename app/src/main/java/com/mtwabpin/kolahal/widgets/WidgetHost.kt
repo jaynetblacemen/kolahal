@@ -266,7 +266,7 @@ class WidgetHost private constructor(context: Context) {
             val goneKeys = gone.map { it.key }.toSet()
             val lostKeys = lost.map { it.key }.toSet()
             update { all -> all.filterNot { it.key in goneKeys }.map { if (it.key in lostKeys) it.copy(id = null) else it } }
-            if (gone.isNotEmpty()) message("removed ${gone.size} widget${if (gone.size == 1) "" else "s"} whose app is gone")
+            if (gone.isNotEmpty()) message("Removed ${gone.size} widget${if (gone.size == 1) "" else "s"} whose app is gone")
             if (lost.isNotEmpty()) message("${lost.size} widget${if (lost.size == 1) " needs" else "s need"} adding again: Settings → Widgets")
         }
         val used = _widgets.value.mapNotNull { it.id }.toSet() + synchronized(inFlight) { inFlight.toSet() }

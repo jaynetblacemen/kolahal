@@ -17,7 +17,7 @@ const arg = (argline || "").trim().toLowerCase();
 async function comic(num) {
   const url = num ? `https://xkcd.com/${num}/info.0.json` : "https://xkcd.com/info.0.json";
   const r = await http.get(url);
-  if (r.status === 404) throw new Error(`no comic #${num}`);
+  if (r.status === 404) throw new Error(`xkcd has no comic #${num}`);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return JSON.parse(r.body);
 }
@@ -34,7 +34,7 @@ try {
   } else if (arg === "") {
     c = await comic(null);
   } else {
-    return log(fmt.color("muted", "usage: xkcd | xkcd <number> | xkcd random"));
+    return log(fmt.color("muted", "Usage: xkcd | xkcd <number> | xkcd random"));
   }
 } catch (e) {
   return fail("No comic", `${e.message || e}`);

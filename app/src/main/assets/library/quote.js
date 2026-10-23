@@ -1,8 +1,8 @@
 // quote.js — a random quote from ZenQuotes (free, no key; ~5 requests / 30 s).
 // @command
-// @desc a random quote; long-press to copy it
+// @desc A random quote; long-press to copy it
 // @usage
-// @title Quote of the Day
+// @title Quote of the day
 // @at 08:00
 // @notify
 //
@@ -15,7 +15,7 @@ let r;
 try {
   r = await http.get("https://zenquotes.io/api/random");
 } catch (e) {
-  return fail("No quote", `network error: ${e.message || e}`);
+  return fail("No quote", `Network error: ${e.message || e}`);
 }
 if (!r.ok) return fail("No quote", `ZenQuotes answered HTTP ${r.status}`);
 

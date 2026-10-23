@@ -273,7 +273,7 @@ internal fun ApiReferenceSheet(lang: ScriptLang, onDismiss: () -> Unit, onPick: 
             }
             item {
                 Text(
-                    "keywords: " + ApiDocs.keywords(lang).joinToString(" "),
+                    "Keywords: " + ApiDocs.keywords(lang).joinToString(" "),
                     style = Term.code.copy(color = Term.dim, fontSize = Term.code.fontSize * 0.85f),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )

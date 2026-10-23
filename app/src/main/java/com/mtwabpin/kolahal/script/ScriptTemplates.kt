@@ -8,7 +8,7 @@ object ScriptTemplates {
     fun command(lang: ScriptLang, name: String): String = when (lang) {
         ScriptLang.LUA -> """
             -- @command
-            -- @desc current weather: $name [city]
+            -- @desc Current weather: $name [city]
             -- Run as '$name london'. Arguments: args (table), argline (string). The return value is printed.
             local city = argline ~= "" and argline or "London"
             local r = http.get("https://wttr.in/" .. city:gsub(" ", "+") .. "?format=3")
@@ -17,7 +17,7 @@ object ScriptTemplates {
         """.trimIndent()
         ScriptLang.JS -> """
             // @command
-            // @desc current weather: $name [city]
+            // @desc Current weather: $name [city]
             // Run as '$name london'. Arguments: args (array), argline (string). The return value is printed.
             const city = argline || "London";
             const r = await http.get("https://wttr.in/" + encodeURIComponent(city) + "?format=3");

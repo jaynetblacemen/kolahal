@@ -1117,7 +1117,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun newScript(name: String, lang: ScriptLang, asCommand: Boolean) {
         val clean = name.trim().lowercase()
         if (!Regex("^[a-z0-9_-]{1,40}$").matches(clean)) {
-            show("names: lowercase letters, digits, - and _")
+            show("Names: lowercase letters, digits, - and _")
             return
         }
         if (clean in CommandProcessor.RESERVED_NAMES) {

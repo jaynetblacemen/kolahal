@@ -131,8 +131,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "search", "g" -> search(rest)
                 "yt", "youtube" -> search(rest, "youtube")
                 "wiki" -> search(rest, "wikipedia")
-                "maps", "map" -> if (rest.isBlank()) fallbackLaunch(trimmed) else openUri("geo:0,0?q=" + Uri.encode(rest), "maps: $rest")
-                "play", "store" -> if (rest.isBlank()) fallbackLaunch(trimmed) else openUri("market://search?q=" + Uri.encode(rest), "play store: $rest")
+                "maps", "map" -> if (rest.isBlank()) fallbackLaunch(trimmed) else openUri("geo:0,0?q=" + Uri.encode(rest), "Maps: $rest")
+                "play", "store" -> if (rest.isBlank()) fallbackLaunch(trimmed) else openUri("market://search?q=" + Uri.encode(rest), "Play Store: $rest")
                 "calls" -> people.calls(args)
                 "call", "dial" -> people.call(rest)
                 "sms", "text" -> people.sms(args)
@@ -267,7 +267,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val days = args.firstOrNull()?.toIntOrNull()?.coerceIn(1, 30) ?: 1
         if (!unlocks.hasUsageAccess()) {
             info("Counting via unlock receiver (misses unlocks while launcher isn't running)")
-            info("Tap here to grant Usage Access for accurate counts", LogContext.of(LogContext.RUN to "usage-access"))
+            info("Tap here to grant usage access for accurate counts", LogContext.of(LogContext.RUN to "usage-access"))
         }
         val today = java.time.LocalDate.now()
         val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE d MMM", java.util.Locale.getDefault())
@@ -523,7 +523,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val byName = offered.associateBy { it.name }
         val placed = HashSet<String>()
         for ((section, names) in HELP_SECTIONS) {
-            info(section)
+            info(section.replaceFirstChar { it.uppercase() })
             names.mapNotNull(byName::get).forEach { spec ->
                 placed += spec.name
                 out(spec.usage, LogContext.of(LogContext.COMMAND to spec.name + " ", LogContext.DESC to spec.help))

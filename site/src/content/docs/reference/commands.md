@@ -8,7 +8,7 @@ This is the full list from `help`, in the same groups. Anything that isn't a com
 is matched against app names. Arguments in `<angle brackets>` are required, `[square brackets]`
 optional, and `a|b` means one of.
 
-## apps
+## Apps
 
 | Usage | Aliases | Description |
 | --- | --- | --- |
@@ -26,7 +26,7 @@ optional, and `a|b` means one of.
 | `usage [<days>]` | `screentime` | screen time per app (1–30 days; needs Usage Access) |
 | `installs [<n>]` | `updates` | recent app installs, updates and uninstalls |
 
-## people
+## People
 
 | Usage | Aliases | Description |
 | --- | --- | --- |
@@ -35,7 +35,7 @@ optional, and `a|b` means one of.
 | `contacts [<query>]` | `contact` | find contacts (favourites when empty) |
 | `calls [<n>]` | | recent calls, incoming, outgoing and missed (20 by default; `calls --allow` asks for call log access) |
 
-## web
+## Web
 
 | Usage | Aliases | Description |
 | --- | --- | --- |
@@ -46,7 +46,7 @@ optional, and `a|b` means one of.
 | `play <query>` | `store` | search the Play Store |
 | `url <address>` | `web` | open a link |
 
-## feeds
+## Feeds
 
 | Usage | Aliases | Description |
 | --- | --- | --- |
@@ -75,7 +75,7 @@ optional, and `a|b` means one of.
 (notification access settings), `notifs mute <app>`, `notifs unmute <app>`, `notifs muted`,
 `notifs log on|off`, `notifs clear` (dismiss all).
 
-## control
+## Control
 
 See [Media and device controls](/guides/media-and-controls/).
 
@@ -98,7 +98,7 @@ See [Media and device controls](/guides/media-and-controls/).
 | `data` | | Internet / mobile data panel |
 | `toggles` | | the state of every toggle; tap a line to change it |
 
-## productivity
+## Productivity
 
 See [Productivity](/guides/productivity/). `<n>` is the number shown in the list.
 
@@ -119,14 +119,14 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `agenda [<days>]` | | upcoming calendar events (3 days by default, up to 31); tap opens one |
 | `agenda --allow` / `agenda --settings` | | ask for calendar access / open Kolahal's app settings |
 
-## profiles
+## Profiles
 
 | Usage | Description |
 | --- | --- |
 | `work [on\|off\|status]` | pause / resume the work profile |
 | `private [on\|off\|status]` | lock / unlock private space |
 
-## scripts
+## Scripts
 
 | Usage | Description |
 | --- | --- |
@@ -165,7 +165,7 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 
 Script names use lowercase letters, digits, `-` and `_` (up to 40), and can't be a built-in command.
 
-## terminal
+## Terminal
 
 | Usage | Aliases | Description |
 | --- | --- | --- |
@@ -183,7 +183,7 @@ Script names use lowercase letters, digits, `-` and `_` (up to 40), and can't be
 | `echo <text>` | | print text |
 | `date` | `time` | current date and time |
 
-## widgets
+## Widgets
 
 See [Widgets](/guides/widgets/).
 
@@ -193,7 +193,7 @@ See [Widgets](/guides/widgets/).
 | `widgets ls` | `widget ls` | placed widgets as text lines (tap one to open the page) |
 | `widget add` | | open the widget picker; the widget goes on the widgets page |
 
-## device
+## Device
 
 | Usage | Aliases | Description |
 | --- | --- | --- |

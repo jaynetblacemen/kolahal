@@ -51,14 +51,14 @@ class ControlCommands(private val context: Context) {
             "rotate" -> rotate(a)
             "screen-timeout" -> screenTimeout(a)
             "wifi" -> wifi()
-            "bt", "bluetooth" -> open(Intent(Settings.ACTION_BLUETOOTH_SETTINGS), "bluetooth settings")
+            "bt", "bluetooth" -> open(Intent(Settings.ACTION_BLUETOOTH_SETTINGS), "Bluetooth settings")
             "nfc" -> open(
                 Intent(if (Build.VERSION.SDK_INT >= 29) Settings.Panel.ACTION_NFC else Settings.ACTION_NFC_SETTINGS),
-                "nfc",
+                "the NFC panel",
             )
             "data" -> open(
                 Intent(if (Build.VERSION.SDK_INT >= 29) Settings.Panel.ACTION_INTERNET_CONNECTIVITY else Settings.ACTION_WIRELESS_SETTINGS),
-                "internet",
+                "the internet panel",
             )
             "toggles" -> toggles()
         }
@@ -72,7 +72,7 @@ class ControlCommands(private val context: Context) {
             logs.add(LogKind.ERROR, "This build has no notification access, so it can't control media")
             return true
         }
-        fix("media control needs notification access — tap to enable it", "notifs enable")
+        fix("Media control needs notification access — tap to enable it", "notifs enable")
         return true
     }
 
@@ -191,7 +191,7 @@ class ControlCommands(private val context: Context) {
         val cur = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
         val muted = audio.isStreamMute(AudioManager.STREAM_MUSIC)
         val pct = ControlArgs.toPercent(cur, max)
-        return "volume ${ControlArgs.bar(if (muted) 0 else pct)} ${if (muted) "muted" else "$pct%"}"
+        return "Volume ${ControlArgs.bar(if (muted) 0 else pct)} ${if (muted) "muted" else "$pct%"}"
     }
 
     private fun volume(arg: String?) {
@@ -241,7 +241,7 @@ class ControlCommands(private val context: Context) {
         ) return
         runCatching { audio.ringerMode = mode }
             .onSuccess { info("Ringer ${ringLabel()}") }
-            .onFailure { if (it is SecurityException) needPolicyAccess("changing the ringer") else error("Ring: ${it.message}") }
+            .onFailure { if (it is SecurityException) needPolicyAccess("Changing the ringer") else error("Ring: ${it.message}") }
     }
 
     private fun dndLabel(filter: Int = notifications.currentInterruptionFilter) = when (filter) {
@@ -253,8 +253,8 @@ class ControlCommands(private val context: Context) {
     }
 
     private fun dnd(arg: String?) {
-        if (arg == "access") return open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS), "do not disturb access")
-        if (arg == "status") return out("Do not disturb ${dndLabel()}", LogContext.of(LogContext.RUN to "dnd"))
+        if (arg == "access") return open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS), "Do Not Disturb access")
+        if (arg == "status") return out("Do Not Disturb ${dndLabel()}", LogContext.of(LogContext.RUN to "dnd"))
         val filter = when (arg) {
             null, "toggle" -> if (notifications.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_ALL)
                 NotificationManager.INTERRUPTION_FILTER_PRIORITY else NotificationManager.INTERRUPTION_FILTER_ALL
@@ -266,8 +266,8 @@ class ControlCommands(private val context: Context) {
         }
         if (needPolicyAccess("dnd")) return
         runCatching { notifications.setInterruptionFilter(filter) }
-            .onSuccess { info("Do not disturb ${dndLabel(filter)}", LogContext.of(LogContext.RUN to "dnd")) }
-            .onFailure { error("Dnd: ${it.message}") }
+            .onSuccess { info("Do Not Disturb ${dndLabel(filter)}", LogContext.of(LogContext.RUN to "dnd")) }
+            .onFailure { error("Do Not Disturb: ${it.message}") }
     }
 
     // ---- system settings (WRITE_SETTINGS) -------------------------------------------------
@@ -292,7 +292,7 @@ class ControlCommands(private val context: Context) {
 
     private fun brightnessShort() = "${brightnessPct()}%" + if (brightnessAuto()) " · auto" else ""
 
-    private fun brightnessLine() = "brightness ${ControlArgs.bar(brightnessPct())} ${brightnessShort()}"
+    private fun brightnessLine() = "Brightness ${ControlArgs.bar(brightnessPct())} ${brightnessShort()}"
 
     private fun brightness(arg: String?) {
         if (arg == "access") return open(writeSettingsIntent(), "modify system settings")
@@ -321,7 +321,7 @@ class ControlCommands(private val context: Context) {
     private fun rotationOn() = Settings.System.getInt(resolver, Settings.System.ACCELEROMETER_ROTATION, 0) == 1
 
     private fun rotate(arg: String?) {
-        if (arg == "status") return out("auto-rotate ${if (rotationOn()) "on" else "off"}", LogContext.of(LogContext.RUN to "rotate"))
+        if (arg == "status") return out("Auto-rotate ${if (rotationOn()) "on" else "off"}", LogContext.of(LogContext.RUN to "rotate"))
         val want = ControlArgs.onOff(arg)
         if (arg != null && want == null && arg != "toggle") return error("Usage: rotate [on|off|status]")
         if (needWrite("rotate")) return
@@ -344,7 +344,7 @@ class ControlCommands(private val context: Context) {
 
     private fun wifi() = open(
         Intent(if (Build.VERSION.SDK_INT >= 29) Settings.Panel.ACTION_WIFI else Settings.ACTION_WIFI_SETTINGS),
-        "wi-fi",
+        "the Wi-Fi panel",
     )
 
     private fun open(intent: Intent, what: String) {
@@ -384,7 +384,7 @@ class ControlCommands(private val context: Context) {
         if (NfcAdapter.getDefaultAdapter(context) != null) row("NFC", word(nfcOn()), "nfc", "Tap for the NFC panel")
         row("Mobile data", word(dataOn()), "data", "Tap for the internet panel")
         val policy = hasPolicyAccess()
-        row("Do not disturb", dndLabel(), if (policy) "dnd" else "dnd access", if (policy) "Tap to toggle" else "Tap to grant access")
+        row("Do Not Disturb", dndLabel(), if (policy) "dnd" else "dnd access", if (policy) "Tap to toggle" else "Tap to grant access")
         row("Ringer", ringLabel(), "ring " + if (audio.ringerMode == AudioManager.RINGER_MODE_NORMAL) "vibrate" else "normal", "Tap to cycle normal / vibrate")
         val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
         row("Volume", "${ControlArgs.toPercent(audio.getStreamVolume(AudioManager.STREAM_MUSIC), max)}%", "volume mute", "Tap to mute · volume <0-100>")

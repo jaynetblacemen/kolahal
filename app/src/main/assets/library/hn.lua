@@ -29,7 +29,7 @@ end
 
 for i, item in ipairs(items) do
   if i > MAX_LINES then
-    log(fmt.color("muted", "… and " .. (count - MAX_LINES) .. " more"))
+    log(fmt.color("muted", "+" .. (count - MAX_LINES) .. " more"))
     break
   end
   log(item.title or "(untitled)", { url = item.link })

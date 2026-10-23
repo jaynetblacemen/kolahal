@@ -2,7 +2,7 @@
 // @command
 // @desc 3-day forecast: forecast [city] | forecast --default <city>
 // @usage [<city>|--default <city>]
-// @title 3-Day Forecast
+// @title 3-day forecast
 // @at 07:00
 //
 // Usage:
@@ -50,7 +50,7 @@ try {
   const geo = await getJson(
     `https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=${encodeURIComponent(city)}`
   );
-  if (!geo.results || geo.results.length === 0) return fail("No forecast", `no place named '${city}'`);
+  if (!geo.results || geo.results.length === 0) return fail("No forecast", `No place named '${city}'`);
   place = geo.results[0];
   data = await getJson(
     "https://api.open-meteo.com/v1/forecast" +
@@ -65,27 +65,34 @@ try {
 const d = data.daily;
 if (!d || !d.time || d.time.length === 0) return fail("No forecast", "Open-Meteo sent no days");
 
-const names = ["today", "tomorrow"];
+const names = ["Today", "Tomorrow"];
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const where = [place.name, place.country_code].filter(Boolean).join(", ");
 
-// The place is the title; one line per day under it.
-const days = [];
+// The place is the title; one line per day under it, in columns: the day, the sky, the temperatures, rain.
+const rows = [];
 let todayLine = "";
 for (let i = 0; i < d.time.length; i++) {
-  const label = names[i] || d.time[i].slice(5); // "MM-DD" for later days
+  const label = names[i] || WEEKDAYS[new Date(d.time[i] + "T12:00:00Z").getUTCDay()];
   const hi = Math.round(d.temperature_2m_max[i]);
   const lo = Math.round(d.temperature_2m_min[i]);
   const rain = d.precipitation_probability_max ? d.precipitation_probability_max[i] : null;
-  const text =
-    `${fmt.bold(label)}: ${describe(d.weather_code[i])}, ${lo}–${hi}°C` +
-    // A likely-rain day in the warning colour.
-    (rain != null ? `, ${rain >= 60 ? fmt.color("warn", `rain ${rain}%`) : `rain ${rain}%`}` : "");
-  days.push(text);
+  rows.push({ label, sky: describe(d.weather_code[i]), temp: `${lo}–${hi}°C`, rain });
   if (i === 0) todayLine = `${place.name}: ${describe(d.weather_code[i])} ${lo}–${hi}°C`;
 }
+const width = (key) => Math.max(0, ...rows.map((r) => r[key].length));
+const [dayWidth, skyWidth, tempWidth] = [width("label"), width("sky"), width("temp")];
+const days = rows.map((r) => {
+  // A likely-rain day in the warning colour: padded first, so the colour's markers don't shift the column.
+  const rainText = r.rain != null ? `rain ${r.rain}%` : "";
+  const rain = r.rain != null && r.rain >= 60 ? fmt.color("warn", rainText) : rainText;
+  return `${fmt.bold(r.label.padEnd(dayWidth))}  ${r.sky.padEnd(skyWidth)}  ${r.temp.padEnd(tempWidth)}  ${rain}`.trimEnd();
+});
 
+// mono keeps the terminal font, so the columns line up.
 log(where, days.join("\n"), {
   url: `https://open-meteo.com/en/docs#latitude=${place.latitude}&longitude=${place.longitude}`,
+  mono: "1",
 });
 
 if (!line) status(todayLine);

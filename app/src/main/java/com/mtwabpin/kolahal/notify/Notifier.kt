@@ -58,7 +58,7 @@ object Notifier {
         val notification = NotificationCompat.Builder(context, CHANNEL_REMINDERS)
             .setSmallIcon(R.drawable.ic_stat_terminal)
             .setContentTitle(text)
-            .setContentText("reminder")
+            .setContentText("Reminder")
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

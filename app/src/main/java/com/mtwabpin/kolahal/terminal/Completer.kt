@@ -240,7 +240,7 @@ class Completer(private val context: Context, private val data: Data) {
      */
     private fun contactSuggestions(head: String, parts: List<String>): List<Suggestion> {
         val repo = com.mtwabpin.kolahal.contacts.ContactsRepository.get(context)
-        if (!repo.hasPermission()) return listOf(Suggestion.Completion("allow contacts access", "contacts --allow"))
+        if (!repo.hasPermission()) return listOf(Suggestion.Completion("Allow contacts access", "contacts --allow"))
         val sms = head == "sms" || head == "text"
         // `sms <number> hello…`: the recipient is done, the rest is the message.
         if (sms && parts.size > 2 && com.mtwabpin.kolahal.contacts.ContactsRepository.looksLikeNumber(parts[1])) return emptyList()

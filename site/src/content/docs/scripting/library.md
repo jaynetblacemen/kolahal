@@ -45,13 +45,13 @@ None of the network scripts need an API key.
 
 ## hn
 
-**Hacker News.** New front-page stories with 50+ points since the last run (via hnrss.org), up
+**Hacker News**: new front-page stories with 50+ points since the last run (via hnrss.org), up
 to 10 lines. Notifies about the top new story and pins `HN: N new` in the header. Edit the `FEED`
 line to drop the points filter.
 
 ## releases
 
-**GitHub releases.** Watches repositories through their release Atom feeds and notifies about each
+**GitHub releases**: watches repositories through their release Atom feeds and notifies about each
 new release: Kolahal, Neovim and Termux to start with. The first check of a repo only records what
 exists, so you aren't flooded.
 
@@ -64,13 +64,13 @@ releases list                # the watched repos; tap one for its releases
 
 ## reddit
 
-**Reddit top posts.** Today's top 5 posts of a subreddit with scores and comment counts, falling
+**Reddit top posts**: today's top 5 posts of a subreddit with scores and comment counts, falling
 back to the subreddit's RSS feed when Reddit blocks anonymous JSON requests. `reddit` (r/android)
 or `reddit linux`.
 
 ## weather
 
-**Weather.** Current weather in one line from wttr.in. On a timer it pins the result in the header.
+**Weather**: current weather in one line from wttr.in. On a timer it pins the result in the header.
 
 ```sh
 weather                      # saved default city (or your IP's location)
@@ -90,8 +90,8 @@ pins today's summary. `forecast`, `forecast Tokyo`, `forecast --default Pune`.
 
 ## crypto
 
-**Coin prices** with 24h change from CoinGecko. On a timer it pins a compact line such as
-`BTC 67.1k ▲1.2% · ETH 3.1k ▼0.4%`.
+**Crypto prices** with 24h change from CoinGecko, lined up in columns. On a timer it pins a compact
+line such as `BTC 67.1k ▲ 1.2% · ETH 3.1k ▼ 0.4%`.
 
 ```sh
 crypto                       # bitcoin and ethereum in USD
@@ -132,7 +132,8 @@ new comic is out.
 
 ## countdown
 
-**Countdowns.** Days until (or since) dates, with the nearest one pinned in the header. No network.
+**Countdowns**: days until (or since) dates, lined up in columns, with the nearest one pinned in the
+header. No network.
 
 ```sh
 countdown 2026-12-25
@@ -143,6 +144,6 @@ countdown rm 2
 
 ## charge-reminder
 
-**Charging sessions.** Runs when you plug the charger in and when you unplug it, with no timer and
+**Charge reminder**: runs when you plug the charger in and when you unplug it, with no timer and
 no network: logs how much a session added, and notifies when you unplug below 30%. Run by hand, it
 shows the last session.
