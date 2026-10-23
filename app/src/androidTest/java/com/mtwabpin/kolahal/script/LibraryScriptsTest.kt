@@ -57,16 +57,18 @@ class LibraryScriptsTest {
 
         // Colours by how near: this week's in the warning colour, today's in the good one, past ones muted.
         run("countdown.lua", "add ${today.plusDays(3)} Soon")
-        assertEquals(Triple("Soon: in 3 days", "saved · ${today.plusDays(3)}", StyledText.Colour.WARN), only())
+        assertEquals(Triple("Soon: in 3 days", "Saved · ${today.plusDays(3)}", StyledText.Colour.WARN), only())
         run("countdown.lua", "add $today Now")
         assertEquals(StyledText.Colour.GOOD, only().third)
         run("countdown.lua", "add ${today.minusDays(10)} Past")
-        assertEquals(Triple("Past: 10 days ago", "saved · ${today.minusDays(10)}", StyledText.Colour.MUTED), only())
+        assertEquals(Triple("Past: 10 days ago", "Saved · ${today.minusDays(10)}", StyledText.Colour.MUTED), only())
         run("countdown.lua", "add ${today.plusDays(30)} Trip")
-        assertEquals(Triple("Trip: in 30 days", "saved · ${today.plusDays(30)}", null), only())
+        assertEquals(Triple("Trip: in 30 days", "Saved · ${today.plusDays(30)}", null), only())
 
         run("countdown.lua")
-        assertEquals(listOf("1. Past: 10 days ago", "2. Now: today", "3. Soon: in 3 days", "4. Trip: in 30 days"), lines().map { StyledText.plain(it.text) })
+        // The list lines up: the labels padded to the longest, in the terminal font.
+        assertEquals(listOf("1. Past  10 days ago", "2. Now   today", "3. Soon  in 3 days", "4. Trip  in 30 days"), lines().map { StyledText.plain(it.text) })
+        assertEquals(true, lines().all { it.ctx.values[com.mtwabpin.kolahal.data.LogContext.MONO] == "1" })
         assertEquals(listOf(today.minusDays(10), today, today.plusDays(3), today.plusDays(30)).map(LocalDate::toString), lines().map { it.ctx.body })
         // The nearest one not past is pinned in the header.
         assertEquals("Now: today", status.get(name))
@@ -76,9 +78,9 @@ class LibraryScriptsTest {
         assertEquals("Removed Past", removed.shownText.lines().first())
         assertEquals(listOf(null, setOf(StyledText.Style.BOLD)), StyledText.lines(removed.text).single().spans.map { it.styles.ifEmpty { null } })
         run("countdown.lua", "rm 9")
-        assertEquals(Triple("no countdown #9: countdown lists them", null, StyledText.Colour.MUTED), only())
+        assertEquals(Triple("No countdown #9: countdown lists them", null, StyledText.Colour.MUTED), only())
         run("countdown.lua", "add someday Trip")
-        assertEquals(Triple("usage: countdown YYYY-MM-DD | add YYYY-MM-DD label | rm N", null, StyledText.Colour.MUTED), only())
+        assertEquals(Triple("Usage: countdown YYYY-MM-DD | add YYYY-MM-DD label | rm N", null, StyledText.Colour.MUTED), only())
 
         // A date on its own is counted, not saved.
         run("countdown.lua", "${today.plusDays(5)}")
@@ -101,7 +103,7 @@ class LibraryScriptsTest {
         run("releases.lua", "add SharkDP/fd")
         assertEquals(Triple("SharkDP/fd is watched already", null, StyledText.Colour.MUTED), only())
         run("releases.lua", "add fd")
-        assertEquals(Triple("usage: releases add owner/repo", null, StyledText.Colour.MUTED), only())
+        assertEquals(Triple("Usage: releases add owner/repo", null, StyledText.Colour.MUTED), only())
         run("releases.lua", "rm neovim/neovim")
         assertEquals(Triple("Stopped watching neovim/neovim", "3 repos left", null), only())
         run("releases.lua", "rm neovim/neovim")
@@ -109,7 +111,7 @@ class LibraryScriptsTest {
         run("releases.lua", "list")
         assertEquals(listOf("mtwabpin/kolahal", "termux/termux-app", "sharkdp/fd"), lines().map { it.text })
         run("releases.lua", "check")
-        assertEquals(Triple("usage: releases [add|rm owner/repo | list]", null, StyledText.Colour.MUTED), only())
+        assertEquals(Triple("Usage: releases [add|rm owner/repo | list]", null, StyledText.Colour.MUTED), only())
     }
 
     @Test fun chargeReminderSumsUpASession() {
@@ -118,18 +120,18 @@ class LibraryScriptsTest {
 
         run("charge-reminder.lua", event = mapOf("name" to "charger", "level" to 15, "plug" to "usb"))
         assertEquals(emptyList<LogEntry>(), lines())
-        assertEquals(true, status.get(name)?.startsWith("charging since "))
+        assertEquals(true, status.get(name)?.startsWith("Charging since "))
         // Unplugged still below 30%: the warning colour, and how much it added under it.
         run("charge-reminder.lua", event = mapOf("name" to "unplug", "level" to 20, "plug" to "usb"))
-        assertEquals(Triple("unplugged at 20%", "+5% in 0 min", StyledText.Colour.WARN), only())
+        assertEquals(Triple("Unplugged at 20%", "+5% in 0m", StyledText.Colour.WARN), only())
         assertNull(status.get(name))
         run("charge-reminder.lua", event = mapOf("name" to "charger", "level" to 20, "plug" to "ac"))
         run("charge-reminder.lua", event = mapOf("name" to "unplug", "level" to 90, "plug" to "ac"))
-        assertEquals(Triple("unplugged at 90%", "+70% in 0 min", StyledText.Colour.GOOD), only())
+        assertEquals(Triple("Unplugged at 90%", "+70% in 0m", StyledText.Colour.GOOD), only())
 
         run("charge-reminder.lua")
         val (title, body) = only()
         assertEquals("Last charge", title)
-        assertEquals(true, body?.endsWith(" unplugged at 90% (+70% in 0 min)"))
+        assertEquals(true, body?.endsWith(" · Unplugged at 90% (+70% in 0m)"))
     }
 }
