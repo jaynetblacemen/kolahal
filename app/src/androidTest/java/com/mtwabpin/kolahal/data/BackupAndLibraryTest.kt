@@ -193,6 +193,25 @@ class BackupAndLibraryTest {
         }
     }
 
+    /** A backup from 0.4.1 or before brings its log back without the old `── name · 22:40 ──` lines. */
+    @Test fun oldRunHeadersStayBehindOnRestore() {
+        val logs = LogRepository.get(context)
+        val header = logs.add(LogKind.INFO, "── bk · 1:00 PM ──", "bk", LogContext.of(LogContext.RUN_HEADER to "1"))
+        val line = logs.add(LogKind.SCRIPT, "bk line", "bk")
+        val file = File(context.cacheDir, "kolahal-backup-headers.json")
+        try {
+            Backup(context).export(Uri.fromFile(file))
+            Backup(context).import(Uri.fromFile(file))
+            val back = logs.recent(limit = 50).filter { it.source == "bk" }.map { it.text }
+            assertEquals(listOf("bk line"), back)
+        } finally {
+            logs.delete(header)
+            logs.delete(line)
+            logs.recent(limit = 50).filter { it.source == "bk" }.forEach { logs.delete(it.id) }
+            file.delete()
+        }
+    }
+
     /** What this phone knows of its own calls and apps stays out of a backup, and a restore keeps it. */
     @Test fun thisPhonesRecordsStayOutOfBackups() {
         val packages = KvStore(context, "packages")

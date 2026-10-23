@@ -155,19 +155,11 @@ class HostApi(
         lastFlush = System.currentTimeMillis()
     }
 
-    /** Saved scripts get a `── name · 22:40 ──` header before their first line of a run. */
-    private var headerWritten = false
-
     /** `log(title, body?, ctx?)`: a title line, bold, with [body] (any number of lines) muted under it. */
     fun log(raw: String, body: String? = null, ctx: Map<*, *>? = null) {
         effects++
         val text = redact(raw)
         val under = body?.let(::redact)?.takeIf { it.isNotEmpty() }
-        if (scriptId != null && !headerWritten) {
-            headerWritten = true
-            val time = com.mtwabpin.kolahal.data.SharedSettings.shortTime(context)
-            buffer(LogKind.INFO, "── $scriptName · $time ──", LogContext(baseCtx + mapOf(LogContext.RUN_HEADER to "1")))
-        }
         val title = mapOf(LogContext.TITLE to "1") + (under?.let { mapOf(LogContext.BODY to it) } ?: emptyMap())
         buffer(LogKind.SCRIPT, text, LogContext(baseCtx + title + safeCtx(ctx, listOfNotNull(text, under).joinToString("\n")).mapValues { redact(it.value) }))
     }

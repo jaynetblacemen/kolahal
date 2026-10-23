@@ -9,7 +9,6 @@ import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
 import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.notify.Notifier
-import com.mtwabpin.kolahal.data.shortTime
 import java.util.Date
 
 /**
@@ -101,12 +100,8 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             if (feed.notify) runCatching { notify(ctx, feed, r.newItems) }
         }
         if (lines.isEmpty()) return
-        val time = com.mtwabpin.kolahal.data.Config.get(applicationContext).shortTime(ts)
-        val header = LogRepository.Pending(
-            LogKind.INFO, "── Feeds · $time ──", "feeds", LogContext.of(LogContext.RUN_HEADER to "1"), ts,
-        )
         val logs = LogRepository.get(ctx)
-        logs.addAll(listOf(header) + lines)
+        logs.addAll(lines)
         logs.trim()
     }
 

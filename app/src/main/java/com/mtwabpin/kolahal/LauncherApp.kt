@@ -96,11 +96,6 @@ class LauncherApp : Application(), Configuration.Provider {
                 }
             }
         }
-        scope.launch {
-            config.version.map { config[Keys.CLOCK_24H] }.distinctUntilChanged().collect {
-                runCatching { com.mtwabpin.kolahal.data.SharedSettings.set(this@LauncherApp, Keys.CLOCK_24H, it) }
-            }
-        }
         // A new time zone, or the clock set by hand, moves every daily time: anchor them again.
         ContextCompat.registerReceiver(this, object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {

@@ -106,6 +106,8 @@ object FullBackup {
                     buildSet { while (c.moveToNext()) add(c.getString(c.getColumnIndexOrThrow("name"))) }
                 }
                 for (row in list) {
+                    // A backup from 0.4.1 or before has run headers, which are no longer written.
+                    if (t.name == "logs" && LogContext.RUN_HEADER in LogContext.fromJson(row["ctx"] as? String).values) continue
                     val clean = if (t.name == "logs") withSafeCtx(row) else row
                     if (db.insertWithOnConflict(t.name, null, values(clean, columns), SQLiteDatabase.CONFLICT_REPLACE) != -1L) rows++
                 }

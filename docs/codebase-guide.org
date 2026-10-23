@@ -564,8 +564,8 @@ what it's about, long after the command that wrote it has finished.
 3. The worker builds a [[src:script/HostApi.kt::class HostApi][HostApi]] (everything a script may call: =log=, =notify=, =http=,
    =store=, ...) and runs the code with =ScriptEngine.forLang(lang)=: =LuaEngine= or
    =JsEngine=, with a 60-second timeout.
-4. The script calls =log("...")=. [[src:script/HostApi.kt::fun log(text: String][HostApi.log()]] buffers the line (plus a =── name · time ──=
-   header line for the run) and flushes to =LogRepository.add()=.
+4. The script calls =log("...")=. [[src:script/HostApi.kt::fun log(text: String][HostApi.log()]] buffers the line and flushes to
+   =LogRepository.add()=.
 5. This =LogRepository= instance lives in =:script=, so =changed()= broadcasts
    =ACTION_LOGS_CHANGED=.
 6. In the main process, the receiver registered in =LauncherApp.onCreate= calls

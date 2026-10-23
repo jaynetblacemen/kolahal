@@ -28,7 +28,6 @@ class ScriptFixesTest {
     private val scripts = ScriptRepository.get(app)
 
     @After fun tearDown() {
-        config.reset(Keys.CLOCK_24H)
         config.reset(Keys.LOG_KEEP_LINES)
         scripts.byName("sftimes")?.let { scripts.delete(it.id) }
     }
@@ -39,17 +38,21 @@ class ScriptFixesTest {
         assertTrue(what, check())
     }
 
-    /** Run headers come from the :script process, which reads settings home copies for it. */
-    @Test fun theScriptProcessSeesClockAndKeepLines() {
-        config.set(Keys.CLOCK_24H, "on")
-        waitUntil("clock.24h on") { SharedSettings.get(app, Keys.CLOCK_24H) }
-        assertTrue(SharedSettings.shortTime(app, 0L).matches(Regex("\\d\\d:\\d\\d")))
-        config.set(Keys.CLOCK_24H, "off")
-        waitUntil("clock.24h off") { !SharedSettings.get(app, Keys.CLOCK_24H) }
-        assertTrue(SharedSettings.shortTime(app, 0L).endsWith("M"))
-
+    /** The :script process trims the log too: it reads `log.keep-lines` where home copies it. */
+    @Test fun theScriptProcessSeesKeepLines() {
         config.set(Keys.LOG_KEEP_LINES, "50000")
         waitUntil("log.keep-lines") { SharedSettings.get(app, Keys.LOG_KEEP_LINES) == 50_000 }
+    }
+
+    /** A run's lines come with no `── name · 22:40 ──` line before them: each shows its time and name. */
+    @Test fun aRunLogsOnlyItsOwnLines() {
+        val name = "sfrun${System.nanoTime()}"
+        val host = HostApi(app, name, scriptId = 900_000_000L + System.nanoTime() % 1_000_000, notifyEnabled = false)
+        kotlinx.coroutines.runBlocking { LuaEngine().run("log('a') log('b')", name, host, 5_000, false) }
+        host.flush()
+        val lines = com.mtwabpin.kolahal.data.LogRepository.get(app).recent(limit = 50).filter { it.source == name }
+        lines.forEach { com.mtwabpin.kolahal.data.LogRepository.get(app).delete(it.id) }
+        assertEquals(listOf("a", "b"), lines.map { it.text })
     }
 
     @Test fun dailyTimesSwitchAScriptOn() {

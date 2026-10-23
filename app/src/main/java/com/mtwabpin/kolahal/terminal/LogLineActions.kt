@@ -233,7 +233,7 @@ class LogLineActions(private val context: Context, private val processor: Comman
         var previous = command
         for (e in all.subList(start + 1, all.size)) {
             if (e.kind == LogKind.COMMAND || e.ts - previous.ts > GROUP_GAP_MS) break
-            if (e.kind != LogKind.SCRIPT && LogContext.RUN_HEADER !in e.ctx.values) block += e
+            if (e.kind != LogKind.SCRIPT) block += e
             previous = e
         }
         return block

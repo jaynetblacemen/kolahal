@@ -419,11 +419,9 @@ private fun renderLine(entry: LogEntry, indents: LineIndents, unread: Boolean, i
             }
             LogKind.ERROR -> withStyle(SpanStyle(color = Term.error)) { append(StyledText.plain(entry.text)) }
             LogKind.INFO -> {
-                val header = entry.ctx.values.containsKey(LogContext.RUN_HEADER)
-                val color = if (header) scriptColor(entry.source) else Term.info
                 // Lines after the first are details (e.g. a package name under an app event): dimmed.
                 val first = entry.text.substringBefore('\n')
-                appendTagged(first, color, if (header) FontWeight.Bold else null)
+                appendTagged(first, Term.info, null)
             }
             LogKind.SCRIPT -> {
                 if (unread) withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("• ") }

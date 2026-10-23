@@ -56,7 +56,7 @@ fun buildRows(
 ): List<LogRow> {
     val latestCommand = entries.lastOrNull { it.kind == LogKind.COMMAND }?.id ?: Long.MIN_VALUE
     val today = LocalDate.now(zone)
-    val isScriptLine = { e: LogEntry -> e.kind == LogKind.SCRIPT || e.ctx.values.containsKey(LogContext.RUN_HEADER) }
+    val isScriptLine = { e: LogEntry -> e.kind == LogKind.SCRIPT }
     val isUnread = { e: LogEntry -> e.id > seenUpTo && e.id <= unreadUntil }
     val unreadCount = entries.count { isUnread(it) && it.kind == LogKind.SCRIPT }
     val rows = ArrayList<LogRow>(entries.size + 4)
@@ -75,7 +75,8 @@ fun buildRows(
             rows += LogRow.Unread(unreadCount)
             unreadShown = true
         }
-        val header = e.ctx.values.containsKey(LogContext.RUN_HEADER)
+        // A background run's first line: a script or a feed starts logging after other lines.
+        val runStart = isScriptLine(e) && (previous == null || !isScriptLine(previous) || previous.source != e.source)
         rows += LogRow.Entry(
             entry = e,
             dimmed = e.id < latestCommand,
@@ -86,9 +87,9 @@ fun buildRows(
             },
             unread = unread && e.kind == LogKind.SCRIPT,
             // A group is one action's lines: a typed command and its output, a background run
-            // under its header, or lines that arrived together. A line that comes on its own later
+            // from its first line, or lines that arrived together. A line that comes on its own later
             // (a tap launch, an app event, a notification) starts a group of its own.
-            blockStart = e.kind == LogKind.COMMAND || header ||
+            blockStart = e.kind == LogKind.COMMAND || runStart ||
                 (previous != null && e.ts - previous.ts > GROUP_GAP_MS),
         )
         previous = e

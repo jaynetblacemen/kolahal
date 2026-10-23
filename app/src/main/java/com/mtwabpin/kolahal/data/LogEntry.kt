@@ -65,7 +65,10 @@ data class LogContext(val values: Map<String, String> = emptyMap()) {
         const val CONTACT = "contact"
         /** Source line of a script error (tap opens the editor there). */
         const val LINE = "line"
-        /** Marks the header line of a script run. */
+        /**
+         * The `── name · 22:40 ──` line that started a script run or a feed fetch until 0.4.1. Each
+         * line has its time and name now; old ones are deleted ([Db]) and not restored from backups.
+         */
         const val RUN_HEADER = "runheader"
         /** A line a script logged: its text is a title, drawn bold, with [BODY] muted under it. */
         const val TITLE = "title"

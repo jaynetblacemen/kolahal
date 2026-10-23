@@ -9,8 +9,8 @@ import org.junit.Test
 class LogRowsTest {
     private val t0 = System.currentTimeMillis()
 
-    private fun line(id: Long, at: Long, kind: LogKind = LogKind.INFO, ctx: LogContext = LogContext.EMPTY) =
-        LogEntry(id, t0 + at, kind, null, "line $id", ctx)
+    private fun line(id: Long, at: Long, kind: LogKind = LogKind.INFO, ctx: LogContext = LogContext.EMPTY, source: String? = null) =
+        LogEntry(id, t0 + at, kind, source, "line $id", ctx)
 
     private fun starts(vararg entries: LogEntry): List<Boolean> =
         buildRows(entries.toList()).filterIsInstance<LogRow.Entry>().map { it.blockStart }
@@ -55,12 +55,18 @@ class LogRowsTest {
         assertEquals(rows.map { it.key }.distinct().size, rows.size)
     }
 
+    /** A script's or a feed's lines are a group of their own, even right after other lines. */
     @Test
-    fun runHeaderStartsAGroupEvenRightAfterOtherLines() {
-        val header = LogContext.of(LogContext.RUN_HEADER to "1")
+    fun aRunStartsAGroupEvenRightAfterOtherLines() {
         assertEquals(
-            listOf(false, true, false),
-            starts(line(1, 0), line(2, 10, ctx = header), line(3, 20, LogKind.SCRIPT)),
+            listOf(true, true, false, true, false),
+            starts(
+                line(1, 0, LogKind.COMMAND),
+                line(2, 10, LogKind.SCRIPT, source = "exchange"),
+                line(3, 20, LogKind.SCRIPT, source = "exchange"),
+                line(4, 30, LogKind.SCRIPT, source = "hn"),
+                line(5, 40, LogKind.SCRIPT, source = "hn"),
+            ),
         )
     }
 }

@@ -61,8 +61,8 @@ Tap a card for **Run**, **Edit**, **Export**, access, notifications, timers and 
 **Add script** writes a new one, or takes one from the library, from
 [the scripts people share](#getting-scripts-from-others) or from a file.
 
-The script's **return value** is printed into the log (tables and objects as JSON). Each run gets a
-`── name · 22:40 ──` header and the script's own colour. When a script fails, the error line is
+The script's **return value** is printed into the log (tables and objects as JSON). Each line it
+logs ends with the script's name. When a script fails, the error line is
 tappable and opens the editor at the failing line.
 
 ### One-liners

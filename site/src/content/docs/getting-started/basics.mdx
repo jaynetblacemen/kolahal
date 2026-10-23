@@ -110,18 +110,18 @@ middle 200dp of the edge does; above and below it a swipe in from the edge still
 ## The log
 
 The log is split into **groups**, with a gap above each one (`log.spacing`, 0–40 dp). A group is a
-command you typed and its output, a background run under its `── … ──` header, or lines that
+command you typed and its output, a script's or a feed's lines from one run, or lines that
 arrived together. A line that arrives on its own more than 3 seconds after the previous one, such
 as a tap launch, an app install or a notification, starts its own group. A thin coloured bar beside
 each line shows where it came from: green for commands, the script colour for background output,
 red for errors. Hide it with `log.gutter off`. Output older than the latest command is dimmed
 (`log.dim`).
 
-- Day separators, and right-aligned times on commands (`log.time`: `off`, `commands`, `all`).
+- Day separators, and right-aligned times on every line (`log.time`: `off`, `commands`, `all`).
 - `help`, `config` and `script ls` render in two columns; `apps` is a grid of tappable chips.
-- Each script run gets a `── hn · 22:40 ──` header and a stable per-script colour. Script, feed and
-  notification lines name their source at the end, muted (`Show HN: … · Hacker News`). Lines that
-  arrived while you were away are marked `•` under a "N new since you left" divider.
+- Script, feed and notification lines name their source at the end, muted (`Show HN: … · Hacker
+  News`). Lines that arrived while you were away are marked `•` under a "N new since you left"
+  divider.
 - **Fresh screen** (`log.fresh`, 10 minutes): come back to home after a while and it
   starts clean, so old output and app grids are not under your thumb. Nothing is deleted: tap
   "▴ N earlier lines" to bring it back. `fresh` does the same on demand (and isn't logged itself). Script lines that arrived while you were away stay visible.

@@ -46,7 +46,7 @@ means a table with those keys in Lua and an object with those properties in JS.
 
 ### log(title, body?, ctx?)
 
-Appends a line to the log under the run's `── name · time ──` header. `title` shows in bold, in
+Appends a line to the log. `title` shows in bold, in
 the script's colour (the link colour with a `url`), with the script's name at the end, muted
 (`… · weather`). `body`, if given, shows muted under it, over as many lines as it holds. Every
 line a script logs is a title: to log several, call `log` for each, or use [`logs`](#logstitles).

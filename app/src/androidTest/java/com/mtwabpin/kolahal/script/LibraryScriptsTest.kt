@@ -37,7 +37,7 @@ class LibraryScriptsTest {
         host.flush()
     }
 
-    private fun lines(): List<LogEntry> = logs.recent(limit = 200).filter { it.source == name && it.ctx.values["runheader"] == null }
+    private fun lines(): List<LogEntry> = logs.recent(limit = 200).filter { it.source == name }
 
     /** The one line logged: its title as shown, its body, and the colour of all of its title (null: none, or mixed). */
     private fun only(): Triple<String, String?, StyledText.Colour?> = lines().single().let { Triple(it.text.let(StyledText::plain), it.ctx.body, colourOf(it.text)) }
