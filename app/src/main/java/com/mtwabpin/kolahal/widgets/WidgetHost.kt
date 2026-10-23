@@ -259,9 +259,15 @@ class WidgetHost private constructor(context: Context) {
         }
         if (dead.isNotEmpty()) {
             dead.forEach { w -> w.id?.let { runCatching { host.deleteAppWidgetId(it) } } }
-            val keys = dead.map { it.key }.toSet()
-            update { all -> all.filterNot { it.key in keys } }
-            message("removed ${dead.size} widget${if (dead.size == 1) "" else "s"} whose app is gone")
+            // Its app still offers it: the id was lost (Android's own backup restored the list on a
+            // new phone, where ids differ). It waits on the Widgets page, one tap to add again.
+            val offered = runCatching { providers().map { it.flat to it.serial } }.getOrDefault(emptyList()).toSet()
+            val (lost, gone) = dead.partition { (it.provider to it.profileSerial) in offered }
+            val goneKeys = gone.map { it.key }.toSet()
+            val lostKeys = lost.map { it.key }.toSet()
+            update { all -> all.filterNot { it.key in goneKeys }.map { if (it.key in lostKeys) it.copy(id = null) else it } }
+            if (gone.isNotEmpty()) message("removed ${gone.size} widget${if (gone.size == 1) "" else "s"} whose app is gone")
+            if (lost.isNotEmpty()) message("${lost.size} widget${if (lost.size == 1) " needs" else "s need"} adding again: Settings → Widgets")
         }
         val used = _widgets.value.mapNotNull { it.id }.toSet() + synchronized(inFlight) { inFlight.toSet() }
         runCatching { host.appWidgetIds }.getOrNull()?.filter { it !in used }?.forEach { runCatching { host.deleteAppWidgetId(it) } }

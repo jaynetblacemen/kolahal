@@ -97,6 +97,9 @@ class KolahalNotificationListener : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification, rankingMap: RankingMap?) {
         NotificationStore.markRemoved(sbn.key)
+        // Posted again later with the same text (a daily reminder), it's a new line; only updates
+        // of a notification still showing are kept to one.
+        lastLogged.remove(sbn.key)
         mirror()
     }
 

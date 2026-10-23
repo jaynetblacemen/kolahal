@@ -123,6 +123,12 @@ class PackageEvents private constructor(private val context: Context) {
         return Triple(out, paused, present)
     }
 
+    /** [key]'s app is installed, only not in the launcher (disabled, or it hid its icon). */
+    private fun installedWithoutIcon(key: String): Boolean {
+        val user = key.substringAfter('#').toLongOrNull()?.let(userManager::getUserForSerialNumber) ?: return false
+        return runCatching { launcherApps.getApplicationInfo(key.substringBefore('#'), 0, user) != null }.getOrDefault(false)
+    }
+
     private fun profileTag(user: UserHandle): String {
         val type = if (android.os.Build.VERSION.SDK_INT >= 35) {
             runCatching { launcherApps.getLauncherUserInfo(user)?.userType }.getOrNull()
@@ -148,7 +154,7 @@ class PackageEvents private constructor(private val context: Context) {
         }
         // Before profiles were tracked: the ones with apps in the snapshot.
         val seen = loadSeen() ?: serials(before.keys)
-        val plan = plan(before, now, paused, present, seen, System.currentTimeMillis())
+        val plan = plan(before, now, paused, present, seen, System.currentTimeMillis(), ::installedWithoutIcon)
         if (plan.next != before) save(plan.next)
         removalPending = plan.checkInMs != null
         diffedAt = System.currentTimeMillis()
@@ -219,6 +225,8 @@ class PackageEvents private constructor(private val context: Context) {
         private const val SETTLE_MS = 4_000L
         /** A missing app that reappears within this window was reinstalled: logged as an update. */
         private const val GRACE_MS = 20_000L
+        /** [Pkg.removedAt] of an app still installed but not in the launcher (disabled). */
+        internal const val HIDDEN = -1L
         private const val SNAPSHOT = "snapshot"
         private const val HISTORY = "history"
         /** Serials of the profiles whose apps are in the snapshot. */
@@ -254,6 +262,8 @@ class PackageEvents private constructor(private val context: Context) {
             present: Set<Long>,
             seen: Set<Long>,
             t: Long,
+            /** Whether a missing app is still installed, only without a launcher icon. */
+            installed: (String) -> Boolean = { false },
         ): Plan {
             val fresh = serials(now.keys) - seen
             val gone = serials(before.keys).filterTo(HashSet()) { it !in present }
@@ -278,8 +288,11 @@ class PackageEvents private constructor(private val context: Context) {
                     s in gone -> Unit
                     // A paused / locked profile hides its apps: they are not uninstalled.
                     s in paused -> next[key] = p
+                    // Kept while it is installed: no "uninstalled" now, no "installed" when its icon is back.
+                    p.removedAt == HIDDEN -> if (installed(key)) next[key] = p else events += Triple("uninstalled", key, p)
                     p.removedAt == 0L -> { next[key] = p.copy(removedAt = t); nextCheck = minOf(nextCheck, GRACE_MS) }
                     t - p.removedAt < GRACE_MS -> { next[key] = p; nextCheck = minOf(nextCheck, GRACE_MS - (t - p.removedAt)) }
+                    installed(key) -> next[key] = p.copy(removedAt = HIDDEN)
                     else -> events += Triple("uninstalled", key, p)
                 }
             }

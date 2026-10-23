@@ -235,7 +235,7 @@ class FeedRepository private constructor(private val context: Context) {
                     inserted += FeedItem(rowId, feedId, it.guid, it.title, it.link, it.publishedText, it.summary, now, false)
                 }
             }
-            if (inserted.isNotEmpty()) prune(w, feedId)
+            if (inserted.isNotEmpty()) prune(w, feedId, items.map { it.guid })
         }
         if (inserted.isEmpty()) return emptyList()
         changed()
@@ -269,15 +269,19 @@ class FeedRepository private constructor(private val context: Context) {
         title?.let { put("title", it) }
     }
 
-    /** Keeps [FeedDb.MAX_ITEMS_PER_FEED]: unread before read, newer before older. */
-    private fun prune(w: SQLiteDatabase, feedId: Long) {
+    /**
+     * Keeps [FeedDb.MAX_ITEMS_PER_FEED]: unread before read, newer before older. Never an item the
+     * feed still [listed] (at most [com.mtwabpin.kolahal.script.RssParser.MAX_ITEMS]): pruned, the
+     * next fetch would find it missing and add it again, as new, though it was read.
+     */
+    private fun prune(w: SQLiteDatabase, feedId: Long, listed: List<String>) {
         w.execSQL(
             """
-            DELETE FROM items WHERE feed_id = ? AND id NOT IN (
+            DELETE FROM items WHERE feed_id = ? AND guid NOT IN (${listed.joinToString(",") { "?" }}) AND id NOT IN (
                 SELECT id FROM items WHERE feed_id = ? ORDER BY read ASC, id DESC LIMIT ?
             )
             """.trimIndent(),
-            arrayOf<Any>(feedId, feedId, FeedDb.MAX_ITEMS_PER_FEED),
+            (listOf<Any>(feedId) + listed + listOf(feedId, FeedDb.MAX_ITEMS_PER_FEED)).toTypedArray(),
         )
     }
 

@@ -36,6 +36,29 @@ class PackageEventsPlanTest {
         assertEquals(listOf("installed slack#12"), kinds(plan))
     }
 
+    @Test fun anAppStillInstalledWithoutItsIconIsNotUninstalled() {
+        // Disabled in Android's settings: gone from the launcher past the grace period, still installed.
+        val hidden = PackageEvents.plan(
+            before = mapOf("maps#0" to maps, "gmail#0" to gmail.copy(removedAt = 1_000L)),
+            now = mapOf("maps#0" to maps),
+            paused = emptySet(), present = setOf(0L), seen = setOf(0L), t = 60_000L, installed = { it == "gmail#0" },
+        )
+        assertTrue(hidden.events.isEmpty())
+        assertEquals(PackageEvents.HIDDEN, hidden.next.getValue("gmail#0").removedAt)
+        // Enabled again: back without an "installed" line.
+        val back = PackageEvents.plan(
+            before = hidden.next, now = mapOf("maps#0" to maps, "gmail#0" to gmail),
+            paused = emptySet(), present = setOf(0L), seen = setOf(0L), t = 90_000L,
+        )
+        assertTrue(back.events.isEmpty())
+        // Uninstalled while hidden: that is logged.
+        val removed = PackageEvents.plan(
+            before = hidden.next, now = mapOf("maps#0" to maps),
+            paused = emptySet(), present = setOf(0L), seen = setOf(0L), t = 90_000L,
+        )
+        assertEquals(listOf("uninstalled gmail#0"), kinds(removed))
+    }
+
     @Test fun aPausedProfileKeepsItsApps() {
         val plan = PackageEvents.plan(
             before = mapOf("maps#0" to maps, "gmail#12" to workGmail),

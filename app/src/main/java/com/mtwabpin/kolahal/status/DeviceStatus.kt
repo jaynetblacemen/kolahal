@@ -34,7 +34,9 @@ class DeviceStatus private constructor(private val context: Context) {
         if (started) return
         started = true
 
-        watchBattery(true)
+        // The level now, without listening: home listens while it is on screen (watchBattery). Started
+        // in the background (a feed fetch, a reminder), the process isn't woken by every battery tick.
+        ContextCompat.registerReceiver(context, null, IntentFilter(Intent.ACTION_BATTERY_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)?.let(::onBattery)
 
         ContextCompat.registerReceiver(context, object : BroadcastReceiver() {
             override fun onReceive(c: Context, intent: Intent) = refreshAlarm()

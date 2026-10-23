@@ -38,7 +38,7 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         if (targets.isEmpty()) return Result.success()
 
         val results = FeedFetcher(ctx).fetchAll(targets)
-        report(ctx, results, explicit = feedId >= 0)
+        report(ctx, results, explicit = force || feedId >= 0)
         return Result.success()
     }
 
