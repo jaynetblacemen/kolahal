@@ -184,12 +184,13 @@ fun LogLine(
     val iconKey = entry.ctx.values[LogContext.ICON]?.takeIf { entry.kind == LogKind.SCRIPT && NotifIcons.has(context, it) }
     val inline = remember(iconKey) { iconKey?.let(::notifIconContent) ?: emptyMap() }
 
-    // log.line-height below a line of text and its padding: no padding, and no leading above the
-    // first line or under the last, so lines are as short as the text itself allows.
-    // (Half a dp of slack: the default 25 is a line of 14sp text with its padding, give or take.)
-    val dense = with(androidx.compose.ui.platform.LocalDensity.current) {
-        (Term.lineHeight + 0.5f).dp.toPx() < (Term.fontSize * TEXT_LINE).sp.toPx() + (2 * LINE_PADDING).dp.toPx()
-    }
+    // log.line-height sets the padding above and below a line too: up to 3dp each, less as the
+    // height nears one line of text, none at it. Below that, the leading above the first line and
+    // under the last goes as well, so lines get as short as the text itself allows.
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val textLine = with(density) { (Term.fontSize * TEXT_LINE).sp.toDp() }
+    val padding = ((Term.lineHeight.dp - textLine) / 2).coerceIn(0.dp, LINE_PADDING.dp)
+    val dense = Term.lineHeight.dp + 0.5.dp < textLine
     // Lines that do something get a larger touch target than plain output (log.taller-taps).
     val actionable = entry.kind == LogKind.COMMAND || entry.ctx.values.keys.any { it in ACTIONABLE_KEYS }
     val minHeight = when {
@@ -258,7 +259,7 @@ fun LogLine(
                 },
             )
             // Room for the gutter bar; without it the text lines up with the header and dividers.
-            .padding(start = if (gutter) 10.dp else 0.dp, top = if (dense) 0.dp else LINE_PADDING.dp, bottom = if (dense) 0.dp else LINE_PADDING.dp),
+            .padding(start = if (gutter) 10.dp else 0.dp, top = padding, bottom = padding),
     ) {
         Box(Modifier.weight(1f)) {
             when {
