@@ -51,7 +51,15 @@ class JsEngine : ScriptEngine {
 
     private fun bindHost(js: QuickJs, host: HostApi) {
         js.function("log") { args ->
-            host.log(args.str(0) ?: "undefined", args.getOrNull(1) as? Map<*, *>)
+            // log(title, body?, ctx?); an object second is the ctx: log(title, ctx).
+            val second = args.getOrNull(1)
+            if (second is Map<*, *>) host.log(args.str(0) ?: "undefined", null, second)
+            else host.log(args.str(0) ?: "undefined", second?.let(::render), args.getOrNull(2) as? Map<*, *>)
+        }
+        js.function("logs") { args ->
+            // logs(["a", "b"]) or logs("a", "b"): one title line each.
+            val list = args.singleOrNull() as? List<*> ?: args.toList()
+            host.logs(list.map(::render))
         }
         js.function("status") { args -> host.status(args.str(0)) }
         js.function("allowed") { args -> host.allowed(args.str(0).orEmpty()) }

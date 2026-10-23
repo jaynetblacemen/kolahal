@@ -35,6 +35,8 @@ data class LogContext(val values: Map<String, String> = emptyMap()) {
     val copy: String? get() = values[COPY]
     val command: String? get() = values[COMMAND]
     val image: String? get() = values[IMAGE]
+    /** A script line's body, muted under its title ([TITLE]). */
+    val body: String? get() = values[BODY]
 
     val isEmpty: Boolean get() = values.isEmpty()
 
@@ -65,6 +67,10 @@ data class LogContext(val values: Map<String, String> = emptyMap()) {
         const val LINE = "line"
         /** Marks the header line of a script run. */
         const val RUN_HEADER = "runheader"
+        /** A line a script logged: its text is a title, drawn bold, with [BODY] muted under it. */
+        const val TITLE = "title"
+        /** A script line's body: `log(title, body)`. */
+        const val BODY = "body"
         /** Second column text (help, config, script listings render as two columns). */
         const val DESC = "desc"
         /** JSON list of {pkg, cls, user}: the line renders as a grid of app chips. */
@@ -108,3 +114,6 @@ data class LogEntry(
     val text: String,
     val ctx: LogContext,
 )
+
+/** What the line shows: its text, and a script line's body under it. */
+val LogEntry.shownText: String get() = ctx.body?.let { "$text\n$it" } ?: text

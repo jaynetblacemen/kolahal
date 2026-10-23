@@ -38,12 +38,12 @@ try {
 }
 
 const link = `https://xkcd.com/${c.num}/`;
-log(`#${c.num} ${c.safe_title || c.title} (${c.year}-${String(c.month).padStart(2, "0")}-${String(c.day).padStart(2, "0")})`, {
+// The comic's title, its alt text under it.
+log(`#${c.num} ${c.safe_title || c.title} (${c.year}-${String(c.month).padStart(2, "0")}-${String(c.day).padStart(2, "0")})`, c.alt, {
   url: link,
   copy: link,
   image: c.img,
 });
-if (c.alt) log(c.alt, { url: c.img });
 
 // Background runs: notify once per new comic.
 if (arg === "") {

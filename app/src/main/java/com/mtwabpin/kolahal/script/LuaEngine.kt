@@ -94,7 +94,19 @@ class LuaEngine : ScriptEngine {
 
     private fun bindHost(lua: Lua, host: HostApi) {
         lua.global("log") { l ->
-            host.log(l.toString(1) ?: "nil", l.mapArg(2))
+            // log(title, body?, ctx?); a table second is the ctx: log(title, ctx).
+            val tableSecond = l.getTop() >= 2 && l.isTable(2)
+            val body = if (l.getTop() >= 2 && !tableSecond && !l.isNil(2)) l.toString(2) else null
+            host.log(l.toString(1) ?: "nil", body, l.mapArg(if (tableSecond) 2 else 3))
+            0
+        }
+        lua.global("logs") { l ->
+            // logs({ "a", "b" }) or logs("a", "b"): one title line each.
+            val titles = if (l.isTable(1)) {
+                (Json.normalizeLua(l.toMap(1)) as? List<*>)?.map { it.toString() }
+                    ?: throw IllegalArgumentException("logs expects a list of titles")
+            } else (1..l.getTop()).map { l.toString(it) ?: "nil" }
+            host.logs(titles)
             0
         }
         lua.global("status") { l ->

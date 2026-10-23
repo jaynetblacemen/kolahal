@@ -91,13 +91,13 @@ for _, repo in ipairs(repos) do
       -- First check: show the latest release, but don't notify.
       store.set(firstKey, "1")
       if #items > 0 then
-        log(repo .. " latest: " .. (items[1].title or "?"), { url = items[1].link })
+        log(repo, "latest: " .. (items[1].title or "?"), { url = items[1].link })
       end
     else
       for i, item in ipairs(items) do
         if i > 3 then break end -- a repo rarely has more than a few releases between runs
         local title = item.title or "new release"
-        log(repo .. " " .. title, { url = item.link })
+        log(repo, title, { url = item.link })
         notify(repo, title, { url = item.link })
         total = total + 1
       end

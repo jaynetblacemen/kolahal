@@ -424,7 +424,11 @@ private fun renderLine(entry: LogEntry, indents: LineIndents, unread: Boolean, i
             }
             LogKind.SCRIPT -> {
                 if (unread) withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("• ") }
-                withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.script)) { append(entry.text) }
+                // A line a script logged is a title: bold, its body muted under it.
+                val title = entry.ctx.values.containsKey(LogContext.TITLE)
+                withStyle(SpanStyle(color = if (entry.ctx.url != null) Term.link else Term.script, fontWeight = if (title) FontWeight.Bold else null)) {
+                    append(entry.text)
+                }
                 // The source goes at the end, muted, like other indicators (`… machine. · wikipedia`),
                 // so wrapped lines use the full width. A no-break space keeps the dot with the name.
                 entry.source?.let { src ->
@@ -451,6 +455,13 @@ private fun renderLine(entry: LogEntry, indents: LineIndents, unread: Boolean, i
     if ((entry.kind == LogKind.INFO || entry.kind == LogKind.OUTPUT) && '\n' in entry.text) {
         withStyle(ParagraphStyle(textIndent = TextIndent(firstLine = indent, restLine = indent))) {
             withStyle(SpanStyle(color = Term.dim)) { append(entry.text.substringAfter('\n')) }
+        }
+    }
+    // A script line's body, under its title and lined up with it.
+    val body = entry.ctx.body
+    if (entry.kind == LogKind.SCRIPT && body != null) {
+        withStyle(ParagraphStyle(textIndent = TextIndent(firstLine = indent, restLine = indent))) {
+            withStyle(SpanStyle(color = Term.dim)) { append(body) }
         }
     }
 }

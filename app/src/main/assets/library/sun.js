@@ -58,9 +58,9 @@ try {
   const rise = hhmm(d.sunrise[0]);
   const set = hhmm(d.sunset[0]);
   const secs = d.daylight_duration ? d.daylight_duration[0] : null;
-  const length = secs != null ? ` (${Math.floor(secs / 3600)}h ${Math.round((secs % 3600) / 60)}m)` : "";
+  const length = secs != null ? ` · ${Math.floor(secs / 3600)}h ${Math.round((secs % 3600) / 60)}m of daylight` : "";
 
-  log(`${store.get("place") || `${lat}, ${lng}`}: sunrise ${rise}, sunset ${set}${length}`);
+  log(store.get("place") || `${lat}, ${lng}`, `sunrise ${rise} · sunset ${set}${length}`);
   status(`Sun ${rise}–${set}`);
 } catch (e) {
   return `sun: ${e.message || e}`;

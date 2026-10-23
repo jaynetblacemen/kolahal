@@ -16,7 +16,8 @@ means a table with those keys in Lua and an object with those properties in JS.
 
 | Call | Returns |
 | --- | --- |
-| [`log(text, ctx?)`](#logtext-ctx) | nothing; appends a line |
+| [`log(title, body?, ctx?)`](#logtitle-body-ctx) | nothing; appends a line |
+| [`logs(titles)`](#logstitles) | nothing; appends a line per title |
 | [`notify(title, body, ctx?)`](#notifytitle-body-ctx) | `true` if a notification was posted |
 | [`status(text)`](#statustext) | nothing; pins or clears a header line |
 | [`allowed(what)`](#allowedwhat) | `true` if you let this script use `what` |
@@ -41,16 +42,19 @@ means a table with those keys in Lua and an object with those properties in JS.
 
 ## Output
 
-### log(text, ctx?)
+### log(title, body?, ctx?)
 
-Appends a line to the log under the run's `── name · time ──` header, with the script's name at
-the end, muted (`… · weather`).
+Appends a line to the log under the run's `── name · time ──` header. `title` shows in bold, in
+the script's colour (the link colour with a `url`), with the script's name at the end, muted
+(`… · weather`). `body`, if given, shows muted under it, over as many lines as it holds. Every
+line a script logs is a title: to log several, call `log` for each, or use [`logs`](#logstitles).
+`log(title, ctx)` works too, without a body.
 `ctx` is an optional table / object of strings that decides what tapping and long-pressing do:
 
 | Key | Effect |
 | --- | --- |
 | `url` | tap opens the link; long-press offers open, share and copy |
-| `copy` | what "Copy text" copies instead of the whole line: all or part of what the line shows, or its `url`; anything else is dropped |
+| `copy` | what "Copy text" copies instead of the title and body: all or part of what the line shows, or its `url`; anything else is dropped |
 | `image` | an image URL (http or https): the picture shows under the line, as wide as the log; long-press offers "Open image" |
 
 Other keys are kept with the line. Keys the launcher uses itself (commands, script identity, app
@@ -60,6 +64,8 @@ command or dials a number when tapped.
 <Tabs syncKey="lang">
 <TabItem label="Lua">
 ```lua
+log("neovim/neovim", "Nvim 0.11.4", { url = "https://github.com/neovim/neovim/releases" })
+log("Pune, IN", "today: clear, 24–31°C\ntomorrow: rain, 23–29°C")
 log("Kolahal on GitHub", { url = "https://github.com/mtwabpin/kolahal" })
 log("Your code is 4821", { copy = "4821" })
 log("xkcd #327", { image = "https://imgs.xkcd.com/comics/exploits_of_a_mom.png" })
@@ -68,11 +74,33 @@ print("print() also logs", 42)   -- arguments joined with tabs
 </TabItem>
 <TabItem label="JavaScript">
 ```js
+log("neovim/neovim", "Nvim 0.11.4", { url: "https://github.com/neovim/neovim/releases" });
+log("Pune, IN", "today: clear, 24–31°C\ntomorrow: rain, 23–29°C");
 log("Kolahal on GitHub", { url: "https://github.com/mtwabpin/kolahal" });
 log("Your code is 4821", { copy: "4821" });
 log("xkcd #327", { image: "https://imgs.xkcd.com/comics/exploits_of_a_mom.png" });
 console.log("console.log also logs", 42);  // arguments joined with spaces
 console.error("logged as an error line");
+```
+</TabItem>
+</Tabs>
+
+### logs(titles)
+
+One title line per item, without bodies: a list (a table in Lua, an array in JavaScript), or the
+titles as separate arguments.
+
+<Tabs syncKey="lang">
+<TabItem label="Lua">
+```lua
+logs({ "milk", "bread", "eggs" })
+logs("milk", "bread")
+```
+</TabItem>
+<TabItem label="JavaScript">
+```js
+logs(["milk", "bread", "eggs"]);
+logs("milk", "bread");
 ```
 </TabItem>
 </Tabs>

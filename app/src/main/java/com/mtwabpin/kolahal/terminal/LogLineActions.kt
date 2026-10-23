@@ -16,6 +16,7 @@ import com.mtwabpin.kolahal.data.LogKind
 import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.data.ScriptRepository
+import com.mtwabpin.kolahal.data.shownText
 import com.mtwabpin.kolahal.notifications.NotifPrefs
 import com.mtwabpin.kolahal.notifications.NotificationActions
 import com.mtwabpin.kolahal.script.Json
@@ -171,13 +172,13 @@ class LogLineActions(private val context: Context, private val processor: Comman
         if (entry.id < 0) return actions + danger // synthetic entry (e.g. an app chip): nothing to copy or delete
         val block = if (entry.kind == LogKind.COMMAND) blockOf(entry) else emptyList()
         if (block.size > 1) {
-            actions += LogAction("Copy output") { copy(block.drop(1).joinToString("\n") { it.text }) }
+            actions += LogAction("Copy output") { copy(block.drop(1).joinToString("\n") { it.shownText }) }
             danger += LogAction("Delete command and output", destructive = true) {
                 val ids = block.map { it.id }
                 host.io { ids.forEach(logs::delete) }
             }
         }
-        actions += LogAction("Copy text") { copy(ctx.copy ?: entry.text, sensitive(entry)) }
+        actions += LogAction("Copy text") { copy(ctx.copy ?: entry.shownText, sensitive(entry)) }
         danger += LogAction("Delete line", destructive = true) { host.io { logs.delete(entry.id) } }
         return actions + danger
     }
@@ -268,7 +269,7 @@ class LogLineActions(private val context: Context, private val processor: Comman
     }
 
     /** Swipe right on a log line. */
-    fun swipeCopy(entry: LogEntry) = copy(entry.text, sensitive(entry))
+    fun swipeCopy(entry: LogEntry) = copy(entry.shownText, sensitive(entry))
 
     /** Notification and call lines: other people's messages, codes and numbers. */
     private fun sensitive(entry: LogEntry) =

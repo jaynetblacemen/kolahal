@@ -63,11 +63,12 @@ const link =
   (page.content_urls && page.content_urls.mobile && page.content_urls.mobile.page) ||
   `${base}/wiki/${encodeURIComponent(page.title.replace(/ /g, "_"))}`;
 
-const titleCtx = { url: link, copy: link };
-const img = picture(page);
-if (img) titleCtx.image = img;
-log(page.title + (page.description ? ` — ${page.description}` : ""), titleCtx);
-
+const title = page.title + (page.description ? ` — ${page.description}` : "");
 let extract = (page.extract || "").trim();
 if (extract.length > MAX_CHARS) extract = extract.slice(0, MAX_CHARS).replace(/\s+\S*$/, "") + "…";
-if (extract) log(extract, { copy: page.extract });
+
+// The article's title, its summary under it; Copy text takes the whole summary.
+const ctx = { url: link, copy: `${title}\n${(page.extract || "").trim()}` };
+const img = picture(page);
+if (img) ctx.image = img;
+log(title, extract, ctx);

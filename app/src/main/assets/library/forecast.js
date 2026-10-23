@@ -64,10 +64,9 @@ if (!d || !d.time || d.time.length === 0) return "forecast: no data";
 
 const names = ["today", "tomorrow"];
 const where = [place.name, place.country_code].filter(Boolean).join(", ");
-log(where, {
-  url: `https://open-meteo.com/en/docs#latitude=${place.latitude}&longitude=${place.longitude}`,
-});
 
+// The place is the title; one line per day under it.
+const days = [];
 let todayLine = "";
 for (let i = 0; i < d.time.length; i++) {
   const label = names[i] || d.time[i].slice(5); // "MM-DD" for later days
@@ -76,8 +75,12 @@ for (let i = 0; i < d.time.length; i++) {
   const rain = d.precipitation_probability_max ? d.precipitation_probability_max[i] : null;
   const text =
     `${label}: ${describe(d.weather_code[i])}, ${lo}–${hi}°C` + (rain != null ? `, rain ${rain}%` : "");
-  log(text);
+  days.push(text);
   if (i === 0) todayLine = `${place.name}: ${describe(d.weather_code[i])} ${lo}–${hi}°C`;
 }
+
+log(where, days.join("\n"), {
+  url: `https://open-meteo.com/en/docs#latitude=${place.latitude}&longitude=${place.longitude}`,
+});
 
 if (!line) status(todayLine);

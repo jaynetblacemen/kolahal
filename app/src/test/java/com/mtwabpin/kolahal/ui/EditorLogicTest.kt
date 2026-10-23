@@ -92,8 +92,8 @@ class EditorLogicTest {
     }
 
     @Test fun apiRanksBeforeKeywords() {
-        // `log` (API) before `local` (keyword) for the same prefix.
-        assertEquals(listOf("log", "local"), names("lo"))
+        // `log` and `logs` (API) before `local` (keyword) for the same prefix.
+        assertEquals(listOf("log", "logs", "local"), names("lo"))
     }
 
     @Test fun caseSensitivePrefixRanksFirst() {

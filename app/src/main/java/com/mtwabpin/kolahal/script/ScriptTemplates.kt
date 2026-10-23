@@ -29,7 +29,7 @@ object ScriptTemplates {
     fun forLang(lang: ScriptLang, name: String): String = when (lang) {
         ScriptLang.LUA -> """
             -- $name.lua — runs on its timer in the :script process.
-            -- API: log(text, ctx)  notify(title, body, ctx)  http.get(url)  rss.fresh(url)
+            -- API: log(title, body, ctx)  notify(title, body, ctx)  http.get(url)  rss.fresh(url)
             --      rss.fetch(url)  store.get(k)  store.set(k, v)  json.encode(v)  json.decode(s)
             local feed = rss.fresh("https://hnrss.org/frontpage")
             for i, item in ipairs(feed.items) do
@@ -42,7 +42,7 @@ object ScriptTemplates {
         """.trimIndent()
         ScriptLang.JS -> """
             // $name.js — runs on its timer in the :script process. Top-level await works.
-            // API: log(text, ctx)  notify(title, body, ctx)  await http.get(url)  await rss.fresh(url)
+            // API: log(title, body, ctx)  notify(title, body, ctx)  await http.get(url)  await rss.fresh(url)
             //      await rss.fetch(url)  store.get(k)  store.set(k, v)  JSON.*
             const feed = await rss.fresh("https://hnrss.org/frontpage");
             for (const item of feed.items.slice(0, 5)) {

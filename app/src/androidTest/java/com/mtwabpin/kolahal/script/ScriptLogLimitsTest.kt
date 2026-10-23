@@ -68,7 +68,7 @@ class ScriptLogLimitsTest {
     @Test fun aLinesLinkCountsTowardTheCharacters() {
         val host = host()
         val link = "https://example.com/" + "a".repeat(10_000)
-        repeat(40) { host.log("x", mapOf("url" to link)) }
+        repeat(40) { host.log("x", ctx = mapOf("url" to link)) }
         host.flush()
         val out = lines()
         assertEquals(27, out.size)

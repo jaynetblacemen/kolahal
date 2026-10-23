@@ -20,7 +20,8 @@ import java.util.concurrent.TimeUnit
  * The launcher-side API exposed to scripts. Engine-agnostic: the Lua and JS bindings both
  * translate their arguments into these calls, so scripts behave the same in either language.
  *
- *   log(text, ctx)              -> append a line to the terminal (ctx drives tap / long-press actions)
+ *   log(title, body, ctx)       -> append a line to the terminal: a bold title, a muted body (ctx drives tap / long-press actions)
+ *   logs(titles)                -> a title line per item
  *   notify(title, body, ctx)    -> post a notification (if enabled for the script)
  *   http.get(url, headers)      -> { status, ok, body, headers }
  *   http.request(opts)          -> same, opts = { url, method, body, headers, contentType }
@@ -156,16 +157,22 @@ class HostApi(
     /** Saved scripts get a `── name · 22:40 ──` header before their first line of a run. */
     private var headerWritten = false
 
-    fun log(raw: String, ctx: Map<*, *>? = null) {
+    /** `log(title, body?, ctx?)`: a title line, bold, with [body] (any number of lines) muted under it. */
+    fun log(raw: String, body: String? = null, ctx: Map<*, *>? = null) {
         effects++
         val text = redact(raw)
+        val under = body?.let(::redact)?.takeIf { it.isNotEmpty() }
         if (scriptId != null && !headerWritten) {
             headerWritten = true
             val time = com.mtwabpin.kolahal.data.SharedSettings.shortTime(context)
             buffer(LogKind.INFO, "── $scriptName · $time ──", LogContext(baseCtx + mapOf(LogContext.RUN_HEADER to "1")))
         }
-        buffer(LogKind.SCRIPT, text, LogContext(baseCtx + safeCtx(ctx, text).mapValues { redact(it.value) }))
+        val title = mapOf(LogContext.TITLE to "1") + (under?.let { mapOf(LogContext.BODY to it) } ?: emptyMap())
+        buffer(LogKind.SCRIPT, text, LogContext(baseCtx + title + safeCtx(ctx, listOfNotNull(text, under).joinToString("\n")).mapValues { redact(it.value) }))
     }
+
+    /** `logs(titles)`: one title line each, no bodies. */
+    fun logs(titles: List<String>) = titles.forEach { log(it) }
 
     /**
      * Context a script may attach to its lines. Launcher-internal keys (tap-to-run commands, script
@@ -501,6 +508,8 @@ class HostApi(
         private val RESERVED_CTX = setOf(
             LogContext.ICON, LogContext.RUN, LogContext.COMMAND, LogContext.SCRIPT, LogContext.LINE, LogContext.APPS,
             LogContext.RUN_HEADER, LogContext.DESC, LogContext.PKG, LogContext.CLS, LogContext.USER,
+            // Set by log() itself, from its arguments.
+            LogContext.TITLE, LogContext.BODY,
             // Tap / long-press actions: a script must not be able to forge a dial, a live
             // notification's PendingIntent, a shortcut or delete buttons for the user's data.
             LogContext.PHONE, LogContext.CONTACT, LogContext.SHORTCUT, LogContext.TODO, LogContext.TODO_DONE,

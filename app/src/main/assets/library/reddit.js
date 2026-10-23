@@ -42,7 +42,7 @@ if (r.ok) {
   if (posts.length === 0) return `r/${sub}: no posts today`;
   for (const p of posts.slice(0, LIMIT)) {
     const link = "https://www.reddit.com" + p.permalink;
-    log(`${short(p.score)} ▲ ${p.title} (${p.num_comments} comments)`, { url: link, copy: link });
+    log(p.title, `${short(p.score)} ▲ · ${p.num_comments} comments`, { url: link, copy: link });
   }
   return;
 }

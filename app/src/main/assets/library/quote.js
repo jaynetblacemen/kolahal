@@ -26,7 +26,7 @@ if (!q || !q.q) return "quote: empty response";
 
 const author = q.a || "Unknown";
 const text = `“${q.q.trim()}” — ${author}`;
-log(text, { copy: text });
+log(`“${q.q.trim()}”`, `— ${author}`, { copy: text });
 
 // When run in the background (no arguments) the notification is the point.
 if (args.length === 0) notify(author, q.q.trim());
