@@ -1,0 +1,1 @@
+Show only one source's lines: long-press a line and pick Only and its name, or type log only feeds; search one source with /@ and its name. Delete command and output now takes a script's output too, wherever it landed in the log. The extra line with a time and a name before each script's output is gone: every line shows its own.
