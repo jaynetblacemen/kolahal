@@ -181,7 +181,7 @@ Script names use lowercase letters, digits, `-` and `_` (up to 40), and can't be
 | `theme <name>` | | `green` `amber` `mono` `dracula` `solarized` `gruvbox` `gruvbox-material`; each in a [dark and a light version](/guides/themes-and-settings/#light-and-dark) |
 | `font [<name>\|import\|sans [off\|prompt\|all]]` | | terminal font: `system` `jetbrains-mono` `fira-code` `ibm-plex-mono` `source-code-pro` `custom`; no args lists them (tap to apply), `import` picks a .ttf/.otf; `sans prompt` or `sans all` uses the phone's font for the prompt or everything (`font.sans`) |
 | `echo <text>` | | print text |
-| `date` | `time` | current date and time |
+| `date [<place>...]` | `time` | current date and time; with places, the time in each and how far ahead or behind it is: a city (`tokyo`, `new york`), a zone (`Asia/Tokyo`), `utc`, or an offset like `+5:30` |
 
 ## widgets
 
