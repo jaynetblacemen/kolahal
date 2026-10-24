@@ -41,6 +41,6 @@ tappable line that takes you to the setting.
 
 These are fixed:
 
-- **Pinch** the log to change the text size.
+- **Pinch** the log to change the text size. When you let go, a toast says the new size.
 - **Tap** empty space to show the keyboard.
 - **Drag sideways** across the key bar to move the cursor.

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
@@ -20,6 +21,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.pinch
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
@@ -214,5 +216,21 @@ class HomeScreenTest {
         compose.runOnIdle { config.set(Keys.GESTURE_SWIPE_UP, "echo $mark") }
         swipe()
         compose.waitUntil(5_000) { ran() }
+    }
+
+    /** Pinching the log sets the font size and keeps it (the toast saying so can't be seen from here). */
+    @Test fun pinchingTheLogSetsAndSavesTheFontSize() {
+        val before = Term.fontSize
+        try {
+            show(360.dp, 640.dp)
+            compose.onNodeWithTag("log").performTouchInput {
+                pinch(center - Offset(40f, 0f), center - Offset(160f, 0f), center + Offset(40f, 0f), center + Offset(160f, 0f), 400)
+            }
+            compose.waitForIdle()
+            assertTrue(Term.fontSize > before)
+            assertEquals(Term.fontSize, config[Keys.FONT_SIZE])
+        } finally {
+            Term.fontSize = before
+        }
     }
 }

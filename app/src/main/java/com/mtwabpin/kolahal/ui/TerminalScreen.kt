@@ -1,6 +1,7 @@
 package com.mtwabpin.kolahal.ui
 
 import android.content.res.Configuration
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
@@ -241,6 +242,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     val lineTimeFormat = remember(configVersion) {
         SimpleDateFormat(if (config[Keys.CLOCK_24H]) "HH:mm" else "h:mm", Locale.getDefault())
     }
+    val fontSizeToast = rememberFontSizeToast()
     val doubleTapOn = remember(configVersion) {
         config[Keys.GESTURE_DOUBLE_TAP].trim().let { it.isNotEmpty() && it != com.mtwabpin.kolahal.gesture.Gestures.NONE }
     }
@@ -356,7 +358,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 .nestedScroll(headerScroll)
                 .onSizeChanged { vm.onLogWidth(it.width) }
                 .testTag("log")
-                .pinchToZoomFont(onChange = { Term.fontSize = it }, onEnd = vm::saveFontSize)
+                .pinchToZoomFont(onChange = { Term.fontSize = it }, onEnd = { from, to -> vm.saveFontSize(to); fontSizeToast(from, to) })
                 // Taps that no log line consumed (empty space) bring up the keyboard. A double tap
                 // is watched for only when it does something: waiting for it delays every tap.
                 .pointerInput(doubleTapOn) {
@@ -541,13 +543,28 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     }
 }
 
+/** Says a pinch's new font size in a toast; pinching again replaces it instead of queueing another. */
+@Composable
+private fun rememberFontSizeToast(): (from: Int, to: Int) -> Unit {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val shown = remember { arrayOfNulls<Toast>(1) }
+    return remember(context) {
+        { from, to ->
+            shown[0]?.cancel()
+            shown[0] = Toast.makeText(context, "Font size $to (was $from)", Toast.LENGTH_SHORT).also { it.show() }
+        }
+    }
+}
+
 /**
  * Two-finger pinch changes the terminal font size. Runs in the Initial pass and consumes only
- * multi-touch events, so one-finger scrolling and taps still reach the list.
+ * multi-touch events, so one-finger scrolling and taps still reach the list. [onEnd] gets the size
+ * before and after, once the fingers lift, unless the pinch ended where it started.
  */
-private fun Modifier.pinchToZoomFont(onChange: (Int) -> Unit, onEnd: (Int) -> Unit) = pointerInput(Unit) {
+private fun Modifier.pinchToZoomFont(onChange: (Int) -> Unit, onEnd: (from: Int, to: Int) -> Unit) = pointerInput(Unit) {
     awaitEachGesture {
         awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        val before = Term.fontSize
         var startDistance = 0f
         var startSize = Term.fontSize
         var changed = false
@@ -569,7 +586,7 @@ private fun Modifier.pinchToZoomFont(onChange: (Int) -> Unit, onEnd: (Int) -> Un
                 event.changes.forEach { it.consume() }
             }
         } while (event.changes.any { it.pressed })
-        if (changed) onEnd(Term.fontSize)
+        if (changed && Term.fontSize != before) onEnd(before, Term.fontSize)
     }
 }
 
