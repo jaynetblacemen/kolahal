@@ -95,8 +95,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 
-/** How a line shows its time, from `log.time`. */
-enum class TimeMode { OFF, COMMANDS, ALL }
+/** How a line shows its time, from `log.time`: `groups` on a group's first line and when the minute changes. */
+enum class TimeMode { OFF, COMMANDS, GROUPS, ALL }
 
 /** What the long-press sheet shows: the line (for context) and its actions. */
 /**
@@ -110,6 +110,8 @@ data class ActionMenu(
     val entryId: Long?,
     val systemFont: Boolean = false,
     val url: String? = null,
+    /** Where the line came from and when, to the second ([com.mtwabpin.kolahal.terminal.lineDetail]). */
+    val detail: String? = null,
 )
 
 @Composable
@@ -176,13 +178,18 @@ fun LogLine(
     var rowWidth by remember { androidx.compose.runtime.mutableIntStateOf(1) }
     val haptics = LocalHapticFeedback.current
     val gutterColor = gutterColor(row.gutter)
-    val showTime = timeMode == TimeMode.ALL || (timeMode == TimeMode.COMMANDS && entry.kind == LogKind.COMMAND)
+    val showTime = when (timeMode) {
+        TimeMode.ALL -> true
+        TimeMode.COMMANDS -> entry.kind == LogKind.COMMAND
+        TimeMode.GROUPS -> row.showTime
+        TimeMode.OFF -> false
+    }
     val desc = entry.ctx.values[LogContext.DESC]
     val isGrid = entry.ctx.values[LogContext.APPS] != null
     val image = entry.ctx.image
     // A notification line's saved status-bar icon replaces its app name at the end.
     val context = LocalContext.current
-    val iconKey = entry.ctx.values[LogContext.ICON]?.takeIf { entry.kind == LogKind.SCRIPT && NotifIcons.has(context, it) }
+    val iconKey = entry.ctx.values[LogContext.ICON]?.takeIf { row.showSource && entry.kind == LogKind.SCRIPT && NotifIcons.has(context, it) }
     val inline = remember(iconKey) { iconKey?.let(::notifIconContent) ?: emptyMap() }
 
     // log.line-height sets the padding above and below a line too: up to 3dp each, less as the
@@ -275,8 +282,8 @@ fun LogLine(
                 }
                 desc != null -> TwoColumns(entry, desc, marks, dense)
                 else -> {
-                    val text = remember(entry, Term.palette, indents, row.unread, iconKey, marks) {
-                        markMatches(renderLine(entry, indents, row.unread, iconKey != null), marks)
+                    val text = remember(entry, Term.palette, indents, row.unread, iconKey, marks, row.showSource) {
+                        markMatches(renderLine(entry, indents, row.unread, iconKey != null, row.showSource), marks)
                     }
                     if (image == null) Text(text, style = entry.style().dense(dense), inlineContent = inline)
                     else Column {
@@ -434,8 +441,8 @@ private fun LogEntry.style() = if (ctx.values.containsKey(LogContext.MONO)) Term
 @androidx.compose.runtime.Immutable
 data class LineIndents(val text: TextUnit, val code: TextUnit, val bullet: TextUnit)
 
-/** [icon]: end a script line with its notification icon instead of `· app`. */
-private fun renderLine(entry: LogEntry, indents: LineIndents, unread: Boolean, icon: Boolean = false) = buildAnnotatedString {
+/** [icon]: end a script line with its notification icon instead of `· app`; [source]: name it at all (the first line of a run). */
+private fun renderLine(entry: LogEntry, indents: LineIndents, unread: Boolean, icon: Boolean = false, source: Boolean = true) = buildAnnotatedString {
     val indent = when (entry.kind) {
         LogKind.SCRIPT -> if (unread) indents.bullet else 0.sp
         else -> if (entry.ctx.values.containsKey(LogContext.MONO)) indents.code else indents.text
@@ -464,7 +471,7 @@ private fun renderLine(entry: LogEntry, indents: LineIndents, unread: Boolean, i
                 )
                 // The source goes at the end, muted, like other indicators (`… machine. · wikipedia`),
                 // so wrapped lines use the full width. A no-break space keeps the dot with the name.
-                entry.source?.let { src ->
+                entry.source?.takeIf { source }?.let { src ->
                     withStyle(SpanStyle(color = Term.dim)) {
                         // A notification's icon reads as the app's name to screen readers, and stays with the last word.
                         if (icon) {
@@ -615,6 +622,16 @@ fun ActionSheet(menu: ActionMenu, onDismiss: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
+            // Where the line came from and when: what the log may leave off the line.
+            menu.detail?.let { detail ->
+                Text(
+                    detail,
+                    style = Term.text.copy(color = Term.dim, fontSize = (Term.fontSize - 2).sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp).testTag("menu-detail"),
+                )
+            }
             menu.url?.let { url ->
                 Text(
                     url,

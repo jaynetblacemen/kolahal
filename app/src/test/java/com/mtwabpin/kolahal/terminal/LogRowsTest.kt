@@ -55,6 +55,107 @@ class LogRowsTest {
         assertEquals(rows.map { it.key }.distinct().size, rows.size)
     }
 
+    private fun entries(vararg entries: LogEntry) = buildRows(entries.toList()).filterIsInstance<LogRow.Entry>()
+
+    /** A run names its source once, on its first line; another source in between names itself again. */
+    @Test
+    fun aRunNamesItsSourceOnce() {
+        val rows = entries(
+            line(1, 0, LogKind.SCRIPT, source = "hn"),
+            line(2, 10, LogKind.SCRIPT, source = "hn"),
+            line(3, 20, LogKind.SCRIPT, source = "WhatsApp"),
+            line(4, 30, LogKind.SCRIPT, source = "hn"),
+            line(5, 40, LogKind.SCRIPT, source = "hn"),
+        )
+        assertEquals(listOf(true, false, true, true, false), rows.map { it.showSource })
+    }
+
+    /** The same source on its own, later: a new group, named again. */
+    @Test
+    fun aLaterLineFromTheSameSourceIsNamedAgain() {
+        val rows = entries(line(1, 0, LogKind.SCRIPT, source = "WhatsApp"), line(2, 60_000, LogKind.SCRIPT, source = "WhatsApp"))
+        assertEquals(listOf(true, true), rows.map { it.showSource })
+    }
+
+    /** Right under `$ countdown`, its lines don't say countdown: the command does. */
+    @Test
+    fun linesUnderTheirCommandAreNotNamed() {
+        val from = LogContext.of(LogContext.FROM to "1")
+        val rows = entries(
+            line(1, 0, LogKind.COMMAND),
+            line(2, 10, LogKind.SCRIPT, ctx = from, source = "countdown"),
+            line(3, 20, LogKind.SCRIPT, ctx = from, source = "countdown"),
+            // The same script's lines after something else came in between: named.
+            line(4, 30, LogKind.SCRIPT, source = "hn"),
+            line(5, 40, LogKind.SCRIPT, ctx = from, source = "countdown"),
+        )
+        assertEquals(listOf(true, false, false, true, true), rows.map { it.showSource })
+    }
+
+    /** A script's lines under the command that ran it are that command's output: one group, one time. */
+    @Test
+    fun aScriptsOutputJoinsItsCommandsGroup() {
+        val from = LogContext.of(LogContext.FROM to "1")
+        val rows = entries(
+            line(1, 0, LogKind.COMMAND),
+            line(2, 10, LogKind.SCRIPT, ctx = from, source = "countdown"),
+            line(3, 20, LogKind.SCRIPT, ctx = from, source = "countdown"),
+        )
+        assertEquals(listOf(true, false, false), rows.map { it.blockStart })
+        assertEquals(listOf(true, false, false), rows.map { it.showTime })
+    }
+
+    /** log.time groups: a group's first line, then only a new minute. */
+    @Test
+    fun timesShowOncePerGroupAndOnANewMinute() {
+        val base = (t0 / 60_000 + 1) * 60_000 - t0 // the start of the next minute, relative to t0
+        val rows = entries(
+            line(1, base, LogKind.COMMAND),
+            line(2, base + 100, LogKind.OUTPUT),
+            line(3, base + 2_000, LogKind.OUTPUT),
+            line(4, base + 60_000, LogKind.OUTPUT),
+            line(5, base + 60_500, LogKind.OUTPUT),
+        )
+        // Lines 4 and 5 are a new group (more than 3 s after line 3) anyway; 4 is also a new minute.
+        assertEquals(listOf(true, false, false, true, false), rows.map { it.showTime })
+    }
+
+    @Test
+    fun aSlowCommandsOutputShowsTheNewMinute() {
+        val base = (t0 / 60_000 + 1) * 60_000 - t0
+        val rows = entries(
+            line(1, base + 58_000, LogKind.COMMAND),
+            line(2, base + 59_000, LogKind.OUTPUT),
+            line(3, base + 60_500, LogKind.OUTPUT),
+        )
+        assertEquals(listOf(true, false, true), rows.map { it.showTime })
+    }
+
+    /** Search results are out of context: every line keeps its name and time. */
+    @Test
+    fun untrimmedRowsKeepEverything() {
+        val rows = buildRows(
+            listOf(line(1, 0, LogKind.SCRIPT, source = "hn"), line(2, 10, LogKind.SCRIPT, source = "hn")),
+            trim = false,
+        ).filterIsInstance<LogRow.Entry>()
+        assertEquals(listOf(true, true), rows.map { it.showSource })
+        assertEquals(listOf(true, true), rows.map { it.showTime })
+    }
+
+    /** The long-press sheet's detail: source and time to the second, the day in words when it's recent. */
+    @Test
+    fun lineDetailSaysWhereAndWhen() {
+        val zone = java.time.ZoneOffset.UTC
+        val now = java.time.LocalDateTime.of(2026, 10, 24, 18, 0).toInstant(zone).toEpochMilli()
+        fun at(d: Int, h: Int, m: Int, s: Int) = java.time.LocalDateTime.of(2026, 10, d, h, m, s).toInstant(zone).toEpochMilli()
+        val script = LogEntry(1, at(24, 6, 55, 12), LogKind.SCRIPT, "countdown", "x", LogContext.EMPTY)
+        assertEquals("countdown · today 06:55:12", lineDetail(script, clock24 = true, now = now, zone = zone, locale = java.util.Locale.UK))
+        val output = LogEntry(2, at(23, 18, 2, 11), LogKind.OUTPUT, null, "x", LogContext.EMPTY)
+        assertEquals("yesterday 18:02:11", lineDetail(output, clock24 = true, now = now, zone = zone, locale = java.util.Locale.UK))
+        val old = LogEntry(3, at(20, 9, 5, 0), LogKind.SCRIPT, "hn", "x", LogContext.EMPTY)
+        assertEquals("hn · Tue 20 Oct 09:05:00", lineDetail(old, clock24 = true, now = now, zone = zone, locale = java.util.Locale.UK))
+    }
+
     /** A script's or a feed's lines are a group of their own, even right after other lines. */
     @Test
     fun aRunStartsAGroupEvenRightAfterOtherLines() {

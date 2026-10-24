@@ -106,7 +106,7 @@ object Keys {
     val SELECTOR_HEIGHT = ConfigKey.Num("selector.height", 350, 200..900, "Length (dp) of the part of the edge you slide on: shorter means less thumb travel; the list uses the whole height")
     val SELECTOR_ICONS = ConfigKey.Bool("selector.icons", false, "Show each app's icon in the app selector's list")
     val SELECTOR_ACTIONS = ConfigKey.Choice("selector.actions", "off", listOf("far-side", "off"), "While you pick, an app's actions: far-side opens them when you lift on the list's far side; off leaves them to the open list (long-press)")
-    val SHOW_TIMESTAMPS = ConfigKey.Choice("log.time", "all", listOf("off", "commands", "all"), "Right-aligned times on log lines")
+    val SHOW_TIMESTAMPS = ConfigKey.Choice("log.time", "groups", listOf("off", "commands", "groups", "all"), "Right-aligned times on log lines: groups shows one on each group's first line and when the minute changes, all on every line, commands on the lines you type")
     val LOG_DIM = ConfigKey.Bool("log.dim", true, "Dim output older than the latest command")
     val LOG_SPACING = ConfigKey.Num("log.spacing", 5, 0..40, "Gap (dp) above each output group: a command and its output, or a background batch (feeds, scripts)")
     val LOG_GUTTER = ConfigKey.Bool("log.gutter", true, "Thin colour bar at the left of each log line: green for commands, script colour for background output, red for errors")

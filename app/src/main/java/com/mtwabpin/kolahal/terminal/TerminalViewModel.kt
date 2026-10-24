@@ -487,7 +487,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                                         match = if (sources.isEmpty()) null else { e -> sources.any { it.matches(e) } },
                                         keepGoing = { job?.isActive != false },
                                     )
-                                    LogSearch(plain, buildRows(found.entries.asReversed()), found.total, found.searched, sources)
+                                    LogSearch(plain, buildRows(found.entries.asReversed(), trim = false), found.total, found.searched, sources)
                                 }
                             }
                         }

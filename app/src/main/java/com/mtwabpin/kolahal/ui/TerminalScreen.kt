@@ -206,6 +206,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     val timeMode = remember(configVersion) {
         when (config[Keys.SHOW_TIMESTAMPS]) {
             "all" -> TimeMode.ALL
+            "groups" -> TimeMode.GROUPS
             "off" -> TimeMode.OFF
             else -> TimeMode.COMMANDS
         }
@@ -214,9 +215,10 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     var menu by remember { mutableStateOf<ActionMenu?>(null) }
     // Menus ask the system for an app's shortcuts: built off the main thread, shown when ready.
     val menuScope = rememberCoroutineScope()
-    fun showMenu(title: String, id: Long?, url: String? = null, build: () -> List<LogAction>) {
-        menuScope.launch { menu = ActionMenu(title, kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { build() }, id, url = url) }
+    fun showMenu(title: String, id: Long?, url: String? = null, detail: String? = null, build: () -> List<LogAction>) {
+        menuScope.launch { menu = ActionMenu(title, kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { build() }, id, url = url, detail = detail) }
     }
+    val clock24 = remember(configVersion) { config[Keys.CLOCK_24H] }
     if (preview == null) LaunchedEffect(Unit) {
         vm.events.collect { if (it == UiEvent.ShowQuick) menu = ActionMenu("Quick actions", vm.quickActions(), null, systemFont = true) }
     }
@@ -338,7 +340,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             menuEntryId = menu?.entryId,
             apps = vm::appsOf,
             onOpen = vm::showInLog,
-            onLongPress = { e -> showMenu(com.mtwabpin.kolahal.data.StyledText.plain(e.text), e.id, e.ctx.url) { vm.actionsFor(e) } },
+            onLongPress = { e -> showMenu(com.mtwabpin.kolahal.data.StyledText.plain(e.text), e.id, e.ctx.url, com.mtwabpin.kolahal.terminal.lineDetail(e, clock24)) { vm.actionsFor(e) } },
             onAppTap = vm::launchApp,
             onAppLongPress = { app -> showMenu(app.label, null) { vm.appActions(app) } },
             onSwipeCopy = vm::swipeCopy,
@@ -392,7 +394,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                         highlighted = menu?.entryId == row.entry.id || flash == row.entry.id,
                         apps = vm::appsOf,
                         onTap = vm::onTap,
-                        onLongPress = { e -> showMenu(com.mtwabpin.kolahal.data.StyledText.plain(e.text), e.id, e.ctx.url) { vm.actionsFor(e) } },
+                        onLongPress = { e -> showMenu(com.mtwabpin.kolahal.data.StyledText.plain(e.text), e.id, e.ctx.url, com.mtwabpin.kolahal.terminal.lineDetail(e, clock24)) { vm.actionsFor(e) } },
                         onAppTap = vm::launchApp,
                         onAppLongPress = { app -> showMenu(app.label, null) { vm.appActions(app) } },
                         onSwipeCopy = vm::swipeCopy,

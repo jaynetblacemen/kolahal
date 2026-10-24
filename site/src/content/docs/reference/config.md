@@ -68,7 +68,7 @@ The `theme` and `font` commands are unchanged.
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| `log.time` | choice: `off` `commands` `all` | `all` | right-aligned times on log lines |
+| `log.time` | choice: `off` `commands` `groups` `all` | `groups` | right-aligned times on log lines: `groups` on each group's first line and when the minute changes, `all` on every line, `commands` on the lines you type |
 | `log.dim` | bool | `on` | dim output older than the latest command |
 | `log.spacing` | number 0–40 | `5` | gap (dp) above each output group: a command and its output, or a background batch (feeds, scripts) |
 | `log.gutter` | bool | `on` | thin colour bar at the left of each log line: green for commands, script colour for background output, red for errors |
