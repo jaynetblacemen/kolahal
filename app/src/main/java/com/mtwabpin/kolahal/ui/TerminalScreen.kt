@@ -450,6 +450,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 left = remember(configVersion) { config[Keys.SELECTOR_SIDE] == "left" },
                 position = remember(configVersion) { config[Keys.SELECTOR_POSITION] },
                 actions = remember(configVersion) { config[Keys.SELECTOR_ACTIONS] },
+                icons = remember(configVersion) { config[Keys.SUGGEST_ICONS] },
             )
         }
         // [/selector]
