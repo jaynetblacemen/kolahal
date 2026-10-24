@@ -230,10 +230,10 @@ internal object SelectorMath {
         }
     }
 
-    /** Held still this long on an app while picking: its actions. Long enough to find it on the far side first. */
+    /** Held still this long on an app while picking: it launches, as lifting would. */
     const val HOLD_MS = 800L
 
-    /** The held row starts to fill this long into a hold, so the actions never come as a surprise (Plan B). */
+    /** The held row starts to fill this long into a hold, so the launch never comes as a surprise (Plan B). */
     const val FILL_FROM_MS = 300L
 
     /** A fill that stops rising drains away in at most this long (ms, for a full row). */
@@ -362,10 +362,11 @@ fun AppSelector(
     /** Android's back swipe on this edge (gesture navigation): a touch starts the selector only where it is kept off. */
     edgeBackGesture: Boolean = hasEdgeBackGesture(left),
     /**
-     * selector.actions: while picking, an app's actions come from holding still on it (`hold`: its
-     * row fills first), from lifting on the panel's far side (`far-side`), or not at all (`off`).
+     * selector.actions: while picking, lifting on the panel's far side opens an app's actions
+     * (`far-side`), or nothing does (`off`: long-press it in the open list). A full hold launches
+     * the app either way.
      */
-    actions: String = "hold",
+    actions: String = "off",
 ) {
     val entries = remember(apps, pinned) {
         SelectorMath.build(
@@ -574,7 +575,6 @@ fun AppSelector(
                         var anchorY = y
                         var anchorX = x
                         var lastFrame = rowSince
-                        val holdMode = actions == "hold"
                         val farMode = actions == "far-side"
                         var holdAt = rowSince
 
@@ -619,17 +619,18 @@ fun AppSelector(
                                 anchorY = y
                                 anchorX = x
                             }
-                            // Plan B: the held row fills as the hold counts, so the actions never come as
-                            // a surprise; a move restarts the hold and the fill drains away.
-                            val target = if (selecting && holdMode) SelectorMath.holdFill(now - rowSince) else 0f
-                            state.hold = SelectorMath.holdShown(state.hold, target, now - holdAt)
-                            holdAt = now
                             // B2: on the panel's far side, lifting opens the actions instead of launching.
                             val far = farMode && selecting && SelectorMath.farSide(stripXPx + x, panelXPx, panelWPx, left)
                             if (far != state.far) {
                                 if (far) haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
                                 state.far = far
                             }
+                            // Plan B: the held row fills as the hold counts and launches when full, so the
+                            // launch never comes as a surprise; a move restarts the hold and the fill drains.
+                            // Not on the far side, where lifting means the app's actions.
+                            val target = if (selecting && !far) SelectorMath.holdFill(now - rowSince) else 0f
+                            state.hold = SelectorMath.holdShown(state.hold, target, now - holdAt)
+                            holdAt = now
                         }
 
                         state.interaction++
@@ -644,7 +645,7 @@ fun AppSelector(
                                 val scrolling = speed != 0f &&
                                     !(speed < 0f && state.listY <= 0f) && !(speed > 0f && state.listY >= maxScrollPx)
                                 val held = now - rowSince
-                                val holding = selecting && holdMode
+                                val holding = selecting && !state.far
                                 // The fill rises, then drains when the hold stops: a frame at a time for both.
                                 val filling = holding && held >= SelectorMath.FILL_FROM_MS
                                 val draining = state.hold > 0f && !filling
@@ -665,11 +666,11 @@ fun AppSelector(
                                         continue
                                     }
                                     if (holding && t - rowSince >= SelectorMath.HOLD_MS) {
-                                        // Held still on a row, its fill full: its actions.
+                                        // Held still on a row, its fill full: it launches, as lifting would.
                                         val app = entries[focus].item
-                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                                         state.close()
-                                        longPress(app)
+                                        launch(app)
                                         break
                                     }
                                     // The fill rising or draining.

@@ -103,7 +103,7 @@ object Keys {
     val SELECTOR_POSITION = ConfigKey.Choice("selector.position", "bottom", listOf("bottom", "middle", "top"), "Where on the edge you slide: keep it away from where you swipe back")
     val SELECTOR_HANDLE = ConfigKey.Bool("selector.handle", true, "Show the slim A–Z handle on the edge; off hides it while the selector keeps working")
     val SELECTOR_HEIGHT = ConfigKey.Num("selector.height", 350, 200..900, "Length (dp) of the part of the edge you slide on: shorter means less thumb travel; the list uses the whole height")
-    val SELECTOR_ACTIONS = ConfigKey.Choice("selector.actions", "hold", listOf("hold", "far-side", "off"), "While you pick, an app's actions: hold still on it (its row fills, then they open), slide to the list's far side and lift, or off (long-press it in the open list)")
+    val SELECTOR_ACTIONS = ConfigKey.Choice("selector.actions", "off", listOf("far-side", "off"), "While you pick, an app's actions: far-side opens them when you lift on the list's far side; off leaves them to the open list (long-press)")
     val SHOW_TIMESTAMPS = ConfigKey.Choice("log.time", "all", listOf("off", "commands", "all"), "Right-aligned times on log lines")
     val LOG_DIM = ConfigKey.Bool("log.dim", true, "Dim output older than the latest command")
     val LOG_SPACING = ConfigKey.Num("log.spacing", 5, 0..40, "Gap (dp) above each output group: a command and its output, or a background batch (feeds, scripts)")
