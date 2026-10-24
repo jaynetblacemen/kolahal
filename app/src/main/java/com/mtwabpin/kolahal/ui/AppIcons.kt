@@ -24,12 +24,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * App icons for the suggestions (`suggestions.icons`). Loaded off the main thread through
- * LauncherApps, so work and private apps carry the system's profile badge, then kept in a small
- * memory cache keyed by app and pixel size.
+ * App icons for the suggestions (`suggestions.icons`) and the app selector's list (`selector.icons`). Loaded off the
+ * main thread through LauncherApps, so work and private apps carry the system's profile badge, then
+ * kept in a memory cache keyed by app and pixel size: room for every app in the selector's list
+ * (about 25 KB each) besides the suggestions'.
  */
 object AppIcons {
-    private val cache = object : LruCache<String, ImageBitmap>(8 * 1024 * 1024) {
+    private val cache = object : LruCache<String, ImageBitmap>(12 * 1024 * 1024) {
         override fun sizeOf(key: String, value: ImageBitmap) = value.width * value.height * 4
     }
 

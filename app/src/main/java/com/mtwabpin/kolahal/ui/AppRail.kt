@@ -61,6 +61,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -75,8 +76,10 @@ import androidx.compose.ui.unit.sp
 import com.mtwabpin.kolahal.apps.AppEntry
 import com.mtwabpin.kolahal.apps.ProfileKind
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.withContext
 import java.text.Normalizer
 import kotlin.math.PI
 import kotlin.math.abs
@@ -367,6 +370,8 @@ fun AppSelector(
      * the app either way.
      */
     actions: String = "off",
+    /** selector.icons: each row starts with the app's icon (Plan E). */
+    icons: Boolean = false,
 ) {
     val entries = remember(apps, pinned) {
         SelectorMath.build(
@@ -383,6 +388,7 @@ fun AppSelector(
     val density = LocalDensity.current
     val launch by rememberUpdatedState(onLaunch)
     val longPress by rememberUpdatedState(onLongPress)
+    val appContext = LocalContext.current.applicationContext
 
     BackHandler(enabled = state.mode == Mode.OPEN) { state.close() }
     // Left open: closes after a few idle seconds (scrolling it counts as use).
@@ -415,6 +421,13 @@ fun AppSelector(
         // Rows grow with the text: at a large text size a fixed row would overlap the next.
         val rowH = maxOf(ROW_H, with(density) { (Term.fontSize * 1.36f).sp.toDp() } + 8.dp)
         val rowPx = with(density) { rowH.roundToPx() }
+        // Plan E: a 26dp icon in a 38dp row, growing with the row up to 32dp.
+        val iconSize = minOf(rowH - 12.dp, 32.dp)
+        val iconPx = with(density) { iconSize.roundToPx() }.coerceAtLeast(1)
+        // Loaded ahead, off the main thread, so a fast glide never shows an empty space where one goes.
+        if (icons) LaunchedEffect(entries, iconPx, AppIcons.generation) {
+            withContext(Dispatchers.IO) { entries.forEach { AppIcons.load(appContext, it.item, iconPx) } }
+        }
         // The panel uses the whole height, whatever the strip's; a short list sits at the bottom.
         val listHPx = containerH - 2 * topPx
         val panelHPx = min(listHPx, (count * rowPx).toFloat()).coerceAtLeast(rowPx.toFloat())
@@ -486,6 +499,7 @@ fun AppSelector(
                         rowPx = rowPx,
                         height = rowH,
                         pinned = entry.item.key in pinned,
+                        icon = if (icons) iconSize else null,
                         enabled = state.mode == Mode.OPEN,
                         onClick = { state.close(); launch(entry.item) },
                         onLongClick = { state.close(); longPress(entry.item) },
@@ -740,6 +754,8 @@ private fun SelectorRow(
     rowPx: Int,
     height: androidx.compose.ui.unit.Dp,
     pinned: Boolean,
+    /** The app's icon at this size at the row's start (Plan E), or none. */
+    icon: androidx.compose.ui.unit.Dp?,
     enabled: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
@@ -792,6 +808,8 @@ private fun SelectorRow(
             modifier = Modifier.width(26.dp).padding(start = 10.dp),
             maxLines = 1,
         )
+        // Plan E: the app's icon, as the suggestions show it; it grows with the row in the fisheye.
+        if (icon != null) AppIcon(app, icon, Modifier.padding(end = 8.dp).testTag("app-selector-icon"))
         if (app.profile.kind != ProfileKind.PERSONAL) {
             Text(
                 "[${app.profile.kind.tag}] ",

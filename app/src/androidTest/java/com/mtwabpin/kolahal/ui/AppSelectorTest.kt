@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
@@ -42,13 +43,31 @@ class AppSelectorTest {
         list: List<AppEntry> = apps.apps.value,
         backGesture: Boolean = false,
         actions: String = "off",
+        icons: Boolean = false,
     ) = compose.setContent {
         Box(Modifier.size(360.dp, 700.dp)) {
             AppSelector(
                 list, emptySet(), onLaunch = { launched = it }, onLongPress = { pressed = it }, heightDp = 300, left = left,
-                position = position, edgeBackGesture = backGesture, actions = actions,
+                position = position, edgeBackGesture = backGesture, actions = actions, icons = icons,
             )
         }
+    }
+
+    private fun iconsShown() = compose.onAllNodesWithTag("app-selector-icon", useUnmergedTree = true).fetchSemanticsNodes().size
+
+    /** Plan E: with selector.icons on, each row starts with the app's icon; off (the default), none. */
+    @Test fun rowsShowIconsWhenTurnedOn() {
+        show(left = false, position = "bottom", icons = true)
+        compose.onNodeWithTag("app-selector").performTouchInput { down(center) }
+        compose.waitForIdle()
+        assertTrue("icons in the list", iconsShown() > 0)
+    }
+
+    @Test fun rowsShowNoIconsByDefault() {
+        show(left = false, position = "bottom")
+        compose.onNodeWithTag("app-selector").performTouchInput { down(center) }
+        compose.waitForIdle()
+        assertEquals(0, iconsShown())
     }
 
     /** Plan B: holding still while picking launches the app once its row has filled, without lifting. */
