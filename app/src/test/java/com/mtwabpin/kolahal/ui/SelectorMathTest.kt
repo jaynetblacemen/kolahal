@@ -330,12 +330,24 @@ class SelectorMathTest {
         assertEquals(-1, SelectorMath.letterAt(1f, 0, 0))
     }
 
-    /** Letters: a row's centre is level with the letter, the middle one of its apps (the lower of two). */
-    @Test fun aLettersMiddleAppIsLevelWithIt() {
-        assertEquals(0.5f, SelectorMath.letterMiddle(0, 1), 0f)
-        assertEquals(1.5f, SelectorMath.letterMiddle(0, 2), 0f)
-        assertEquals(1.5f, SelectorMath.letterMiddle(0, 3), 0f)
-        assertEquals(12.5f, SelectorMath.letterMiddle(10, 5), 0f)
+    /** Letters: the first app is level with the letter, the rest below, moved up only to stay on screen. */
+    @Test fun aLettersAppsStartLevelWithIt() {
+        // 40px rows, the list between 10 and 710.
+        assertEquals(380f, SelectorMath.letterTop(400f, 3, 40f, 10f, 710f), 0f)
+        // Near the bottom: up just far enough for all five.
+        assertEquals(510f, SelectorMath.letterTop(650f, 5, 40f, 10f, 710f), 0f)
+        // More than fit: from the top.
+        assertEquals(10f, SelectorMath.letterTop(650f, 30, 40f, 10f, 710f), 0f)
+        assertEquals(10f, SelectorMath.letterTop(5f, 1, 40f, 10f, 710f), 0f)
+    }
+
+    /** A tapped letter's list stays put: what moved the panel becomes room at the list's start or end. */
+    @Test fun aListLeftOpenStaysWhereItWas() {
+        // Moved down 300px at the list's start: 300px of room before the first app, not scrolled.
+        assertEquals(Triple(300f, 0f, 0f), SelectorMath.keepInPlace(0f, 300f))
+        // Moved up 120px at its end: room after the last app, scrolled 120px further.
+        assertEquals(Triple(0f, 120f, 1_120f), SelectorMath.keepInPlace(1_000f, -120f))
+        assertEquals(Triple(0f, 0f, 500f), SelectorMath.keepInPlace(500f, 0f))
     }
 
     /** selector.filter: a letter's apps alone move level with it, but never off the screen. */

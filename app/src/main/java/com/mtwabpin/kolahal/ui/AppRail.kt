@@ -22,6 +22,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -250,8 +251,24 @@ internal object SelectorMath {
         return if (pos >= current - stick && pos < current + 1 + stick) current else raw
     }
 
-    /** The list position (rows) of the middle of a letter's [size] apps from row [start]: a row's centre, so one app is level with the letter. */
-    fun letterMiddle(start: Int, size: Int): Float = start + size / 2 + 0.5f
+    /**
+     * Where a letter's [size] apps start (px, the top of the first) for the letter at [letterY]: the
+     * first one level with it, so they run down from the thumb, moved up only as far as keeps them all
+     * above [bottom], and never above [top].
+     */
+    fun letterTop(letterY: Float, size: Int, rowPx: Float, top: Float, bottom: Float): Float {
+        var start = letterY - rowPx / 2
+        if (start + size * rowPx > bottom) start = bottom - size * rowPx
+        return max(start, top)
+    }
+
+    /**
+     * A list left open where it was, [shiftPx] off its place: the panel goes back, and room at the
+     * list's start (when it was moved down) or end (up) makes up the difference, so it stays put and
+     * still scrolls to every app. Returns (room at the start, room at the end, the scroll that keeps it).
+     */
+    fun keepInPlace(scrollPx: Float, shiftPx: Float): Triple<Float, Float, Float> =
+        Triple(max(0f, shiftPx), max(0f, -shiftPx), scrollPx - min(0f, shiftPx))
 
     /**
      * `selector.filter`: the panel, [panelH] tall, moved ([shiftPx] down from its place at the
@@ -539,6 +556,9 @@ private class SelectorState {
     var interaction by mutableIntStateOf(0)
     /** How full the held row is (0 to 1), drawn on the focused row while picking (Plan B). */
     var hold by mutableFloatStateOf(0f)
+    /** Room at the list's start and end (px) that keeps a tapped letter's apps where they were ([SelectorMath.keepInPlace]). */
+    var padTop by mutableFloatStateOf(0f)
+    var padBottom by mutableFloatStateOf(0f)
     /** Picking on the panel's far side: lifting opens the app's actions (`selector.actions far-side`). */
     var far by mutableStateOf(false)
     /**
@@ -585,7 +605,7 @@ private fun LazyListState.scrollToPx(px: Float, rowPx: Int) {
  * (favourites first, then A–Z; at the bottom of the edge favourites last, under the thumb), away
  * from the thumb. With `selector.browse letters` (the default) every letter has the same stretch of
  * the strip and sliding goes a letter at a time, ticking once per letter: the list holds still with
- * the letter's apps level with its place on the edge (the others dimmed), or with
+ * the letter's apps starting level with its place on the edge (the others dimmed), or with
  * `selector.filter` lists only them. With `apps`, sliding glides through the whole list
  * proportionally (its top is the first app, its bottom the last), sliding slowly aims, an app at a
  * time (`selector.aim`), and the focused row is level with the thumb. Either way the letter you're
@@ -797,6 +817,7 @@ fun AppSelector(
             LazyColumn(
                 state = listState,
                 userScrollEnabled = state.mode == Mode.OPEN,
+                contentPadding = with(density) { PaddingValues(top = state.padTop.toDp(), bottom = state.padBottom.toDp()) },
                 modifier = Modifier
                     .width(panelW)
                     .height(with(density) { panelHPx.toDp() })
@@ -1019,13 +1040,14 @@ fun AppSelector(
                             val yIn = cy - panelTop
                             if (!selecting) {
                                 state.listY = if (byLetter) {
-                                    // The letter's apps, their middle level with the letter's place on the
-                                    // edge, so the eye stays at the thumb's height and the list holds still
-                                    // until the letter changes.
+                                    // The letter's apps start level with its place on the edge, the first one at
+                                    // the thumb's height, so every one is a short move away; moved up only as far
+                                    // as keeps them on screen. The list holds still until the letter changes.
                                     val size = starts[onLetter + 1] - starts[onLetter]
                                     val start = if (onlyLetter) 0 else starts[onLetter]
-                                    val letterY = stripTopPx + edgeMiddles[onLetter] * stripHPx - panelTop
-                                    SelectorMath.levelWith(SelectorMath.letterMiddle(start, size), letterY, rowPx.toFloat())
+                                    val letterY = stripTopPx + edgeMiddles[onLetter] * stripHPx
+                                    val top = SelectorMath.letterTop(letterY, size, rowPx.toFloat(), topPx, topPx + listHPx)
+                                    SelectorMath.levelWith(start.toFloat(), top - panelTop, rowPx.toFloat())
                                 } else {
                                     // The whole list (its top the first app, its bottom the last), or a slow
                                     // slide's aim, brought level with the finger, as Niagara does.
@@ -1080,6 +1102,9 @@ fun AppSelector(
 
                         state.interaction++
                         state.mode = Mode.SCRUB
+                        // A list left open where it was goes back to the panel's own placing.
+                        state.padTop = 0f
+                        state.padBottom = 0f
                         try {
                             update(rowSince)
                             while (true) {
@@ -1146,11 +1171,19 @@ fun AppSelector(
                                             launch(app)
                                         }
                                     } else {
-                                        // Lifted on the edge: leave the list open for a tap or a fling, back
-                                        // in its place (scrolled as far as it went); a letter's apps on their
-                                        // own stay where they are, beside it.
+                                        // Lifted on the edge: leave the list open for a tap or a fling. A tapped
+                                        // letter's apps stay where they are, beside it; with apps, the list goes
+                                        // back in its place (scrolled as far as it went).
                                         state.contact = Float.NaN
-                                        if (!onlyLetter) {
+                                        if (byLetter && !onlyLetter) {
+                                            val (top, bottom, scroll) = SelectorMath.keepInPlace(state.scrollPx, state.shiftPx)
+                                            state.padTop = top
+                                            state.padBottom = bottom
+                                            state.listY = scroll
+                                            state.scrollPx = scroll
+                                            state.shiftPx = 0f
+                                            listState.scrollToPx(scroll, rowPx)
+                                        } else if (!onlyLetter) {
                                             state.listY = state.scrollPx
                                             state.shiftPx = 0f
                                         }

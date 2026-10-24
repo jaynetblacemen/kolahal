@@ -105,11 +105,11 @@ Once your thumb is down, it slides over the whole length.
 - **Slide along the edge to a letter.** It goes a letter at a time, with a tick for each: every
   letter that has apps gets the same stretch of the edge, so a letter with a single app is as easy
   to land on as one with many. The letter you're on shows big in a circle beside your thumb, and the
-  letters around it bulge out from the edge, clear of your thumb (the list is narrower while your thumb is down), so you can see which way
-  the one you want is. The list
-  holds still with that letter's apps level with the circle, so your eyes stay at your thumb's
-  height, and the other letters' apps fade back while you slide; near the list's ends the panel
-  moves to keep them there. **Show letters on the edge** (`selector.letters`) draws each letter
+  letters around it bulge out from the edge, clear of your thumb (the list is narrower while your
+  thumb is down), so you can see which way the one you want is. The list holds still with that
+  letter's apps starting level with the circle, the first one at your thumb's height and the rest
+  below it (moved up only as far as keeps them on screen), and the other letters' apps fade back
+  while you slide; near the list's ends the panel moves to keep them there. **Show letters on the edge** (`selector.letters`) draws each letter
   along the edge at rest, in the middle of its stretch and in place of the handle, so you can see
   where to touch.
 - **Only the letter's apps** (`selector.filter`, off unless you turn it on): the list holds just the
@@ -132,7 +132,8 @@ Once your thumb is down, it slides over the whole length.
   (`selector.actions`), lifting on the list's far side, where the row says ⋯ Actions, opens them
   too. To back out without launching, slide back onto the edge before you lift.
 - **Lift on the edge** and the panel stays open as a normal list (with **Only the letter's apps**,
-  just those): fling it, tap an app to launch, long-press for its actions, or slide the edge again.
+  just those), a tapped letter's apps still beside it: fling it, tap an app to launch, long-press for
+  its actions, or slide the edge again.
   A tap elsewhere, Back, or 4 idle seconds close it.
 
 Android lets an app keep at most 200dp of each screen edge from the back gesture, so only the

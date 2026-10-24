@@ -9,6 +9,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -390,5 +393,29 @@ class AppSelectorTest {
         // 55% of the width, but at least 200dp.
         assertEquals(200f, sliding, 1f)
         assertEquals(360 * 0.7f, open, 1f)
+    }
+
+    /** The centre of the row showing [label], from the top (dp). */
+    private fun rowCentre(label: String) = compose.onNodeWithText(label, useUnmergedTree = true).getUnclippedBoundsInRoot().let { (it.top + it.bottom).value / 2 }
+
+    /**
+     * Tapping a letter: its first app starts level with it, and stays there once the thumb lifts, even
+     * at the list's start (the panel had moved down to put it there); the list still scrolls to its end.
+     */
+    @Test fun aTappedLettersAppsStayBesideIt() {
+        val all = entries
+        val letters = all.last().sectionIndex + 1
+        val first = all.first().item.label
+        show(left = false, position = "bottom")
+        val strip = compose.onNodeWithTag("app-selector-strip").getUnclippedBoundsInRoot()
+        val letterY = strip.top.value + 300f * (SelectorMath.DEAD + 0.5f / letters * (1 - 2 * SelectorMath.DEAD))
+        compose.onNodeWithTag("app-selector").performTouchInput { down(Offset(centerX, 2f)) }
+        compose.waitForIdle()
+        assertEquals("while touching", letterY, rowCentre(first), 2f)
+        compose.onNodeWithTag("app-selector").performTouchInput { up() }
+        compose.waitForIdle()
+        assertEquals("after the tap", letterY, rowCentre(first), 2f)
+        compose.onNodeWithTag("app-selector-panel").performScrollToIndex(all.size - 1)
+        compose.onNodeWithText(all.last().item.label, useUnmergedTree = true).assertIsDisplayed()
     }
 }
