@@ -215,6 +215,16 @@ class CompleterReviewTest {
         assertTrue(lines("open ${app.label.take(4)}").none { it.equals("open ${app.label}", ignoreCase = true) })
     }
 
+    /** Places and months complete; `time` like `date`, keeping its spelling. */
+    @Test fun datePlacesAndCalMonthsComplete() {
+        assertTrue(lines("date new y").toString(), "date New York" in lines("date new y"))
+        assertTrue(lines("date london tok").toString(), "date london Tokyo" in lines("date london tok"))
+        assertTrue(lines("time tok").toString(), "time Tokyo" in lines("time tok"))
+        val month = java.time.Month.DECEMBER.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault()).lowercase()
+        assertTrue(lines("cal ${month.take(3)}").toString(), "cal $month" in lines("cal ${month.take(3)}"))
+        assertTrue(lines("cal $month 2").isEmpty())
+    }
+
     @Test fun personalAppsCarryNoTagAndRowsHaveIcons() {
         val app = apps.apps.value.first { it.profile.kind == ProfileKind.PERSONAL && it.label.length >= 4 }
         assertTrue(labels("info ${app.label.take(4)}").toString(), app.label in labels("info ${app.label.take(4)}"))

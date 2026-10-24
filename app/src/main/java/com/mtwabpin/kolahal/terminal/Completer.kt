@@ -254,6 +254,14 @@ class Completer(private val context: Context, private val data: Data) {
             }
             "theme" -> Keys.THEME.choices.filter { it.starts(arg) }
                 .map { Suggestion.Completion(it, "$head $it", icon = R.drawable.ic_palette) }
+            // `cal dec`: the month names.
+            "cal" -> if (parts.size == 2) MonthCalendar.suggest(last).map { Suggestion.Completion(it, "$head $it") } else emptyList()
+            // The last words typed may be the start of one place (`new y` → New York) after others.
+            // `time` is a synonym, so [cmd] is `date` for both; the line keeps what was typed.
+            "date" -> (minOf(3, parts.size - 1) downTo 1).firstNotNullOfOrNull { n ->
+                WorldClock.suggest(parts.takeLast(n).joinToString(" ")).takeIf { it.isNotEmpty() }
+                    ?.map { Suggestion.Completion(it.name, (parts.dropLast(n) + it.name).joinToString(" ")) }
+            }.orEmpty()
             "font" -> if (parts.size == 3 && parts[1] == "sans") {
                 Keys.FONT_SANS.choices.filter { it.starts(last) }.map { Suggestion.Completion(it, "$head sans $it") }
             } else {
