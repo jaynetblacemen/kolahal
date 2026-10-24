@@ -3,6 +3,7 @@ package com.mtwabpin.kolahal.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.mtwabpin.kolahal.apps.AppEntry
 import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.data.Keys
 import org.junit.Assert.assertEquals
@@ -31,10 +33,67 @@ class AppSelectorTest {
         while (apps.apps.value.size < 5 && System.currentTimeMillis() < until) Thread.sleep(50)
     }
 
-    private fun show(left: Boolean, position: String, list: List<com.mtwabpin.kolahal.apps.AppEntry> = apps.apps.value) = compose.setContent {
+    @Volatile private var launched: AppEntry? = null
+
+    private fun show(left: Boolean, position: String, list: List<AppEntry> = apps.apps.value, backGesture: Boolean = false) = compose.setContent {
         Box(Modifier.size(360.dp, 700.dp)) {
-            AppSelector(list, emptySet(), onLaunch = {}, onLongPress = {}, heightDp = 300, left = left, position = position)
+            AppSelector(
+                list, emptySet(), onLaunch = { launched = it }, onLongPress = {}, heightDp = 300, left = left, position = position,
+                edgeBackGesture = backGesture,
+            )
         }
+    }
+
+    private fun height(tag: String) = compose.onNodeWithTag(tag).getUnclippedBoundsInRoot().let { (it.bottom - it.top).value }
+
+    /** Plan A: with gesture navigation only the middle 200dp of the strip starts the selector, and the handle shows it. */
+    @Test fun withGestureNavigationOnlyTheMiddleStarts() {
+        show(left = false, position = "bottom", backGesture = true)
+        val strip = compose.onNodeWithTag("app-selector-strip").getUnclippedBoundsInRoot()
+        val zone = compose.onNodeWithTag("app-selector").getUnclippedBoundsInRoot()
+        assertEquals(300f, height("app-selector-strip"), 1f)
+        assertEquals(200f, height("app-selector"), 1f)
+        assertEquals(strip.top.value + 50f, zone.top.value, 1f)
+        assertEquals(200f, height("app-selector-handle"), 1f)
+        // Near the strip's top end the edge is Android's: nothing opens.
+        compose.onNodeWithTag("app-selector-strip").performTouchInput { down(Offset(centerX, 20.dp.toPx())); up() }
+        compose.onNodeWithTag("app-selector-panel").assertDoesNotExist()
+        compose.onNodeWithTag("app-selector").performTouchInput { down(center) }
+        compose.onNodeWithTag("app-selector-panel").assertExists()
+    }
+
+    /**
+     * Started in the middle, the thumb still reaches the first app at the strip's top end and the last at its
+     * bottom. Picking starts 32dp off the edge: from the 36dp strip's centre, a 60dp slide is well past it.
+     */
+    @Test fun onceDownTheThumbGlidesTheWholeLength() {
+        val list = apps.apps.value
+        val entries = SelectorMath.build(list.filter { !it.hidden }, { it.label }, { it.key }, { false }, { it.profile.kind.ordinal })
+        show(left = false, position = "bottom", list = list, backGesture = true)
+        compose.onNodeWithTag("app-selector").performTouchInput {
+            down(center)
+            moveTo(Offset(centerX, -48.dp.toPx()))
+            moveTo(Offset(centerX - 60.dp.toPx(), -48.dp.toPx()))
+            up()
+        }
+        compose.runOnIdle { assertEquals(entries.first().item.key, launched?.key) }
+        launched = null
+        compose.onNodeWithTag("app-selector").performTouchInput {
+            down(center)
+            moveTo(Offset(centerX, height + 48.dp.toPx()))
+            moveTo(Offset(centerX - 60.dp.toPx(), height + 48.dp.toPx()))
+            up()
+        }
+        compose.runOnIdle { assertEquals(entries.last().item.key, launched?.key) }
+    }
+
+    /** Three-button navigation: the whole strip starts it, as before, with the short handle. */
+    @Test fun withButtonsTheWholeStripStarts() {
+        show(left = false, position = "bottom", backGesture = false)
+        assertEquals(300f, height("app-selector"), 1f)
+        assertEquals(64f, height("app-selector-handle"), 1f)
+        compose.onNodeWithTag("app-selector").performTouchInput { down(Offset(centerX, 20.dp.toPx())) }
+        compose.onNodeWithTag("app-selector-panel").assertExists()
     }
 
     /** The app you're at sits level with the thumb: a short list (it can't scroll) with the strip high up too. */

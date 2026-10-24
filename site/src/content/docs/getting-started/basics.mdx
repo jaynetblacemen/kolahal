@@ -88,7 +88,10 @@ the keyboard is down, a slim handle sits on an edge of the log. It opens an **ap
 drive with one thumb, no typing needed. **Edge** puts it on the right (the default) or the left
 (`selector.side`), **Where on the edge** at the bottom (the default), middle or top
 (`selector.position`), and **Length on the edge** sets how much of the edge it takes
-(`selector.height`): keep it away from where you swipe back.
+(`selector.height`): keep it away from where you swipe back. With gesture navigation, Android lets
+an app keep the back swipe off only 200 dp of an edge, so a touch starts the selector only in the
+middle 200 dp of that length, where the handle is drawn; at the ends the edge swipes back as usual.
+Once your thumb is down, it slides over the whole length.
 
 - **Touch the handle's part of the edge.** A panel slides in on the other side of the screen, the
   whole height, listing *all* your apps in one list:

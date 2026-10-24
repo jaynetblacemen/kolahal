@@ -104,7 +104,7 @@ The `theme` and `font` commands are unchanged.
 | `selector.side` | choice: `right` `left` | `right` | the edge you slide on; the list of apps opens on the other side |
 | `selector.position` | choice: `bottom` `middle` `top` | `bottom` | where on the edge you slide: keep it away from where you swipe back |
 | `selector.handle` | bool | `on` | show the slim A–Z handle on the edge; off hides it while the selector keeps working |
-| `selector.height` | number 200–900 | `350` | length (dp) of the part of the edge you slide on: shorter means less thumb travel; the list uses the whole height |
+| `selector.height` | number 200–900 | `350` | length (dp) of the part of the edge you slide on: shorter means less thumb travel; the list uses the whole height. With gesture navigation a touch starts it only in the middle 200 dp, where the handle is |
 | `suggestions.max` | number 0–30 | `30` | max suggestions shown while typing |
 | `search.engine` | choice: `duckduckgo` `google` `bing` `brave` `startpage` `kagi` `custom` | `duckduckgo` | web search engine for `search` / `g` |
 | `search.url` | text | `https://duckduckgo.com/?q=%s` | custom search URL (`%s` = query), used when `search.engine` = `custom` |

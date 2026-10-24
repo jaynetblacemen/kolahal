@@ -6,6 +6,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SelectorMathTest {
+    /** Plan A: with gesture navigation a touch starts only in the middle 200dp; otherwise anywhere on the strip. */
+    @Test fun aTouchStartsInTheMiddleWhenTheEdgeSwipesBack() {
+        assertEquals(75f to 200f, SelectorMath.startZone(350f, 200f, backGesture = true))
+        assertEquals(0f to 350f, SelectorMath.startZone(350f, 200f, backGesture = false))
+        assertEquals(0f to 180f, SelectorMath.startZone(180f, 200f, backGesture = true))
+    }
+
     @Test fun letterOfSectionsByFirstLetter() {
         assertEquals('M', SelectorMath.letterOf("Maps"))
         assertEquals('M', SelectorMath.letterOf("maps"))

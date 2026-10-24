@@ -20,12 +20,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemGestures
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -58,6 +60,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -174,6 +177,14 @@ internal object SelectorMath {
 
     fun maxScroll(count: Int, rowPx: Float, viewportPx: Float): Float = max(0f, count * rowPx - viewportPx)
 
+    /**
+     * Where on a strip [stripH] long a touch may start the selector, as (top, height) within it:
+     * with Android's back swipe on the edge ([backGesture]), only the middle [limit] (Android keeps
+     * the swipe off at most 200dp of an edge for an app); otherwise the whole strip.
+     */
+    fun startZone(stripH: Float, limit: Float, backGesture: Boolean): Pair<Float, Float> =
+        if (!backGesture || stripH <= limit) 0f to stripH else (stripH - limit) / 2f to limit
+
     /** The list position (rows) under a finger [yInPanel] px below the panel's top. */
     fun contact(scrollPx: Float, yInPanel: Float, rowPx: Float): Float = (scrollPx + yInPanel) / rowPx
 
@@ -233,6 +244,18 @@ internal object SelectorMath {
 
 private enum class Mode { CLOSED, SCRUB, SELECT, OPEN }
 
+/**
+ * Whether the selector's edge ([left], else the right) has Android's back swipe: gesture navigation
+ * reports a system gesture inset there, three-button navigation doesn't.
+ */
+@Composable
+internal fun hasEdgeBackGesture(left: Boolean): Boolean {
+    val density = LocalDensity.current
+    val direction = LocalLayoutDirection.current
+    val insets = WindowInsets.systemGestures
+    return (if (left) insets.getLeft(density, direction) else insets.getRight(density, direction)) > 0
+}
+
 private class SelectorState {
     var mode by mutableStateOf(Mode.CLOSED)
     /** List position (rows) under the finger while it is down; NaN when not touching. */
@@ -287,8 +310,9 @@ private fun LazyListState.scrollToPx(px: Float, rowPx: Int) {
  * Back or 4 s idle closes it.
  *
  * The strip consumes all its touches, so the home pager never turns the page under it.
- * Gesture exclusion: Android honours at most 200dp per screen edge, so only the strip's central
- * 200dp opts out of the back swipe; elsewhere an edge swipe still goes back (and cancels).
+ * Gesture navigation: Android keeps the back swipe off at most 200dp of an edge for an app, so a
+ * touch starts the selector only in the strip's middle 200dp, where the handle is drawn at rest;
+ * elsewhere the edge is Android's. Once down, the thumb uses the strip's whole length.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -305,6 +329,8 @@ fun AppSelector(
     left: Boolean = false,
     /** selector.position: the strip at the edge's `bottom`, `middle` or `top`. */
     position: String = "bottom",
+    /** Android's back swipe on this edge (gesture navigation): a touch starts the selector only where it is kept off. */
+    edgeBackGesture: Boolean = hasEdgeBackGesture(left),
 ) {
     val entries = remember(apps, pinned) {
         SelectorMath.build(
@@ -365,6 +391,8 @@ fun AppSelector(
         val panelXPx = if (left) containerW - panelWPx else 0f
         val stripXPx = if (left) 0f else containerW - stripWPx
         val exclusionPx = with(density) { 200.dp.toPx() }
+        // With gesture navigation, a touch starts the selector only in the strip's middle 200dp.
+        val (zoneTopPx, zoneHPx) = SelectorMath.startZone(stripHPx, exclusionPx, edgeBackGesture)
         // How far off the edge picking starts: a thumb drifts a little while it slides along the edge.
         val leavePx = with(density) { LEAVE.toPx() }
         val slopPx = with(density) { 8.dp.toPx() }
@@ -430,21 +458,67 @@ fun AppSelector(
             }
         }
 
-        // The edge strip: invisible touch area with a slim handle; owns every touch it gets.
+        // The strip's whole length, drawn: the handle marks where a touch starts, and follows the
+        // thumb while it is down.
         Box(
             Modifier
                 .offset { IntOffset(stripXPx.roundToInt(), stripTopPx.roundToInt()) }
                 .width(STRIP_W)
                 .height(with(density) { stripHPx.toDp() })
+                .testTag("app-selector-strip"),
+        ) {
+            val touching = state.mode == Mode.SCRUB || state.mode == Mode.SELECT
+            if (showHandle || touching) {
+                // At rest: 64dp in the middle, or with gesture navigation the whole part a touch may
+                // start on. Under the thumb: 64dp that follows it along the strip.
+                val handleH = if (!touching && edgeBackGesture) with(density) { zoneHPx.toDp() } else 64.dp
+                val handleHPx = with(density) { handleH.toPx() }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .align(if (left) Alignment.CenterStart else Alignment.CenterEnd)
+                        .padding(start = if (left) 3.dp else 0.dp, end = if (left) 0.dp else 3.dp)
+                        .graphicsLayer {
+                            translationY = if (touching) {
+                                (state.fingerY - stripTopPx - stripHPx / 2).coerceIn(-(stripHPx - handleHPx) / 2, (stripHPx - handleHPx) / 2)
+                            } else 0f
+                            alpha = if (open && !touching) 0.35f else 1f
+                        },
+                ) {
+                    val small = Term.text.copy(color = Term.dim.copy(alpha = 0.45f), fontSize = 8.sp, lineHeight = 9.sp)
+                    if (!touching) Text("A", style = small)
+                    Box(
+                        Modifier
+                            .padding(vertical = 2.dp)
+                            .width(3.dp)
+                            .height(handleH)
+                            .testTag("app-selector-handle")
+                            .background(if (touching) Term.prompt else Term.dim.copy(alpha = 0.55f), RoundedCornerShape(2.dp))
+                    )
+                    if (!touching) Text("Z", style = small)
+                }
+            }
+        }
+
+        // Where a touch starts the selector: the whole strip, or with gesture navigation only its
+        // middle 200dp, the part Android keeps the back swipe off; anywhere else the edge is
+        // Android's, and Back works there as usual. It owns every touch it gets, so the home pager
+        // never turns the page under it, and it follows the finger past its own ends: the glide
+        // uses the strip's whole length.
+        Box(
+            Modifier
+                .offset { IntOffset(stripXPx.roundToInt(), (stripTopPx + zoneTopPx).roundToInt()) }
+                .width(STRIP_W)
+                .height(with(density) { zoneHPx.toDp() })
                 .testTag("app-selector")
                 .semantics { contentDescription = "app selector: slide along the edge to browse all apps" }
-                // Only the central 200dp: Android ignores exclusion beyond 200dp per edge.
+                // At most 200dp: Android ignores exclusion beyond 200dp per edge.
                 .systemGestureExclusion { c ->
                     val h = c.size.height.toFloat()
                     val top = ((h - exclusionPx) / 2).coerceAtLeast(0f)
                     Rect(0f, top, c.size.width.toFloat(), min(h, top + exclusionPx))
                 }
-                .pointerInput(entries, rowPx, panelHPx, panelTopPx, stripTopPx, stripHPx, left) {
+                .pointerInput(entries, rowPx, panelHPx, panelTopPx, stripTopPx, stripHPx, zoneTopPx, left) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         down.consume()
@@ -454,7 +528,7 @@ fun AppSelector(
                         }
                         val maxScrollPx = SelectorMath.maxScroll(count, rowPx.toFloat(), panelHPx)
                         var x = down.position.x
-                        var y = down.position.y
+                        var y = down.position.y + zoneTopPx
                         var selecting = false
                         var lastSection = -1
                         // The row last felt as a tick (the list) and the state last felt (letters or list).
@@ -573,7 +647,7 @@ fun AppSelector(
                                 }
                                 change.consume()
                                 x = change.position.x
-                                y = change.position.y
+                                y = change.position.y + zoneTopPx
                                 // Off the edge, toward the panel: the list holds still to pick from.
                                 // Picking starts LEAVE off the edge and ends only halfway back, so a
                                 // thumb resting at the line doesn't flip between the two.
@@ -588,37 +662,7 @@ fun AppSelector(
                         }
                     }
                 },
-        ) {
-            // The handle: a slim bar hugging the edge, following the finger while touched.
-            val touching = state.mode == Mode.SCRUB || state.mode == Mode.SELECT
-            if (showHandle || touching) {
-            val handleH = 64.dp
-            val handleHPx = with(density) { handleH.toPx() }
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .align(if (left) Alignment.CenterStart else Alignment.CenterEnd)
-                    .padding(start = if (left) 3.dp else 0.dp, end = if (left) 0.dp else 3.dp)
-                    .graphicsLayer {
-                        translationY = if (touching) {
-                            (state.fingerY - stripTopPx - stripHPx / 2).coerceIn(-(stripHPx - handleHPx) / 2, (stripHPx - handleHPx) / 2)
-                        } else 0f
-                        alpha = if (open && !touching) 0.35f else 1f
-                    },
-            ) {
-                val small = Term.text.copy(color = Term.dim.copy(alpha = 0.45f), fontSize = 8.sp, lineHeight = 9.sp)
-                if (!touching) Text("A", style = small)
-                Box(
-                    Modifier
-                        .padding(vertical = 2.dp)
-                        .width(3.dp)
-                        .height(handleH)
-                        .background(if (touching) Term.prompt else Term.dim.copy(alpha = 0.55f), RoundedCornerShape(2.dp))
-                )
-                if (!touching) Text("Z", style = small)
-            }
-            }
-        }
+        )
     }
 }
 
