@@ -90,6 +90,7 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sign
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /** One row of the selector list: an app under its section letter (or the favourites section). */
 internal data class SelectorEntry<T>(
@@ -156,18 +157,49 @@ internal object SelectorMath {
     /** Dead band at each end of the strip: the first and last few percent pin the list's ends. */
     const val DEAD = 0.04f
 
-    /**
-     * Strip position [t] (0 top … 1 bottom) → list scroll fraction: proportional, with dead
-     * bands and a slight ease at the ends so the first and last apps are easy to land on.
-     */
-    fun scrollFraction(t: Float): Float {
-        val u = ((t - DEAD) / (1f - 2 * DEAD)).coerceIn(0f, 1f)
-        val smooth = u * u * (3f - 2f * u)
-        return 0.7f * u + 0.3f * smooth
+    /** How many entries each section has (★, #, A–Z, in list order): what [Sections] shares the strip by. */
+    fun <T> sectionSizes(entries: List<SelectorEntry<T>>): List<Int> {
+        val sizes = IntArray((entries.lastOrNull()?.sectionIndex ?: -1) + 1)
+        for (e in entries) sizes[e.sectionIndex]++
+        return sizes.toList()
     }
 
-    /** The list position (rows) [fraction] of the way along a list of [count]: 0 the first row's top, count the last's bottom. */
-    fun alongList(fraction: Float, count: Int): Float = (fraction * count).coerceIn(0f, max(0f, count - 0.01f))
+    /**
+     * Plan D: how the strip is shared out between the list's sections, [sectionSizes] apps each in
+     * list order. Each gets room in proportion to the square root of its size, so a letter with four
+     * times the apps gets twice the room, and a letter with a single app is no sliver.
+     */
+    class Sections(sectionSizes: List<Int>) {
+        private val sizes = sectionSizes.toIntArray()
+        private val count = sizes.sum()
+
+        /** Each section's share of the strip between the dead bands; together they make 1. */
+        val shares: FloatArray = FloatArray(sizes.size) { sqrt(sizes[it].toFloat()) }.let { roots ->
+            val sum = roots.sum()
+            FloatArray(roots.size) { if (sum > 0f) roots[it] / sum else 0f }
+        }
+
+        /**
+         * Strip position [t] (0 top … 1 bottom) → list position (rows): the dead bands pin the list's
+         * ends, and across a section's share its apps go by evenly.
+         */
+        fun along(t: Float): Float {
+            if (count == 0) return 0f
+            val u = ((t - DEAD) / (1f - 2 * DEAD)).coerceIn(0f, 1f)
+            var acc = 0f
+            var start = 0
+            for (i in sizes.indices) {
+                val w = shares[i]
+                if (u <= acc + w || i == sizes.lastIndex) {
+                    val f = if (w > 0f) ((u - acc) / w).coerceIn(0f, 1f) else 0f
+                    return (start + f * sizes[i]).coerceIn(0f, count - 0.01f)
+                }
+                acc += w
+                start += sizes[i]
+            }
+            return 0f
+        }
+    }
 
     /** Where the list must be (px) to draw list position [at] (rows) level with [yInPanel]: can be past either end. */
     fun levelWith(at: Float, yInPanel: Float, rowPx: Float): Float = at * rowPx - yInPanel
@@ -382,6 +414,8 @@ fun AppSelector(
             profileRank = { it.profile.kind.ordinal },
         )
     }
+    // Plan D: every letter gets room on the strip, by the square root of its number of apps.
+    val sections = remember(entries) { SelectorMath.Sections(SelectorMath.sectionSizes(entries)) }
     val state = remember { SelectorState() }
     val listState = rememberLazyListState()
     val haptics = LocalHapticFeedback.current
@@ -603,7 +637,7 @@ fun AppSelector(
                                 // Along the strip, the whole list (its top the first app, its bottom the
                                 // last), brought level with the finger: scrolled, and past the list's ends
                                 // the panel moved.
-                                val at = SelectorMath.alongList(SelectorMath.scrollFraction(y / stripHPx), count)
+                                val at = sections.along(y / stripHPx)
                                 state.listY = SelectorMath.levelWith(at, yIn, rowPx.toFloat())
                             }
                             val (scroll, shift) = SelectorMath.place(state.listY, maxScrollPx)

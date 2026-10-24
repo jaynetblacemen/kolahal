@@ -62,6 +62,7 @@ class SelectorMathTest {
             list.map { it.item.label },
         )
         assertEquals(listOf('★', '#', 'C', 'C', 'C', 'C', 'M'), list.map { it.section })
+        assertEquals(listOf(1, 1, 4, 1), SelectorMath.sectionSizes(list))
         assertEquals(listOf(true, true, true, false, false, false, true), list.map { it.sectionStart })
         assertEquals(listOf(0, 1, 2, 2, 2, 2, 3), list.map { it.sectionIndex })
         assertTrue(list[0].favourite && !list[3].favourite)
@@ -78,32 +79,44 @@ class SelectorMathTest {
         assertTrue(build(emptyList()).isEmpty())
     }
 
-    @Test fun scrollFractionIsProportionalWithEasedEnds() {
-        assertEquals(0f, SelectorMath.scrollFraction(-1f))
-        assertEquals(0f, SelectorMath.scrollFraction(0f))
-        assertEquals(0f, SelectorMath.scrollFraction(SelectorMath.DEAD))
-        assertEquals(1f, SelectorMath.scrollFraction(1f))
-        assertEquals(1f, SelectorMath.scrollFraction(2f))
-        assertEquals(0.5f, SelectorMath.scrollFraction(0.5f), 1e-5f)
+    /** Plan D: each section's room goes by the square root of its size: four times the apps, twice the room. */
+    @Test fun everyLetterGetsRoom() {
+        val sections = SelectorMath.Sections(listOf(1, 4, 16))
+        // √1 : √4 : √16 is 1 : 2 : 4, out of 7.
+        assertEquals(1f / 7, sections.shares[0], 1e-5f)
+        assertEquals(2f / 7, sections.shares[1], 1e-5f)
+        assertEquals(4f / 7, sections.shares[2], 1e-5f)
+        val d = SelectorMath.DEAD
+        fun t(u: Float) = d + u * (1 - 2 * d)
+        // The dead bands pin the ends; halfway across a section's room is halfway through its apps.
+        assertEquals(0f, sections.along(0f), 0f)
+        assertEquals(0f, sections.along(d), 0f)
+        assertEquals(20.99f, sections.along(1f), 0.001f)
+        assertEquals(0.5f, sections.along(t(0.5f / 7)), 1e-3f)
+        assertEquals(1f + 2f, sections.along(t(2f / 7)), 1e-3f)
+        assertEquals(5f + 8f, sections.along(t(5f / 7)), 1e-3f)
         // Monotonic and continuous: small finger moves never jump.
         var prev = 0f
         for (i in 0..1000) {
-            val f = SelectorMath.scrollFraction(i / 1000f)
-            assertTrue(f >= prev)
-            assertTrue(f - prev < 0.01f)
-            prev = f
+            val a = sections.along(i / 1000f)
+            assertTrue(a >= prev)
+            assertTrue(a - prev < 0.2f)
+            prev = a
         }
-        // Eased: slower than linear just after the top dead band.
-        val u = 0.1f
-        assertTrue(SelectorMath.scrollFraction(SelectorMath.DEAD + u * (1 - 2 * SelectorMath.DEAD)) < u)
+        assertEquals(0f, SelectorMath.Sections(emptyList()).along(0.5f), 0f)
     }
 
     @Test fun theStripCoversTheWholeList() {
         val rows = 100
+        val one = SelectorMath.Sections(listOf(rows))
         // The strip's top is the first app, its bottom the last, its middle the middle one.
-        assertEquals(0, SelectorMath.focusedIndex(SelectorMath.alongList(SelectorMath.scrollFraction(0f), rows), rows))
-        assertEquals(rows - 1, SelectorMath.focusedIndex(SelectorMath.alongList(SelectorMath.scrollFraction(1f), rows), rows))
-        assertEquals(50, SelectorMath.focusedIndex(SelectorMath.alongList(SelectorMath.scrollFraction(0.5f), rows), rows))
+        assertEquals(0, SelectorMath.focusedIndex(one.along(0f), rows))
+        assertEquals(rows - 1, SelectorMath.focusedIndex(one.along(1f), rows))
+        assertEquals(50, SelectorMath.focusedIndex(one.along(0.5f), rows))
+        // With sections too: the ends are the list's ends.
+        val many = SelectorMath.Sections(listOf(5, 2, 30, 1, 62))
+        assertEquals(0, SelectorMath.focusedIndex(many.along(0f), rows))
+        assertEquals(rows - 1, SelectorMath.focusedIndex(many.along(1f), rows))
     }
 
     /** As Niagara does: the focused app is drawn level with the thumb, wherever on the screen it is. */
@@ -115,7 +128,7 @@ class SelectorMathTest {
         // Where a list position is drawn: its row, less the scroll, plus the panel's shift.
         fun drawnAt(at: Float, listY: Float) = SelectorMath.place(listY, max).let { (scroll, shift) -> at * row - scroll + shift }
         for ((fraction, finger) in listOf(0.5f to 600f, 0f to 600f, 1f to 100f, 0.02f to 750f)) {
-            val at = SelectorMath.alongList(fraction, rows)
+            val at = (fraction * rows).coerceIn(0f, rows - 0.01f)
             val listY = SelectorMath.levelWith(at, finger, row)
             // Level with the finger, at the list's ends too (the panel moves the rest of the way).
             assertEquals("$fraction", finger, drawnAt(at, listY), 0.01f)
