@@ -93,8 +93,8 @@ an app keep the back swipe off only 200 dp of an edge, so a touch starts the sel
 middle 200 dp of that length, where the handle is drawn; at the ends the edge swipes back as usual.
 Once your thumb is down, it slides over the whole length.
 
-- **Touch the handle's part of the edge.** A panel slides in on the other side of the screen, the
-  whole height, listing *all* your apps in one list:
+- **Touch the handle's part of the edge.** Home dims, and a panel slides in on the other side of the
+  screen, the whole height, listing *all* your apps in one list:
   your favourites (★), then everything alphabetically, with small section letters in the
   margin (`#` holds apps that start with a digit, a symbol or a non-Latin letter), and each app's
   icon if you turn on the selector's **Show app icons** (`selector.icons`). Work and
@@ -102,19 +102,26 @@ Once your thumb is down, it slides over the whole length.
   out. About 20 apps fit on screen at once. With the selector at the bottom of the edge (the
   default), your favourites come last, at the bottom where your thumb rests; at the middle or the
   top they come first.
-- **Slide along the edge** to glide through the whole list. Your thumb's place on its part of the
-  edge maps smoothly onto the list (its top = the first app, its bottom = the last), so small
-  moves give fine control and a long slide crosses the alphabet. Every letter gets room along the
-  edge by the square root of its number of apps: a letter with four times the apps gets twice the
-  length, so a letter with a single app is still easy to land on. Letters with no apps take no
-  room. **Show letters on the edge** (`selector.letters`) draws each letter along the edge, in the
-  middle of its stretch and in place of the handle, so you can see where to touch. The focused app sits level with
-  your thumb, magnified (its neighbours a little less) with its letter beside it, so your eyes stay
-  at your thumb's height; near the list's ends the panel moves to keep it there. A tick marks each
-  new letter.
-- **Slide slowly to aim.** Under about 100 dp a second, the list moves one app for every 10 dp of
-  your slide, with a light tick for each, instead of gliding the whole list: easier to land on the
-  app you want. Speed up again and it catches up with where a glide would put it.
+- **Slide along the edge to a letter.** It goes a letter at a time, with a tick for each: every
+  letter that has apps gets the same stretch of the edge, so a letter with a single app is as easy
+  to land on as one with many. The letter you're on shows big in a circle beside your thumb, and the
+  letters around it bulge out from the edge, clear of your thumb (the list is narrower while your thumb is down), so you can see which way
+  the one you want is. The list
+  holds still with that letter's apps level with the circle, so your eyes stay at your thumb's
+  height, and the other letters' apps fade back while you slide; near the list's ends the panel
+  moves to keep them there. **Show letters on the edge** (`selector.letters`) draws each letter
+  along the edge at rest, in the middle of its stretch and in place of the handle, so you can see
+  where to touch.
+- **Only the letter's apps** (`selector.filter`, off unless you turn it on): the list holds just the
+  letter's apps instead of the whole list at that letter, beside the circle.
+- **Slide through** (`selector.browse`) set to `apps` glides through the whole list instead, an app at
+  a time. Your thumb's place on its part of the edge maps smoothly onto the list (its top = the
+  first app, its bottom = the last), so small moves give fine control and a long slide crosses the
+  alphabet. Every letter gets room along the edge by the square root of its number of apps: a
+  letter with four times the apps gets twice the length. The focused app sits level with your
+  thumb, magnified (its neighbours a little less), and the circle shows its letter. Slide slowly to
+  aim: under about 100 dp a second, the list moves one app for every 10 dp of your slide, with a
+  light tick for each; speed up again and it catches up with where a glide would put it.
   (`selector.aim` and `selector.aim-speed`, with `config set` for now.)
 - **Slide well off the edge, toward the panel,** and the list holds still: move up or down to pick
   an app (near the panel's top or bottom it keeps scrolling), then **lift to launch** it. A short buzz
@@ -124,9 +131,9 @@ Once your thumb is down, it slides over the whole length.
   it) are in the list you leave open; with **App actions while picking** set to `far-side`
   (`selector.actions`), lifting on the list's far side, where the row says ⋯ Actions, opens them
   too. To back out without launching, slide back onto the edge before you lift.
-- **Lift on the edge** and the panel stays open as a normal list: fling it, tap an app to launch,
-  long-press for its actions, or slide the edge again. A tap elsewhere, Back, or 4 idle seconds
-  close it.
+- **Lift on the edge** and the panel stays open as a normal list (with **Only the letter's apps**,
+  just those): fling it, tap an app to launch, long-press for its actions, or slide the edge again.
+  A tap elsewhere, Back, or 4 idle seconds close it.
 
 Android lets an app keep at most 200dp of each screen edge from the back gesture, so only the
 middle 200dp of the edge does; above and below it a swipe in from the edge still goes back.

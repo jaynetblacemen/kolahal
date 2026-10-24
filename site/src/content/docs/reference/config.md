@@ -100,15 +100,17 @@ The `theme` and `font` commands are unchanged.
 | `suggestions.auto` | bool | `on` | show suggestions only while typing (keyboard up or text in the prompt) |
 | `suggestions.style` | choice: `list` `chips` | `list` | while typing: a list above the prompt (best match at the bottom, nearest the thumb, with command descriptions) or a strip of chips |
 | `suggestions.rows` | number 1–2 | `2` | rows of suggestion chips while typing (`suggestions.style chips`) |
-| `selector.rail` | bool | `off` | the app selector on an edge of the log while the keyboard is down: slide along it to glide through all your apps, let go on one to launch |
+| `selector.rail` | bool | `off` | the app selector on an edge of the log while the keyboard is down: slide along it to a letter, then onto the list to pick an app, let go on one to launch |
+| `selector.browse` | choice: `letters` `apps` | `letters` | sliding along the edge: `letters` goes a letter at a time, its apps level with your thumb and the letter big beside it; `apps` glides through the whole list an app at a time |
+| `selector.filter` | bool | `off` | with `letters`: the list shows only the letter's apps, instead of the whole list at that letter |
 | `selector.side` | choice: `right` `left` | `right` | the edge you slide on; the list of apps opens on the other side |
 | `selector.position` | choice: `bottom` `middle` `top` | `bottom` | where on the edge you slide: keep it away from where you swipe back |
 | `selector.handle` | bool | `on` | show the slim A–Z handle on the edge; off hides it while the selector keeps working |
-| `selector.letters` | bool | `off` | show the letters along the edge, each where its apps are, so you can see where to touch; only letters that have apps |
+| `selector.letters` | bool | `off` | show the letters along the edge at rest, each where its stretch is, so you can see where to touch; only letters that have apps |
 | `selector.height` | number 200–900 | `350` | length (dp) of the part of the edge you slide on: shorter means less thumb travel; the list uses the whole height. With gesture navigation a touch starts it only in the middle 200 dp, where the handle is |
 | `selector.actions` | choice: `far-side` `off` | `off` | while you pick, an app's actions: `far-side` opens them when you lift on the list's far side; `off` leaves them to the open list (long-press) |
 | `selector.icons` | bool | `off` | show each app's icon in the app selector's list |
-| `selector.aim` | number 0–40 | `10` | slide slowly along the edge to aim: the list moves an app per this many dp (`0`: a slide always glides the whole list); not in Settings yet |
+| `selector.aim` | number 0–40 | `10` | with `selector.browse apps`, slide slowly along the edge to aim: the list moves an app per this many dp (`0`: a slide always glides the whole list); not in Settings yet |
 | `selector.aim-speed` | number 20–400 | `100` | slides slower than this (dp a second) aim; from two and a half times it they glide again; not in Settings yet |
 | `suggestions.max` | number 0–30 | `30` | max suggestions shown while typing |
 | `search.engine` | choice: `duckduckgo` `google` `bing` `brave` `startpage` `kagi` `custom` | `duckduckgo` | web search engine for `search` / `g` |

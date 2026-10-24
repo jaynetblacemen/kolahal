@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -49,11 +50,14 @@ class AppSelectorTest {
         actions: String = "off",
         icons: Boolean = false,
         letters: Boolean = false,
+        browse: String = "letters",
+        filter: Boolean = false,
     ) = compose.setContent {
         Box(Modifier.size(360.dp, 700.dp)) {
             AppSelector(
                 list, emptySet(), onLaunch = { launched = it }, onLongPress = { pressed = it }, heightDp = 300, left = left,
                 position = position, edgeBackGesture = backGesture, actions = actions, icons = icons, letters = letters,
+                browse = browse, filter = filter,
             )
         }
     }
@@ -81,7 +85,7 @@ class AppSelectorTest {
         var aimDp by mutableIntStateOf(40)
         compose.setContent {
             Box(Modifier.size(360.dp, 700.dp)) {
-                AppSelector(list, emptySet(), onLaunch = { launched = it }, onLongPress = {}, heightDp = 300, edgeBackGesture = false, aimDp = aimDp)
+                AppSelector(list, emptySet(), onLaunch = { launched = it }, onLongPress = {}, heightDp = 300, edgeBackGesture = false, aimDp = aimDp, browse = "apps")
             }
         }
         val start = order.indexOf(launchAfterSlowSlide(0)!!.key)
@@ -122,7 +126,7 @@ class AppSelectorTest {
 
     private fun lettersShown() = compose.onAllNodesWithTag("app-selector-letter", useUnmergedTree = true).fetchSemanticsNodes()
 
-    /** selector.letters: every letter that has apps, top to bottom in the list's order, and only those; none under the thumb. */
+    /** selector.letters: every letter that has apps, top to bottom in the list's order, and only those; under the thumb the wave takes over. */
     @Test fun lettersShowAlongTheEdge() {
         val list = apps.apps.value
         val expected = SelectorMath.build(list.filter { !it.hidden }, { it.label }, { it.key }, { false }, { it.profile.kind.ordinal })
@@ -219,13 +223,13 @@ class AppSelectorTest {
     }
 
     /**
-     * Started in the middle, the thumb still reaches the first app at the strip's top end and the last at its
+     * Gliding (apps): started in the middle, the thumb still reaches the first app at the strip's top end and the last at its
      * bottom. Picking starts 32dp off the edge: from the 36dp strip's centre, a 60dp slide is well past it.
      */
     @Test fun onceDownTheThumbGlidesTheWholeLength() {
         val list = apps.apps.value
         val entries = SelectorMath.build(list.filter { !it.hidden }, { it.label }, { it.key }, { false }, { it.profile.kind.ordinal })
-        show(left = false, position = "bottom", list = list, backGesture = true)
+        show(left = false, position = "bottom", list = list, backGesture = true, browse = "apps")
         compose.onNodeWithTag("app-selector").performTouchInput {
             down(center)
             moveTo(Offset(centerX, -48.dp.toPx()))
@@ -297,5 +301,94 @@ class AppSelectorTest {
         val strip = compose.onNodeWithTag("app-selector").getUnclippedBoundsInRoot()
         // Between the top gap (8dp) and the bottom one (72dp from the bottom).
         assertEquals(((8 + 628) / 2f), ((strip.top + strip.bottom) / 2).value, 1f)
+    }
+    private fun bubble() = compose.onNodeWithTag("app-selector-bubble", useUnmergedTree = true).fetchSemanticsNode()
+        .config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString("")
+
+    private val entries get() = SelectorMath.build(apps.apps.value.filter { !it.hidden }, { it.label }, { it.key }, { false }, { it.profile.kind.ordinal })
+
+    /** The keys of the apps under the first or the last letter. */
+    private fun letterApps(last: Boolean): Set<String> {
+        val all = entries
+        val section = if (last) all.last().sectionIndex else 0
+        return all.filter { it.sectionIndex == section }.map { it.item.key }.toSet()
+    }
+
+    /**
+     * Letters (the default): the strip's top end is the first letter and its bottom end the last, shown big
+     * in the bubble; sliding off the edge there picks one of that letter's apps.
+     */
+    @Test fun aSlideGoesALetterAtATime() {
+        val first = entries.first().section.toString()
+        val last = entries.last().section.toString()
+        show(left = false, position = "bottom")
+        compose.onNodeWithTag("app-selector").performTouchInput { down(Offset(centerX, 2f)) }
+        compose.waitForIdle()
+        assertEquals(first, bubble())
+        compose.onNodeWithTag("app-selector").performTouchInput { moveTo(Offset(centerX, height - 2f)) }
+        compose.waitForIdle()
+        assertEquals(last, bubble())
+        compose.onNodeWithTag("app-selector").performTouchInput { moveTo(Offset(centerX - 60.dp.toPx(), height - 2f)); up() }
+        compose.runOnIdle { assertTrue("${launched?.label} is a $last app", launched?.key in letterApps(last = true)) }
+        // Picking, and after, no bubble.
+        compose.onAllNodesWithTag("app-selector-bubble", useUnmergedTree = true).assertCountEquals(0)
+    }
+
+    private fun panelRows() = (height("app-selector-panel") / 38f).let { kotlin.math.round(it).toInt() }
+
+    /** selector.filter: the list holds only the letter's apps, and stays so when you lift on the edge. */
+    @Test fun withTheFilterTheListHoldsOnlyTheLettersApps() {
+        val firstApps = letterApps(last = false)
+        show(left = false, position = "bottom", filter = true)
+        compose.onNodeWithTag("app-selector").performTouchInput { down(Offset(centerX, 2f)) }
+        compose.waitForIdle()
+        assertEquals(firstApps.size, panelRows())
+        compose.onNodeWithTag("app-selector").performTouchInput { up() }
+        compose.waitForIdle()
+        compose.onAllNodesWithTag("app-selector-bubble", useUnmergedTree = true).assertCountEquals(0)
+        assertEquals(firstApps.size, panelRows())
+    }
+
+    /** selector.filter: picking from a letter's apps alone launches one of them. */
+    @Test fun withTheFilterAPickIsOneOfTheLettersApps() {
+        show(left = false, position = "bottom", filter = true)
+        compose.onNodeWithTag("app-selector").performTouchInput {
+            down(Offset(centerX, height - 2f))
+            moveTo(Offset(centerX - 60.dp.toPx(), height - 2f))
+            up()
+        }
+        compose.runOnIdle { assertTrue("${launched?.label}", launched?.key in letterApps(last = true)) }
+    }
+
+    /** Letters without the filter: the whole list, every app still there to pick. */
+    @Test fun withoutTheFilterTheWholeListIsThere() {
+        show(left = false, position = "bottom")
+        compose.onNodeWithTag("app-selector").performTouchInput { down(Offset(centerX, 2f)) }
+        compose.waitForIdle()
+        assertTrue("more than the first letter's apps", panelRows() > letterApps(last = false).size)
+    }
+
+    /** Gliding (apps) shows the bubble too: the letter of the app at the thumb. */
+    @Test fun glidingShowsTheLetterToo() {
+        show(left = false, position = "bottom", browse = "apps")
+        compose.onNodeWithTag("app-selector").performTouchInput { down(Offset(centerX, 2f)) }
+        compose.waitForIdle()
+        assertEquals(entries.first().section.toString(), bubble())
+    }
+
+    /** While the thumb is down home dims and the list narrows, so the wave swings out clear of it; left open, the list widens for the names. */
+    @Test fun homeDimsAndTheListNarrowsWhileSliding() {
+        show(left = false, position = "bottom")
+        compose.onAllNodesWithTag("app-selector-scrim").assertCountEquals(0)
+        compose.onNodeWithTag("app-selector").performTouchInput { down(center) }
+        compose.waitForIdle()
+        compose.onNodeWithTag("app-selector-scrim").assertExists()
+        val sliding = compose.onNodeWithTag("app-selector-panel").getUnclippedBoundsInRoot().let { (it.right - it.left).value }
+        compose.onNodeWithTag("app-selector").performTouchInput { up() }
+        compose.waitForIdle()
+        val open = compose.onNodeWithTag("app-selector-panel").getUnclippedBoundsInRoot().let { (it.right - it.left).value }
+        // 55% of the width, but at least 200dp.
+        assertEquals(200f, sliding, 1f)
+        assertEquals(360 * 0.7f, open, 1f)
     }
 }

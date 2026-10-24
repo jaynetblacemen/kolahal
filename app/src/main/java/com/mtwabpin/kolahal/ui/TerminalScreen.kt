@@ -458,6 +458,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 icons = remember(configVersion) { config[Keys.SELECTOR_ICONS] },
                 aimDp = remember(configVersion) { config[Keys.SELECTOR_AIM] },
                 aimSpeed = remember(configVersion) { config[Keys.SELECTOR_AIM_SPEED] },
+                browse = remember(configVersion) { config[Keys.SELECTOR_BROWSE] },
+                filter = remember(configVersion) { config[Keys.SELECTOR_FILTER] },
             )
         }
         // [/selector]

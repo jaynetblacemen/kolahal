@@ -387,6 +387,7 @@ internal fun SelectorPreview(vm: TerminalViewModel) {
     val version by vm.config.version.collectAsStateWithLifecycle()
     val on = remember(version) { vm.config[Keys.SELECTOR_RAIL] }
     val left = remember(version) { vm.config[Keys.SELECTOR_SIDE] == "left" }
+    val browse = remember(version) { vm.config[Keys.SELECTOR_BROWSE] }
     val apps = rememberApps()
     val pinned = remember(apps) { vm.pinnedKeys() }
     var picked by remember { mutableStateOf<String?>(null) }
@@ -412,6 +413,8 @@ internal fun SelectorPreview(vm: TerminalViewModel) {
                 icons = remember(version) { vm.config[Keys.SELECTOR_ICONS] },
                 aimDp = remember(version) { vm.config[Keys.SELECTOR_AIM] },
                 aimSpeed = remember(version) { vm.config[Keys.SELECTOR_AIM_SPEED] },
+                browse = browse,
+                filter = remember(version) { vm.config[Keys.SELECTOR_FILTER] },
             )
         }
         AnimatedVisibility(picked != null, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp)) {
@@ -424,6 +427,7 @@ internal fun SelectorPreview(vm: TerminalViewModel) {
     }
     PreviewCaption(
         if (!on) "Off: the edge is free, and you type to open apps."
+        else if (browse == "letters") "Try it: touch the ${if (left) "left" else "right"} edge and slide along it to a letter; slide off it onto the list and let go."
         else "Try it: touch the ${if (left) "left" else "right"} edge and slide along it, slowly to aim; slide off it toward the list and let go."
     )
 }

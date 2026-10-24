@@ -44,6 +44,8 @@ internal val TITLES = mapOf(
     "suggestions.icons" to "Show app icons",
     "suggestions.wrap" to "Wrap descriptions",
     "selector.rail" to "Show the app selector",
+    "selector.browse" to "Slide through",
+    "selector.filter" to "Only the letter's apps",
     "selector.side" to "Edge",
     "selector.position" to "Where on the edge",
     "selector.handle" to "Show the A–Z handle",
@@ -113,6 +115,8 @@ private val SHOWN_WHEN: Map<ConfigKey<*>, (Config) -> Boolean> = run {
         Keys.KEYBAR_HEIGHT to on(Keys.KEYBAR_SHOW),
         Keys.KEYBAR to on(Keys.KEYBAR_SHOW),
         Keys.KEYBAR2 to on(Keys.KEYBAR_SHOW),
+        Keys.SELECTOR_BROWSE to on(Keys.SELECTOR_RAIL),
+        Keys.SELECTOR_FILTER to { c: Config -> c[Keys.SELECTOR_RAIL] && c[Keys.SELECTOR_BROWSE] == "letters" },
         Keys.SELECTOR_SIDE to on(Keys.SELECTOR_RAIL),
         Keys.SELECTOR_POSITION to on(Keys.SELECTOR_RAIL),
         Keys.SELECTOR_HANDLE to on(Keys.SELECTOR_RAIL),
@@ -176,8 +180,8 @@ private val CATEGORIES = listOf(
         "selector", "App selector", "Edge, letters, actions, icons", R.drawable.ic_apps,
         listOf(
             null to listOf(Keys.SELECTOR_RAIL),
-            "On the edge" to listOf(Keys.SELECTOR_SIDE, Keys.SELECTOR_POSITION, Keys.SELECTOR_HEIGHT, Keys.SELECTOR_HANDLE, Keys.SELECTOR_LETTERS),
-            "The list" to listOf(Keys.SELECTOR_ACTIONS, Keys.SELECTOR_ICONS),
+            "On the edge" to listOf(Keys.SELECTOR_BROWSE, Keys.SELECTOR_SIDE, Keys.SELECTOR_POSITION, Keys.SELECTOR_HEIGHT, Keys.SELECTOR_HANDLE, Keys.SELECTOR_LETTERS),
+            "The list" to listOf(Keys.SELECTOR_FILTER, Keys.SELECTOR_ACTIONS, Keys.SELECTOR_ICONS),
         ),
     ),
     Category(

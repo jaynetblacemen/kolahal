@@ -306,4 +306,94 @@ class SelectorMathTest {
         assertEquals(SelectorMath.Feel.LETTER, SelectorMath.feel(false, false, 5, 4, 2, 1, aiming = true))
         assertEquals(SelectorMath.Feel.NONE, SelectorMath.feel(false, false, 4, 4, 1, 1, aiming = true))
     }
+
+    private fun entries(vararg labels: String) =
+        SelectorMath.build(labels.toList(), { it }, { it }, { false }, { 0 })
+
+    /** Letters: where each letter's apps start in the list, then the end. */
+    @Test fun eachLetterStartsWhereTheLastEnds() {
+        val list = entries("Maps", "Alarm", "Meet", "Books", "Music", "Bank")
+        assertEquals(listOf(0, 1, 3, 6), SelectorMath.sectionStarts(list).toList())
+        assertEquals(listOf(0), SelectorMath.sectionStarts(entries()).toList())
+    }
+
+    /** Letters: the letter under the thumb, kept until the thumb is a quarter of a letter past its stretch. */
+    @Test fun aLetterHoldsUntilTheThumbIsWellPastIt() {
+        assertEquals(2, SelectorMath.letterAt(2.5f, -1, 5))
+        assertEquals(2, SelectorMath.letterAt(3.2f, 2, 5))
+        assertEquals(3, SelectorMath.letterAt(3.3f, 2, 5))
+        assertEquals(2, SelectorMath.letterAt(1.8f, 2, 5))
+        assertEquals(1, SelectorMath.letterAt(1.7f, 2, 5))
+        // A jump of several letters goes straight there; the ends hold.
+        assertEquals(4, SelectorMath.letterAt(4.99f, 0, 5))
+        assertEquals(0, SelectorMath.letterAt(-1f, 3, 5))
+        assertEquals(-1, SelectorMath.letterAt(1f, 0, 0))
+    }
+
+    /** Letters: a row's centre is level with the letter, the middle one of its apps (the lower of two). */
+    @Test fun aLettersMiddleAppIsLevelWithIt() {
+        assertEquals(0.5f, SelectorMath.letterMiddle(0, 1), 0f)
+        assertEquals(1.5f, SelectorMath.letterMiddle(0, 2), 0f)
+        assertEquals(1.5f, SelectorMath.letterMiddle(0, 3), 0f)
+        assertEquals(12.5f, SelectorMath.letterMiddle(10, 5), 0f)
+    }
+
+    /** selector.filter: a letter's apps alone move level with it, but never off the screen. */
+    @Test fun aLettersAppsStayOnScreen() {
+        // A 190px list in a 700px space: it may move up to 510px from its place at the bottom.
+        assertEquals(-200f, SelectorMath.keepOnScreen(-200f, 190f, 700f), 0f)
+        assertEquals(-510f, SelectorMath.keepOnScreen(-900f, 190f, 700f), 0f)
+        assertEquals(0f, SelectorMath.keepOnScreen(40f, 190f, 700f), 0f)
+        // Taller than the space: it stays put and scrolls instead.
+        assertEquals(0f, SelectorMath.keepOnScreen(-50f, 900f, 700f), 0f)
+    }
+
+    /** The wave: out at the bubble, easing back to the edge three letters away. */
+    @Test fun theWaveEasesBackToTheEdge() {
+        assertEquals(1f, SelectorMath.waveOut(0f), 0f)
+        assertEquals(0.75f, SelectorMath.waveOut(1f), 0.001f)
+        assertEquals(SelectorMath.waveOut(-1.5f), SelectorMath.waveOut(1.5f), 0f)
+        assertEquals(0f, SelectorMath.waveOut(3f), 0f)
+        assertEquals(0f, SelectorMath.waveOut(-7f), 0f)
+    }
+
+    /** The wave pushes the letters next to the bubble out to make room for it, keeps their order, and moves far ones by the same amount. */
+    @Test fun theWaveMakesRoomForTheBubble() {
+        val unit = 12f
+        val spread = SelectorMath.waveSpread(unit, room = 30f)
+        val ys = (0..10).map { SelectorMath.waveY(it * unit, 5 * unit, unit, spread) }
+        assertEquals(5 * unit, ys[5], 0.001f)
+        assertEquals(30f, ys[6] - ys[5], 0.01f)
+        assertEquals(30f, ys[5] - ys[4], 0.01f)
+        assertTrue("in order", ys.zipWithNext().all { (a, b) -> b > a })
+        // Past the wave's reach, letters keep their spacing.
+        assertEquals(unit, ys[10] - ys[9], 0.001f)
+        // Letters already far enough apart need no spread.
+        assertEquals(0f, SelectorMath.waveSpread(40f, room = 30f), 0f)
+        assertEquals(0f, SelectorMath.waveSpread(0f, room = 30f), 0f)
+    }
+
+    /** The wave draws every letter there's room for, never the bubble's own, and none on top of another. */
+    @Test fun theWaveDrawsOnlyLettersWithRoom() {
+        val roomy = floatArrayOf(0f, 20f, 40f, 70f, 100f, 120f, 140f)
+        val scales = FloatArray(roomy.size) { 1f }
+        assertEquals(listOf(true, true, true, false, true, true, true), SelectorMath.waveShown(roomy, scales, 3, gap = 10f, clear = 26f).toList())
+        // Crowded: kept letters are at least a letter apart, and clear of the bubble.
+        val crowded = FloatArray(12) { it * 6f }
+        val shown = SelectorMath.waveShown(crowded, FloatArray(12) { 1f }, 6, gap = 10f, clear = 26f)
+        val kept = crowded.indices.filter { shown[it] }.map { crowded[it] }
+        assertTrue(kept.isNotEmpty())
+        assertTrue("apart: $kept", kept.zipWithNext().all { (a, b) -> b - a >= 10f })
+        assertTrue("off the bubble: $kept", kept.all { kotlin.math.abs(it - crowded[6]) >= 26f })
+        assertFalse(SelectorMath.waveShown(roomy, scales, -1, 10f, 26f).any { it })
+    }
+
+    /** Letters: along the edge no app is at the thumb, so only a new letter ticks; the list still ticks per app. */
+    @Test fun lettersTickPerLetter() {
+        assertEquals(SelectorMath.Feel.NONE, SelectorMath.feel(false, false, -1, -1, 3, -1))
+        assertEquals(SelectorMath.Feel.NONE, SelectorMath.feel(false, false, -1, -1, 3, 3))
+        assertEquals(SelectorMath.Feel.LETTER, SelectorMath.feel(false, false, -1, -1, 4, 3))
+        assertEquals(SelectorMath.Feel.SWITCH, SelectorMath.feel(true, false, 7, -1, 4, 4))
+        assertEquals(SelectorMath.Feel.APP, SelectorMath.feel(true, true, 8, 7, 4, 4))
+    }
 }
