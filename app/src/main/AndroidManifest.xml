@@ -15,6 +15,8 @@
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <!-- remind: on-time reminders (user-revocable on Android 12+; falls back to inexact) and re-arming after reboot. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- A script's daily time runs in the foreground for its few seconds (a short service). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -112,15 +114,30 @@
             android:name=".productivity.ReminderReceiver"
             android:exported="false" />
 
-        <!-- remind: re-arms pending reminders after a reboot or update. -->
+        <!-- remind and scripts' daily times: re-arms their alarms after a reboot or update, and when
+             exact alarms are allowed. -->
         <receiver
             android:name=".productivity.ReminderBootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
+
+        <!-- A script's daily time (only our own AlarmManager PendingIntents reach it). -->
+        <receiver
+            android:name=".script.ScriptAlarmReceiver"
+            android:exported="false" />
+
+        <!-- A script's run at its daily time, in the foreground for its few seconds: Android lets a
+             launcher pause the work profile only in front. In :script, with the other runs. -->
+        <service
+            android:name=".script.ScriptRunService"
+            android:exported="false"
+            android:foregroundServiceType="shortService"
+            android:process=":script" />
 
         <!-- WorkManager is initialised manually via Configuration.Provider (multi-process setup). -->
         <provider

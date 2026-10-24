@@ -88,11 +88,14 @@ class ReminderReceiver : BroadcastReceiver() {
 class ReminderBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
-            Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED -> {
+            Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED,
+            android.app.AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED -> {
                 val result = goAsync()
                 Thread {
                     try {
                         runCatching { ReminderScheduler.rescheduleAll(context) }
+                        // Scripts' daily times are alarms too (exact once that is allowed).
+                        runCatching { com.mtwabpin.kolahal.script.ScriptScheduler.syncAll(context) }
                     } finally {
                         result.finish()
                     }

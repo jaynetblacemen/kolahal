@@ -35,6 +35,8 @@ means a table with those keys in Lua and an object with those properties in JS.
 | [`device.battery()`](#devicebattery) | `{ level, charging }` |
 | [`device.network()`](#devicenetwork) | `"wifi"`, `"cell"`, `"eth"`, `"net"` or `"offline"` |
 | [`device.unlocks()`](#deviceunlocks) | today's unlock count |
+| [`device.dnd()` / `device.setDnd(mode)`](#devicednd--devicesetdndmode) | Do Not Disturb |
+| [`device.work()` / `device.setWork(on)`](#devicework--devicesetworkon) | the work profile |
 | [`apps.list()`](#appslist) | `[{ label, pkg, profile }]` |
 | [`notifications.recent(n?)`](#notificationsrecentn) | `[{ pkg, app, title, text, time }]` |
 | [`launcher.run(command)`](#launcherruncommand) | `true` if sent |
@@ -225,7 +227,7 @@ status(null);
 ### allowed(what)
 
 Whether this script may use `what`: `"internet"`, `"header"`, `"notifications"`, `"apps"`,
-`"clipboard"`, `"lan"`, `"commands"` or an `@on` event such as `"unlock"`. You switch these per script
+`"clipboard"`, `"lan"`, `"commands"`, `"dnd"`, `"work"` or an `@on` event such as `"unlock"`. You switch these per script
 ([switching access off](/scripting/overview/#switching-access-off)); with one off, a script can do
 something else instead. Code typed at the prompt gets `true` for everything.
 
@@ -481,6 +483,41 @@ return `${b.level}% ${b.charging ? "charging" : ""} · ${device.network()} · ${
 </TabItem>
 </Tabs>
 
+### device.dnd() / device.setDnd(mode)
+
+`device.dnd()` is Do Not Disturb as it is now: `"off"`, `"priority"`, `"alarms"` or `"none"` (total
+silence). `device.setDnd(mode)` sets it to one of those (`"on"` is `"priority"`) and returns `true`,
+or `false` when Kolahal has no Do Not Disturb access: run `dnd access` once to give it. Since Android
+15, what a script turns on is Kolahal's own Do Not Disturb mode, beside yours: turning it off again
+never turns off one you turned on yourself. Needs `@uses dnd`.
+
+### device.work() / device.setWork(on)
+
+`device.work()` is the work profile: `"on"`, `"paused"`, or nil (null in JavaScript) when the phone
+has none. `device.setWork(true)` resumes it and `device.setWork(false)` pauses it, returning `true`
+when Android took the request. Android lets only the default launcher do this, only while it is in
+front, and from Android 10. A script run at one of its [daily times](/scripting/overview/#running-scripts)
+counts as in front when Kolahal may set exact alarms; one on an interval or an event usually doesn't,
+and gets `false`. Resuming returns `false` too when your work profile asks for its PIN: Android
+asks you for it. Needs `@uses work`.
+
+<Tabs syncKey="lang">
+<TabItem label="Lua">
+```lua
+-- @uses dnd, work
+if device.dnd() == "off" then device.setDnd("on") end
+if device.work() == "on" then device.setWork(false) end
+```
+</TabItem>
+<TabItem label="JavaScript">
+```js
+// @uses dnd, work
+if (device.dnd() === "off") device.setDnd("on");
+if (device.work() === "on") device.setWork(false);
+```
+</TabItem>
+</Tabs>
+
 ### apps.list()
 
 Launchable apps in your personal profile and in a work or clone profile that is on, sorted by label:
@@ -555,5 +592,8 @@ happened. `event.name` is the event (`unlock`, `charger`, `unplug`, `wifi`, `off
 | `wifi` | `network` (`wifi`) |
 | `boot` | `uptime` (seconds) |
 
-`unlock` and `offline` carry only `name`. Text over 2,000 characters is cut short. Outside event
-runs `event` is nil (null in JavaScript).
+`unlock` and `offline` carry only `name`. Text over 2,000 characters is cut short.
+
+A run at one of the script's [daily times](/scripting/overview/#running-scripts) gets `event.name`
+`"at"` and `event.time`, the time it was for (`"23:00"`), even when it runs late: a script with two
+times can tell them apart. Other runs get nil (null in JavaScript).

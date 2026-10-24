@@ -154,6 +154,10 @@ class LuaEngine : ScriptEngine {
             "battery" to { l: Lua -> l.pushValue(host.battery()); 1 },
             "network" to { l: Lua -> l.push(host.network()); 1 },
             "unlocks" to { l: Lua -> l.push(host.unlocksToday().toLong()); 1 },
+            "dnd" to { l: Lua -> l.pushValue(host.dnd()); 1 },
+            "setDnd" to { l: Lua -> l.push(host.setDnd(l.checkString(1))); 1 },
+            "work" to { l: Lua -> l.pushValue(host.work()); 1 },
+            "setWork" to { l: Lua -> l.push(host.setWork(l.toBoolean(1))); 1 },
         )
         lua.table("apps", "list" to { l: Lua -> l.pushValue(host.appsList()); 1 })
         lua.table("notifications", "recent" to { l: Lua -> l.pushValue(host.notificationsRecent(if (l.isNumber(1)) l.toInteger(1).toInt() else 20)); 1 })

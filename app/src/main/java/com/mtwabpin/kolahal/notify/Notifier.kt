@@ -34,7 +34,17 @@ object Notifier {
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply { description = context.getString(R.string.channel_reminders_desc) }
         )
+        nm.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_RUNNING,
+                context.getString(R.string.channel_running),
+                NotificationManager.IMPORTANCE_MIN,
+            ).apply { description = context.getString(R.string.channel_running_desc) }
+        )
     }
+
+    /** A script running at its daily time, in the foreground ([com.mtwabpin.kolahal.script.ScriptRunService]). */
+    const val CHANNEL_RUNNING = "running"
 
     fun canPost(context: Context, channelId: String = CHANNEL_SCRIPTS): Boolean {
         val granted = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(

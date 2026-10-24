@@ -23,7 +23,7 @@ script run hn              # run it now
 script every hn 30m        # and every 30 minutes
 ```
 
-The fastest start is the [script library](/scripting/library/): `script lib` lists 14 ready-made
+The fastest start is the [script library](/scripting/library/): `script lib` lists 16 ready-made
 scripts and `script install weather` installs one with sensible timers.
 
 ## Lua or JavaScript?
@@ -50,6 +50,12 @@ A script runs:
 
 Intervals have Android's 15-minute minimum. An interval and daily times can be combined. Setting a
 timer turns a disabled script back on; `script off <name>` disables it without losing the timers.
+
+Daily times are alarms. With **Alarms & reminders** allowed for Kolahal (Android's setting; `remind
+exact` asks for it), a script runs on the minute, even while the phone sleeps, and in the
+foreground for its few seconds; otherwise it runs within the hour. A run at a daily time knows
+which one it was ([`event.time`](/scripting/api/#event)), and it waits for a network only if the
+script makes requests and there is none.
 
 `script ls` shows every script with its timers, whether it is a command, notification state and the
 last run's result. The script manager (`scripts`, or the **Scripts** tab in Settings) shows a card per
@@ -201,8 +207,9 @@ Scripts run in a separate `:script` process, so a crashing engine can't take dow
 
 ## What a script may use
 
-Your notifications, the clipboard, the list of your apps, your local network and running
-commands are only for scripts that ask, with a `@uses` line at the top:
+Your notifications, the clipboard, the list of your apps, your local network, running
+commands, Do Not Disturb and the work profile are only for scripts that ask, with a `@uses` line at
+the top:
 
 ```lua
 -- @uses notifications, clipboard
@@ -215,6 +222,8 @@ commands are only for scripts that ask, with a `@uses` line at the top:
 | `apps` | [`apps.list`](/scripting/api/#appslist) |
 | `lan` | `http` requests to this phone or your local network (192.168.…, router pages, a home server) |
 | `commands` | [`launcher.run`](/scripting/api/#launcherruncommand): terminal commands, and other scripts by their names, when you start it from the prompt |
+| `dnd` | [`device.dnd` and `device.setDnd`](/scripting/api/#devicednd--devicesetdndmode): seeing and setting Do Not Disturb |
+| `work` | [`device.work` and `device.setWork`](/scripting/api/#devicework--devicesetworkon): seeing, pausing and resuming the work profile |
 
 Calling one of these without its `@uses` line stops the script with an error saying what to add.
 On Android 17 and newer, reaching your local network also needs Android's

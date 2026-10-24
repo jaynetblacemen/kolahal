@@ -17,8 +17,6 @@ import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.data.ScriptRepository
 import java.time.Duration
 import java.time.ZonedDateTime
-import androidx.work.WorkInfo
-import kotlin.math.abs
 import java.time.LocalTime
 import java.util.concurrent.TimeUnit
 
@@ -26,10 +24,6 @@ object ScriptScheduler {
     /** WorkManager's floor for periodic work. */
     const val MIN_INTERVAL_MIN = 15
     private const val MAX_INLINE_CODE = 8_000
-    private const val MAX_DRIFT_MS = 10 * 60_000L
-    private const val DAY_MS = 24 * 3_600_000L
-    /** A daily job this late after its time is still that day's run. */
-    private const val LATE_RUN_MS = 6 * 3_600_000L
     private const val RECHECK_MS = 6 * 3_600_000L
     private const val KEY_SYNCED_AT = "synced_at"
 
@@ -38,7 +32,7 @@ object ScriptScheduler {
     /** Schedules or cancels the interval and daily runs for [script] according to its settings. */
     fun sync(context: Context, script: Script) {
         val wm = WorkManager.getInstance(context)
-        syncDaily(context, wm, script, reanchor = false)
+        syncDaily(context, wm, script)
         syncInterval(context, wm, script)
     }
 
@@ -60,56 +54,52 @@ object ScriptScheduler {
     }
 
     /**
-     * One 24h periodic job per daily time, first run delayed to the next occurrence.
-     *
-     * Jobs are only replaced when the set of times changes, or (with [reanchor], on launcher start)
-     * when a waiting job has drifted from its clock time. A job that is running, or overdue and
-     * waiting for network/Doze, is never touched, so syncing can't swallow today's run.
+     * Daily times: an alarm each ([ScriptAlarms]), exact when Kolahal may set exact alarms and
+     * otherwise at most an hour late, which runs the script and sets the next day's. Set again on
+     * every sync: alarms don't survive a reboot, and the next one moves with the clock. Older
+     * versions queued a 24h job per time instead, which waited for a network and, at night, for
+     * Doze: those go.
      */
-    private fun syncDaily(context: Context, wm: WorkManager, script: Script, reanchor: Boolean) {
+    private fun syncDaily(context: Context, wm: WorkManager, script: Script) {
         val prefs = context.getSharedPreferences("daily_schedule", Context.MODE_PRIVATE)
         val key = "script:${script.id}"
         val wanted = if (script.enabled) script.atTimes.mapNotNull(::normalizeTime).distinct().sorted() else emptyList()
-        val scheduled = prefs.getString(key, null).orEmpty()
-        if (wanted.joinToString(",") != scheduled) {
-            wm.cancelAllWorkByTag(dailyTag(script.id))
-            wanted.forEach { enqueueDaily(context, wm, script.id, it) }
-            prefs.edit { putString(key, wanted.joinToString(",")) }
-            return
-        }
-        if (!reanchor) return
-        val now = System.currentTimeMillis()
-        for (time in wanted) {
-            val info = runCatching { wm.getWorkInfosForUniqueWork(dailyName(script.id, time)).get() }
-                .getOrNull()?.firstOrNull()
-            val next = now + millisUntil(time)
-            val due = info?.nextScheduleTimeMillis ?: 0L
-            val drifted = info != null && info.state == WorkInfo.State.ENQUEUED &&
-                due > now && // overdue jobs are about to run: leave them
-                abs(due - next) > MAX_DRIFT_MS &&
-                // Today's run, late (it waited for the network or Doze): moved to tomorrow, today
-                // would have none. It runs; a later check brings the next one back to its time.
-                due - (next - DAY_MS) !in 0..LATE_RUN_MS
-            if (info == null || info.state.isFinished || drifted) enqueueDaily(context, wm, script.id, time)
-        }
+        val before = prefs.getString(key, null).orEmpty().split(',').filter { it.isNotEmpty() }
+        wm.cancelAllWorkByTag(dailyTag(script.id))
+        (before - wanted.toSet()).forEach { ScriptAlarms.cancel(context, script.id, it) }
+        wanted.forEach { ScriptAlarms.set(context, script.id, it) }
+        prefs.edit { putString(key, wanted.joinToString(",")) }
     }
 
-    private fun enqueueDaily(context: Context, wm: WorkManager, scriptId: Long, time: String) {
-        val request = PeriodicWorkRequestBuilder<ScriptWorker>(24, TimeUnit.HOURS)
-            .setInitialDelay(millisUntil(time), TimeUnit.MILLISECONDS)
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-            .setInputData(remoteData(context) {
-                putLong(ScriptWorker.KEY_SCRIPT_ID, scriptId)
-                putBoolean(ScriptWorker.KEY_SCHEDULED, true)
-            })
-            .addTag("script")
-            .addTag(dailyTag(scriptId))
-            .build()
-        wm.enqueueUniquePeriodicWork(dailyName(scriptId, time), ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE, request)
+    /**
+     * The `event` of a run at daily [time]: `{ name = "at", time = "23:00" }`, the time it was set
+     * for even when it runs late, so a script with two times can tell them apart.
+     */
+    fun atEvent(time: String): String = Json.stringify(mapOf("name" to "at", "time" to time))
+
+    /**
+     * A daily [time]'s run in the queue, when it can't run in the foreground: like a timer's,
+     * waiting for a network only if the script goes online.
+     */
+    fun runScheduled(context: Context, script: Script, time: String) {
+        WorkManager.getInstance(context).enqueue(
+            OneTimeWorkRequestBuilder<ScriptWorker>()
+                .apply {
+                    if (ScriptMeta.goesOnline(script.code)) {
+                        setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                    }
+                }
+                .setInputData(remoteData(context) {
+                    putLong(ScriptWorker.KEY_SCRIPT_ID, script.id)
+                    putBoolean(ScriptWorker.KEY_SCHEDULED, true)
+                    putString(ScriptWorker.KEY_EVENT, atEvent(time))
+                })
+                .addTag("script")
+                .build()
+        )
     }
 
     private fun dailyTag(id: Long) = "script-$id-daily"
-    private fun dailyName(id: Long, time: String) = "${uniqueName(id)}-at-$time"
 
     /** "8:00" / "08:00" -> "08:00"; null for anything that isn't a valid clock time. */
     fun normalizeTime(raw: String): String? = runCatching {
@@ -140,7 +130,7 @@ object ScriptScheduler {
         val wm = WorkManager.getInstance(context)
         ScriptRepository.get(context).all().forEach { s ->
             runCatching {
-                syncDaily(context, wm, s, reanchor = true)
+                syncDaily(context, wm, s)
                 syncInterval(context, wm, s)
             }
         }
@@ -149,7 +139,10 @@ object ScriptScheduler {
     fun cancel(context: Context, scriptId: Long) {
         WorkManager.getInstance(context).cancelUniqueWork(uniqueName(scriptId))
         WorkManager.getInstance(context).cancelAllWorkByTag(dailyTag(scriptId))
-        context.getSharedPreferences("daily_schedule", Context.MODE_PRIVATE).edit { remove("script:$scriptId") }
+        val prefs = context.getSharedPreferences("daily_schedule", Context.MODE_PRIVATE)
+        prefs.getString("script:$scriptId", null).orEmpty().split(',').filter { it.isNotEmpty() }
+            .forEach { ScriptAlarms.cancel(context, scriptId, it) }
+        prefs.edit { remove("script:$scriptId") }
     }
 
     fun runNow(context: Context, script: Script, args: List<String> = emptyList(), interactive: Boolean = true) {

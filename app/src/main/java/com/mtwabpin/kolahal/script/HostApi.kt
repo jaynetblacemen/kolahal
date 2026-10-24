@@ -2,6 +2,8 @@ package com.mtwabpin.kolahal.script
 
 import com.mtwabpin.kolahal.data.shortTime
 import android.content.Context
+import com.mtwabpin.kolahal.apps.AppRepository
+import com.mtwabpin.kolahal.apps.ProfileKind
 import com.mtwabpin.kolahal.data.KvStore
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
@@ -29,6 +31,7 @@ import java.util.concurrent.TimeUnit
  *   rss.fetch(url) / rss.parse(xml) -> { title, link, items = [{ title, link, id, date, summary }] }
  *   rss.fresh(url)              -> like fetch, but only items not returned by a previous call
  *   store.get(key) / store.set(key, value) -> per-script persistent strings
+ *   device.dnd() / device.setDnd(mode), device.work() / device.setWork(on) -> Do Not Disturb, the work profile
  *   json.encode(v) / json.decode(s)
  */
 class HostApi(
@@ -432,6 +435,54 @@ class HostApi(
 
     fun unlocksToday(): Int = com.mtwabpin.kolahal.unlock.UnlockCounter.get(context).countFor(java.time.LocalDate.now())
 
+    /** Do Not Disturb now: `off`, `priority`, `alarms` or `none`; nil when switched off for the script. */
+    fun dnd(): String? {
+        if (!may("dnd", "device.dnd")) return null
+        val filter = context.getSystemService(android.app.NotificationManager::class.java).currentInterruptionFilter
+        return DND_MODES.entries.firstOrNull { it.value == filter }?.key
+    }
+
+    /**
+     * Sets Do Not Disturb to [mode] (`off`, `on` or `priority`, `alarms`, `none`). False when
+     * Kolahal has no Do Not Disturb access (`dnd access`), or it's switched off for the script.
+     */
+    fun setDnd(mode: String): Boolean {
+        val filter = DND_MODES[mode.trim().lowercase().let { if (it == "on") "priority" else it }]
+            ?: throw IllegalArgumentException("device.setDnd: the mode is off, on, priority, alarms or none")
+        if (!may("dnd", "device.setDnd")) return false
+        val nm = context.getSystemService(android.app.NotificationManager::class.java)
+        if (!nm.isNotificationPolicyAccessGranted) return false
+        return runCatching { nm.setInterruptionFilter(filter) }.isSuccess
+    }
+
+    /** The work profile: `on` or `paused`; nil when there is none, or it's switched off for the script. */
+    fun work(): String? {
+        if (!may("work", "device.work")) return null
+        val user = workProfile() ?: return null
+        val um = context.getSystemService(android.os.UserManager::class.java)
+        return if (runCatching { um.isQuietModeEnabled(user) }.getOrDefault(false)) "paused" else "on"
+    }
+
+    /**
+     * Resumes ([on]) or pauses the work profile. False when Android won't let Kolahal: it must be
+     * the default launcher and in front (a daily time runs in the foreground, which counts), on
+     * Android 10 or newer; or resuming needs your work PIN; or there's no work profile.
+     */
+    fun setWork(on: Boolean): Boolean {
+        if (!may("work", "device.setWork")) return false
+        if (android.os.Build.VERSION.SDK_INT < 29) return false
+        val user = workProfile() ?: return false
+        val um = context.getSystemService(android.os.UserManager::class.java)
+        return runCatching { um.requestQuietModeEnabled(!on, user) }.getOrDefault(false)
+    }
+
+    /** The work profile's user, if there is one: not this one, a private space or a clone. */
+    private fun workProfile(): android.os.UserHandle? {
+        val la = context.getSystemService(android.content.pm.LauncherApps::class.java)
+        val me = android.os.Process.myUserHandle()
+        return la.profiles.firstOrNull { AppRepository.kindOf(la, it, me) == ProfileKind.WORK }
+    }
+
     /** Launchable apps across profiles: [{label, pkg, profile}]. */
     fun appsList(): List<Map<String, Any?>> {
         if (!may("apps", "apps.list")) return emptyList()
@@ -529,6 +580,13 @@ class HostApi(
     fun storeSet(key: String, value: String?) = store.set(key, value)
 
     companion object {
+        /** Do Not Disturb's modes as scripts name them, and Android's filters. */
+        private val DND_MODES = mapOf(
+            "off" to android.app.NotificationManager.INTERRUPTION_FILTER_ALL,
+            "priority" to android.app.NotificationManager.INTERRUPTION_FILTER_PRIORITY,
+            "alarms" to android.app.NotificationManager.INTERRUPTION_FILTER_ALARMS,
+            "none" to android.app.NotificationManager.INTERRUPTION_FILTER_NONE,
+        )
         private const val USER_AGENT = "Kolahal-Launcher/0.1 (+https://github.com/mtwabpin)"
         private const val MAX_BODY = 4L * 1024 * 1024
         private const val MAX_SEEN = 500

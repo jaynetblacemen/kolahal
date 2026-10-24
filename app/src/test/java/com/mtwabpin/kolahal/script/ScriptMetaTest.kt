@@ -66,4 +66,18 @@ class ScriptMetaTest {
         assertNull("reads them: unknown", ScriptMeta.usage("-- @command\nlog(argline)", "w"))
         assertNull(ScriptMeta.usage("// @command\nlog(args[0]);", "w"))
     }
+
+    /** Do Not Disturb and the work profile are only for scripts that ask. */
+    @Test fun dndAndWorkAreAskedFor() {
+        assertEquals(setOf("dnd", "work"), ScriptMeta.uses("-- @uses dnd, work\n"))
+        assertEquals(setOf("dnd"), ScriptMeta.uses("// @uses dnd\n"))
+    }
+
+    /** A timed run waits for a network only when the code makes requests or reads feeds. */
+    @Test fun goingOnlineIsHttpOrRss() {
+        assertTrue(ScriptMeta.goesOnline("local r = http.get(url)"))
+        assertTrue(ScriptMeta.goesOnline("const f = await rss.fetch(u);"))
+        assertFalse(ScriptMeta.goesOnline("-- night-dnd.lua — No network.\nif device.dnd() == 'off' then device.setDnd('on') end"))
+        assertFalse(ScriptMeta.goesOnline("log(\"see https://example.com\")"))
+    }
 }

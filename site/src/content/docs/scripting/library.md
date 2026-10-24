@@ -1,9 +1,9 @@
 ---
 title: Script library
-description: The 14 ready-made Lua and JavaScript scripts bundled with Kolahal.
+description: The 16 ready-made Lua and JavaScript scripts bundled with Kolahal.
 ---
 
-Kolahal ships 14 scripts you can install with one tap in the script manager (**Add script → From the
+Kolahal ships 16 scripts you can install with one tap in the script manager (**Add script → From the
 library**), or from the prompt:
 
 ```sh
@@ -42,6 +42,8 @@ None of the network scripts need an API key.
 | [quote](#quote) | JS | yes | daily 08:00 | yes |
 | [countdown](#countdown) | Lua | yes | daily 00:05 | |
 | [charge-reminder](#charge-reminder) | Lua | | on charger and unplug | yes |
+| [night-dnd](#night-dnd) | Lua | | daily 23:00 and 07:00 | |
+| [night-work](#night-work) | Lua | | daily 23:00 and 07:00 | |
 
 ## hn
 
@@ -147,3 +149,22 @@ countdown rm 2
 **Charge reminder**: runs when you plug the charger in and when you unplug it, with no timer and
 no network: logs how much a session added, and notifies when you unplug below 30%. Run by hand, it
 shows the last session.
+
+## night-dnd
+
+**Night Do Not Disturb**: turns Do Not Disturb on at 11 PM and off at 7 AM. If it's on already at
+11 PM, you turned it on, so the script leaves it alone, then and at 7 AM: it only turns off what it
+turned on. Since Android 15, what it turns on is Kolahal's own Do Not Disturb mode, so one you turn on
+yourself stays on in the morning. Kolahal needs Do Not Disturb access: run `dnd access` once. Edit
+`MODE` for alarms only or total silence. To change the times, change `ON` and `OFF` at its top and
+its daily times to match (`script at night-dnd 22:30, 06:30`). Run by hand, it says what it will do.
+Uses `@uses dnd`; no network.
+
+## night-work
+
+**Night work profile**: pauses the work profile at 11 PM and resumes it at 7 AM, the same way: if
+it's paused already at 11 PM, you paused it, and the script leaves it alone at both times. Android
+lets only the default launcher pause and resume the work profile, and only while it's in front: at
+its daily times Kolahal runs it in the foreground, which needs **Alarms & reminders** allowed for
+Kolahal. If your work profile asks for its PIN to resume, Android asks you for it. Change the times
+as for night-dnd. Uses `@uses work`; no network.

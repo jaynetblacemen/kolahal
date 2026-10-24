@@ -83,10 +83,14 @@ object ApiDocs {
         ApiDoc("clipboard.get", "clipboard.get() -> string?", "Clipboard text; usually nil in timers"),
         ApiDoc("clipboard.set", "clipboard.set(text)", "Copy text to the clipboard"),
 
-        ApiDoc("device", "device", "Device info: battery, network, unlocks", kind = NS),
+        ApiDoc("device", "device", "Device info: battery, network, unlocks; Do Not Disturb, the work profile", kind = NS),
         ApiDoc("device.battery", "device.battery() -> { level, charging }", "Battery percent and charging state"),
         ApiDoc("device.network", "device.network() -> string", "\"wifi\", \"cell\", \"eth\", \"net\" or \"offline\""),
         ApiDoc("device.unlocks", "device.unlocks() -> number", "Today's unlock count"),
+        ApiDoc("device.dnd", "device.dnd() -> string?", "Do Not Disturb: \"off\", \"priority\", \"alarms\" or \"none\" (needs @uses dnd)"),
+        ApiDoc("device.setDnd", "device.setDnd(mode) -> bool", "Set Do Not Disturb to \"off\", \"on\", \"alarms\" or \"none\"; false without Do Not Disturb access (needs @uses dnd)"),
+        ApiDoc("device.work", "device.work() -> string?", "The work profile: \"on\" or \"paused\"; nil/null without one (needs @uses work)"),
+        ApiDoc("device.setWork", "device.setWork(on) -> bool", "Resume (true) or pause (false) the work profile; false when Android won't let Kolahal (needs @uses work)"),
 
         ApiDoc("apps", "apps", "Installed apps: list", kind = NS),
         ApiDoc("apps.list", "apps.list() -> [{ label, pkg, profile }]", "Launchable apps across profiles"),

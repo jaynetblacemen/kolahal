@@ -30,10 +30,11 @@ object ScriptMeta {
     /**
      * What a script may ask for with `@uses`: `notifications` (notifications.recent and the
      * `@on notification` trigger), `clipboard`, `apps` (apps.list), `lan` (http to the local
-     * network or this device) and `commands` (launcher.run: terminal commands and other scripts).
-     * The user allows each one ([ScriptAccess]).
+     * network or this device), `commands` (launcher.run: terminal commands and other scripts),
+     * `dnd` (device.dnd and device.setDnd: Do Not Disturb) and `work` (device.work and
+     * device.setWork: the work profile). The user allows each one ([ScriptAccess]).
      */
-    val USES = listOf("notifications", "clipboard", "apps", "lan", "commands")
+    val USES = listOf("notifications", "clipboard", "apps", "lan", "commands", "dnd", "work")
 
     /** Known names from every `@uses` line; unknown ones are ignored. */
     fun uses(code: String): Set<String> {
@@ -46,6 +47,11 @@ object ScriptMeta {
     val EVENTS = listOf("unlock", "charger", "unplug", "wifi", "offline", "notification", "boot", "headset")
 
     fun isCommand(code: String) = command.containsMatchIn(code)
+
+    private val online = Regex("""\b(http|rss)\s*\.\s*\w""")
+
+    /** Whether the code makes web requests or reads feeds (`http.`, `rss.`): a timed run of it waits for a network. */
+    fun goesOnline(code: String) = online.containsMatchIn(code)
 
     fun description(code: String): String? = desc.find(code)?.groupValues?.get(2)?.trim()?.ifEmpty { null }
 

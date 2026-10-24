@@ -134,4 +134,120 @@ class LibraryScriptsTest {
         assertEquals("Last charge", title)
         assertEquals(true, body?.endsWith(" · Unplugged at 90% (+70% in 0m)"))
     }
+
+    private val nm = context.getSystemService(android.app.NotificationManager::class.java)
+
+    private fun at(time: String) = mapOf("name" to "at", "time" to time)
+
+    private fun shell(command: String) =
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command))
+            .bufferedReader().use { it.readText() }
+
+    /**
+     * Do Not Disturb as you set it ([mode]: off, priority, alarms), waiting for Android to apply it.
+     * From the shell: since Android 15 an app's own changes are a mode of its own, beside yours.
+     */
+    private fun youSet(mode: String, filter: Int) {
+        shell("cmd notification set_dnd $mode")
+        dndIs(filter)
+    }
+
+    private fun dndIs(filter: Int) {
+        val until = System.currentTimeMillis() + 3_000
+        while (nm.currentInterruptionFilter != filter && System.currentTimeMillis() < until) Thread.sleep(50)
+        assertEquals(filter, nm.currentInterruptionFilter)
+    }
+
+    /** Night Do Not Disturb: on at its evening time and off in the morning, but only what it turned on. */
+    @Test fun nightDndTurnsOffOnlyWhatItTurnedOn() {
+        shell("cmd notification allow_dnd ${context.packageName}")
+        val all = android.app.NotificationManager.INTERRUPTION_FILTER_ALL
+        val priority = android.app.NotificationManager.INTERRUPTION_FILTER_PRIORITY
+        val alarms = android.app.NotificationManager.INTERRUPTION_FILTER_ALARMS
+        try {
+            youSet("off", all)
+            run("night-dnd.lua", event = at("23:00"))
+            dndIs(priority)
+            assertEquals("Do Not Disturb on until 07:00", only().first)
+            // A second run the same night changes nothing.
+            run("night-dnd.lua", event = at("23:00"))
+            assertEquals(0, lines().size)
+            run("night-dnd.lua", event = at("07:00"))
+            dndIs(all)
+            assertEquals("Do Not Disturb off", only().first)
+            assertNull(store.get("on"))
+
+            // On already at night: yours, left alone at both times.
+            youSet("alarms", alarms)
+            run("night-dnd.lua", event = at("23:00"))
+            run("night-dnd.lua", event = at("07:00"))
+            dndIs(alarms)
+            assertEquals(0, lines().size)
+
+            // Run by hand: what it will do.
+            run("night-dnd.lua")
+            assertEquals("Do Not Disturb alarms", only().first)
+        } finally {
+            nm.setInterruptionFilter(all)
+            shell("cmd notification set_dnd off")
+        }
+    }
+
+    /**
+     * Night work profile, with `device.work` and `device.setWork` standing in for a work profile
+     * (the emulator has none), its state kept in the script's store between runs.
+     */
+    private fun runWork(event: Map<String, Any?>?, canSet: Boolean = true) {
+        lines().forEach { logs.delete(it.id) }
+        val entry = library.entries.single { it.file == "night-work.lua" }
+        val stub = """
+            device.work = function() return store.get("_work") end
+            device.setWork = function(on)
+              if not $canSet then return false end
+              store.set("_work", on and "on" or "paused")
+              return true
+            end
+        """.trimIndent()
+        val host = HostApi(context, name, scriptId = id, notifyEnabled = false)
+        runBlocking { ScriptEngine.forLang(entry.lang).run(stub + "\n" + library.code(entry), name, host, 10_000, false, emptyList(), event) }
+        host.flush()
+    }
+
+    @Test fun nightWorkResumesOnlyWhatItPaused() {
+        store.set("_work", "on")
+        runWork(at("23:00"))
+        assertEquals("paused", store.get("_work"))
+        assertEquals("Work profile paused until 07:00", only().first)
+        runWork(at("07:00"))
+        assertEquals("on", store.get("_work"))
+        assertEquals("Work profile on", only().first)
+
+        // Paused already at night: yours, left alone at both times.
+        store.set("_work", "paused")
+        runWork(at("23:00"))
+        runWork(at("07:00"))
+        assertEquals("paused", store.get("_work"))
+        assertEquals(0, lines().size)
+
+        // No work profile: nothing to do.
+        store.set("_work", null)
+        runWork(at("23:00"))
+        assertEquals(0, lines().size)
+        runWork(null)
+        assertEquals("No work profile on this phone", only().first)
+
+        // Android said no: it says why, and remembers nothing.
+        store.set("_work", "on")
+        runWork(at("23:00"), canSet = false)
+        assertEquals(Triple("Couldn't pause the work profile", "Kolahal must be the default launcher (type home), with Alarms & reminders allowed", StyledText.Colour.BAD), only())
+        assertNull(store.get("paused"))
+    }
+
+    /** The emulator has no work profile: device.work() says so with nil. */
+    @Test fun noWorkProfileIsNil() {
+        val host = HostApi(context, name, scriptId = id, notifyEnabled = false)
+        runBlocking { ScriptEngine.forLang(com.mtwabpin.kolahal.data.ScriptLang.LUA).run("log(tostring(device.work()))", name, host, 10_000, false, emptyList(), null) }
+        host.flush()
+        assertEquals("nil", only().first)
+    }
 }

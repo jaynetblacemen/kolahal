@@ -1,6 +1,7 @@
 package com.mtwabpin.kolahal.script
 
 import android.content.Context
+import androidx.work.Data
 import androidx.work.WorkerParameters
 import androidx.work.multiprocess.RemoteCoroutineWorker
 import com.mtwabpin.kolahal.data.KvStore
@@ -19,30 +20,55 @@ import kotlinx.coroutines.withTimeout
  */
 class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutineWorker(context, params) {
 
-    override suspend fun doRemoteWork(): Result {
-        val ctx = applicationContext
+    override suspend fun doRemoteWork(): Result = if (ScriptRun.run(applicationContext, inputData)) Result.success() else Result.failure()
+
+    companion object {
+        const val KEY_SCRIPT_ID = "script_id"
+        const val KEY_LANG = "lang"
+        const val KEY_CODE = "code"
+        const val KEY_SCHEDULED = "scheduled"
+        const val KEY_ARGS = "args"
+        const val KEY_NAME = "name"
+        const val KEY_INTERACTIVE = "interactive"
+        /** Started by a command another script sent with launcher.run. */
+        const val KEY_BY_SCRIPT = "by_script"
+        /** JSON object for the script's `event` global (event-triggered runs only). */
+        const val KEY_EVENT = "event"
+        /** The typed command's line that started this run ([LogContext.FROM]). */
+        const val KEY_FROM = "from"
+        const val TIMEOUT_MS = 60_000L
+    }
+}
+
+/**
+ * One script run, as [ScriptWorker] (the queue) or [ScriptRunService] (a daily time, in the
+ * foreground) starts it, in the `:script` process.
+ */
+internal object ScriptRun {
+    /** Runs what [inputData] names ([ScriptWorker]'s keys); false when it names nothing runnable. */
+    suspend fun run(ctx: Context, inputData: Data): Boolean {
         val logs = LogRepository.get(ctx)
         val scripts = ScriptRepository.get(ctx)
 
-        val scriptId = inputData.getLong(KEY_SCRIPT_ID, -1L)
-        val script = if (scriptId >= 0) scripts.byId(scriptId) ?: return Result.success() else null
-        if (script != null && !script.enabled && inputData.getBoolean(KEY_SCHEDULED, false)) {
-            return Result.success()
+        val scriptId = inputData.getLong(ScriptWorker.KEY_SCRIPT_ID, -1L)
+        val script = if (scriptId >= 0) scripts.byId(scriptId) ?: return true else null
+        if (script != null && !script.enabled && inputData.getBoolean(ScriptWorker.KEY_SCHEDULED, false)) {
+            return true
         }
-        val lang = script?.lang ?: ScriptLang.of(inputData.getString(KEY_LANG).orEmpty())
-            ?: return Result.failure()
-        val code = script?.code ?: inputData.getString(KEY_CODE) ?: return Result.failure()
-        val name = script?.name ?: inputData.getString(KEY_NAME) ?: lang.ext
+        val lang = script?.lang ?: ScriptLang.of(inputData.getString(ScriptWorker.KEY_LANG).orEmpty())
+            ?: return false
+        val code = script?.code ?: inputData.getString(ScriptWorker.KEY_CODE) ?: return false
+        val name = script?.name ?: inputData.getString(ScriptWorker.KEY_NAME) ?: lang.ext
         val repl = script == null
-        val args = inputData.getNullableStringArray(KEY_ARGS)?.filterNotNull().orEmpty()
-        val event = inputData.getString(KEY_EVENT)?.let { runCatching { Json.parse(it) as? Map<*, *> }.getOrNull() }
-        val from = inputData.getLong(KEY_FROM, -1L).takeIf { it >= 0 }
+        val args = inputData.getNullableStringArray(ScriptWorker.KEY_ARGS)?.filterNotNull().orEmpty()
+        val event = inputData.getString(ScriptWorker.KEY_EVENT)?.let { runCatching { Json.parse(it) as? Map<*, *> }.getOrNull() }
+        val from = inputData.getLong(ScriptWorker.KEY_FROM, -1L).takeIf { it >= 0 }
 
         val host = HostApi(
             ctx, name, script?.id,
             notifyEnabled = script?.notify ?: true,
-            interactive = repl || inputData.getBoolean(KEY_INTERACTIVE, false),
-            byScript = inputData.getBoolean(KEY_BY_SCRIPT, false),
+            interactive = repl || inputData.getBoolean(ScriptWorker.KEY_INTERACTIVE, false),
+            byScript = inputData.getBoolean(ScriptWorker.KEY_BY_SCRIPT, false),
             from = from,
             grants = script?.grants,
             secrets = script?.let { s -> ScriptMeta.secrets(s.code).let { d -> HostApi.Secrets(d, SecretStore(ctx).usable(s.name, d)) } },
@@ -54,8 +80,8 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
                 (from?.let { mapOf(LogContext.FROM to it.toString()) } ?: emptyMap())
         )
         val status = try {
-            val result = withTimeout(TIMEOUT_MS + 2_000) {
-                engine.run(code, name, host, TIMEOUT_MS, repl, args, event)
+            val result = withTimeout(ScriptWorker.TIMEOUT_MS + 2_000) {
+                engine.run(code, name, host, ScriptWorker.TIMEOUT_MS, repl, args, event)
             }
             host.flush()
             if (result != null) {
@@ -70,7 +96,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             host.flush()
             // Only our own timeout is a script failure; WorkManager stopping the worker must propagate.
             if (e !is TimeoutCancellationException) throw e
-            logs.add(LogKind.ERROR, "$name: timed out after ${TIMEOUT_MS / 1000}s", name, errorCtx)
+            logs.add(LogKind.ERROR, "$name: timed out after ${ScriptWorker.TIMEOUT_MS / 1000}s", name, errorCtx)
             "timeout"
         } catch (e: Throwable) {
             host.flush()
@@ -97,7 +123,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
             }
         }
         // A run you started that asked for what nobody allowed yet got empty answers: offer to allow it.
-        if (script != null && host.undecided.isNotEmpty() && inputData.getBoolean(KEY_INTERACTIVE, false)) {
+        if (script != null && host.undecided.isNotEmpty() && inputData.getBoolean(ScriptWorker.KEY_INTERACTIVE, false)) {
             ScriptAccess.askToAllow(ctx, name, host.undecided.toList(), "hasn't been allowed")
         }
         script?.let {
@@ -108,7 +134,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         if (host.notifyBlocked) reportBlocked(ctx, logs, name, "notify-blocked", "notifications are blocked", "notifications")
         if (host.lanBlocked) reportBlocked(ctx, logs, name, "lan-blocked", "Kolahal may not reach your local network yet", "local-network")
         logs.trim()
-        return Result.success()
+        return true
     }
 
     /** Source line of a script error: Lua messages carry `name:LINE:`, QuickJS exceptions a line number. */
@@ -125,22 +151,5 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         if (store.get(key) == today) return
         store.set(key, today)
         logs.add(LogKind.ERROR, "$name: $what — tap to allow", name, LogContext.of(LogContext.RUN to fix))
-    }
-
-    companion object {
-        const val KEY_SCRIPT_ID = "script_id"
-        const val KEY_LANG = "lang"
-        const val KEY_CODE = "code"
-        const val KEY_SCHEDULED = "scheduled"
-        const val KEY_ARGS = "args"
-        const val KEY_NAME = "name"
-        const val KEY_INTERACTIVE = "interactive"
-        /** Started by a command another script sent with launcher.run. */
-        const val KEY_BY_SCRIPT = "by_script"
-        /** JSON object for the script's `event` global (event-triggered runs only). */
-        const val KEY_EVENT = "event"
-        /** The typed command's line that started this run ([LogContext.FROM]). */
-        const val KEY_FROM = "from"
-        const val TIMEOUT_MS = 60_000L
     }
 }

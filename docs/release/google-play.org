@@ -29,6 +29,13 @@ status bar, uninstall requests, and the app list (Kolahal uses =<queries>=, not 
 executable code (dex, JAR, .so), not interpreted code, as long as it can't be used to break Play's
 policy.
 
+Since 0.4.4 a script's daily time runs in a short foreground service (=ScriptRunService=, type
+=shortService=, =FOREGROUND_SERVICE= only, no =FOREGROUND_SERVICE_*= type permission) for its few
+seconds: Android lets a launcher pause or resume the work profile only in front, and the run
+reaches the network while the phone dozes. If Play Console asks about it under App content →
+Foreground service permissions: it runs a script the user installed, at a time the user set, for
+seconds, started by an exact alarm the user allowed.
+
 =tools/check-play-build.sh= checks the Play APK: it fails if any of these appear: the
 call log or SMS permissions, =QUERY_ALL_PACKAGES=, =USE_EXACT_ALARM=, =REQUEST_INSTALL_PACKAGES=,
 =MANAGE_EXTERNAL_STORAGE=, =ACCESS_BACKGROUND_LOCATION=, an accessibility service, or a

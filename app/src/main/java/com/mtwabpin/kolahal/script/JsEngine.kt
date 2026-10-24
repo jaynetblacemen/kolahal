@@ -101,6 +101,10 @@ class JsEngine : ScriptEngine {
             function("battery") { toJs(host.battery()) }
             function("network") { host.network() }
             function("unlocks") { host.unlocksToday() }
+            function("dnd") { host.dnd() }
+            function("setDnd") { args -> host.setDnd(args.req(0)) }
+            function("work") { host.work() }
+            function("setWork") { args -> host.setWork(args.getOrNull(0) == true) }
         }
         js.define("apps") { function("list") { toJs(host.appsList()) } }
         js.define("notifications") { function("recent") { args -> toJs(host.notificationsRecent((args.getOrNull(0) as? Number)?.toInt() ?: 20)) } }

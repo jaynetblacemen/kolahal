@@ -167,17 +167,7 @@ class AppRepository private constructor(private val context: Context) {
         }.sortedBy { it.kind.ordinal }
     }
 
-    private fun kindOf(user: UserHandle, me: UserHandle): ProfileKind {
-        if (user == me) return ProfileKind.PERSONAL
-        if (Build.VERSION.SDK_INT >= 35) {
-            val type = runCatching { launcherApps.getLauncherUserInfo(user)?.userType }.getOrNull()
-            when (type) {
-                UserManager.USER_TYPE_PROFILE_PRIVATE -> return ProfileKind.PRIVATE
-                USER_TYPE_PROFILE_CLONE -> return ProfileKind.CLONE
-            }
-        }
-        return ProfileKind.WORK
-    }
+    private fun kindOf(user: UserHandle, me: UserHandle): ProfileKind = kindOf(launcherApps, user, me)
 
     fun profileBySerial(serial: Long): Profile? = _profiles.value.firstOrNull { it.serial == serial }
 
@@ -319,6 +309,19 @@ class AppRepository private constructor(private val context: Context) {
     }
 
     companion object {
+        /** Which kind of profile [user] is, seen from [me] (this app's user): anything not personal, a private space or a clone is work. */
+        fun kindOf(launcherApps: LauncherApps, user: UserHandle, me: UserHandle): ProfileKind {
+            if (user == me) return ProfileKind.PERSONAL
+            if (Build.VERSION.SDK_INT >= 35) {
+                val type = runCatching { launcherApps.getLauncherUserInfo(user)?.userType }.getOrNull()
+                when (type) {
+                    UserManager.USER_TYPE_PROFILE_PRIVATE -> return ProfileKind.PRIVATE
+                    USER_TYPE_PROFILE_CLONE -> return ProfileKind.CLONE
+                }
+            }
+            return ProfileKind.WORK
+        }
+
         @SuppressLint("StaticFieldLeak") // application context only
         @Volatile
         private var instance: AppRepository? = null
