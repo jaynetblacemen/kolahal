@@ -113,6 +113,8 @@ private val SHOWN_WHEN: Map<ConfigKey<*>, (Config) -> Boolean> = run {
         Keys.KEYBAR_HEIGHT to on(Keys.KEYBAR_SHOW),
         Keys.KEYBAR to on(Keys.KEYBAR_SHOW),
         Keys.KEYBAR2 to on(Keys.KEYBAR_SHOW),
+        Keys.SELECTOR_SIDE to on(Keys.SELECTOR_RAIL),
+        Keys.SELECTOR_POSITION to on(Keys.SELECTOR_RAIL),
         Keys.SELECTOR_HANDLE to on(Keys.SELECTOR_RAIL),
         Keys.SELECTOR_LETTERS to on(Keys.SELECTOR_RAIL),
         Keys.SELECTOR_HEIGHT to on(Keys.SELECTOR_RAIL),
@@ -133,7 +135,7 @@ private val SHOWN_WHEN: Map<ConfigKey<*>, (Config) -> Boolean> = run {
 internal fun applies(key: ConfigKey<*>, config: Config): Boolean = SHOWN_WHEN[key]?.invoke(config) ?: true
 
 /** Pages with an eye button that shows home while held (the same typing flag as above). */
-internal val PEEK_PAGES: Map<String, Boolean> = mapOf("look" to false, "home" to false, "log" to false, "typing" to true)
+internal val PEEK_PAGES: Map<String, Boolean> = mapOf("look" to false, "home" to false, "selector" to false, "log" to false, "typing" to true)
 
 internal class Category(
     val id: String,
@@ -169,6 +171,15 @@ private val CATEGORIES = listOf(
         ),
         manage = Triple("Arrange widgets", "Add, resize and reorder widgets", Screen.WIDGETS),
     ),
+    // The app selector is its own thing, apart from typing: it works while the keyboard is down.
+    Category(
+        "selector", "App selector", "Edge, letters, actions, icons", R.drawable.ic_apps,
+        listOf(
+            null to listOf(Keys.SELECTOR_RAIL),
+            "On the edge" to listOf(Keys.SELECTOR_SIDE, Keys.SELECTOR_POSITION, Keys.SELECTOR_HEIGHT, Keys.SELECTOR_HANDLE, Keys.SELECTOR_LETTERS),
+            "The list" to listOf(Keys.SELECTOR_ACTIONS, Keys.SELECTOR_ICONS),
+        ),
+    ),
     Category(
         "log", "Log", "Times, spacing, line height, history", R.drawable.ic_stat_terminal,
         listOf(
@@ -189,7 +200,6 @@ private val CATEGORIES = listOf(
         "typing", "Typing", "Suggestions, key bar, prompt, keyboard", R.drawable.ic_keyboard,
         listOf(
             "Suggestions" to listOf(Keys.SUGGESTIONS_STYLE, Keys.SUGGEST_ICONS, Keys.SUGGESTIONS_WRAP, Keys.SUGGESTIONS_AUTO, Keys.SUGGESTION_ROWS, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS, Keys.CHIP_HEIGHT),
-            "App selector" to listOf(Keys.SELECTOR_RAIL, Keys.SELECTOR_SIDE, Keys.SELECTOR_POSITION, Keys.SELECTOR_HANDLE, Keys.SELECTOR_LETTERS, Keys.SELECTOR_HEIGHT, Keys.SELECTOR_ACTIONS, Keys.SELECTOR_ICONS),
             "Key bar" to listOf(Keys.KEYBAR_SHOW, Keys.KEYBAR_AUTO, Keys.KEYBAR_HEIGHT, Keys.KEYBAR, Keys.KEYBAR2),
             "Prompt & keyboard" to listOf(Keys.PROMPT_HEIGHT_TYPING, Keys.IME_SUGGESTIONS, Keys.FOCUS_ON_HOME),
         ),

@@ -166,6 +166,18 @@ class SettingsScreenTest {
         assertEquals(Keys.PROMPT_HEIGHT_TYPING.range.first, config[Keys.PROMPT_HEIGHT_TYPING])
     }
 
+    /** The app selector has a page of its own, apart from Typing; its settings show once it is on. */
+    @Test fun theAppSelectorHasItsOwnPage() {
+        assertTrue(allCategories().first { it.id == "typing" }.keys.none { it.key.startsWith("selector.") })
+        assertTrue(Keys.ALL.filter { it.key.startsWith("selector.") }.all { it in allCategories().first { c -> c.id == "selector" }.keys })
+        show("selector")
+        compose.onNodeWithText(Keys.SELECTOR_RAIL.key, useUnmergedTree = true).assertExists()
+        compose.onNodeWithText(Keys.SELECTOR_LETTERS.key, useUnmergedTree = true).assertDoesNotExist()
+        compose.runOnIdle { config.set(Keys.SELECTOR_RAIL, "on") }
+        scrollTo(Keys.SELECTOR_LETTERS)
+        compose.onNodeWithText(Keys.SELECTOR_LETTERS.key, useUnmergedTree = true).assertExists()
+    }
+
     /** A setting another one turns off (the key bar's rows while it is off) shows once it is on. */
     @Test fun settingsThatDontApplyStayHidden() {
         show("typing")
