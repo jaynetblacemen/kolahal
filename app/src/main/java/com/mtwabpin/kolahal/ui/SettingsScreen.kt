@@ -326,6 +326,7 @@ fun SettingsScreen(
                         listOf(
                             Action(R.drawable.ic_widgets, "Widgets", "Add, resize and arrange widgets", chevron = true) { vm.openScreen(Screen.WIDGETS) },
                             Action(R.drawable.ic_check, "Setup checklist", "Default launcher, permissions, battery", chevron = true) { vm.openScreen(Screen.SETUP) },
+                            Action(R.drawable.ic_info, "Tour", "How Kolahal works, and a few first settings", chevron = true) { vm.openScreen(Screen.ONBOARDING) },
                         )
                     )
                 }
@@ -624,9 +625,9 @@ fun ChipChoices(choices: List<String>, selected: String, onPick: (String) -> Uni
     }
 }
 
-/** Theme picker: a preview card per palette. */
+/** Theme picker: a preview card per palette (Settings, and the tour). */
 @Composable
-private fun ThemeSwatches(selected: String, dark: Boolean, onPick: (String) -> Unit) {
+internal fun ThemeSwatches(selected: String, dark: Boolean, onPick: (String) -> Unit) {
     // Not lazy, for the reason in FontChoices.
     // The built-in themes, then the ones made in the theme builder (they come and go).
     val own = CustomThemes.themes.collectAsStateWithLifecycle().value.keys.sorted()

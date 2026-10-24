@@ -560,7 +560,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             unreadUntil = withContext(Dispatchers.IO) { logs.maxId() }
             requestReload()
         }
-        if (_screen.value == Screen.SETUP) refreshSetup()
+        if (_screen.value == Screen.SETUP || _screen.value == Screen.ONBOARDING) refreshSetup()
         unlockCounter.refresh()
         appsRepo.refresh()
         mediaRepo.start() // picks up notification access granted while we were away
@@ -988,7 +988,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         }
         if (screen == Screen.SCRIPTS || screen == Screen.SCRIPT_LIBRARY || screen == Screen.GET_SCRIPTS) refreshScripts()
         if (screen == Screen.GET_SCRIPTS) loadSharedScripts()
-        if (screen == Screen.SETUP) refreshSetup()
+        if (screen == Screen.SETUP || screen == Screen.ONBOARDING) refreshSetup()
     }
 
     /** Settings, Feeds and Scripts are tabs of one place: switching replaces the screen, so Back leaves them all. */
@@ -1019,7 +1019,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         if (_screen.value == Screen.SETTINGS && previous == Screen.TERMINAL) settingsCategory.value = null
         _screen.value = previous
         if (previous == Screen.SCRIPTS) refreshScripts()
-        if (previous == Screen.SETUP) refreshSetup()
+        if (previous == Screen.SETUP || previous == Screen.ONBOARDING) refreshSetup()
     }
 
     private fun refreshScripts() = io { scriptCache.value = scripts.all() }
@@ -1538,7 +1538,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             if (firstRun) {
                 logs.add(LogKind.INFO, "Kolahal — a terminal launcher. type 'help' or start typing an app name.")
                 logs.add(LogKind.INFO, "↑/↓ recall commands · tap a line to reuse/open it · long-press for actions")
-                openScreen(Screen.SETUP) // first run: show the setup checklist
+                openScreen(Screen.ONBOARDING) // first run: the tour, which sets up the first few things
             }
         }
     }

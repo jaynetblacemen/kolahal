@@ -186,6 +186,7 @@ class MainActivity : ComponentActivity() {
                         Screen.SCRIPT_LIBRARY -> com.mtwabpin.kolahal.ui.ScriptLibraryScreen(vm)
                         Screen.FEEDS -> FeedsScreen(vm, onRequestNotifications = ::requestNotifications)
                         Screen.SETUP -> SetupScreen(vm)
+                        Screen.ONBOARDING -> com.mtwabpin.kolahal.ui.OnboardingScreen(vm)
                         Screen.WIDGETS -> WidgetsScreen(vm, onReAdd = { entry, w -> widgetBinder.add(entry, w.key) })
                         Screen.WIDGET_PICKER -> WidgetPickerScreen(vm, onPick = { widgetBinder.add(it) })
                         Screen.THEME_BUILDER -> com.mtwabpin.kolahal.ui.ThemeBuilderScreen(vm)

@@ -91,7 +91,7 @@ fun SetupScreen(vm: TerminalViewModel) {
 }
 
 @Composable
-private fun StatusDot(ok: Boolean, informational: Boolean) {
+internal fun StatusDot(ok: Boolean, informational: Boolean) {
     val color = when {
         ok -> MaterialTheme.colorScheme.primary
         informational -> MaterialTheme.colorScheme.outline

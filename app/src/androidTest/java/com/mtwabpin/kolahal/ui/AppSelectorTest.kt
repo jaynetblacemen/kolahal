@@ -2,6 +2,10 @@ package com.mtwabpin.kolahal.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -52,6 +56,68 @@ class AppSelectorTest {
                 position = position, edgeBackGesture = backGesture, actions = actions, icons = icons, letters = letters,
             )
         }
+    }
+
+    /**
+     * The app launched by touching the strip's middle, sliding [slideDp] down it at 40dp a second
+     * (slow: under the aim speed), then off the edge and lifting.
+     */
+    private fun launchAfterSlowSlide(slideDp: Int): AppEntry? {
+        launched = null
+        compose.onNodeWithTag("app-selector").performTouchInput {
+            down(center)
+            repeat(slideDp / 2) { moveBy(Offset(0f, 2.dp.toPx()), delayMillis = 50) }
+            moveBy(Offset(-60.dp.toPx(), 0f), delayMillis = 16)
+            up()
+        }
+        compose.waitForIdle()
+        return launched
+    }
+
+    /** Plan C: a slow slide aims, an app per selector.aim dp, where a glide would run through many more. */
+    @Test fun aSlowSlideAims() {
+        val list = apps.apps.value
+        val order = SelectorMath.build(list.filter { !it.hidden }, { it.label }, { it.key }, { false }, { it.profile.kind.ordinal }).map { it.item.key }
+        var aimDp by mutableIntStateOf(40)
+        compose.setContent {
+            Box(Modifier.size(360.dp, 700.dp)) {
+                AppSelector(list, emptySet(), onLaunch = { launched = it }, onLongPress = {}, heightDp = 300, edgeBackGesture = false, aimDp = aimDp)
+            }
+        }
+        val start = order.indexOf(launchAfterSlowSlide(0)!!.key)
+        val aimed = order.indexOf(launchAfterSlowSlide(80)!!.key) - start
+        compose.runOnIdle { aimDp = 0 }
+        val glided = order.indexOf(launchAfterSlowSlide(80)!!.key) - order.indexOf(launchAfterSlowSlide(0)!!.key)
+        assertTrue("aimed $aimed apps", aimed in 1..3)
+        assertTrue("glided $glided apps, aimed $aimed", glided > aimed + 1)
+    }
+
+    /** The app launched by touching the strip [atTop] or at its bottom, and picking it there. */
+    private fun launchAtEnd(atTop: Boolean): AppEntry? {
+        launched = null
+        compose.onNodeWithTag("app-selector").performTouchInput {
+            val y = if (atTop) 2f else height - 2f
+            down(Offset(centerX, y))
+            moveTo(Offset(centerX - 60.dp.toPx(), y))
+            up()
+        }
+        compose.waitForIdle()
+        return launched
+    }
+
+    /** Plan F: with the strip at the bottom of the edge, favourites come last, where the thumb rests; elsewhere first. */
+    @Test fun favouritesSitWhereTheThumbRests() {
+        val list = apps.apps.value.filter { !it.hidden }
+        val favourite = list.sortedBy { it.label.lowercase() }[list.size / 2]
+        var position by mutableStateOf("bottom")
+        compose.setContent {
+            Box(Modifier.size(360.dp, 700.dp)) {
+                AppSelector(list, setOf(favourite.key), onLaunch = { launched = it }, onLongPress = {}, heightDp = 300, position = position, edgeBackGesture = false)
+            }
+        }
+        assertEquals(favourite.key, launchAtEnd(atTop = false)?.key)
+        compose.runOnIdle { position = "top" }
+        assertEquals(favourite.key, launchAtEnd(atTop = true)?.key)
     }
 
     private fun lettersShown() = compose.onAllNodesWithTag("app-selector-letter", useUnmergedTree = true).fetchSemanticsNodes()

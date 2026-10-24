@@ -141,6 +141,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "local-network" -> localNetwork(args)
                 "crashes" -> crashes(args)
                 "setup" -> if (args.firstOrNull() == "text") setupText() else ui.openScreen(Screen.SETUP)
+                "tour" -> ui.openScreen(Screen.ONBOARDING)
                 "status" -> scriptCommands.status(args)
                 "usage-access" -> startActivity(unlocks.usageAccessIntent())
                 "battery" -> startSettings(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
@@ -607,6 +608,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("restart", "restart [scripts]", "Restart the launcher, or stop running scripts"),
             CommandSpec("status", "status [clear <name|all>]", "Header lines pinned by scripts"),
             CommandSpec("setup", "setup [text]", "Setup checklist page (text: print it in the log)"),
+            CommandSpec("tour", "tour", "How Kolahal works, a page at a time, with a few first settings"),
             CommandSpec("notifications", "notifications [settings]", "Allow script notifications"),
             CommandSpec("usage-access", "usage-access", "Grant usage access (unlock count)"),
             CommandSpec("local-network", "local-network [--settings]", "Let scripts (@uses lan) and feeds reach your local network (Android 17+)"),
@@ -684,7 +686,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
             "terminal" to listOf("help", "history", "clear", "fresh", "restart", "alias", "unalias", "config", "theme", "font", "echo", "date", "cal"),
             "widgets" to listOf("widgets", "widget"),
-            "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "local-network", "crashes", "battery", "home", "lock", "shade", "accessibility", "system"),
+            "device" to listOf("settings", "setup", "tour", "unlocks", "notifications", "usage-access", "local-network", "crashes", "battery", "home", "lock", "shade", "accessibility", "system"),
         )
     }
 }

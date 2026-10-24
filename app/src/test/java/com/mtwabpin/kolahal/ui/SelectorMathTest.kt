@@ -79,6 +79,55 @@ class SelectorMathTest {
         assertTrue(build(emptyList()).isEmpty())
     }
 
+    /** Plan F: with the strip at the bottom of the edge, the favourites come last, under the thumb. */
+    @Test fun favouritesCanComeLast() {
+        val list = SelectorMath.build(
+            listOf(A("Maps"), A("Camera", pinned = true), A("2048")),
+            { it.label }, { it.label }, { it.pinned }, { it.profile }, favouritesLast = true,
+        )
+        assertEquals(listOf("2048", "Camera", "Maps", "Camera"), list.map { it.item.label })
+        assertEquals(listOf('#', 'C', 'M', '★'), list.map { it.section })
+        assertEquals(listOf(0, 1, 2, 3), list.map { it.sectionIndex })
+        assertTrue(list.last().favourite && list.last().sectionStart)
+        assertEquals(list.size, list.map { it.key }.toSet().size)
+    }
+
+    /** Plan C: under the aim speed a slide aims; from two and a half times it, it glides; between, a blend. */
+    @Test fun slowSlidesAimAndFastOnesGlide() {
+        assertEquals(1f, SelectorMath.aimWeight(0f, 100f), 0f)
+        assertEquals(1f, SelectorMath.aimWeight(100f, 100f), 0f)
+        assertEquals(0.5f, SelectorMath.aimWeight(175f, 100f), 0.001f)
+        assertEquals(0f, SelectorMath.aimWeight(250f, 100f), 0f)
+        assertEquals(0f, SelectorMath.aimWeight(900f, 100f), 0f)
+        // No aim speed: always a glide.
+        assertEquals(0f, SelectorMath.aimWeight(10f, 0f), 0f)
+    }
+
+    /** Plan C: aiming moves an app per step, never faster than the glide; a glide goes where the strip maps it. */
+    @Test fun aimingMovesAnAppPerStep() {
+        // The glide would move 4 apps for this 20px slide; aiming at 10px an app moves 2.
+        assertEquals(12f, SelectorMath.aim(10f, 30f, 34f, 20f, 10f, weight = 1f, count = 100), 0.001f)
+        assertEquals(8f, SelectorMath.aim(10f, 34f, 30f, -20f, 10f, weight = 1f, count = 100), 0.001f)
+        // Where the glide moves less than the step (a short list), aiming moves no more than it.
+        assertEquals(10.5f, SelectorMath.aim(10f, 3f, 3.5f, 20f, 10f, weight = 1f, count = 100), 0.001f)
+        // Gliding goes straight to the strip's place, wherever the aim had got to.
+        assertEquals(34f, SelectorMath.aim(10f, 30f, 34f, 20f, 10f, weight = 0f, count = 100), 0.001f)
+        // Half and half: half the aim's step, and half way back to the glide's place.
+        assertEquals(10f + 0.5f * 2f + 0.5f * 24f, SelectorMath.aim(10f, 30f, 34f, 20f, 10f, weight = 0.5f, count = 100), 0.001f)
+        // Never past the list's ends.
+        assertEquals(0f, SelectorMath.aim(0.5f, 3f, 2f, -20f, 10f, weight = 1f, count = 100), 0.001f)
+        assertEquals(99.99f, SelectorMath.aim(99.5f, 90f, 99f, 20f, 10f, weight = 1f, count = 100), 0.001f)
+        // A step of 0 never aims.
+        assertEquals(34f, SelectorMath.aim(10f, 30f, 34f, 20f, 0f, weight = 1f, count = 100), 0.001f)
+    }
+
+    /** Plan C: the measured speed follows the thumb over about 60 ms, so one jittery move doesn't flip it. */
+    @Test fun theSpeedIsSmoothed() {
+        assertEquals(50f, SelectorMath.smoothSpeed(0f, 200f, 15), 0.001f)
+        assertEquals(200f, SelectorMath.smoothSpeed(0f, 200f, 60), 0.001f)
+        assertEquals(200f, SelectorMath.smoothSpeed(0f, 200f, 500), 0.001f)
+    }
+
     /** Plan D: each section's room goes by the square root of its size: four times the apps, twice the room. */
     @Test fun everyLetterGetsRoom() {
         val sections = SelectorMath.Sections(listOf(1, 4, 16))
@@ -248,5 +297,13 @@ class SelectorMathTest {
             ),
             feels(edge(0, 0), edge(3, 0), edge(5, 1), list(5, 1), list(6, 1), list(6, 1), list(7, 2), edge(9, 3), edge(12, 4)),
         )
+    }
+
+    /** Plan C: aiming along the edge ticks once per app, as picking does; a new letter still ticks as a letter. */
+    @Test fun aimingTicksPerApp() {
+        assertEquals(SelectorMath.Feel.APP, SelectorMath.feel(false, false, 4, 3, 1, 1, aiming = true))
+        assertEquals(SelectorMath.Feel.NONE, SelectorMath.feel(false, false, 4, 3, 1, 1, aiming = false))
+        assertEquals(SelectorMath.Feel.LETTER, SelectorMath.feel(false, false, 5, 4, 2, 1, aiming = true))
+        assertEquals(SelectorMath.Feel.NONE, SelectorMath.feel(false, false, 4, 4, 1, 1, aiming = true))
     }
 }
