@@ -6,7 +6,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
@@ -43,31 +42,13 @@ class AppSelectorTest {
         list: List<AppEntry> = apps.apps.value,
         backGesture: Boolean = false,
         actions: String = "hold",
-        icons: Boolean = false,
     ) = compose.setContent {
         Box(Modifier.size(360.dp, 700.dp)) {
             AppSelector(
                 list, emptySet(), onLaunch = { launched = it }, onLongPress = { pressed = it }, heightDp = 300, left = left,
-                position = position, edgeBackGesture = backGesture, actions = actions, icons = icons,
+                position = position, edgeBackGesture = backGesture, actions = actions,
             )
         }
-    }
-
-    private fun iconsShown() = compose.onAllNodesWithTag("app-selector-icon", useUnmergedTree = true).fetchSemanticsNodes().size
-
-    /** Plan E: with suggestions.icons on, each row starts with the app's icon; off, none. */
-    @Test fun rowsShowIconsWhenSuggestionsDo() {
-        show(left = false, position = "bottom", icons = true)
-        compose.onNodeWithTag("app-selector").performTouchInput { down(center) }
-        compose.waitForIdle()
-        assertTrue("icons in the list", iconsShown() > 0)
-    }
-
-    @Test fun rowsShowNoIconsWhenSuggestionsDont() {
-        show(left = false, position = "bottom", icons = false)
-        compose.onNodeWithTag("app-selector").performTouchInput { down(center) }
-        compose.waitForIdle()
-        assertEquals(0, iconsShown())
     }
 
     /** Plan B: holding still while picking opens the app's actions, once its row has filled. */

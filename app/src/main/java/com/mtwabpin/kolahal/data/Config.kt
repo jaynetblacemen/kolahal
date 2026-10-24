@@ -92,7 +92,7 @@ object Keys {
     )
     val LAUNCH_INSTANT_MIN = ConfigKey.Num("launch.instant-letters", 2, 1..6, "Letters to type before an instant launch")
     val LAUNCH_TOP = ConfigKey.Bool("launch.top", true, "Enter launches the best match when it starts with what you typed")
-    val SUGGEST_ICONS = ConfigKey.Bool("suggestions.icons", true, "Show app icons next to app suggestions, in the list and on chips, and in the app selector's list")
+    val SUGGEST_ICONS = ConfigKey.Bool("suggestions.icons", true, "Show app icons next to app suggestions, in the list and on chips")
     val SUGGESTIONS_WRAP = ConfigKey.Bool("suggestions.wrap", false, "Show a command's or setting's whole description in the suggestion list, over more lines (off: one line, cut short)")
     val SUGGEST_IDLE = ConfigKey.Bool("suggestions.idle", false, "Show most-used apps when the prompt is empty")
     val SUGGESTIONS_AUTO = ConfigKey.Bool("suggestions.auto", true, "Show suggestions only while typing (keyboard up or text in the prompt)")
