@@ -164,6 +164,9 @@ class CommandFamiliesTest {
         assertTrue(setup.toString(), setup.first().startsWith("Setup") && setup.size > 1 && setup.drop(1).all { it.startsWith("[") })
         if (Build.VERSION.SDK_INT < 37) assertTrue(run("local-network").single().contains("no permission"))
         assertTrue(run("date").single().isNotBlank())
+        // The time elsewhere: each place on a line of its own, the detail in its second column.
+        assertEquals(listOf("Tokyo", "New York"), run("date tokyo new york"))
+        assertTrue(run("date nowhere").single().startsWith("No place called"))
         val cal = run("cal")
         assertTrue(cal.toString(), cal.size in 7..8 && cal[1].trim().split(" ").size == 7)
         assertTrue(run("cal nope").single().startsWith("No month"))

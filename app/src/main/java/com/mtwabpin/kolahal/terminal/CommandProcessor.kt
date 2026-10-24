@@ -152,7 +152,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                     logs.add(LogKind.ERROR, "Locking needs the Kolahal screen lock accessibility service — tap to enable it", ctx = LogContext.of(LogContext.RUN to "accessibility"))
                 }
                 "shade" -> com.mtwabpin.kolahal.gesture.Gestures.expandShade(context)
-                "date", "time" -> out(DateFormat.getDateTimeInstance().format(Date()))
+                "date", "time" -> if (args.isEmpty()) out(DateFormat.getDateTimeInstance().format(Date())) else date(args)
                 "echo" -> out(rest)
                 "cal" -> cal(rest)
                 "config", "set" -> if (name == "config" && args.isEmpty()) ui.openScreen(Screen.SETTINGS) else configCommands.config(args, rest)
@@ -223,6 +223,18 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val lines = MonthCalendar.lines(month, today) { com.mtwabpin.kolahal.data.StyledText.wrap(com.mtwabpin.kolahal.data.StyledText.Style.BOLD, it) }
         // One line each, in the terminal font, so the columns hold.
         lines.forEach { out(it, LogContext(LogContext.ALIGNED)) }
+    }
+
+    /** `date tokyo new york`: the time in each place, one line each, and how far ahead or behind it is. */
+    private fun date(words: List<String>) {
+        val places = WorldClock.parse(words)
+            ?: return error("No place called '${words.joinToString(" ")}'. A city (tokyo, new york), a zone (Asia/Tokyo), utc, or an offset like +5:30")
+        val now = java.time.Instant.now()
+        val clock24 = Config.get(context)[Keys.CLOCK_24H]
+        for (place in places) {
+            val line = WorldClock.line(place, now, java.time.ZoneId.systemDefault(), clock24)
+            out(line.place, LogContext.of(LogContext.DESC to line.detail))
+        }
     }
 
     /** Launches [app], as a tap on it or on its suggestion does. */
@@ -598,7 +610,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("config", "config [ls|set|get|reset] <key> <v>", "Settings (no args opens the settings page)"),
             CommandSpec("theme", "theme <name>", "Themes: green amber mono dracula solarized gruvbox gruvbox-material"),
             CommandSpec("font", "font [<name>|import|sans [off|prompt|all]]", "Terminal font: system jetbrains-mono fira-code ibm-plex-mono source-code-pro custom (no args: list); sans: the phone's font for the prompt or everything"),
-            CommandSpec("date", "date", "Current date and time"),
+            CommandSpec("date", "date [<place>...]", "Current date and time, or the time in a city, a zone, utc or an offset"),
             CommandSpec("echo", "echo <text>", "Print text"),
             CommandSpec("cal", "cal [<month>] [<year>]", "The month as a calendar, today in bold · cal dec · cal dec 2027 · cal 2027-12"),
             CommandSpec("alias", "alias [name = command]", "List or define aliases"),
