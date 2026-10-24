@@ -48,6 +48,7 @@ internal val TITLES = mapOf(
     "selector.position" to "Where on the edge",
     "selector.handle" to "Show the A–Z handle",
     "selector.height" to "Length on the edge (dp)",
+    "selector.actions" to "App actions while picking",
     "suggestions.rows" to "Chip rows",
     "chips.height" to "Chip height (dp)",
     "keybar.show" to "Show the key bar",
@@ -112,6 +113,7 @@ private val SHOWN_WHEN: Map<ConfigKey<*>, (Config) -> Boolean> = run {
         Keys.KEYBAR2 to on(Keys.KEYBAR_SHOW),
         Keys.SELECTOR_HANDLE to on(Keys.SELECTOR_RAIL),
         Keys.SELECTOR_HEIGHT to on(Keys.SELECTOR_RAIL),
+        Keys.SELECTOR_ACTIONS to on(Keys.SELECTOR_RAIL),
         Keys.FEEDS_LOG_LINES to on(Keys.FEEDS_LOG),
         Keys.FEEDS_READ_SHOWN to on(Keys.FEEDS_LOG),
         // Without the header, only the clock's 24-hour setting still counts: the log uses it too.
@@ -183,7 +185,7 @@ private val CATEGORIES = listOf(
         "typing", "Typing", "Suggestions, key bar, prompt, keyboard", R.drawable.ic_keyboard,
         listOf(
             "Suggestions" to listOf(Keys.SUGGESTIONS_STYLE, Keys.SUGGEST_ICONS, Keys.SUGGESTIONS_WRAP, Keys.SUGGESTIONS_AUTO, Keys.SUGGESTION_ROWS, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS, Keys.CHIP_HEIGHT),
-            "App selector" to listOf(Keys.SELECTOR_RAIL, Keys.SELECTOR_SIDE, Keys.SELECTOR_POSITION, Keys.SELECTOR_HANDLE, Keys.SELECTOR_HEIGHT),
+            "App selector" to listOf(Keys.SELECTOR_RAIL, Keys.SELECTOR_SIDE, Keys.SELECTOR_POSITION, Keys.SELECTOR_HANDLE, Keys.SELECTOR_HEIGHT, Keys.SELECTOR_ACTIONS),
             "Key bar" to listOf(Keys.KEYBAR_SHOW, Keys.KEYBAR_AUTO, Keys.KEYBAR_HEIGHT, Keys.KEYBAR, Keys.KEYBAR2),
             "Prompt & keyboard" to listOf(Keys.PROMPT_HEIGHT_TYPING, Keys.IME_SUGGESTIONS, Keys.FOCUS_ON_HOME),
         ),

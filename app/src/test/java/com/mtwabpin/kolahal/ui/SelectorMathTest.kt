@@ -1,11 +1,38 @@
 package com.mtwabpin.kolahal.ui
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SelectorMathTest {
+    /** Plan B: the held row stays empty for 300 ms, then fills until the actions open at 800 ms. */
+    @Test fun theHoldFillsAsItCounts() {
+        assertEquals(0f, SelectorMath.holdFill(0), 0f)
+        assertEquals(0f, SelectorMath.holdFill(300), 0f)
+        assertEquals(0.5f, SelectorMath.holdFill(550), 0.001f)
+        assertEquals(1f, SelectorMath.holdFill(800), 0f)
+        assertEquals(1f, SelectorMath.holdFill(2_000), 0f)
+    }
+
+    /** A move clears the hold: the fill drains away rather than vanishing, and rises at once. */
+    @Test fun aStoppedHoldDrains() {
+        assertEquals(0.8f, SelectorMath.holdShown(0.2f, 0.8f, 16), 0f)
+        assertEquals(0.8f - 60f / SelectorMath.DRAIN_MS, SelectorMath.holdShown(0.8f, 0f, 60), 0.001f)
+        assertEquals(0f, SelectorMath.holdShown(0.8f, 0f, 500), 0f)
+    }
+
+    /** B2: the far side is the panel's last 30%, away from the strip. */
+    @Test fun theFarSideIsAwayFromTheStrip() {
+        // Strip on the right, panel at 0..252: the far side is left of 75.6.
+        assertTrue(SelectorMath.farSide(60f, 0f, 252f, left = false))
+        assertFalse(SelectorMath.farSide(120f, 0f, 252f, left = false))
+        // Strip on the left, panel at 108..360: the far side is right of 284.4.
+        assertTrue(SelectorMath.farSide(300f, 108f, 252f, left = true))
+        assertFalse(SelectorMath.farSide(200f, 108f, 252f, left = true))
+    }
+
     /** Plan A: with gesture navigation a touch starts only in the middle 200dp; otherwise anywhere on the strip. */
     @Test fun aTouchStartsInTheMiddleWhenTheEdgeSwipesBack() {
         assertEquals(75f to 200f, SelectorMath.startZone(350f, 200f, backGesture = true))

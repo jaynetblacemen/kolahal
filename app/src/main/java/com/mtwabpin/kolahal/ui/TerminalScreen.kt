@@ -449,6 +449,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 showHandle = remember(configVersion) { config[Keys.SELECTOR_HANDLE] },
                 left = remember(configVersion) { config[Keys.SELECTOR_SIDE] == "left" },
                 position = remember(configVersion) { config[Keys.SELECTOR_POSITION] },
+                actions = remember(configVersion) { config[Keys.SELECTOR_ACTIONS] },
             )
         }
         // [/selector]

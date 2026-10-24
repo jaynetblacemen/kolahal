@@ -34,14 +34,54 @@ class AppSelectorTest {
     }
 
     @Volatile private var launched: AppEntry? = null
+    @Volatile private var pressed: AppEntry? = null
 
-    private fun show(left: Boolean, position: String, list: List<AppEntry> = apps.apps.value, backGesture: Boolean = false) = compose.setContent {
+    private fun show(
+        left: Boolean,
+        position: String,
+        list: List<AppEntry> = apps.apps.value,
+        backGesture: Boolean = false,
+        actions: String = "hold",
+    ) = compose.setContent {
         Box(Modifier.size(360.dp, 700.dp)) {
             AppSelector(
-                list, emptySet(), onLaunch = { launched = it }, onLongPress = {}, heightDp = 300, left = left, position = position,
-                edgeBackGesture = backGesture,
+                list, emptySet(), onLaunch = { launched = it }, onLongPress = { pressed = it }, heightDp = 300, left = left,
+                position = position, edgeBackGesture = backGesture, actions = actions,
             )
         }
+    }
+
+    /** Plan B: holding still while picking opens the app's actions, once its row has filled. */
+    @Test fun holdingStillOpensTheActions() {
+        show(left = false, position = "bottom", actions = "hold")
+        compose.onNodeWithTag("app-selector").performTouchInput { down(center); moveTo(Offset(centerX - 60.dp.toPx(), centerY)) }
+        compose.waitUntil(3_000) { pressed != null }
+        assertEquals(null, launched)
+    }
+
+    /** B2: lifting on the panel's far side opens the actions; nearer the strip it launches. */
+    @Test fun theFarSideOpensTheActions() {
+        show(left = false, position = "bottom", actions = "far-side")
+        compose.onNodeWithTag("app-selector").performTouchInput {
+            down(center)
+            moveTo(Offset(centerX - 60.dp.toPx(), centerY))
+            moveTo(Offset(-290.dp.toPx(), centerY))
+            up()
+        }
+        compose.runOnIdle { assertTrue(pressed != null); assertEquals(null, launched) }
+        pressed = null
+        compose.onNodeWithTag("app-selector").performTouchInput { down(center); moveTo(Offset(centerX - 60.dp.toPx(), centerY)); up() }
+        compose.runOnIdle { assertTrue(launched != null); assertEquals(null, pressed) }
+    }
+
+    /** Off: no actions while picking, however long you hold still; lifting launches. */
+    @Test fun withActionsOffAHoldJustLaunches() {
+        show(left = false, position = "bottom", actions = "off")
+        compose.onNodeWithTag("app-selector").performTouchInput { down(center); moveTo(Offset(centerX - 60.dp.toPx(), centerY)) }
+        Thread.sleep(1_100)
+        compose.mainClock.advanceTimeBy(1_100)
+        compose.onNodeWithTag("app-selector").performTouchInput { up() }
+        compose.runOnIdle { assertTrue(launched != null); assertEquals(null, pressed) }
     }
 
     private fun height(tag: String) = compose.onNodeWithTag(tag).getUnclippedBoundsInRoot().let { (it.bottom - it.top).value }

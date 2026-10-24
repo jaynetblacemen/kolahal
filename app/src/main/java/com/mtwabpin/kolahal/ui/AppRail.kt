@@ -52,7 +52,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -227,6 +230,29 @@ internal object SelectorMath {
         }
     }
 
+    /** Held still this long on an app while picking: its actions. Long enough to find it on the far side first. */
+    const val HOLD_MS = 800L
+
+    /** The held row starts to fill this long into a hold, so the actions never come as a surprise (Plan B). */
+    const val FILL_FROM_MS = 300L
+
+    /** A fill that stops rising drains away in at most this long (ms, for a full row). */
+    const val DRAIN_MS = 120f
+
+    /** The panel's far side, for actions with `selector.actions far-side`: this share of its width, away from the strip. */
+    const val FAR_SHARE = 0.3f
+
+    /** How full the held row is after [heldMs] still: empty for [FILL_FROM_MS], full at [HOLD_MS]. */
+    fun holdFill(heldMs: Long): Float = ((heldMs - FILL_FROM_MS).toFloat() / (HOLD_MS - FILL_FROM_MS)).coerceIn(0f, 1f)
+
+    /** The fill drawn: up to [target] at once, and down from [shown] no faster than a full row in [DRAIN_MS]. */
+    fun holdShown(shown: Float, target: Float, dtMs: Long): Float =
+        if (target >= shown) target else max(target, shown - dtMs / DRAIN_MS)
+
+    /** Whether [fingerX] is on the far side of the panel ([panelX], [panelW] wide) from the strip: its last [FAR_SHARE]. */
+    fun farSide(fingerX: Float, panelX: Float, panelW: Float, left: Boolean): Boolean =
+        if (left) fingerX > panelX + panelW * (1f - FAR_SHARE) else fingerX < panelX + panelW * FAR_SHARE
+
     /** What a move feels like: nothing, a letter passed along the edge, an app passed in the list, or a switch between the two. */
     enum class Feel { NONE, LETTER, APP, SWITCH }
 
@@ -272,10 +298,16 @@ private class SelectorState {
     /** How far the panel is moved down (up when negative) for what scrolling couldn't do. */
     var shiftPx by mutableFloatStateOf(0f)
     var interaction by mutableIntStateOf(0)
+    /** How full the held row is (0 to 1), drawn on the focused row while picking (Plan B). */
+    var hold by mutableFloatStateOf(0f)
+    /** Picking on the panel's far side: lifting opens the app's actions (`selector.actions far-side`). */
+    var far by mutableStateOf(false)
 
     fun close() {
         mode = Mode.CLOSED
         contact = Float.NaN
+        hold = 0f
+        far = false
         // shiftPx stays: the panel fades out where it is, and the next touch places it again.
     }
 }
@@ -287,8 +319,6 @@ private val STRIP_W = 36.dp
 private val TOP_GAP = 8.dp
 /** Leaves the "jump to latest" button in the log's bottom-right corner reachable. */
 private val BOTTOM_GAP = 72.dp
-/** Held still this long on an app while picking: its actions. Long enough to find it on the far side first. */
-private const val HOLD_MS = 800L
 private const val IDLE_MS = 4_000L
 private const val FRAME_MS = 16L
 
@@ -331,6 +361,11 @@ fun AppSelector(
     position: String = "bottom",
     /** Android's back swipe on this edge (gesture navigation): a touch starts the selector only where it is kept off. */
     edgeBackGesture: Boolean = hasEdgeBackGesture(left),
+    /**
+     * selector.actions: while picking, an app's actions come from holding still on it (`hold`: its
+     * row fills first), from lifting on the panel's far side (`far-side`), or not at all (`off`).
+     */
+    actions: String = "hold",
 ) {
     val entries = remember(apps, pinned) {
         SelectorMath.build(
@@ -518,7 +553,7 @@ fun AppSelector(
                     val top = ((h - exclusionPx) / 2).coerceAtLeast(0f)
                     Rect(0f, top, c.size.width.toFloat(), min(h, top + exclusionPx))
                 }
-                .pointerInput(entries, rowPx, panelHPx, panelTopPx, stripTopPx, stripHPx, zoneTopPx, left) {
+                .pointerInput(entries, rowPx, panelHPx, panelTopPx, stripTopPx, stripHPx, zoneTopPx, left, actions) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         down.consume()
@@ -539,6 +574,9 @@ fun AppSelector(
                         var anchorY = y
                         var anchorX = x
                         var lastFrame = rowSince
+                        val holdMode = actions == "hold"
+                        val farMode = actions == "far-side"
+                        var holdAt = rowSince
 
                         fun update(now: Long) {
                             val cy = stripTopPx + y
@@ -581,6 +619,17 @@ fun AppSelector(
                                 anchorY = y
                                 anchorX = x
                             }
+                            // Plan B: the held row fills as the hold counts, so the actions never come as
+                            // a surprise; a move restarts the hold and the fill drains away.
+                            val target = if (selecting && holdMode) SelectorMath.holdFill(now - rowSince) else 0f
+                            state.hold = SelectorMath.holdShown(state.hold, target, now - holdAt)
+                            holdAt = now
+                            // B2: on the panel's far side, lifting opens the actions instead of launching.
+                            val far = farMode && selecting && SelectorMath.farSide(stripXPx + x, panelXPx, panelWPx, left)
+                            if (far != state.far) {
+                                if (far) haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                                state.far = far
+                            }
                         }
 
                         state.interaction++
@@ -594,9 +643,14 @@ fun AppSelector(
                                 } else 0f
                                 val scrolling = speed != 0f &&
                                     !(speed < 0f && state.listY <= 0f) && !(speed > 0f && state.listY >= maxScrollPx)
+                                val held = now - rowSince
+                                val holding = selecting && holdMode
+                                // The fill rises, then drains when the hold stops: a frame at a time for both.
+                                val filling = holding && held >= SelectorMath.FILL_FROM_MS
+                                val draining = state.hold > 0f && !filling
                                 val wait = when {
-                                    scrolling -> FRAME_MS
-                                    selecting -> (HOLD_MS - (now - rowSince)).coerceAtLeast(1L)
+                                    scrolling || filling || draining -> FRAME_MS
+                                    holding -> (SelectorMath.FILL_FROM_MS - held).coerceAtLeast(1L)
                                     else -> Long.MAX_VALUE
                                 }
                                 if (!scrolling) lastFrame = now
@@ -610,14 +664,16 @@ fun AppSelector(
                                         update(t)
                                         continue
                                     }
-                                    if (selecting && t - rowSince >= HOLD_MS) {
-                                        // Held still on a row: its actions.
+                                    if (holding && t - rowSince >= SelectorMath.HOLD_MS) {
+                                        // Held still on a row, its fill full: its actions.
                                         val app = entries[focus].item
                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                         state.close()
                                         longPress(app)
                                         break
                                     }
+                                    // The fill rising or draining.
+                                    update(t)
                                     continue
                                 }
                                 val change = event.changes.firstOrNull { it.id == down.id }
@@ -632,8 +688,14 @@ fun AppSelector(
                                         state.close()
                                     } else if (selecting) {
                                         val app = entries[focus].item
+                                        val far = state.far
                                         state.close()
-                                        launch(app)
+                                        if (far) {
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            longPress(app)
+                                        } else {
+                                            launch(app)
+                                        }
                                     } else {
                                         // Lifted on the edge: leave the list open for a tap or a fling, back
                                         // in its place (scrolled as far as it went).
@@ -686,6 +748,7 @@ private fun SelectorRow(
         derivedStateOf { SelectorMath.focusedIndex(state.contact, count) == index }
     }
     val quiet = app.profile.quiet
+    val holdColor = Term.prompt.copy(alpha = 0.3f)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -706,6 +769,13 @@ private fun SelectorRow(
                 alpha = if (quiet) 0.45f else 1f
             }
             .background(if (focused) Term.prompt.copy(alpha = 0.14f) else Color.Transparent, RoundedCornerShape(6.dp))
+            // Plan B: the held row fills from its start as the hold counts (read in the draw phase only).
+            .drawBehind {
+                if (SelectorMath.focusedIndex(state.contact, count) == index) {
+                    val p = state.hold
+                    if (p > 0f) drawRoundRect(holdColor, size = Size(size.width * p, size.height), cornerRadius = CornerRadius(6.dp.toPx()))
+                }
+            }
             .combinedClickable(enabled = enabled, onClick = onClick, onLongClick = onLongClick)
             .padding(end = 12.dp),
     ) {
@@ -736,6 +806,11 @@ private fun SelectorRow(
             ),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
         )
+        // B2: on the far side, lifting opens the app's actions; the row says so.
+        if (focused && state.far) {
+            Text("⋯ Actions", style = Term.text.copy(color = Term.prompt, fontSize = (Term.fontSize - 2).sp), maxLines = 1)
+        }
     }
 }
