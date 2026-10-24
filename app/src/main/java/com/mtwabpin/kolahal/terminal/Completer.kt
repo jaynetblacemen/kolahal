@@ -190,6 +190,7 @@ class Completer(private val context: Context, private val data: Data) {
                     else -> emptyList()
                 }
             }
+            "cal" -> if (parts.size == 2) MonthCalendar.suggest(last).map { Suggestion.Completion(it, "cal $it") } else emptyList()
             "theme" -> Keys.THEME.choices.filter { it.startsWith(arg) && it != arg }
                 .map { Suggestion.Completion(it, "theme $it") }
             // The last words typed may be the start of one place (`new y` → New York) after others.

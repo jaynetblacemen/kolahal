@@ -154,6 +154,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "shade" -> com.mtwabpin.kolahal.gesture.Gestures.expandShade(context)
                 "date", "time" -> if (args.isEmpty()) out(DateFormat.getDateTimeInstance().format(Date())) else date(args)
                 "echo" -> out(rest)
+                "cal" -> cal(rest)
                 "config", "set" -> if (name == "config" && args.isEmpty()) ui.openScreen(Screen.SETTINGS) else configCommands.config(args, rest)
                 "theme" -> configCommands.config(listOf("set", Keys.THEME.key) + args)
                 "font" -> configCommands.font(args)
@@ -213,6 +214,16 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private fun out(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.OUTPUT, text, ctx = ctx) }
     private fun info(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.INFO, text, ctx = ctx) }
     private fun error(text: String) { logs.add(LogKind.ERROR, text) }
+
+    /** `cal [dec [2027]]`: the month as a calendar, today in bold, weeks starting on the locale's day. */
+    private fun cal(rest: String) {
+        val today = java.time.LocalDate.now()
+        val month = MonthCalendar.parse(rest, today)
+            ?: return error("No month called '$rest'. cal, cal dec, cal dec 2027 or cal 2027-12")
+        val lines = MonthCalendar.lines(month, today) { com.mtwabpin.kolahal.data.StyledText.wrap(com.mtwabpin.kolahal.data.StyledText.Style.BOLD, it) }
+        // One line each, in the terminal font, so the columns hold.
+        lines.forEach { out(it, LogContext(LogContext.ALIGNED)) }
+    }
 
     /** `date tokyo new york`: the time in each place, one line each, and how far ahead or behind it is. */
     private fun date(words: List<String>) {
@@ -601,6 +612,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("font", "font [<name>|import|sans [off|prompt|all]]", "Terminal font: system jetbrains-mono fira-code ibm-plex-mono source-code-pro custom (no args: list); sans: the phone's font for the prompt or everything"),
             CommandSpec("date", "date [<place>...]", "Current date and time, or the time in a city, a zone, utc or an offset"),
             CommandSpec("echo", "echo <text>", "Print text"),
+            CommandSpec("cal", "cal [<month>] [<year>]", "The month as a calendar, today in bold · cal dec · cal dec 2027 · cal 2027-12"),
             CommandSpec("alias", "alias [name = command]", "List or define aliases"),
             CommandSpec("unalias", "unalias <name>", "Remove an alias"),
             CommandSpec("pin", "pin <app>", "Favourite: first in the empty-prompt strip (pins lists them)"),
@@ -658,7 +670,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "profiles" to listOf("work", "private"),
             "productivity" to listOf("todo", "note", "notes", "remind", "reminders", "timer", "alarm", "alarms", "stopwatch", "agenda"),
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
-            "terminal" to listOf("help", "history", "clear", "fresh", "restart", "alias", "unalias", "config", "theme", "font", "echo", "date"),
+            "terminal" to listOf("help", "history", "clear", "fresh", "restart", "alias", "unalias", "config", "theme", "font", "echo", "date", "cal"),
             "widgets" to listOf("widgets", "widget"),
             "device" to listOf("settings", "setup", "unlocks", "notifications", "usage-access", "local-network", "crashes", "battery", "home", "lock", "shade", "accessibility", "system"),
         )
