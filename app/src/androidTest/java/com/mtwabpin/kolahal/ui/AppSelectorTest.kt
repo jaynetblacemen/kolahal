@@ -44,13 +44,35 @@ class AppSelectorTest {
         backGesture: Boolean = false,
         actions: String = "off",
         icons: Boolean = false,
+        letters: Boolean = false,
     ) = compose.setContent {
         Box(Modifier.size(360.dp, 700.dp)) {
             AppSelector(
                 list, emptySet(), onLaunch = { launched = it }, onLongPress = { pressed = it }, heightDp = 300, left = left,
-                position = position, edgeBackGesture = backGesture, actions = actions, icons = icons,
+                position = position, edgeBackGesture = backGesture, actions = actions, icons = icons, letters = letters,
             )
         }
+    }
+
+    private fun lettersShown() = compose.onAllNodesWithTag("app-selector-letter", useUnmergedTree = true).fetchSemanticsNodes()
+
+    /** selector.letters: every letter that has apps, top to bottom in the list's order, and only those; none under the thumb. */
+    @Test fun lettersShowAlongTheEdge() {
+        val list = apps.apps.value
+        val expected = SelectorMath.build(list.filter { !it.hidden }, { it.label }, { it.key }, { false }, { it.profile.kind.ordinal })
+            .filter { it.sectionStart }.map { it.section.toString() }
+        show(left = false, position = "bottom", list = list, letters = true)
+        val shown = lettersShown().sortedBy { it.boundsInRoot.top }
+            .map { it.config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString("") }
+        assertEquals(expected, shown)
+        compose.onNodeWithTag("app-selector").performTouchInput { down(center) }
+        compose.waitForIdle()
+        assertEquals(0, lettersShown().size)
+    }
+
+    @Test fun noLettersByDefault() {
+        show(left = false, position = "bottom")
+        assertEquals(0, lettersShown().size)
     }
 
     private fun iconsShown() = compose.onAllNodesWithTag("app-selector-icon", useUnmergedTree = true).fetchSemanticsNodes().size

@@ -106,6 +106,34 @@ class SelectorMathTest {
         assertEquals(0f, SelectorMath.Sections(emptyList()).along(0.5f), 0f)
     }
 
+    /** Each section's letter goes in the middle of its room. */
+    @Test fun lettersSitInTheMiddleOfTheirRoom() {
+        val d = SelectorMath.DEAD
+        val middles = SelectorMath.Sections(listOf(1, 4, 16)).middles()
+        assertEquals(3, middles.size)
+        assertEquals(d + 0.5f / 7 * (1 - 2 * d), middles[0], 1e-5f)
+        assertEquals(d + 2f / 7 * (1 - 2 * d), middles[1], 1e-5f)
+        assertEquals(d + 5f / 7 * (1 - 2 * d), middles[2], 1e-5f)
+    }
+
+    /** Labels nudged apart just enough: in order, the gap kept, inside the bounds; a crowd spreads around its middle. */
+    @Test fun labelsAreNudgedApartAsLittleAsItTakes() {
+        fun place(vararg w: Float, gap: Float = 5f, top: Float = 0f, bottom: Float = 100f) =
+            SelectorMath.labelPositions(w, gap, top, bottom).toList()
+        assertEquals(listOf(10f, 30f, 50f), place(10f, 30f, 50f))
+        assertEquals(listOf(7f, 12f, 17f), place(10f, 12f, 14f))
+        assertEquals(listOf(0f, 5f), place(1f, 2f))
+        assertEquals(listOf(90f, 95f, 100f), place(98f, 99f, 100f))
+        // Too many for the room: some are left out, the rest at least a gap apart.
+        val crowded = place(0f, 10f, 40f, 45f, 100f, gap = 30f)
+        assertEquals(0f, crowded[0], 0f)
+        assertTrue(crowded[1].isNaN())
+        assertEquals(40f, crowded[2], 0f)
+        assertTrue(crowded[3].isNaN())
+        assertEquals(100f, crowded[4], 0f)
+        assertTrue(SelectorMath.labelPositions(FloatArray(0), 5f, 0f, 100f).isEmpty())
+    }
+
     @Test fun theStripCoversTheWholeList() {
         val rows = 100
         val one = SelectorMath.Sections(listOf(rows))

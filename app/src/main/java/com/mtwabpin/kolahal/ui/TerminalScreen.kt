@@ -447,6 +447,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 onLongPress = { app -> showMenu(app.label, null) { vm.appActions(app) } },
                 heightDp = remember(configVersion) { config[Keys.SELECTOR_HEIGHT] },
                 showHandle = remember(configVersion) { config[Keys.SELECTOR_HANDLE] },
+                letters = remember(configVersion) { config[Keys.SELECTOR_LETTERS] },
                 left = remember(configVersion) { config[Keys.SELECTOR_SIDE] == "left" },
                 position = remember(configVersion) { config[Keys.SELECTOR_POSITION] },
                 actions = remember(configVersion) { config[Keys.SELECTOR_ACTIONS] },

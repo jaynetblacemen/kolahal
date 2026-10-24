@@ -104,6 +104,7 @@ The `theme` and `font` commands are unchanged.
 | `selector.side` | choice: `right` `left` | `right` | the edge you slide on; the list of apps opens on the other side |
 | `selector.position` | choice: `bottom` `middle` `top` | `bottom` | where on the edge you slide: keep it away from where you swipe back |
 | `selector.handle` | bool | `on` | show the slim A–Z handle on the edge; off hides it while the selector keeps working |
+| `selector.letters` | bool | `off` | show the letters along the edge, each where its apps are, so you can see where to touch; only letters that have apps |
 | `selector.height` | number 200–900 | `350` | length (dp) of the part of the edge you slide on: shorter means less thumb travel; the list uses the whole height. With gesture navigation a touch starts it only in the middle 200 dp, where the handle is |
 | `selector.actions` | choice: `far-side` `off` | `off` | while you pick, an app's actions: `far-side` opens them when you lift on the list's far side; `off` leaves them to the open list (long-press) |
 | `selector.icons` | bool | `off` | show each app's icon in the app selector's list |

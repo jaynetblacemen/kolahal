@@ -157,6 +157,56 @@ internal object SelectorMath {
     /** Dead band at each end of the strip: the first and last few percent pin the list's ends. */
     const val DEAD = 0.04f
 
+    /**
+     * Where to draw labels wanted at [wanted] (px, top to bottom) so that no two are closer than
+     * [gap] and all stay within [top]..[bottom]: moved as little as it takes, in order (a crowd
+     * spreads around its middle). When they can't all fit, some are left out (NaN): each one kept is
+     * at least [gap] below the one before.
+     */
+    fun labelPositions(wanted: FloatArray, gap: Float, top: Float, bottom: Float): FloatArray {
+        val n = wanted.size
+        if (n == 0) return wanted
+        if ((n - 1) * gap > bottom - top) {
+            val out = FloatArray(n) { Float.NaN }
+            var last = Float.NEGATIVE_INFINITY
+            for (i in 0 until n) {
+                val p = wanted[i].coerceIn(top, bottom)
+                if (p - last >= gap) {
+                    out[i] = p
+                    last = p
+                }
+            }
+            return out
+        }
+        // Least squares with gaps: with q = p - i * gap the gaps become q never going down, which
+        // pooling adjacent violators solves exactly; the bounds then just clamp q.
+        val value = FloatArray(n)
+        val weight = IntArray(n)
+        var blocks = 0
+        for (i in 0 until n) {
+            value[blocks] = wanted[i] - i * gap
+            weight[blocks] = 1
+            blocks++
+            while (blocks > 1 && value[blocks - 2] > value[blocks - 1]) {
+                val w = weight[blocks - 2] + weight[blocks - 1]
+                value[blocks - 2] = (value[blocks - 2] * weight[blocks - 2] + value[blocks - 1] * weight[blocks - 1]) / w
+                weight[blocks - 2] = w
+                blocks--
+            }
+        }
+        val lo = top
+        val hi = bottom - (n - 1) * gap
+        val out = FloatArray(n)
+        var k = 0
+        for (b in 0 until blocks) {
+            repeat(weight[b]) {
+                out[k] = value[b].coerceIn(lo, hi) + k * gap
+                k++
+            }
+        }
+        return out
+    }
+
     /** How many entries each section has (★, #, A–Z, in list order): what [Sections] shares the strip by. */
     fun <T> sectionSizes(entries: List<SelectorEntry<T>>): List<Int> {
         val sizes = IntArray((entries.lastOrNull()?.sectionIndex ?: -1) + 1)
@@ -173,6 +223,9 @@ internal object SelectorMath {
         private val sizes = sectionSizes.toIntArray()
         private val count = sizes.sum()
 
+        /** How many sections there are. */
+        val size: Int get() = sizes.size
+
         /** Each section's share of the strip between the dead bands; together they make 1. */
         val shares: FloatArray = FloatArray(sizes.size) { sqrt(sizes[it].toFloat()) }.let { roots ->
             val sum = roots.sum()
@@ -183,6 +236,17 @@ internal object SelectorMath {
          * Strip position [t] (0 top … 1 bottom) → list position (rows): the dead bands pin the list's
          * ends, and across a section's share its apps go by evenly.
          */
+        /** Where each section's room is centred, as strip positions (0 top … 1 bottom), in list order. */
+        fun middles(): FloatArray {
+            val out = FloatArray(sizes.size)
+            var acc = 0f
+            for (i in sizes.indices) {
+                out[i] = DEAD + (acc + shares[i] / 2f) * (1f - 2 * DEAD)
+                acc += shares[i]
+            }
+            return out
+        }
+
         fun along(t: Float): Float {
             if (count == 0) return 0f
             val u = ((t - DEAD) / (1f - 2 * DEAD)).coerceIn(0f, 1f)
@@ -390,6 +454,8 @@ fun AppSelector(
     heightDp: Int = 350,
     /** selector.handle: draw the A–Z handle when idle (it still shows under the finger). */
     showHandle: Boolean = true,
+    /** selector.letters: each letter along the strip, where its apps are, so you can see where to touch. */
+    letters: Boolean = false,
     /** selector.side: the strip on the left edge, the panel on the right. */
     left: Boolean = false,
     /** selector.position: the strip at the edge's `bottom`, `middle` or `top`. */
@@ -416,6 +482,8 @@ fun AppSelector(
     }
     // Plan D: every letter gets room on the strip, by the square root of its number of apps.
     val sections = remember(entries) { SelectorMath.Sections(SelectorMath.sectionSizes(entries)) }
+    /** Each section's letter (★, #, A–Z), in list order: only letters that have apps. */
+    val sectionLetters = remember(entries) { entries.filter { it.sectionStart }.map { it.section } }
     val state = remember { SelectorState() }
     val listState = rememberLazyListState()
     val haptics = LocalHapticFeedback.current
@@ -552,7 +620,34 @@ fun AppSelector(
                 .testTag("app-selector-strip"),
         ) {
             val touching = state.mode == Mode.SCRUB || state.mode == Mode.SELECT
-            if (showHandle || touching) {
+            // selector.letters: each letter in the middle of its stretch of the strip, nudged apart where
+            // they crowd; fainter outside the part a touch may start on. At rest they take the handle's
+            // place, in the edge's gutter, clear of the log's text; under the thumb the handle is back.
+            if (letters && !touching && count > 0) {
+                val linePx = with(density) { 9.sp.toPx() }
+                val gapPx = linePx + with(density) { 1.dp.toPx() }
+                val placed = remember(sections, stripHPx, gapPx) {
+                    val middles = sections.middles()
+                    SelectorMath.labelPositions(FloatArray(middles.size) { middles[it] * stripHPx }, gapPx, gapPx / 2, stripHPx - gapPx / 2)
+                }
+                sectionLetters.forEachIndexed { i, letter ->
+                    val p = placed.getOrElse(i) { Float.NaN }
+                    if (!p.isNaN()) {
+                        val inZone = p >= zoneTopPx && p <= zoneTopPx + zoneHPx
+                        Text(
+                            letter.toString(),
+                            style = Term.text.copy(color = Term.dim.copy(alpha = if (inZone) 0.8f else 0.4f), fontSize = 8.sp, lineHeight = 9.sp),
+                            maxLines = 1,
+                            modifier = Modifier
+                                .align(if (left) Alignment.TopStart else Alignment.TopEnd)
+                                .offset { IntOffset(0, (p - linePx / 2).roundToInt()) }
+                                .padding(start = if (left) 3.dp else 0.dp, end = if (left) 0.dp else 3.dp)
+                                .testTag("app-selector-letter"),
+                        )
+                    }
+                }
+            }
+            if ((showHandle && !letters) || touching) {
                 // At rest: 64dp in the middle, or with gesture navigation the whole part a touch may
                 // start on. Under the thumb: 64dp that follows it along the strip.
                 val handleH = if (!touching && edgeBackGesture) with(density) { zoneHPx.toDp() } else 64.dp
