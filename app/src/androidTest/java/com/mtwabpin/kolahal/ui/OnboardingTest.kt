@@ -7,7 +7,14 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -67,7 +74,7 @@ class OnboardingTest {
     @Test fun theTourGoesPageByPageAndEndsAtHome() {
         show()
         shows("A home screen you type into.")
-        for (title in listOf("Type to open", "Everything lands in the log", "Make it yours", "Within your thumb's reach", "Let Kolahal in", "You're set")) {
+        for (title in listOf("Type to open", "Everything lands in the log", "Make it yours", "Above the keyboard", "Every app at your thumb", "Let Kolahal in", "You're set")) {
             next()
             shows(title)
         }
@@ -106,19 +113,79 @@ class OnboardingTest {
         tap("24-hour")
         assertTrue(config[Keys.CLOCK_24H])
         next()
+        tap("Key bar")
+        assertTrue(config[Keys.KEYBAR_SHOW])
+        tap("Most-used apps")
+        assertTrue(config[Keys.SUGGEST_IDLE])
+        next()
         tap("Left edge")
         assertTrue(config[Keys.SELECTOR_RAIL])
         assertEquals("left", config[Keys.SELECTOR_SIDE])
         tap("Off")
         assertFalse(config[Keys.SELECTOR_RAIL])
+    }
+
+    private fun caption(text: String) = compose.onNodeWithText(text).assertIsDisplayed()
+
+    /** Typing: the caption under the preview says what each choice does. */
+    @Test fun theTypingPreviewSaysWhatEachChoiceDoes() {
+        show()
+        next()
+        tap("Off")
+        caption("Off: nothing runs until you press Enter or tap a suggestion.")
+        tap("Apps")
+        caption("Apps: an app opens once the letters can only mean it; commands wait for Enter.")
+    }
+
+    /** The log's lines answer a tap and a long-press in the caption. */
+    @Test fun theLogsLinesCanBeTried() {
+        show()
+        next(); next()
+        compose.onNodeWithTag("tour-try-line 0").performClick()
+        caption("Tap: runs cal again.")
+        compose.onNodeWithTag("tour-try-line 0").performTouchInput { longClick() }
+        caption("Long-press: run again, edit in the prompt, copy, delete, and when it ran.")
+    }
+
+    /** The look preview's clock follows the clock setting. */
+    @Test fun theClockPreviewFollowsTheSetting() {
+        show()
+        repeat(3) { next() }
+        tap("24-hour")
+        val shown = compose.onNodeWithTag("tour-clock").fetchSemanticsNode().config[SemanticsProperties.Text].joinToString("")
+        assertTrue(shown, Regex("\\d{2}:\\d{2}").matches(shown))
+        tap("12-hour")
+        val twelve = compose.onNodeWithTag("tour-clock").fetchSemanticsNode().config[SemanticsProperties.Text].joinToString("")
+        assertTrue(twelve, twelve.contains(' '))
+    }
+
+    /** The key bar shows in the keyboard preview once it's on. */
+    @Test fun theKeyBarShowsInThePreview() {
+        show()
+        repeat(4) { next() }
+        compose.onAllNodesWithText("ESC", useUnmergedTree = true).assertCountEquals(0)
         tap("Key bar")
-        assertTrue(config[Keys.KEYBAR_SHOW])
+        compose.onAllNodesWithText("ESC", useUnmergedTree = true).assertCountEquals(1)
+    }
+
+    /** The app selector itself is in its preview once it's on, on the edge chosen. */
+    @Test fun theSelectorCanBeTriedInThePreview() {
+        show()
+        repeat(5) { next() }
+        compose.onAllNodesWithTag("app-selector").assertCountEquals(0)
+        tap("Right edge")
+        compose.onNodeWithTag("app-selector").assertExists()
+        val frame = compose.onNodeWithTag("tour-selector-preview").getUnclippedBoundsInRoot()
+        val strip = compose.onNodeWithTag("app-selector").getUnclippedBoundsInRoot()
+        assertEquals(frame.right.value, strip.right.value, 1f)
+        tap("Off")
+        compose.onAllNodesWithTag("app-selector").assertCountEquals(0)
     }
 
     /** The permissions page offers the ones most people want, with the rest left to the checklist. */
     @Test fun thePermissionsPageOffersTheHomeApp() {
         show()
-        repeat(5) { next() }
+        repeat(6) { next() }
         shows("Let Kolahal in")
         compose.waitUntil(5_000) { vm.setupChecks.value.isNotEmpty() }
         compose.onNodeWithText("Default home app").performScrollTo().assertIsDisplayed()

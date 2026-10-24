@@ -9,11 +9,23 @@ import setup from '../../../assets/setup.png';
 ## The tour
 
 On its first start Kolahal opens a short tour, a page at a time: typing to open apps and run
-commands, the log and its gestures, and a few settings on the way, each one tap: instant launch,
-the suggestions' style, the theme, the text size, the clock, the app selector, the key bar and
-most-used apps. Its last setup page offers the permissions most people want: the default home app,
-notifications, notification access, double-tap to lock (in the full build) and contacts. Skip it at
-any page; `tour` or **Settings → Tour** brings it back, and everything it sets is in Settings too.
+commands, the log and its gestures, and a few settings on the way, each one tap. Above each
+page's settings is a small home screen, in your theme and with your apps, that shows what a choice
+does as you make it:
+
+- **Type to open**: an app's first letters and then `fetch` are typed into the prompt, and run
+  when instant launch (`launch.instant`) would run them, or wait for Enter; the suggestions show
+  as a list or chips (`suggestions.style`).
+- **Everything lands in the log**: a few lines to try tapping, long-pressing and swiping.
+- **Make it yours**: the theme, text size and clock, on the header and a few lines.
+- **Above the keyboard**: the key bar and most-used apps, over the keyboard.
+- **Every app at your thumb**: the app selector itself, on the edge you choose, to try; letting
+  go says which app would open.
+
+Its last setup page offers the permissions most people want, each with an example of what it
+adds: the default home app, notifications, notification access, double-tap to lock (in the full
+build) and contacts. Skip it at any page; `tour` or **Settings → Tour** brings it back, and
+everything it sets is in Settings too.
 
 ## The setup checklist
 
