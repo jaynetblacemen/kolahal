@@ -68,14 +68,15 @@ Declared in the manifest:
 | `READ_CONTACTS` | `call`, `sms` and `contacts` name matching. Asked for on first use; optional |
 | `READ_CALENDAR` | `agenda` lists upcoming events. Asked for on first use; optional; nothing leaves the device |
 | `SET_ALARM` | `timer` and `alarm` hand the timer or alarm to your clock app |
-| `SCHEDULE_EXACT_ALARM` | `remind` fires on time (Android 12+ lets you turn it off; reminders may then be up to an hour late) |
-| `RECEIVE_BOOT_COMPLETED` | pending reminders are set again after a reboot |
+| `SCHEDULE_EXACT_ALARM` | `remind` and scripts' daily times fire on time (Android 12+ lets you turn it off; they may then be up to an hour late) |
+| `RECEIVE_BOOT_COMPLETED` | pending reminders and scripts' daily times are set again after a reboot |
+| `FOREGROUND_SERVICE` | a script runs at its daily time in the foreground, for its few seconds: Android lets a launcher pause or resume the work profile only in front |
 | `POST_NOTIFICATIONS` | notifications from scripts and feeds (Android 13+ asks at runtime) |
 | `REQUEST_DELETE_PACKAGES` | `uninstall` and the Uninstall action open Android's uninstall dialog |
 | `EXPAND_STATUS_BAR` | swipe down on the header (or `shade`) pulls down the notification shade |
 | `ACCESS_HIDDEN_PROFILES` | lets the default launcher see the Android 15+ private space |
 | `PACKAGE_USAGE_STATS` | Usage Access, which you grant in Settings: accurate unlock counts and `usage` screen time |
-| `ACCESS_NOTIFICATION_POLICY` | lists Kolahal on the Do Not Disturb access page, for `dnd` and `ring silent` (you still grant it) |
+| `ACCESS_NOTIFICATION_POLICY` | lists Kolahal on the Do Not Disturb access page, for `dnd`, `ring silent` and scripts with `@uses dnd` (you still grant it) |
 | `WRITE_SETTINGS` | "Modify system settings", which you grant in Settings: `brightness`, `rotate`, `screen-timeout` |
 | `ACCESS_WIFI_STATE` | whether Wi-Fi is on, for `toggles` |
 
@@ -93,10 +94,11 @@ These are off until you enable them, usually from the [setup checklist](/getting
 | Default home app | opens on Home; pausing/resuming profiles, app shortcuts, private space | works as a normal app |
 | Usage access | accurate unlocks, `usage` | unlocks counted while the launcher runs; no `usage` |
 | Notification access | notifications in the log, `notifs`, `notifications.recent()`, `media` and the header's now-playing line (reading media sessions) | none of these |
-| Do Not Disturb access | `dnd`, `ring silent` | those print a tappable line to grant it |
+| Do Not Disturb access | `dnd`, `ring silent`, scripts with `@uses dnd` | those commands print a tappable line to grant it; scripts can't change Do Not Disturb |
 | Modify system settings | `brightness`, `rotate`, `screen-timeout` | those print a tappable line to grant it |
 | Accessibility service **Kolahal screen lock** | double-tap / `lock` locks the screen. It can't read window content and receives no events | no lock gesture |
 | Local network (Android 17+) | scripts with `@uses lan`, feeds on a home server | those requests fail with a line to tap and allow it |
+| Alarms & reminders (Android 12+) | `remind` and scripts' daily times on the minute | up to an hour late; a script can't pause the work profile at night |
 | Battery unrestricted | timers and feeds run on time | Android may defer them |
 
 Notification text read through notification access stays on the device: it goes into the log and

@@ -59,7 +59,7 @@ the line opens the page to grant it instead.
 Both kinds of access are optional, and the [setup checklist](/getting-started/setup/) has a
 row for each:
 
-- **Do Not Disturb access** (`dnd access`): used by `dnd` and `ring silent`.
+- **Do Not Disturb access** (`dnd access`): used by `dnd`, `ring silent` and scripts with `@uses dnd`.
 - **Modify system settings** (`brightness access`): used by `brightness`, `rotate` and
   `screen-timeout`.
 

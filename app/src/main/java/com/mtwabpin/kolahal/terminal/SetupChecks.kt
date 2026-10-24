@@ -57,8 +57,8 @@ object SetupChecks {
                 "accessibility",
             ),
             SetupCheck(
-                "Do Not Disturb access (dnd, ring silent)",
-                "Optional: lets dnd and ring silent change Do Not Disturb",
+                "Do Not Disturb access (dnd, ring silent, scripts)",
+                "Optional: lets dnd, ring silent and scripts with @uses dnd (night-dnd) change Do Not Disturb",
                 context.getSystemService(android.app.NotificationManager::class.java).isNotificationPolicyAccessGranted,
                 "dnd access",
             ),
@@ -91,6 +91,13 @@ object SetupChecks {
                 "Optional: lets scripts with @uses lan and feeds on a home server reach your network",
                 Net.localNetworkAllowed(),
                 "local-network",
+            ),
+            // Android 12+ lets you turn exact alarms off (and 14+ starts with them off).
+            if (Build.VERSION.SDK_INT < 31) null else SetupCheck(
+                "Alarms & reminders (remind, script times)",
+                "Optional: reminders and scripts' daily times on the minute; night-work needs it to pause the work profile",
+                com.mtwabpin.kolahal.productivity.ReminderScheduler.canBeExact(context),
+                "remind exact",
             ),
             SetupCheck(
                 "Battery unrestricted",
