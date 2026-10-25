@@ -45,6 +45,8 @@ class LauncherApp : Application(), Configuration.Provider {
         if (Build.VERSION.SDK_INT >= 37) {
             Net.localNetworkAllowed = { checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED }
         }
+        // Which addresses are this phone's own networks, for what may reach them.
+        Net.watchLinks(this)
         // The :script process only needs the database and notifications.
         if (getProcessName() != packageName) return
 

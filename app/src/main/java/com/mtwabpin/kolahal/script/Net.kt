@@ -35,7 +35,47 @@ object Net {
      * phone and the local network before connecting, redirects included. The [reachGuard] only sees
      * a hop once it is connected, which would still let a script learn which local ports are open.
      */
-    val publicClient: OkHttpClient by lazy { client.newBuilder().socketFactory(GuardedSocketFactory(publicOnly = true)).build() }
+    val publicClient: OkHttpClient by lazy {
+        // Straight to the site: through a proxy, the socket's address would be the proxy's, and the
+        // site behind it never checked.
+        client.newBuilder().socketFactory(GuardedSocketFactory(publicOnly = true)).proxy(java.net.Proxy.NO_PROXY).build()
+    }
+
+    /**
+     * The networks this phone is on (its addresses and each link's prefix length): on an IPv6 home
+     * network, or one on public IPv4, the router and the other devices have public addresses that
+     * are just as local. Kept by [watchLinks], in each process.
+     */
+    @Volatile private var links: List<Pair<ByteArray, Int>> = emptyList()
+
+    /** Follows the default network's links ([links]), from now on. */
+    fun watchLinks(context: android.content.Context) {
+        val cm = context.getSystemService(android.net.ConnectivityManager::class.java) ?: return
+        runCatching {
+            cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
+                override fun onLinkPropertiesChanged(network: android.net.Network, lp: android.net.LinkProperties) {
+                    // Its own addresses' prefixes, and routes it reaches without a gateway (directly connected).
+                    links = lp.linkAddresses.map { it.address.address to it.prefixLength } +
+                        lp.routes.filter { !it.hasGateway() && it.destination.prefixLength > 0 }.map { it.destination.address.address to it.destination.prefixLength }
+                }
+
+                override fun onLost(network: android.net.Network) {
+                    links = emptyList()
+                }
+            })
+        }
+    }
+
+    /** Whether [address] is in the network [prefix]/[length]: the same family, and the first [length] bits alike. */
+    fun inPrefix(address: ByteArray, prefix: ByteArray, length: Int): Boolean {
+        if (address.size != prefix.size || length <= 0 || length > address.size * 8) return false
+        val whole = length / 8
+        for (i in 0 until whole) if (address[i] != prefix[i]) return false
+        val rest = length % 8
+        if (rest == 0) return true
+        val mask = (0xff shl (8 - rest)) and 0xff
+        return (address[whole].toInt() and mask) == (prefix[whole].toInt() and mask)
+    }
 
     /**
      * Whether Kolahal may reach the local network: Android 17's runtime permission, set at start-up
@@ -122,17 +162,19 @@ object Net {
     }
 
     /**
-     * Loopback, private (10/8, 172.16/12, 192.168/16, fc00::/7), link-local, multicast, and the
-     * carrier-grade NAT range 100.64/10 that VPNs like Tailscale use.
+     * Loopback, private (10/8, 172.16/12, 192.168/16, fc00::/7), link-local, multicast, the
+     * carrier-grade NAT range 100.64/10 that VPNs like Tailscale use, and the networks this phone
+     * is on ([links]), whatever their addresses.
      */
     fun isLocal(a: InetAddress): Boolean {
         if (a.isLoopbackAddress || a.isSiteLocalAddress || a.isLinkLocalAddress || a.isAnyLocalAddress || a.isMulticastAddress) return true
         val b = a.address
-        return when (b.size) {
+        val private = when (b.size) {
             4 -> (b[0].toInt() and 0xff) == 100 && (b[1].toInt() and 0xc0) == 64
             16 -> (b[0].toInt() and 0xfe) == 0xfc
             else -> false
         }
+        return private || links.any { (prefix, length) -> inPrefix(b, prefix, length) }
     }
 
     /** [link] if it is an http(s) link, normalised; null for any other scheme (tel:, upi:, intent:, file: …). */

@@ -22,6 +22,21 @@ class NetTest {
         }
     }
 
+    /** The networks the phone is on: a prefix's first bits, the same family. */
+    @Test fun anAddressIsInItsNetworksPrefix() {
+        fun bytes(ip: String) = InetAddress.getByName(ip).address
+        val home = bytes("2a02:1234:5678:9a00::")
+        assertTrue(Net.inPrefix(bytes("2a02:1234:5678:9a00::1"), home, 64))
+        assertTrue(Net.inPrefix(bytes("2a02:1234:5678:9a00:ffff:ffff:ffff:ffff"), home, 64))
+        assertFalse(Net.inPrefix(bytes("2a02:1234:5678:9a01::1"), home, 64))
+        // A length that isn't a whole byte.
+        assertTrue(Net.inPrefix(bytes("203.0.113.130"), bytes("203.0.113.128"), 25))
+        assertFalse(Net.inPrefix(bytes("203.0.113.127"), bytes("203.0.113.128"), 25))
+        // Another family, or no length, never matches.
+        assertFalse(Net.inPrefix(bytes("203.0.113.130"), home, 64))
+        assertFalse(Net.inPrefix(bytes("8.8.8.8"), bytes("8.8.8.8"), 0))
+    }
+
     @Test fun webLinksOnly() {
         assertEquals("https://example.com/a", Net.webUrl(" https://example.com/a "))
         assertNull(Net.webUrl("upi://pay?pa=x@y&am=9"))
