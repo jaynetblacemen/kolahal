@@ -187,7 +187,8 @@ log(`BTC 67,120 USD ${fmt.color("good", "▲ 1.2%")}`);
 
 Posts an Android notification, if notifications are enabled **for this script** (`script notify
 <name> on` or the switch in the script manager) and allowed for Kolahal. `ctx.url` is opened when
-the notification is tapped. Returns `true` if a notification was posted.
+the notification is tapped. Returns `true` if a notification was posted. A run posts at most 10:
+Android keeps about 50 for an app, and Kolahal's own reminders need room.
 
 <Tabs syncKey="lang">
 <TabItem label="Lua">
@@ -206,7 +207,8 @@ notify("Build finished", "main is green", { url: "https://ci.example.org" });
 
 Pins one line for this script into the header (first line of `text`, at most 80 characters).
 `status(nil)` / `status(null)` or an empty string clears it. It only works in saved scripts, since
-it is keyed by the script's name. Tapping the status line runs the script.
+it is keyed by the script's name. Tapping the status line runs the script. A run changes it at most
+20 times; setting the line it already shows doesn't count.
 
 <Tabs syncKey="lang">
 <TabItem label="Lua">
@@ -384,8 +386,10 @@ for (const item of feed.items.slice(0, 5)) log(item.title, { url: item.link });
 
 Persistent strings, private to each script. `store.get` returns `nil` / `null` for a missing key;
 `store.set(key, nil)` deletes it. Store anything structured as JSON. Deleting a script deletes its
-store; one-liners typed at the prompt share one scratch store. A value holds up to 1 MB, and a
-script's store up to 1,000 keys and 16 MB; past that `store.set` raises "store full".
+store; one-liners typed at the prompt share one scratch store. A value holds up to 1 MB and a key
+up to 512 characters, and a script's store up to 1,000 keys and 16 MB, keys included, counted as
+stored (an accented letter or a CJK character takes more than one byte); past that `store.set`
+raises "store full". It refuses a secret: a store goes into backups.
 
 <Tabs syncKey="lang">
 <TabItem label="Lua">
@@ -450,7 +454,7 @@ return json.encode({ ip = data.ip, ok = true })
 
 Needs `@uses clipboard` ([what a script may use](/scripting/overview/#what-a-script-may-use)).
 Android only lets the focused app read the clipboard, so `clipboard.get()` usually returns `nil` in
-timer runs. `clipboard.set` works any time.
+timer runs. `clipboard.set` works any time, for up to 100,000 characters, and refuses a secret.
 
 ```lua
 -- @uses clipboard
