@@ -116,6 +116,11 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        // A translucent surface from the start, so the phone's wallpaper can show behind home
+        // (log.wallpaper, widgets.wallpaper): the format can't change once the surface exists (the
+        // window kept an opaque one and the pages' faint colour piled up over old frames). With no
+        // wallpaper showing, the page colour behind everything keeps it looking solid.
+        window.setFormat(android.graphics.PixelFormat.TRANSLUCENT)
         applyTheme()
         // Theme follows settings without reading config state in composition (which would recompose
         // the whole tree on every settings change).
@@ -279,15 +284,11 @@ class MainActivity : ComponentActivity() {
         // pages draw their colour over it, each as faintly as it says (Modifier.page).
         val wallpaper = vm.config[Keys.LOG_WALLPAPER] > 0 ||
             (vm.config[Keys.WIDGETS_PAGE] != "off" && vm.config[Keys.WIDGETS_WALLPAPER] > 0)
-        // The surface has to be translucent for it: an opaque one isn't cleared between frames, so
-        // the pages' faint colour piles up over old frames instead of over the wallpaper.
         if (wallpaper) {
             window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
-            window.setFormat(android.graphics.PixelFormat.TRANSLUCENT)
             window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
         } else {
             window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
-            window.setFormat(android.graphics.PixelFormat.OPAQUE)
             window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Term.page.toArgb()))
         }
         applyBars()

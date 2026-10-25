@@ -26,13 +26,19 @@ class WallpaperTest {
         config.reset(Keys.WIDGETS_PAGE)
     }
 
-    /** Whether the window shows the wallpaper, through a translucent surface (waited for, as the theme applies). */
+    /**
+     * Whether the window shows the wallpaper: asked for, with nothing painted behind home (waited
+     * for, as the theme applies). The surface is translucent either way, from the start: its format
+     * can't change once it exists, so switching the wallpaper on later would show nothing.
+     */
     private fun ActivityScenario<MainActivity>.showsWallpaper(expected: Boolean) {
         fun now(): Boolean {
             var shows = false
             onActivity { a ->
                 val p = a.window.attributes
-                shows = p.flags and WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER != 0 && p.format == PixelFormat.TRANSLUCENT
+                assertEquals(PixelFormat.TRANSLUCENT, p.format)
+                val behind = (a.window.decorView.background as? android.graphics.drawable.ColorDrawable)?.alpha
+                shows = p.flags and WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER != 0 && behind == 0
             }
             return shows
         }
