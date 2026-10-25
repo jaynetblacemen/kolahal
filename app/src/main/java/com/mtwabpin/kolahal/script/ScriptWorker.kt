@@ -63,6 +63,12 @@ internal object ScriptRun {
         val args = inputData.getNullableStringArray(ScriptWorker.KEY_ARGS)?.filterNotNull().orEmpty()
         val event = inputData.getString(ScriptWorker.KEY_EVENT)?.let { runCatching { Json.parse(it) as? Map<*, *> }.getOrNull() }
         val from = inputData.getLong(ScriptWorker.KEY_FROM, -1L).takeIf { it >= 0 }
+        // Queued before a switch went off: the event (or, for a notification, reading notifications)
+        // is checked again as the run starts.
+        val on = event?.get("name") as? String
+        if (script != null && on != null && on in ScriptMeta.EVENTS &&
+            (!script.grants.allows(on) || (on == "notification" && !script.grants.allows("notifications")))
+        ) return true
 
         val host = HostApi(
             ctx, name, script?.id,

@@ -53,9 +53,9 @@ object NotificationStore {
     fun active(): List<Notif> = _items.value.filter { !it.removed }
 
     /** Script-facing view: simple maps, newest first. */
-    fun recent(limit: Int = 20, includeRemoved: Boolean = true): List<Map<String, Any?>> =
+    fun recent(limit: Int = 20, includeRemoved: Boolean = true, skipProfile: (Long) -> Boolean = { false }): List<Map<String, Any?>> =
         _items.value.asSequence()
-            .filter { includeRemoved || !it.removed }
+            .filter { (includeRemoved || !it.removed) && !skipProfile(it.userSerial) }
             .take(limit.coerceIn(0, CAP))
             .map {
                 mapOf(

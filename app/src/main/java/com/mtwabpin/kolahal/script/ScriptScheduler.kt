@@ -168,13 +168,17 @@ object ScriptScheduler {
         var trimmed = payload
         var json = Json.stringify(trimmed)
         var cap = 2000
-        while (json.toByteArray().size > MAX_INLINE_CODE && cap >= 125) {
+        while (storedSize(json) > MAX_INLINE_CODE && cap >= 125) {
             cap /= 2
             trimmed = trimmed.mapValues { (_, v) -> if (v is String && v.length > cap) v.take(cap) + "…" else v }
             json = Json.stringify(trimmed)
         }
-        if (json.toByteArray().size > MAX_INLINE_CODE) return
-        WorkManager.getInstance(context).enqueue(
+        if (storedSize(json) > MAX_INLINE_CODE) return
+        // One script's event runs one after another: never side by side with itself (its store,
+        // rss.fresh's seen items), and a burst of events queues instead of piling up runs.
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "script-$scriptId-events",
+            androidx.work.ExistingWorkPolicy.APPEND_OR_REPLACE,
             OneTimeWorkRequestBuilder<ScriptWorker>()
                 .setInputData(remoteData(context) {
                     putLong(ScriptWorker.KEY_SCRIPT_ID, scriptId)
@@ -182,8 +186,20 @@ object ScriptScheduler {
                     putString(ScriptWorker.KEY_EVENT, json)
                 })
                 .addTag("script")
-                .build()
+                .build(),
         )
+    }
+
+    /**
+     * [text]'s size as WorkManager stores it (Java's modified UTF-8: a character outside the basic
+     * plane is two of 3 bytes each, an emoji 6), which its 10 KB cap counts; plain UTF-8 undercounts.
+     */
+    internal fun storedSize(text: String): Int = text.sumOf { c ->
+        when (c.code) {
+            in 0x01..0x7f -> 1
+            0, in 0x80..0x7ff -> 2
+            else -> 3
+        }
     }
 
     /** Evaluates a one-liner typed at the prompt (`lua ...` / `js ...`). */

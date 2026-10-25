@@ -97,6 +97,26 @@ class ScriptBoundsTest {
         refused("x takes true or false") { host.onOff(1.0, "x") }
     }
 
+    /** WorkManager stores text in modified UTF-8 (an emoji is 6 bytes): what fits its cap is counted that way. */
+    @Test fun anEmojiNotificationStillQueues() {
+        assertEquals(1 + 6 + 2, ScriptScheduler.storedSize("a😀é"))
+        val s = scripts.create("bounds", ScriptLang.LUA, "-- @on notification\n-- @uses notifications\nreturn 1")
+        // 7.8 KB as UTF-8, under the old check, but 11.7 KB as stored: building the work used to throw.
+        ScriptScheduler.runForEvent(context, s.id, mapOf("name" to "notification", "text" to "😀".repeat(1950)))
+    }
+
+    /** An event queued before its switch went off doesn't run the script. */
+    @Test fun aSwitchedOffEventDoesntRun() {
+        val marker = "event-ran-" + System.nanoTime()
+        val s = scripts.create("bounds", ScriptLang.LUA, "-- @on unlock\nlog('$marker')")
+        scripts.setAccess(s.id, "unlock", false)
+        runBlocking { ScriptRun.run(context, workDataOf(ScriptWorker.KEY_SCRIPT_ID to s.id, ScriptWorker.KEY_SCHEDULED to true, ScriptWorker.KEY_EVENT to "{\"name\":\"unlock\"}")) }
+        assertTrue(LogRepository.get(context).recent(50).none { it.text == marker })
+        scripts.setAccess(s.id, "unlock", true)
+        runBlocking { ScriptRun.run(context, workDataOf(ScriptWorker.KEY_SCRIPT_ID to s.id, ScriptWorker.KEY_SCHEDULED to true, ScriptWorker.KEY_EVENT to "{\"name\":\"unlock\"}")) }
+        assertTrue(LogRepository.get(context).recent(50).any { it.text == marker })
+    }
+
     @Test fun aHugeClipIsRefused() {
         val host = HostApi(context, "bounds", scriptId = null, notifyEnabled = false)
         refused("clipboard.set") { host.clipboardSet("x".repeat(HostApi.MAX_CLIP + 1)) }

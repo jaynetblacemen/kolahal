@@ -68,7 +68,8 @@ class TriggerDispatcher private constructor(private val context: Context) {
                     val last = lastFired[key]
                     if (last != null && now - last < DEBOUNCE_MS) continue
                     lastFired[key] = now
-                    ScriptScheduler.runForEvent(context, id, data)
+                    // One script's run that can't be queued mustn't keep the event from the others.
+                    runCatching { ScriptScheduler.runForEvent(context, id, data) }
                 }
                 if (lastFired.size > 500) lastFired.entries.removeAll { now - it.value > DEBOUNCE_MS }
             }

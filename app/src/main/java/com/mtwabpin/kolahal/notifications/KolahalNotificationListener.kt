@@ -52,7 +52,7 @@ class KolahalNotificationListener : NotificationListenerService() {
             }
             runCatching {
                 com.mtwabpin.kolahal.data.KvStore(this@KolahalNotificationListener, MIRROR_SCOPE)
-                    .set(MIRROR_KEY, com.mtwabpin.kolahal.script.Json.stringify(NotificationStore.recent(50)))
+                    .set(MIRROR_KEY, com.mtwabpin.kolahal.script.Json.stringify(NotificationStore.recent(50, skipProfile = ::isPrivateSerial)))
             }
         }
     }
@@ -92,11 +92,22 @@ class KolahalNotificationListener : NotificationListenerService() {
         mirror()
         // The line is written once its icon is saved, so it never shows the app name first.
         maybeLog(n, scope.launch { saveIcon(n, sbn) })
+        // The private space's notifications stay out of scripts' reach, as its apps do (apps.list).
+        if (isPrivate(sbn.user)) return
         com.mtwabpin.kolahal.script.TriggerDispatcher.get(this).fire(
             "notification",
             mapOf("app" to n.app, "pkg" to n.pkg, "title" to n.title, "text" to n.text, "time" to n.postTime),
         )
     }
+
+    private fun isPrivate(user: android.os.UserHandle): Boolean {
+        if (android.os.Build.VERSION.SDK_INT < 35) return false
+        val la = getSystemService(android.content.pm.LauncherApps::class.java)
+        return runCatching { la.getLauncherUserInfo(user)?.userType == UserManager.USER_TYPE_PROFILE_PRIVATE }.getOrDefault(false)
+    }
+
+    private fun isPrivateSerial(serial: Long): Boolean =
+        runCatching { userManager.getUserForSerialNumber(serial) }.getOrNull()?.let(::isPrivate) ?: false
 
     override fun onNotificationRemoved(sbn: StatusBarNotification, rankingMap: RankingMap?) {
         NotificationStore.markRemoved(sbn.key)
