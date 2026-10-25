@@ -524,8 +524,15 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
             },
         )
         // Below the prompt, so it sits on the keyboard like an extra row of keys and the best
-        // suggestion stays right above what's typed.
-        if (keyBarOn && (!keyBarAuto || typing)) {
+        // suggestion stays right above what's typed. It slides up into place and back down, as the
+        // header slides from the top; the prompt and the log follow the size change smoothly.
+        androidx.compose.animation.AnimatedVisibility(
+            visible = keyBarOn && (!keyBarAuto || typing),
+            enter = androidx.compose.animation.expandVertically(expandFrom = Alignment.Bottom) +
+                androidx.compose.animation.slideInVertically { it },
+            exit = androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Bottom) +
+                androidx.compose.animation.slideOutVertically { it },
+        ) {
             KeyBar(
                 specs = remember(configVersion) { listOf(config[Keys.KEYBAR], config[Keys.KEYBAR2]) },
                 rowHeight = remember(configVersion) { config[Keys.KEYBAR_HEIGHT].dp },
