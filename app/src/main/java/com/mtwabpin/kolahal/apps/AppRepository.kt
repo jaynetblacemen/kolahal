@@ -239,6 +239,8 @@ class AppRepository private constructor(private val context: Context) {
 
     private fun score(app: AppEntry, q: String): Int? = when {
         app.lower == q -> 0
+        // Its package, or package/activity, names one app exactly: how two apps of one name are told apart.
+        app.pkg.lowercase() == q || app.component.flattenToShortString().lowercase() == q -> 0
         app.lower.startsWith(q) -> 1
         app.words.any { it.startsWith(q) } -> 2
         app.lower.contains(q) -> 3

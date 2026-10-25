@@ -284,13 +284,23 @@ class Completer(private val context: Context, private val data: Data) {
      * `<head> <app>` completions, [only] those that pass when given; the profile flag is added when
      * the app exists in several profiles, and the tag shown for apps outside the personal profile.
      */
-    private fun appCompletions(head: String, arg: String, includeHidden: Boolean = false, only: ((AppEntry) -> Boolean)? = null): List<Suggestion> =
-        appsRepo.search(arg.replace(FLAGS, "").trim(), includeHidden = includeHidden)
+    private fun appCompletions(head: String, arg: String, includeHidden: Boolean = false, only: ((AppEntry) -> Boolean)? = null): List<Suggestion> {
+        val found = appsRepo.search(arg.replace(FLAGS, "").trim(), includeHidden = includeHidden)
             .filter { only == null || only(it) }
-            .take(cap).map { app ->
-                val tag = if (app.profile.kind == ProfileKind.PERSONAL) "" else " [${app.profile.kind.tag}]"
-                Suggestion.Completion(app.label + tag, "$head ${app.label}" + flagFor(app), app = app)
-            }
+            .take(cap)
+        // Two apps of one name in one profile would complete to the same line, and the command could
+        // only ever reach the first: each is named by its package (or package/activity) instead.
+        val twins = found.groupBy { it.label.lowercase() to it.profile.kind }.values.filter { it.size > 1 }
+        val ids = twins.flatMap { group ->
+            val packages = group.groupingBy { it.pkg }.eachCount()
+            group.map { it to if (packages.getValue(it.pkg) > 1) it.component.flattenToShortString() else it.pkg }
+        }.toMap()
+        return found.map { app ->
+            val tag = if (app.profile.kind == ProfileKind.PERSONAL) "" else " [${app.profile.kind.tag}]"
+            val id = ids[app]
+            Suggestion.Completion(app.label + tag + (id?.let { " · $it" } ?: ""), "$head ${id ?: app.label}" + flagFor(app), app = app)
+        }
+    }
 
     /** Last app's shortcut labels, so typing after `open maps:` doesn't ask the system on every key. */
     private var shortcutCache: Pair<String, List<String>>? = null

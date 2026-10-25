@@ -55,6 +55,26 @@ class CompleterTest {
     private fun labels(text: String) = completer.suggestions(text).map { it.label }
     private fun lines(text: String) = completer.suggestions(text).filterIsInstance<Suggestion.Completion>().map { it.replacement.trim() }
 
+    /** Two apps of one name (one renamed to the other's): each completes to its package, and that names it. */
+    @Test fun twoAppsOfOneNameCompleteApart() {
+        val personal = apps.apps.value.filter { it.profile.kind == com.mtwabpin.kolahal.apps.ProfileKind.PERSONAL && !it.hidden }
+        val (a, b) = personal.groupBy { it.pkg }.values.map { it.first() }.take(2)
+        val prefs = com.mtwabpin.kolahal.apps.AppPrefs.get(context)
+        try {
+            prefs.setLabel(b.key, a.label)
+            apps.refresh()
+            val deadline = System.currentTimeMillis() + 5_000
+            while (apps.apps.value.count { it.label == a.label } < 2 && System.currentTimeMillis() < deadline) Thread.sleep(50)
+            val got = lines("uninstall ${a.label}")
+            assertTrue(got.toString(), "uninstall ${a.pkg}" in got && "uninstall ${b.pkg}" in got)
+            // And a package names its app exactly.
+            assertEquals(b.key, apps.search(b.pkg).first().key)
+        } finally {
+            prefs.setLabel(b.key, null)
+            apps.refresh()
+        }
+    }
+
     @Test fun firstWordOffersCommands() {
         assertTrue(labels("hel").toString(), "help" in labels("hel"))
         assertTrue(labels("cras").toString(), "crashes" in labels("cras"))
