@@ -203,4 +203,6 @@ notifications in the log, media controls or the call log.
 2. Play Console → the track → Create new release → upload the bundle, and the =mapping.txt= beside
    it if Play doesn't show readable crash traces on its own.
 3. Paste =docs/release/notes/X.Y.Z-play.txt= (500 characters at most) as the release notes.
+   0.4.4 is the first release on Play (internal testing), so its text introduces Kolahal and how
+   to start instead of listing changes; later ones list what changed since the last one on Play.
 4. Roll out.
