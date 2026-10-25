@@ -441,11 +441,13 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         }
         // [selector] selector.rail: fluid full-list app selector on an edge of the log, keyboard down only.
         val railOn = remember(configVersion) { config[Keys.SELECTOR_RAIL] }
-        if (railOn && !WindowInsets.isImeVisible) {
+        if (railOn) {
             val pinnedKeys = remember(apps, prefsVersion) { vm.pinnedKeys() }
             AppSelector(
                 apps = apps,
                 pinned = pinnedKeys,
+                // Kept while the keyboard is up, only hidden: its list stays built for when it goes down.
+                active = !WindowInsets.isImeVisible,
                 onLaunch = vm::launchApp,
                 onLongPress = { app -> showMenu(app.label, null) { vm.appActions(app) } },
                 heightDp = remember(configVersion) { config[Keys.SELECTOR_HEIGHT] },

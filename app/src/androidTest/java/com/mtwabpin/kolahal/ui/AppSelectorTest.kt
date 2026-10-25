@@ -350,6 +350,24 @@ class AppSelectorTest {
         assertEquals(360 * 0.7f, open, 1f)
     }
 
+    /** Keyboard up (inactive): nothing shows and an open list closes; down again, it is back as it was. */
+    @Test fun inactiveItHidesAndClosesItsList() {
+        var active by mutableStateOf(true)
+        compose.setContent {
+            Box(Modifier.size(360.dp, 700.dp)) {
+                AppSelector(apps.apps.value, emptySet(), onLaunch = {}, onLongPress = {}, heightDp = 300, edgeBackGesture = false, active = active)
+            }
+        }
+        compose.onNodeWithTag("app-selector").performTouchInput { down(center); up() }
+        compose.onNodeWithTag("app-selector-panel").assertExists()
+        compose.runOnIdle { active = false }
+        compose.onNodeWithTag("app-selector").assertDoesNotExist()
+        compose.onNodeWithTag("app-selector-panel").assertDoesNotExist()
+        compose.runOnIdle { active = true }
+        compose.onNodeWithTag("app-selector").assertExists()
+        compose.onNodeWithTag("app-selector-panel").assertDoesNotExist()
+    }
+
     /** The font the row showing [label] is drawn in. */
     private fun fontOf(label: String): androidx.compose.ui.text.font.FontFamily? {
         val results = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()

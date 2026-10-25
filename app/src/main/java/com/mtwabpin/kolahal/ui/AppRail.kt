@@ -565,6 +565,8 @@ fun AppSelector(
     filter: Boolean = false,
     /** selector.system-font: the list, the letters and the bubble in the phone's font, not the terminal's. */
     systemFont: Boolean = false,
+    /** Drawn and taking touches; off (the keyboard up), nothing shows but the list stays built. */
+    active: Boolean = true,
 ) {
     val text = if (systemFont) Term.phoneText else Term.text
     // Plan F: with the strip at the bottom of the edge, favourites go last, where the thumb rests.
@@ -623,6 +625,9 @@ fun AppSelector(
             }
         }
     }
+
+    LaunchedEffect(active) { if (!active) state.close() }
+    if (!active) return
 
     // The panel can move past the log's edges to keep a letter's apps level with the thumb.
     BoxWithConstraints(modifier.fillMaxSize().clipToBounds()) {
