@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Intent
 import android.os.Build
+import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 
@@ -16,12 +17,33 @@ import androidx.activity.result.contract.ActivityResultContracts
  * Must be constructed before the activity is started (it registers an activity-result launcher).
  * The configure step uses [android.appwidget.AppWidgetHost.startAppWidgetConfigureActivityForResult],
  * which reports through Activity.onActivityResult, so MainActivity forwards that to [onActivityResult].
+ * The request survives Android stopping the launcher meanwhile (a widget's own setup screen is a
+ * long visit): MainActivity keeps it in its saved state ([save], [restore]).
  */
 class WidgetBinder(private val activity: ComponentActivity, private val onAdded: (PlacedWidget) -> Unit) {
     // Lazy: the binder is created before the activity has a context.
     private val widgets by lazy { WidgetHost.get(activity) }
 
-    private data class Request(val id: Int, val info: AppWidgetProviderInfo, val replacing: String?)
+    /** [info] is null for a request brought back from saved state: [infoOf] looks it up by the bound id. */
+    private data class Request(val id: Int, val info: AppWidgetProviderInfo?, val replacing: String?)
+
+    private fun infoOf(req: Request): AppWidgetProviderInfo? = req.info ?: runCatching { widgets.manager.getAppWidgetInfo(req.id) }.getOrNull()
+
+    /** Keeps a request still waiting for the bind dialog or the widget's setup. */
+    fun save(out: Bundle) {
+        pending?.let {
+            out.putInt(KEY_ID, it.id)
+            out.putString(KEY_REPLACING, it.replacing)
+        }
+    }
+
+    /** Brings back a request [save] kept, before the activity starts (and the host frees ids nobody uses). */
+    fun restore(state: Bundle?) {
+        val id = state?.getInt(KEY_ID, AppWidgetManager.INVALID_APPWIDGET_ID) ?: return
+        if (id == AppWidgetManager.INVALID_APPWIDGET_ID) return
+        widgets.resume(id)
+        pending = Request(id, null, state.getString(KEY_REPLACING))
+    }
 
     private var pending: Request? = null
 
@@ -48,9 +70,10 @@ class WidgetBinder(private val activity: ComponentActivity, private val onAdded:
     }
 
     private fun configure(req: Request) {
+        val info = infoOf(req) ?: return cancel(req, "Widget not added")
         val optional = Build.VERSION.SDK_INT >= 31 &&
-            req.info.widgetFeatures and AppWidgetProviderInfo.WIDGET_FEATURE_CONFIGURATION_OPTIONAL != 0
-        if (req.info.configure == null || optional) return finish(req)
+            info.widgetFeatures and AppWidgetProviderInfo.WIDGET_FEATURE_CONFIGURATION_OPTIONAL != 0
+        if (info.configure == null || optional) return finish(req)
         runCatching {
             widgets.host.startAppWidgetConfigureActivityForResult(activity, req.id, 0, REQUEST_CONFIGURE, null)
         }.onFailure { cancel(req, "Couldn't open the widget's setup: ${it.message ?: it.javaClass.simpleName}") }
@@ -66,10 +89,11 @@ class WidgetBinder(private val activity: ComponentActivity, private val onAdded:
     }
 
     private fun finish(req: Request) {
+        val info = infoOf(req) ?: return cancel(req, "Widget not added")
         pending = null
-        widgets.place(req.id, req.info, req.replacing)
+        widgets.place(req.id, info, req.replacing)
         widgets.widgets.value.firstOrNull { it.id == req.id }?.let(onAdded)
-        widgets.message("Added ${req.info.loadLabel(activity.packageManager)}")
+        widgets.message("Added ${info.loadLabel(activity.packageManager)}")
     }
 
     private fun cancel(req: Request, why: String) {
@@ -80,5 +104,7 @@ class WidgetBinder(private val activity: ComponentActivity, private val onAdded:
 
     companion object {
         const val REQUEST_CONFIGURE = 0x4B50
+        private const val KEY_ID = "widget_binder_id"
+        private const val KEY_REPLACING = "widget_binder_replacing"
     }
 }

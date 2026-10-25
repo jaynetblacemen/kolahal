@@ -104,6 +104,11 @@ class WidgetHost private constructor(context: Context) {
 
     fun allocate(): Int = host.allocateAppWidgetId().also { synchronized(inFlight) { inFlight += it } }
 
+    /** An id whose flow resumes after the process was stopped (WidgetBinder.restore): [prune] leaves it alone again. */
+    fun resume(id: Int) {
+        synchronized(inFlight) { inFlight += id }
+    }
+
     /** Gives up an id from an unfinished flow. */
     fun discard(id: Int) {
         synchronized(inFlight) { inFlight -= id }

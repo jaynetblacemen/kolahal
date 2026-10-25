@@ -116,6 +116,8 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        // A widget being added when Android stopped the launcher: its result is on the way back.
+        widgetBinder.restore(savedInstanceState)
         // A translucent surface from the start, so the phone's wallpaper can show behind home
         // (log.wallpaper, widgets.wallpaper): the format can't change once the surface exists (the
         // window kept an opaque one and the pages' faint colour piled up over old frames). With no
@@ -210,6 +212,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        widgetBinder.save(outState)
     }
 
     override fun onResume() {
