@@ -1,15 +1,11 @@
 package com.mtwabpin.kolahal.script
 
-import android.app.Application
-import android.os.Debug
-import android.os.Process
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 import party.iroiro.luajava.lua54.Lua54
-import kotlin.concurrent.thread
 import kotlin.coroutines.coroutineContext
 import com.mtwabpin.kolahal.data.StyledText
 
@@ -32,31 +28,14 @@ class LuaEngine : ScriptEngine {
         val ctx = coroutineContext
         val deadline = System.currentTimeMillis() + timeoutMs
         val lua = Lua54()
+        host.startClock(timeoutMs)
         // The hook cannot interrupt long-running C functions (e.g. pathological string.find patterns), and
         // withContext cannot cancel blocking JNI. As a last resort, kill the isolated :script process.
         // The hook checks memory every thousand instructions, but a few huge allocations (`s = s .. s`
         // in a loop doubles a string every few instructions) outrun any count: the watchdog also
         // stops a run whose native memory grows past NATIVE_LIMIT_MB, looking often enough that it
         // overshoots by about one doubling. LuaJava gives no say over Lua's allocator itself.
-        val baseline = Debug.getNativeHeapAllocatedSize()
-        val watchdog = thread(isDaemon = true, name = "lua-watchdog") {
-            val killAt = System.currentTimeMillis() + timeoutMs + HARD_KILL_GRACE_MS
-            try {
-                while (true) {
-                    Thread.sleep(WATCH_EVERY_MS)
-                    val reason = when {
-                        Debug.getNativeHeapAllocatedSize() - baseline > NATIVE_LIMIT_MB * 1024L * 1024 -> "used over $NATIVE_LIMIT_MB MB"
-                        System.currentTimeMillis() > killAt -> "still running after timeout"
-                        else -> null
-                    } ?: continue
-                    runCatching { host.logStopped("${host.scriptName}: $reason, killed script process") }
-                    if (Application.getProcessName().endsWith(":script")) Process.killProcess(Process.myPid())
-                    return@thread
-                }
-            } catch (_: InterruptedException) {
-                return@thread
-            }
-        }
+        val watchdog = RunWatchdog(host, timeoutMs, NATIVE_LIMIT_MB)
         try {
             lua.openLibraries()
             lua.push(JFunction { l ->
@@ -89,7 +68,7 @@ class LuaEngine : ScriptEngine {
             try {
                 lua.close()
             } finally {
-                watchdog.interrupt()
+                watchdog.close()
             }
         }
     }
@@ -164,7 +143,7 @@ class LuaEngine : ScriptEngine {
         lua.table("notifications", "recent" to { l: Lua -> l.pushValue(host.notificationsRecent(if (l.isNumber(1)) l.toInteger(1).toInt() else 20)); 1 })
         lua.table("launcher", "run" to { l: Lua -> l.push(host.runCommand(l.checkString(1))); 1 })
         lua.global("sleep") { l ->
-            Thread.sleep(l.toInteger(1).coerceIn(0, 5_000))
+            host.sleep(l.toInteger(1))
             0
         }
         lua.table(
@@ -277,10 +256,8 @@ class LuaEngine : ScriptEngine {
     }
 
     private companion object {
-        const val HARD_KILL_GRACE_MS = 5_000L
-        const val WATCH_EVERY_MS = 10L
         /** Native memory a run may add before the watchdog stops it: twice the Lua cap (64 MB). */
-        const val NATIVE_LIMIT_MB = 128
+        const val NATIVE_LIMIT_MB = 128L
 
         val PRELUDE = """
             local check = __kolahal_check

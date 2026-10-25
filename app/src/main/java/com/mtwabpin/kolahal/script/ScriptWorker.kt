@@ -103,7 +103,12 @@ internal object ScriptRun {
             host.flush()
             // Stopped by the switch itself, not an error the script caught and went on after.
             val off = host.denied?.takeIf { host.deniedMessage?.let { m -> e.message.orEmpty().contains(m) } == true }
-            if (off != null) {
+            // QuickJS's interrupt, or Lua's own timeout error (raised by the hook or a host call that waits).
+            val timedOut = e is com.dokar.quickjs.QuickJsInterruptedException || e.message.orEmpty().contains("script timed out")
+            if (timedOut) {
+                logs.add(LogKind.ERROR, "$name: timed out after ${ScriptWorker.TIMEOUT_MS / 1000}s", name, errorCtx)
+                "timeout"
+            } else if (off != null) {
                 // Stopped by a switch the user turned off: say which, with a tap to allow it.
                 logs.add(
                     LogKind.ERROR, "$name: ${ScriptAccess.label(off).lowercase()} is switched off for this script — tap to allow", name,
@@ -123,6 +128,8 @@ internal object ScriptRun {
                 "error: $msg" + (line?.let { " (line $it)" } ?: "")
             }
         }
+        // Whatever is still in flight (a request, a timer) changes nothing now.
+        host.finish()
         // A run you started that asked for what nobody allowed yet got empty answers: offer to allow it.
         if (script != null && host.undecided.isNotEmpty() && inputData.getBoolean(ScriptWorker.KEY_INTERACTIVE, false)) {
             ScriptAccess.askToAllow(ctx, name, host.undecided.toList(), "hasn't been allowed")

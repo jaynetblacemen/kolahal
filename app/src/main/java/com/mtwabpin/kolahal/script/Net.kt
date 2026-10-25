@@ -16,11 +16,14 @@ import okhttp3.OkHttpClient
 object Net {
     const val USER_AGENT = "Kolahal-Launcher/0.1 (+https://github.com/mtwabpin)"
 
+    /** The longest a whole request may take, redirects included (a script's own run may set less). */
+    const val CALL_TIMEOUT_MS = 30_000L
+
     val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
-            .callTimeout(30, TimeUnit.SECONDS)
+            .callTimeout(CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
             .socketFactory(GuardedSocketFactory(publicOnly = false))
             .addNetworkInterceptor(reachGuard)
             .addNetworkInterceptor(hopGuard)

@@ -52,6 +52,53 @@ class HostApi(
 ) {
     class Secrets(val declared: List<ScriptMeta.Secret>, val values: Map<String, String>)
 
+    /** When the run must end ([startClock]): host calls that wait stop by then. */
+    @Volatile private var deadline = Long.MAX_VALUE
+    private var timeoutS = 0L
+
+    /** Set by the engine as the run starts. */
+    fun startClock(timeoutMs: Long) {
+        timeoutS = timeoutMs / 1000
+        deadline = System.currentTimeMillis() + timeoutMs
+    }
+
+    /** Stops the run as its timeout would; the message is the one Lua's guards don't let a script catch. */
+    private fun timedOut(): Nothing = throw IllegalStateException("script timed out after ${timeoutS}s")
+
+    /** Time left in the run, for host calls that wait (sleep, a request): none left stops the run. */
+    private fun remainingMs(): Long = (deadline - System.currentTimeMillis()).takeIf { it > 0 } ?: timedOut()
+
+    /** `sleep(ms)`: up to 5 seconds, and never past the run's end. */
+    fun sleep(ms: Long) {
+        val wait = ms.coerceIn(0, 5_000)
+        val left = remainingMs()
+        Thread.sleep(minOf(wait, left))
+        if (wait >= left) timedOut()
+    }
+
+    /** JavaScript's `await sleep(ms)`, the same without holding a thread. */
+    suspend fun sleepAsync(ms: Long) {
+        val wait = ms.coerceIn(0, 5_000)
+        val left = remainingMs()
+        kotlinx.coroutines.delay(minOf(wait, left))
+        if (wait >= left) timedOut()
+    }
+
+    /**
+     * Set when the run has ended (the worker, whatever the outcome): a request or a timer still in
+     * flight then changes nothing, no store write, status, notification or line after the run.
+     */
+    @Volatile var over = false
+        private set
+
+    fun finish() {
+        over = true
+    }
+
+    private fun live() {
+        if (over) throw IllegalStateException("$scriptName has finished running")
+    }
+
     /** `secrets.get(name)`: the value you set for a declared `@secret` name, or nil until you set one. */
     fun secretGet(name: String): String? {
         val s = secrets ?: throw IllegalStateException("secrets.get only works in saved scripts")
@@ -138,7 +185,7 @@ class HostApi(
 
     private fun buffer(kind: LogKind, text: String, ctx: LogContext) {
         synchronized(pending) {
-            if (full) return
+            if (full || over) return
             lines++
             chars += minOf(text.length, LogRepository.MAX_FIELD) + minOf(ctx.values.entries.sumOf { (k, v) -> k.length + v.length }, LogRepository.MAX_FIELD)
             if (lines > MAX_LINES_PER_RUN || chars > MAX_CHARS_PER_RUN) {
@@ -229,6 +276,7 @@ class HostApi(
     }
 
     fun notify(title: String, body: String, ctx: Map<*, *>? = null): Boolean {
+        live()
         effects++
         flush() // earlier log lines appear before the notification
         val values = Json.toStringMap(ctx)
@@ -251,6 +299,7 @@ class HostApi(
         contentType: String? = null,
         headers: Map<*, *>? = null,
     ): Map<String, Any?> {
+        live()
         flush() // show what was logged before a slow request
         // No made-up empty response: a script would take it for real data.
         if (grants != null && !grants.allows(ScriptAccess.INTERNET)) {
@@ -277,7 +326,10 @@ class HostApi(
             .build()
         checkSecrets(request.url.host, listOf(request.url.toString(), body.orEmpty()) + h.values, request.url.isHttps)
         try {
-            (if (allowsLan) client else Net.publicClient).newCall(request).execute().use { resp ->
+            val call = (if (allowsLan) client else Net.publicClient).newCall(request)
+            // No longer than the run has left (the client's own limit is 30 s).
+            call.timeout().timeout(minOf(remainingMs(), Net.CALL_TIMEOUT_MS), TimeUnit.MILLISECONDS)
+            call.execute().use { resp ->
                 return mapOf(
                     "status" to resp.code,
                     "ok" to resp.isSuccessful,
@@ -379,6 +431,7 @@ class HostApi(
 
     /** Pins a short line for this script into the launcher header; null or empty clears it. */
     fun status(text: String?) {
+        live()
         effects++
         flush()
         if (scriptId == null) {
@@ -396,6 +449,7 @@ class HostApi(
     // ---- device, apps, launcher ----------------------------------------------------------
 
     fun clipboardSet(text: String) {
+        live()
         if (!may("clipboard", "clipboard.set")) return
         val cm = context.getSystemService(android.content.ClipboardManager::class.java)
         android.os.Handler(android.os.Looper.getMainLooper()).post {
@@ -449,6 +503,7 @@ class HostApi(
     fun setDnd(mode: String): Boolean {
         val filter = DND_MODES[mode.trim().lowercase().let { if (it == "on") "priority" else it }]
             ?: throw IllegalArgumentException("device.setDnd: the mode is off, on, priority, alarms or none")
+        live()
         if (!may("dnd", "device.setDnd")) return false
         val nm = context.getSystemService(android.app.NotificationManager::class.java)
         if (!nm.isNotificationPolicyAccessGranted) return false
@@ -469,6 +524,7 @@ class HostApi(
      * Android 10 or newer; or resuming needs your work PIN; or there's no work profile.
      */
     fun setWork(on: Boolean): Boolean {
+        live()
         if (!may("work", "device.setWork")) return false
         if (android.os.Build.VERSION.SDK_INT < 29) return false
         val user = workProfile() ?: return false
@@ -520,6 +576,7 @@ class HostApi(
     fun runCommand(sent: String): Boolean {
         // Split and checked as home will run it ([com.mtwabpin.kolahal.terminal.CommandProcessor.run]).
         val command = com.mtwabpin.kolahal.terminal.CommandParsing.spaces(sent)
+        live()
         // Commands, and through them other scripts, only for scripts that declare it and are allowed it.
         if (!may("commands", "launcher.run")) return false
         if (!interactive) {
@@ -577,7 +634,10 @@ class HostApi(
 
     fun storeGet(key: String): String? = store.get(key)
 
-    fun storeSet(key: String, value: String?) = store.set(key, value)
+    fun storeSet(key: String, value: String?) {
+        live()
+        store.set(key, value)
+    }
 
     companion object {
         /** Do Not Disturb's modes as scripts name them, and Android's filters. */

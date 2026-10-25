@@ -139,6 +139,88 @@ class ScriptEngineTest {
         assertEquals("ran again: ${stops()}", 1, logs.recent(200).count { it.text == marker })
     }
 
+    /** sleep and requests wait no longer than the run has left: a loop of them still ends on time. */
+    @Test fun aSleepLoopEndsAtTheTimeout() {
+        for (run in listOf<() -> Unit>(
+            { lua("while true do sleep(5000) end", repl = false, timeout = 1_000) },
+            { js("while (true) await sleep(5000);", repl = false, timeout = 1_000) },
+        )) {
+            val started = System.currentTimeMillis()
+            try {
+                run()
+                fail("expected timeout")
+            } catch (e: Exception) {
+                // Lua says so; QuickJS raises its interrupt.
+                assertTrue(e.toString(), e.message.orEmpty().contains("timed out") || e is com.dokar.quickjs.QuickJsInterruptedException)
+            }
+            assertTrue("took ${System.currentTimeMillis() - started} ms", System.currentTimeMillis() - started < 3_000)
+        }
+    }
+
+    /** A value nested deeper than the host's conversion can take is refused in JavaScript, before it gets there. */
+    @Test fun jsDeepValuesAreRefused() {
+        val nested = "let a = []; for (let i = 0; i < 100000; i++) a = [a];"
+        for (call in listOf("log(a)", "log('x', {deep: a})", "store.set('k', a)", "return a")) {
+            try {
+                js("$nested $call", repl = false)
+                fail("expected a refusal for $call")
+            } catch (e: Exception) {
+                assertTrue(e.message.orEmpty(), e.message.orEmpty().contains("64 levels"))
+            }
+        }
+        assertEquals("[[1]]", js("return [[1]]", repl = false))
+    }
+
+    /** The guard keeps what it uses: a script replacing Array.prototype, Reflect.apply or an index setter can't switch it off. */
+    @Test fun jsGuardSurvivesTampering() {
+        val code = """
+            Array.prototype.map = function () { return this; };
+            Reflect.apply = (f, t, a) => f(...a);
+            Object.defineProperty(Array.prototype, "0", { set() {}, configurable: true });
+            Object.keys = () => [];
+            let a = []; for (let i = 0; i < 100000; i++) a = [a];
+            log(a);
+        """.trimIndent()
+        try {
+            js(code, repl = false)
+            fail("expected a refusal")
+        } catch (e: Exception) {
+            assertTrue(e.message.orEmpty(), e.message.orEmpty().contains("64 levels"))
+        }
+    }
+
+    /** At most 64 requests or sleeps wait at once. */
+    @Test fun jsWaitingCallsAreCapped() {
+        try {
+            js("await Promise.all(Array.from({ length: 100 }, () => sleep(10)));", repl = false)
+            fail("expected a cap")
+        } catch (e: Exception) {
+            assertTrue(e.message.orEmpty(), e.message.orEmpty().contains("more than 64"))
+        }
+        assertEquals("64", js("await Promise.all(Array.from({ length: 64 }, () => sleep(1))); return 64", repl = false))
+    }
+
+    /**
+     * Promise jobs that queue one another and loop: QuickJS turns its interrupt into a rejection and
+     * runs the next job. In the :script process the watchdog stops the run past its timeout, once.
+     */
+    @Test fun aRunawayJsJobLoopIsStoppedInTheScriptProcess() {
+        val logs = LogRepository.get(context)
+        val marker = "jobloop-" + System.nanoTime()
+        ScriptScheduler.eval(context, ScriptLang.JS, "log('$marker'); function spin() { Promise.resolve().then(spin); for (;;) {} } spin();")
+        fun stops(): List<String> {
+            val recent = logs.recent(200)
+            val at = recent.indexOfFirst { it.text == marker }
+            if (at < 0) return emptyList()
+            return recent.drop(at + 1).map { it.text }.filter { "killed script process" in it }
+        }
+        val deadline = System.currentTimeMillis() + ScriptWorker.TIMEOUT_MS + 30_000
+        while (System.currentTimeMillis() < deadline && stops().isEmpty()) Thread.sleep(500)
+        assertTrue("never stopped", stops().isNotEmpty())
+        Thread.sleep(5_000)
+        assertEquals("ran again", 1, logs.recent(200).count { it.text == marker })
+    }
+
     @Test fun luaArgsAreExposed() {
         val out = runBlocking { LuaEngine().run("return argline .. '|' .. #args .. '|' .. args[2]", "t", host(), 5_000, false, listOf("a", "b c")) }
         assertEquals("a b c|2|b c", out)
