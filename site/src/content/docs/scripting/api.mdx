@@ -66,9 +66,8 @@ A link or a picture leaves the phone as a request does: with internet switched o
 both are dropped from the line; and one that carries a secret must go to the site its `@secret`
 line names, over https.
 
-Other keys are kept with the line. Keys the launcher uses itself (commands, script identity, app
-references, phone numbers and the like) are dropped, so a script can't plant a line that runs a
-command or dials a number when tapped.
+Other keys are dropped: a script can't plant a line that runs a command or dials a number when
+tapped, whatever keys the launcher uses itself.
 
 <Tabs syncKey="lang">
 <TabItem label="Lua">
@@ -497,7 +496,7 @@ never turns off one you turned on yourself. Needs `@uses dnd`.
 ### device.work() / device.setWork(on)
 
 `device.work()` is the work profile: `"on"`, `"paused"`, or nil (null in JavaScript) when the phone
-has none. `device.setWork(true)` resumes it and `device.setWork(false)` pauses it, returning `true`
+has none. `device.setWork(true)` (or `"on"`) resumes it and `device.setWork(false)` (or `"off"`) pauses it, returning `true`
 when Android took the request. Android lets only the default launcher do this, only while it is in
 front, and from Android 10. A script run at one of its [daily times](/scripting/overview/#running-scripts)
 counts as in front when Kolahal may set exact alarms; one on an interval or an event usually doesn't,
@@ -555,8 +554,9 @@ Runs a terminal command, as if typed: another script's command too. Needs `@uses
 **Only when the script was started from the prompt** (a command script, `script run`, or a
 one-liner); in timer and event runs it logs an error and returns `false`. Sensitive commands
 (`clear`, `uninstall`, `work`, `notifs`, `script` and the like) must be typed: for those it logs
-an error and returns `false`. A run sends at most 10 commands, and a script that another script
-started this way can't send any.
+an error and returns `false`. So do `search`, `yt`, `wiki`, `maps` and `play` with words to look
+for, unless the script may use the internet: they hand the words to a site. A run sends at most 10
+commands, and a script that another script started this way can't send any.
 
 ```lua
 -- @command

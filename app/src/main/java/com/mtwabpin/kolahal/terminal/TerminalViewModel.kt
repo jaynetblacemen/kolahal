@@ -258,7 +258,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** launcher.run(cmd) from scripts the user started (see HostApi.runCommand). */
     private val runCommandReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(c: android.content.Context, intent: Intent) {
-            intent.getStringExtra(HostApi.EXTRA_COMMAND)?.let { runCommand(it, byScript = true) }
+            // Checked again here, where it runs: a sensitive command never runs from a script.
+            intent.getStringExtra(HostApi.EXTRA_COMMAND)?.takeIf { !InstantRun.isSensitive(it) }?.let { runCommand(it, byScript = true) }
         }
     }
 

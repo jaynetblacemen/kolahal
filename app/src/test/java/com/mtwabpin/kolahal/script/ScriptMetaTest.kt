@@ -89,6 +89,8 @@ class ScriptMetaTest {
         assertTrue(ScriptMeta.usesInternet("log(t, nil, { url = link })"))
         assertTrue(ScriptMeta.usesInternet("log(t, \"\", { image: pic });"))
         assertFalse(ScriptMeta.usesInternet("-- @uses dnd\ndevice.setDnd('on')\nlog('see https://example.com')"))
+        // Commands can hand words to a site (a search).
+        assertTrue(ScriptMeta.usesInternet("-- @uses commands\nlauncher.run('yt ' .. args[1])"))
 
         assertTrue(ScriptMeta.setsHeader("status(\"HN: 3 new\")"))
         assertTrue(ScriptMeta.setsHeader("status(nil)"))

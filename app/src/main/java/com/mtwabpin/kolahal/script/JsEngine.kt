@@ -117,7 +117,7 @@ class JsEngine : ScriptEngine {
             function("dnd") { host.dnd() }
             function("setDnd") { args -> host.setDnd(args.req(0)) }
             function("work") { host.work() }
-            function("setWork") { args -> host.setWork(args.getOrNull(0) == true) }
+            function("setWork") { args -> host.setWork(host.onOff(args.getOrNull(0), "device.setWork")) }
         }
         js.define("apps") { function("list") { toJs(host.appsList()) } }
         js.define("notifications") { function("recent") { args -> toJs(host.notificationsRecent((args.getOrNull(0) as? Number)?.toInt() ?: 20)) } }

@@ -28,6 +28,17 @@ class ScriptLinksTest {
 
     @After fun tearDown() = lines().forEach { logs.delete(it.id) }
 
+    /** A line keeps only the keys a script may set: anything else, a command to run on a tap included, is dropped. */
+    @Test fun aLineKeepsOnlyTheKeysAScriptMaySet() {
+        val h = host(internet = true)
+        h.log("Tap me", null, mapOf("url" to "https://example.com/", "copy" to "Tap me", "mono" to "1", "run" to "clear all", "command" to "uninstall x", "phone" to "+100", "anything" to "x"))
+        h.flush()
+        val ctx = lines().single().ctx
+        assertEquals("https://example.com/", ctx.url)
+        assertEquals("Tap me", ctx.copy)
+        for (k in listOf("run", "command", "phone", "anything")) assertNull(k, ctx.values[k])
+    }
+
     @Test fun withInternetOffLinesCarryNoLinkOrPicture() {
         val off = host(internet = false)
         off.log("Digest", null, mapOf("image" to "https://example.com/p.png", "url" to "https://example.com/", "copy" to "Digest"))

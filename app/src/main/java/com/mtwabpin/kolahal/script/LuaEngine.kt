@@ -137,7 +137,15 @@ class LuaEngine : ScriptEngine {
             "dnd" to { l: Lua -> l.pushValue(host.dnd()); 1 },
             "setDnd" to { l: Lua -> l.push(host.setDnd(l.checkString(1))); 1 },
             "work" to { l: Lua -> l.pushValue(host.work()); 1 },
-            "setWork" to { l: Lua -> l.push(host.setWork(l.toBoolean(1))); 1 },
+            "setWork" to { l: Lua ->
+                val on = when (l.type(1)) {
+                    Lua.LuaType.BOOLEAN -> l.toBoolean(1)
+                    Lua.LuaType.STRING -> l.toString(1)
+                    else -> null
+                }
+                l.push(host.setWork(host.onOff(on, "device.setWork")))
+                1
+            },
         )
         lua.table("apps", "list" to { l: Lua -> l.pushValue(host.appsList()); 1 })
         lua.table("notifications", "recent" to { l: Lua -> l.pushValue(host.notificationsRecent(if (l.isNumber(1)) l.toInteger(1).toInt() else 20)); 1 })

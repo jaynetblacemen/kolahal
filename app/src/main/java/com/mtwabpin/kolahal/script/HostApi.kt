@@ -257,7 +257,8 @@ class HostApi(
      * identity, app grids, error lines) are dropped, so a script can't plant a one-tap `clear all`.
      */
     private fun safeCtx(ctx: Map<*, *>?, text: String): Map<String, String> {
-        val m = Json.toStringMap(ctx).filterKeys { it !in RESERVED_CTX }.toMutableMap()
+        // Only what a script's line may carry: a key added to the launcher later stays out of reach.
+        val m = Json.toStringMap(ctx).filterKeys { it in SCRIPT_CTX }.toMutableMap()
         // A tap opens the link in another app at once: web links only, not upi:, tel:, intent: …
         // Home fetches a picture as soon as the line shows, and opens a link on a tap: with internet
         // switched off for this script, neither leaves the phone; and like a request, neither may
@@ -578,6 +579,14 @@ class HostApi(
      * the default launcher and in front (a daily time runs in the foreground, which counts), on
      * Android 10 or newer; or resuming needs your work PIN; or there's no work profile.
      */
+    /** setWork's argument: true or false, or "on" or "off", the same in Lua and JavaScript. */
+    fun onOff(value: Any?, call: String): Boolean = when (value) {
+        is Boolean -> value
+        "on" -> true
+        "off" -> false
+        else -> throw IllegalArgumentException("$call takes true or false (or \"on\" or \"off\")")
+    }
+
     fun setWork(on: Boolean): Boolean {
         live()
         if (!may("work", "device.setWork")) return false
@@ -657,6 +666,12 @@ class HostApi(
             logError("launcher.run refused '${command.substringBefore(' ')}': sensitive commands must be typed")
             return false
         }
+        // A search or a place hands its words to a site through another app: only with the internet.
+        val verb = com.mtwabpin.kolahal.terminal.InstantRun.canonical(command.substringBefore(' '))
+        if (verb in WEB_COMMANDS && command.contains(' ') && grants != null && !grants.allows(ScriptAccess.INTERNET)) {
+            logError("launcher.run refused '$verb': it sends words to a website, and this script has no internet")
+            return false
+        }
         flush()
         context.sendBroadcast(
             android.content.Intent(ACTION_RUN_COMMAND).setPackage(context.packageName).putExtra(EXTRA_COMMAND, command)
@@ -711,19 +726,10 @@ class HostApi(
         const val STATUS_SCOPE = "status"
         const val ACTION_RUN_COMMAND = "com.mtwabpin.kolahal.RUN_COMMAND"
         const val EXTRA_COMMAND = "command"
-        private val RESERVED_CTX = setOf(
-            LogContext.ICON, LogContext.RUN, LogContext.COMMAND, LogContext.SCRIPT, LogContext.LINE, LogContext.APPS,
-            LogContext.RUN_HEADER, LogContext.FROM, LogContext.DESC, LogContext.PKG, LogContext.CLS, LogContext.USER,
-            // Set by log() itself, from its arguments.
-            LogContext.TITLE, LogContext.BODY,
-            // Tap / long-press actions: a script must not be able to forge a dial, a live
-            // notification's PendingIntent, a shortcut or delete buttons for the user's data.
-            LogContext.PHONE, LogContext.CONTACT, LogContext.SHORTCUT, LogContext.TODO, LogContext.TODO_DONE,
-            LogContext.NOTE, LogContext.REMINDER, LogContext.EVENT,
-            com.mtwabpin.kolahal.notifications.KolahalNotificationListener.CTX_KEY,
-            com.mtwabpin.kolahal.feeds.FeedWorker.CTX_FEED,
-            com.mtwabpin.kolahal.feeds.FeedWorker.CTX_ITEM,
-        )
+        /** The context keys a script's line may carry; anything else is dropped. */
+        private val SCRIPT_CTX = setOf(LogContext.URL, LogContext.IMAGE, LogContext.COPY, LogContext.MONO)
+        /** Commands that hand their words to a site (through the browser or another app). */
+        private val WEB_COMMANDS = setOf("search", "yt", "wiki", "maps", "play")
         private val METHODS_REQUIRING_BODY = setOf("POST", "PUT", "PATCH", "PROPPATCH", "REPORT")
 
         private val client get() = Net.client

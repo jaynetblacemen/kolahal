@@ -76,6 +76,27 @@ class ScriptBoundsTest {
         assertEquals(1, said)
     }
 
+    /** A search hands its words to a site: launcher.run won't send one for a script without the internet. */
+    @Test fun webCommandsNeedTheInternet() {
+        val off = HostApi(
+            context, "bounds", scriptId = null, notifyEnabled = false, interactive = true,
+            grants = ScriptAccess.Grants(setOf("commands"), mapOf("commands" to true, ScriptAccess.INTERNET to false)),
+        )
+        for (cmd in listOf("search my clipboard", "g words", "yt words", "maps a place", "wiki words")) assertTrue(cmd, !off.runCommand(cmd))
+        off.flush()
+        assertTrue(LogRepository.get(context).recent(50).any { "sends words to a website" in it.text })
+    }
+
+    /** setWork takes true or false, or "on" or "off", alike in Lua and JavaScript. */
+    @Test fun setWorkReadsItsArgumentOneWay() {
+        val host = HostApi(context, "bounds", scriptId = null, notifyEnabled = false)
+        assertEquals(true, host.onOff(true, "x"))
+        assertEquals(false, host.onOff("off", "x"))
+        assertEquals(true, host.onOff("on", "x"))
+        refused("x takes true or false") { host.onOff("paused", "x") }
+        refused("x takes true or false") { host.onOff(1.0, "x") }
+    }
+
     @Test fun aHugeClipIsRefused() {
         val host = HostApi(context, "bounds", scriptId = null, notifyEnabled = false)
         refused("clipboard.set") { host.clipboardSet("x".repeat(HostApi.MAX_CLIP + 1)) }
