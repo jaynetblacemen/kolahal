@@ -10,7 +10,11 @@ computer. Three workflows live in =.github/workflows/=.
 | =release.yml= | a pushed tag =v*=, such as =v0.3.1=              | the same, signed, then publishes the GitHub release and keeps the Play bundle 90 days |
 | =site.yml=    | a push to =master= that touches =site/=          | builds the website and publishes it to GitHub Pages                                   |
 
-Builds use Temurin JDK 25 (the same version as Android Studio's JDK here) and the Gradle wrapper.
+Builds use Temurin JDK 25 (the same version as Android Studio's JDK here) and the Gradle wrapper,
+and install the NDK version =app/build.gradle.kts= pins (=ndkVersion=): it strips the native
+libraries (Lua, QuickJS) and puts their symbols in the Play bundle. The actions are on Node 24
+majors; =gradle/actions/setup-gradle= stays on v5, as v6 puts its caching under Gradle's terms of
+use instead of the MIT licence.
 
 * What =build.yml= is for
 

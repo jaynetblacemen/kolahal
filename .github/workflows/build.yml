@@ -26,15 +26,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 25
 
-      # Also checks the Gradle wrapper is the published one.
-      - uses: gradle/actions/setup-gradle@v4
+      # The NDK app/build.gradle.kts pins: without it the native libraries go out unstripped and
+      # the Play bundle has no symbols for them.
+      - name: The NDK
+        run: |
+          ndk=$(sed -n 's/^ *ndkVersion = "\(.*\)"$/\1/p' app/build.gradle.kts)
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk" > /dev/null || true
+          test -d "$ANDROID_HOME/ndk/$ndk"
+
+      # Also checks the Gradle wrapper is the published one. v5: v6 brings caching under Gradle's
+      # own terms of use rather than the MIT licence.
+      - uses: gradle/actions/setup-gradle@v5
 
       - name: Unit tests and builds
         run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleRelease :app:bundlePlay :app:assemblePlay
@@ -44,14 +53,14 @@ jobs:
 
       - name: Keep the test reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports
           path: app/build/reports/tests/
           retention-days: 14
 
       - name: Keep the builds
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kolahal-${{ github.sha }}
           path: |

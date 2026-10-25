@@ -201,7 +201,10 @@ notifications in the log, media controls or the call log.
 1. The Release workflow keeps =kolahal-X.Y.Z-play.aab= with its run:
    =gh run download <run id> -n kolahal-X.Y.Z-play=.
 2. Play Console → the track → Create new release → upload the bundle, and the =mapping.txt= beside
-   it if Play doesn't show readable crash traces on its own.
+   it if Play doesn't show readable crash traces on its own. From 0.4.6 the bundle carries the
+   native libraries' symbols itself (=ndk.debugSymbolLevel=); 0.4.4 and 0.4.5 went without, and Play
+   asks for a symbol file: a zip of the bundle's own =base/lib/<abi>/*.so= files, as =<abi>/*.so=,
+   uploaded in the App bundle explorer, serves.
 3. Paste =docs/release/notes/X.Y.Z-play.txt= (500 characters at most) as the release notes.
    0.4.4 is the first release on Play (internal testing), so its text introduces Kolahal and how
    to start instead of listing changes; later ones list what changed since the last one on Play.

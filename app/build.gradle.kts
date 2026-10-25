@@ -30,6 +30,9 @@ val uploadKey = signingKey("upload", "UPLOAD")
 android {
     namespace = "com.mtwabpin.kolahal"
     compileSdk = 37
+    // The NDK strips the native libraries (Lua, QuickJS) and keeps their symbols for Play: the
+    // workflows install this version, as runner images don't always carry it.
+    ndkVersion = "28.2.13676358"
 
     defaultConfig {
         applicationId = "com.mtwabpin.kolahal"
@@ -71,6 +74,9 @@ android {
             // Without keystore.properties, sign with the debug key so the optimized build is still installable.
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // The native libraries' symbol tables go into the bundle (BUNDLE-METADATA), so Play
+            // Console can read native crashes; the APKs carry the stripped libraries.
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
         }
         debug {
             applicationIdSuffix = ".debug"
