@@ -350,6 +350,32 @@ class AppSelectorTest {
         assertEquals(360 * 0.7f, open, 1f)
     }
 
+    /** The font the row showing [label] is drawn in. */
+    private fun fontOf(label: String): androidx.compose.ui.text.font.FontFamily? {
+        val results = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        compose.onNodeWithText(label, useUnmergedTree = true).fetchSemanticsNode()
+            .config[androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult].action?.invoke(results)
+        return results.single().layoutInput.style.fontFamily
+    }
+
+    /** selector.system-font: the list in the phone's font; off, in the terminal's. */
+    @Test fun theListCanUseThePhonesFont() {
+        val first = entries.first().item.label
+        var systemFont by mutableStateOf(true)
+        compose.setContent {
+            Box(Modifier.size(360.dp, 700.dp)) {
+                AppSelector(apps.apps.value, emptySet(), onLaunch = {}, onLongPress = {}, heightDp = 300, edgeBackGesture = false, systemFont = systemFont)
+            }
+        }
+        compose.onNodeWithTag("app-selector").performTouchInput { down(Offset(centerX, 2f)) }
+        compose.waitForIdle()
+        assertEquals(androidx.compose.ui.text.font.FontFamily.Default, fontOf(first))
+        compose.runOnIdle { systemFont = false }
+        compose.waitForIdle()
+        assertEquals(Term.text.fontFamily, fontOf(first))
+        assertTrue("the terminal's font is another", Term.text.fontFamily != androidx.compose.ui.text.font.FontFamily.Default)
+    }
+
     /** The centre of the row showing [label], from the top (dp). */
     private fun rowCentre(label: String) = compose.onNodeWithText(label, useUnmergedTree = true).getUnclippedBoundsInRoot().let { (it.top + it.bottom).value / 2 }
 

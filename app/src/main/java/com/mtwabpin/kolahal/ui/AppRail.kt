@@ -77,6 +77,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -562,7 +563,10 @@ fun AppSelector(
     icons: Boolean = false,
     /** selector.filter: the list holds only the letter's apps. */
     filter: Boolean = false,
+    /** selector.system-font: the list, the letters and the bubble in the phone's font, not the terminal's. */
+    systemFont: Boolean = false,
 ) {
+    val text = if (systemFont) Term.phoneText else Term.text
     // Plan F: with the strip at the bottom of the edge, favourites go last, where the thumb rests.
     val favouritesLast = position == "bottom"
     val entries = remember(apps, pinned, favouritesLast) {
@@ -605,7 +609,7 @@ fun AppSelector(
         if (!sliding || waveIn < 0.05f) waveAt.snapTo(to) else waveAt.animateTo(to, spring(stiffness = 2500f))
     }
     val measurer = rememberTextMeasurer()
-    val waveStyle = Term.text.copy(fontSize = 9.sp, lineHeight = 10.sp)
+    val waveStyle = text.copy(fontSize = 9.sp, lineHeight = 10.sp)
     val waveLetters = remember(sectionLetters, waveStyle) { sectionLetters.map { measurer.measure(it.toString(), waveStyle) } }
 
     BackHandler(enabled = state.mode == Mode.OPEN) { state.close() }
@@ -744,6 +748,7 @@ fun AppSelector(
                         // A letter's few apps on their own: no room to magnify the ends.
                         fisheye = !onlyLetter,
                         dimOthers = !onlyLetter,
+                        text = text,
                         onClick = { state.close(); launch(entry.item) },
                         onLongClick = { state.close(); longPress(entry.item) },
                     )
@@ -776,7 +781,7 @@ fun AppSelector(
                         val inZone = p >= zoneTopPx && p <= zoneTopPx + zoneHPx
                         Text(
                             letter.toString(),
-                            style = Term.text.copy(color = Term.dim.copy(alpha = if (inZone) 0.8f else 0.4f), fontSize = 8.sp, lineHeight = 9.sp),
+                            style = text.copy(color = Term.dim.copy(alpha = if (inZone) 0.8f else 0.4f), fontSize = 8.sp, lineHeight = 9.sp),
                             maxLines = 1,
                             modifier = Modifier
                                 .align(if (left) Alignment.TopStart else Alignment.TopEnd)
@@ -797,7 +802,7 @@ fun AppSelector(
                         .padding(start = if (left) 3.dp else 0.dp, end = if (left) 0.dp else 3.dp)
                         .graphicsLayer { alpha = if (open) 0.35f else 1f },
                 ) {
-                    val small = Term.text.copy(color = Term.dim.copy(alpha = 0.45f), fontSize = 8.sp, lineHeight = 9.sp)
+                    val small = text.copy(color = Term.dim.copy(alpha = 0.45f), fontSize = 8.sp, lineHeight = 9.sp)
                     Text("A", style = small)
                     Box(
                         Modifier
@@ -865,7 +870,7 @@ fun AppSelector(
             ) {
                 Text(
                     sectionLetters[letter].toString(),
-                    style = Term.text.copy(color = Term.bg, fontWeight = FontWeight.Bold, fontSize = 20.sp, lineHeight = 22.sp),
+                    style = text.copy(color = Term.bg, fontWeight = FontWeight.Bold, fontSize = 20.sp, lineHeight = 22.sp),
                     maxLines = 1,
                     modifier = Modifier.testTag("app-selector-bubble"),
                 )
@@ -1118,6 +1123,8 @@ private fun SelectorRow(
     fisheye: Boolean,
     /** Letters: while the thumb is down, the other letters' apps fade back (unless picked). */
     dimOthers: Boolean,
+    /** The row's text style: the terminal's font, or the phone's with selector.system-font. */
+    text: TextStyle,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
@@ -1163,7 +1170,7 @@ private fun SelectorRow(
         // the letter you are at, where you look.
         Text(
             if (entry.sectionStart || focused) entry.section.toString() else "",
-            style = Term.text.copy(
+            style = text.copy(
                 color = if (focused) Term.prompt else if (entry.favourite) Term.prompt.copy(alpha = 0.7f) else Term.dim.copy(alpha = 0.7f),
                 fontWeight = if (focused) FontWeight.Bold else null,
                 fontSize = (Term.fontSize - 3).sp,
@@ -1176,13 +1183,13 @@ private fun SelectorRow(
         if (app.profile.kind != ProfileKind.PERSONAL) {
             Text(
                 "[${app.profile.kind.tag}] ",
-                style = Term.text.copy(color = Term.profileColor(app.profile.kind), fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp),
+                style = text.copy(color = Term.profileColor(app.profile.kind), fontWeight = FontWeight.Bold, fontSize = (Term.fontSize - 2).sp),
             )
         }
-        if (pinned && !entry.favourite) Text("★ ", style = Term.text.copy(color = Term.prompt.copy(alpha = 0.7f)))
+        if (pinned && !entry.favourite) Text("★ ", style = text.copy(color = Term.prompt.copy(alpha = 0.7f)))
         Text(
             app.label,
-            style = Term.text.copy(
+            style = text.copy(
                 color = if (focused) Term.prompt else Term.fg,
                 fontWeight = if (focused) FontWeight.Bold else FontWeight.Normal,
             ),
@@ -1192,7 +1199,7 @@ private fun SelectorRow(
         )
         // B2: on the far side, lifting opens the app's actions; the row says so.
         if (focused && state.far) {
-            Text("⋯ Actions", style = Term.text.copy(color = Term.prompt, fontSize = (Term.fontSize - 2).sp), maxLines = 1)
+            Text("⋯ Actions", style = text.copy(color = Term.prompt, fontSize = (Term.fontSize - 2).sp), maxLines = 1)
         }
     }
 }

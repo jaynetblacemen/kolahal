@@ -250,6 +250,9 @@ object Term {
     /** The prompt line: the phone's font from `font.sans prompt` on. */
     val promptText: TextStyle get() = style(if (sans == Sans.OFF) fontFamily else FontFamily.Default)
 
+    /** Always the phone's font, whatever `font.sans` says: the app selector with `selector.system-font`. */
+    val phoneText: TextStyle get() = style(FontFamily.Default)
+
     private var cachedPalette: Palette? = null
     private var cachedSize = 0
     private val styles = HashMap<FontFamily, TextStyle>()

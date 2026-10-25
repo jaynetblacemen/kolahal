@@ -109,6 +109,7 @@ The `theme` and `font` commands are unchanged.
 | `selector.height` | number 200–900 | `350` | length (dp) of the part of the edge you slide on: shorter means less thumb travel; the list uses the whole height. With gesture navigation a touch starts it only in the middle 200 dp, where the handle is |
 | `selector.actions` | choice: `far-side` `off` | `off` | while you pick, an app's actions: `far-side` opens them when you lift on the list's far side; `off` leaves them to the open list (long-press) |
 | `selector.icons` | bool | `off` | show each app's icon in the app selector's list |
+| `selector.system-font` | bool | `off` | the app selector in the phone's own font instead of the terminal font: its list, the letters on the edge and the one beside your thumb |
 | `suggestions.max` | number 0–30 | `30` | max suggestions shown while typing |
 | `search.engine` | choice: `duckduckgo` `google` `bing` `brave` `startpage` `kagi` `custom` | `duckduckgo` | web search engine for `search` / `g` |
 | `search.url` | text | `https://duckduckgo.com/?q=%s` | custom search URL (`%s` = query), used when `search.engine` = `custom` |

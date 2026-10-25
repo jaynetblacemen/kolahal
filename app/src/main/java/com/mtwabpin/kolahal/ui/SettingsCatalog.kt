@@ -52,6 +52,7 @@ internal val TITLES = mapOf(
     "selector.height" to "Length on the edge (dp)",
     "selector.actions" to "App actions while picking",
     "selector.icons" to "Show app icons",
+    "selector.system-font" to "Phone's font",
     "suggestions.rows" to "Chip rows",
     "chips.height" to "Chip height (dp)",
     "keybar.show" to "Show the key bar",
@@ -122,6 +123,7 @@ private val SHOWN_WHEN: Map<ConfigKey<*>, (Config) -> Boolean> = run {
         Keys.SELECTOR_HEIGHT to on(Keys.SELECTOR_RAIL),
         Keys.SELECTOR_ACTIONS to on(Keys.SELECTOR_RAIL),
         Keys.SELECTOR_ICONS to on(Keys.SELECTOR_RAIL),
+        Keys.SELECTOR_SYSTEM_FONT to on(Keys.SELECTOR_RAIL),
         Keys.FEEDS_LOG_LINES to on(Keys.FEEDS_LOG),
         Keys.FEEDS_READ_SHOWN to on(Keys.FEEDS_LOG),
         // Without the header, only the clock's 24-hour setting still counts: the log uses it too.
@@ -179,7 +181,7 @@ private val CATEGORIES = listOf(
         listOf(
             null to listOf(Keys.SELECTOR_RAIL),
             "On the edge" to listOf(Keys.SELECTOR_SIDE, Keys.SELECTOR_POSITION, Keys.SELECTOR_HEIGHT, Keys.SELECTOR_HANDLE, Keys.SELECTOR_LETTERS),
-            "The list" to listOf(Keys.SELECTOR_FILTER, Keys.SELECTOR_ACTIONS, Keys.SELECTOR_ICONS),
+            "The list" to listOf(Keys.SELECTOR_FILTER, Keys.SELECTOR_ACTIONS, Keys.SELECTOR_ICONS, Keys.SELECTOR_SYSTEM_FONT),
         ),
     ),
     Category(

@@ -456,6 +456,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 actions = remember(configVersion) { config[Keys.SELECTOR_ACTIONS] },
                 icons = remember(configVersion) { config[Keys.SELECTOR_ICONS] },
                 filter = remember(configVersion) { config[Keys.SELECTOR_FILTER] },
+                systemFont = remember(configVersion) { config[Keys.SELECTOR_SYSTEM_FONT] },
             )
         }
         // [/selector]

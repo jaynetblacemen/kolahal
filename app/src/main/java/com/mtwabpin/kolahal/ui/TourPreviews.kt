@@ -411,6 +411,7 @@ internal fun SelectorPreview(vm: TerminalViewModel) {
                 edgeBackGesture = false,
                 icons = remember(version) { vm.config[Keys.SELECTOR_ICONS] },
                 filter = remember(version) { vm.config[Keys.SELECTOR_FILTER] },
+                systemFont = remember(version) { vm.config[Keys.SELECTOR_SYSTEM_FONT] },
             )
         }
         AnimatedVisibility(picked != null, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp)) {
