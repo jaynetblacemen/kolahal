@@ -90,6 +90,55 @@ class ScriptEngineTest {
         }
     }
 
+    /** string.rep can't ask for gigabytes in one call. */
+    @Test fun luaRepIsCapped() {
+        val out = lua("pcall(string.rep, 'x', 2^30)")!!
+        assertTrue(out, out.startsWith("false") && out.contains("too large"))
+        assertEquals("true\t3", lua("local ok, s = pcall(string.rep, 'ab', 2, '-') return ok, #s - 2"))
+    }
+
+    /** The guards keep their own copies: a script that replaces the functions they use still can't swallow its timeout. */
+    @Test fun luaShadowedGlobalsKeepTheGuards() {
+        val code = """
+            error = function() end
+            type = function() return "table" end
+            tostring = function() return "" end
+            string.find = function() return nil end
+            string.lower = function(s) return "" end
+            table.pack = function() return { n = 0 } end
+            table.unpack = function() end
+            while true do pcall(function() while true do end end) end
+        """.trimIndent()
+        try {
+            lua(code, repl = false, timeout = 1_000)
+            fail("expected timeout")
+        } catch (e: Exception) {
+            assertTrue(e.message.orEmpty(), e.message.orEmpty().contains("timed out"))
+        }
+    }
+
+    /**
+     * A string doubling itself outruns any instruction count: in the :script process the watchdog
+     * stops it, once (it doesn't run again), and the app lives on.
+     */
+    @Test fun aRunawayStringIsStoppedInTheScriptProcess() {
+        val logs = LogRepository.get(context)
+        val marker = "runaway-" + System.nanoTime()
+        ScriptScheduler.eval(context, ScriptLang.LUA, "log('$marker') local s = ('x'):rep(1024 * 1024) while true do s = s .. s end")
+        fun stops(): List<String> {
+            val recent = logs.recent(200)
+            val at = recent.indexOfFirst { it.text == marker }
+            if (at < 0) return emptyList()
+            // recent() is oldest first: what the run logged after the marker.
+            return recent.drop(at + 1).map { it.text }.filter { "killed script process" in it || "memory" in it.lowercase() }
+        }
+        val deadline = System.currentTimeMillis() + 30_000
+        while (System.currentTimeMillis() < deadline && stops().isEmpty()) Thread.sleep(250)
+        assertTrue("never stopped", stops().isNotEmpty())
+        Thread.sleep(5_000)
+        assertEquals("ran again: ${stops()}", 1, logs.recent(200).count { it.text == marker })
+    }
+
     @Test fun luaArgsAreExposed() {
         val out = runBlocking { LuaEngine().run("return argline .. '|' .. #args .. '|' .. args[2]", "t", host(), 5_000, false, listOf("a", "b c")) }
         assertEquals("a b c|2|b c", out)

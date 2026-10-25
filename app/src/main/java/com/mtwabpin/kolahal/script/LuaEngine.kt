@@ -34,9 +34,10 @@ class LuaEngine : ScriptEngine {
         val lua = Lua54()
         // The hook cannot interrupt long-running C functions (e.g. pathological string.find patterns), and
         // withContext cannot cancel blocking JNI. As a last resort, kill the isolated :script process.
-        // The hook's memory check runs every few thousand instructions, so a few huge allocations
-        // (`s = s .. s` in a loop) can pass it: the watchdog also stops a run whose native memory
-        // grows past NATIVE_LIMIT_MB.
+        // The hook checks memory every thousand instructions, but a few huge allocations (`s = s .. s`
+        // in a loop doubles a string every few instructions) outrun any count: the watchdog also
+        // stops a run whose native memory grows past NATIVE_LIMIT_MB, looking often enough that it
+        // overshoots by about one doubling. LuaJava gives no say over Lua's allocator itself.
         val baseline = Debug.getNativeHeapAllocatedSize()
         val watchdog = thread(isDaemon = true, name = "lua-watchdog") {
             val killAt = System.currentTimeMillis() + timeoutMs + HARD_KILL_GRACE_MS
@@ -277,9 +278,9 @@ class LuaEngine : ScriptEngine {
 
     private companion object {
         const val HARD_KILL_GRACE_MS = 5_000L
-        const val WATCH_EVERY_MS = 50L
-        /** Native memory a run may add before the watchdog stops it (the Lua cap is 64 MB). */
-        const val NATIVE_LIMIT_MB = 256
+        const val WATCH_EVERY_MS = 10L
+        /** Native memory a run may add before the watchdog stops it: twice the Lua cap (64 MB). */
+        const val NATIVE_LIMIT_MB = 128
 
         val PRELUDE = """
             local check = __kolahal_check
@@ -290,10 +291,15 @@ class LuaEngine : ScriptEngine {
             local error, type, tostring, select = error, type, tostring, select
             local pack, unpack, concat = table.pack, table.unpack, table.concat
             local sfind, slower = string.find, string.lower
-            local HOOK_EVERY = 10000
+            -- Memory every thousand instructions; the clock and cancellation, a call into Kotlin, every
+            -- ten thousand.
+            local HOOK_EVERY = 1000
+            local CHECK_EVERY = 10
             local MEMORY_LIMIT_KB = 64 * 1024
+            local hooks = 0
             local function hook()
-              check()
+              hooks = hooks + 1
+              if hooks % CHECK_EVERY == 0 then check() end
               if gc("count") > MEMORY_LIMIT_KB then error("Memory limit exceeded (64 MB)", 0) end
             end
             sethook(hook, "", HOOK_EVERY)
