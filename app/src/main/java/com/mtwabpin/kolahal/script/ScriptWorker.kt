@@ -118,7 +118,8 @@ internal object ScriptRun {
             } else {
                 // An error can quote a URL or a header: masked like everything else a run shows.
                 val message = e.message?.let(host::redact)
-                val msg = message?.lines()?.firstOrNull { it.isNotBlank() } ?: e.javaClass.simpleName
+                // The first line, as the script made it: as long as it liked, so cut for the line and the status.
+                val msg = (message?.lines()?.firstOrNull { it.isNotBlank() } ?: e.javaClass.simpleName).take(ScriptRepository.STATUS_MAX)
                 val line = if (repl) null else errorLine(e, lang, name)
                 val extra = buildMap {
                     put(LogContext.COPY, message ?: msg)

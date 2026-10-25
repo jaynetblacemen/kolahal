@@ -157,9 +157,10 @@ class ScriptRepository private constructor(private val context: Context) {
 
     fun setNotify(id: Long, notify: Boolean) = update(id) { put("notify", if (notify) 1 else 0) }
 
+    /** The last run's time and how it went ([status], cut to [STATUS_MAX]: a script's error text is its own to make long). */
     fun recordRun(id: Long, status: String) = update(id) {
         put("last_run", System.currentTimeMillis())
-        put("last_status", status)
+        put("last_status", status.take(STATUS_MAX))
     }
 
     /**
@@ -231,6 +232,12 @@ class ScriptRepository private constructor(private val context: Context) {
     }
 
     companion object {
+        /**
+         * Longest last-run status kept (an error's first line): a row past the 2 MB cursor window
+         * can't be read back, and every script list would fail on it.
+         */
+        const val STATUS_MAX = 200
+
         fun scopeOf(scriptId: Long) = "script:$scriptId"
 
         /** Bumped on every write made in this process; caches compare it to know when to reload. */

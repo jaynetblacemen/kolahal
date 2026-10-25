@@ -275,6 +275,9 @@ class HostApi(
         logs.add(LogKind.ERROR, redact(text), scriptName, LogContext(baseCtx))
     }
 
+    /** Notifications this run has posted (or tried to). */
+    private var notifications = 0
+
     fun notify(title: String, body: String, ctx: Map<*, *>? = null): Boolean {
         live()
         effects++
@@ -282,6 +285,11 @@ class HostApi(
         val values = Json.toStringMap(ctx)
         // With notifications off for this script, the script's own log lines already show the content.
         if (!notifyEnabled) return false
+        // Android keeps about 50 per app: a loop mustn't crowd out Kolahal's own reminders.
+        if (++notifications > MAX_NOTIFY_PER_RUN) {
+            if (notifications == MAX_NOTIFY_PER_RUN + 1) logError("notify: more than $MAX_NOTIFY_PER_RUN notifications in one run; the rest aren't posted")
+            return false
+        }
         // Opening the link sends what it holds to its site: the same rules as a request, and no link with internet off.
         val url = values[LogContext.URL]?.let(Net::webUrl)?.takeIf { grants == null || grants.allows(ScriptAccess.INTERNET) }
             ?.also { u -> u.toHttpUrlOrNull()?.let { checkSecrets(it.host, listOf(u), it.isHttps) } }
@@ -442,18 +450,26 @@ class HostApi(
         if (grants?.allows(ScriptAccess.HEADER) == false) return
         // A header line is plain text: styles only show in the log.
         val value = text?.let(::redact)?.let(StyledText::plain)?.lines()?.firstOrNull()?.take(STATUS_MAX)?.takeIf { it.isNotBlank() }
-        KvStore(context, STATUS_SCOPE).set(scriptName, value)
+        val lines = KvStore(context, STATUS_SCOPE)
+        // Each write tells home to redraw: unchanged writes are skipped, and a loop stops after a few.
+        if (lines.get(scriptName) == value || ++statusWrites > MAX_STATUS_PER_RUN) return
+        lines.set(scriptName, value)
         logs.onStatusChanged()
     }
+
+    /** Header-line writes this run. */
+    private var statusWrites = 0
 
     // ---- device, apps, launcher ----------------------------------------------------------
 
     fun clipboardSet(text: String) {
         live()
         if (!may("clipboard", "clipboard.set")) return
+        // A clip crosses to Android in one transaction: a huge one would fail it, and the process with it.
+        require(text.length <= MAX_CLIP) { "clipboard.set: text over ${MAX_CLIP / 1000}K characters" }
         val cm = context.getSystemService(android.content.ClipboardManager::class.java)
         android.os.Handler(android.os.Looper.getMainLooper()).post {
-            cm.setPrimaryClip(android.content.ClipData.newPlainText(scriptName, text))
+            runCatching { cm.setPrimaryClip(android.content.ClipData.newPlainText(scriptName, text)) }
         }
     }
 
@@ -676,5 +692,11 @@ class HostApi(
         const val MAX_CHARS_PER_RUN = 256 * 1024
         /** Commands one run may send with launcher.run; each one's output is logged by home. */
         const val MAX_COMMANDS_PER_RUN = 10
+        /** Notifications one run may post. */
+        const val MAX_NOTIFY_PER_RUN = 10
+        /** Header-line writes one run may make. */
+        const val MAX_STATUS_PER_RUN = 20
+        /** Longest text clipboard.set takes (characters). */
+        const val MAX_CLIP = 100_000
     }
 }

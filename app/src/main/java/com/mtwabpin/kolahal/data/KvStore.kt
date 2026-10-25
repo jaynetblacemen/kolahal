@@ -26,15 +26,19 @@ class KvStore(context: Context, private val scope: String) {
     }
 
     fun set(key: String, value: String?) {
-        require(value == null || value.length <= MAX_VALUE) { "value too large (over ${MAX_VALUE / 1024} KB)" }
-        // A script's store is limited as a whole too, so a loop of store.set can't fill the phone.
+        // In bytes, as stored: a million CJK characters are 3 MB, past what a cursor can read back.
+        val bytes = value?.toByteArray()?.size ?: 0
+        require(bytes <= MAX_VALUE) { "value too large (over ${MAX_VALUE / 1024} KB)" }
+        require(key.length <= MAX_KEY) { "key too long (over $MAX_KEY characters)" }
+        // A script's store is limited as a whole too, keys included, so a loop of store.set can't fill the phone.
         if (value != null && scope.startsWith("script:")) {
             db.readableDatabase.rawQuery(
-                "SELECT COUNT(*), COALESCE(SUM(length(v)), 0) FROM kv WHERE scope = ? AND k != ?", arrayOf(scope, key),
+                "SELECT COUNT(*), COALESCE(SUM(length(CAST(v AS BLOB)) + length(CAST(k AS BLOB))), 0) FROM kv WHERE scope = ? AND k != ?",
+                arrayOf(scope, key),
             ).use { c ->
                 c.moveToFirst()
                 require(c.getInt(0) < MAX_KEYS) { "store full (over $MAX_KEYS keys)" }
-                require(c.getLong(1) + value.length <= MAX_SCOPE) { "store full (over ${MAX_SCOPE / (1024 * 1024)} MB)" }
+                require(c.getLong(1) + bytes + key.toByteArray().size <= MAX_SCOPE) { "store full (over ${MAX_SCOPE / (1024 * 1024)} MB)" }
             }
         }
         if (value == null) {
@@ -56,9 +60,12 @@ class KvStore(context: Context, private val scope: String) {
     }
 
     companion object {
-        /** Largest value a key may hold (characters); keeps every row readable through a cursor. */
+        /** Largest value a key may hold (bytes, as stored); keeps every row readable through a cursor. */
         const val MAX_VALUE = 1024 * 1024
-        /** Keys and characters one script's store may hold. */
+
+        /** Longest key (characters): keys count toward a script's store too. */
+        const val MAX_KEY = 512
+        /** Keys and bytes (keys and values) one script's store may hold. */
         const val MAX_KEYS = 1000
         const val MAX_SCOPE = 16L * 1024 * 1024
 
@@ -68,7 +75,12 @@ class KvStore(context: Context, private val scope: String) {
          */
         fun repairOversized(context: Context) {
             val w = Db.get(context).writableDatabase
-            w.execSQL("DELETE FROM kv WHERE length(v) > ?", arrayOf<Any>(MAX_VALUE))
+            w.execSQL("DELETE FROM kv WHERE length(CAST(v AS BLOB)) > ?", arrayOf<Any>(MAX_VALUE))
+            w.execSQL("DELETE FROM kv WHERE scope LIKE 'script:%' AND length(k) > ?", arrayOf<Any>(MAX_KEY))
+            w.execSQL(
+                "UPDATE scripts SET last_status = substr(last_status, 1, ?) WHERE length(last_status) > ?",
+                arrayOf<Any>(ScriptRepository.STATUS_MAX, ScriptRepository.STATUS_MAX),
+            )
             w.execSQL("UPDATE logs SET text = substr(text, 1, ?) WHERE length(text) > ?", arrayOf<Any>(LogRepository.MAX_FIELD, LogRepository.MAX_FIELD))
             w.execSQL("UPDATE logs SET ctx = NULL WHERE length(ctx) > ?", arrayOf<Any>(LogRepository.MAX_FIELD))
         }
