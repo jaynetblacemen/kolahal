@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
@@ -356,12 +357,17 @@ internal fun Header(
 
 /**
  * A battery drawn to scale: outline, a fill proportional to [pct], and a bolt cut out of the
- * fill while charging. Sized to sit on a line of header text. [cutout]: what the glyph sits on.
+ * fill while charging: a hole, so whatever the glyph sits on shows through it (home's page, a
+ * menu, the wallpaper). Sized to sit on a line of header text.
  */
 @Composable
-internal fun BatteryGlyph(pct: Int, charging: Boolean, color: Color, height: Dp, cutout: Color = Term.page) {
-    val bg = cutout
-    androidx.compose.foundation.Canvas(Modifier.size(width = height * 1.6f, height = height)) {
+internal fun BatteryGlyph(pct: Int, charging: Boolean, color: Color, height: Dp) {
+    androidx.compose.foundation.Canvas(
+        Modifier
+            .size(width = height * 1.6f, height = height)
+            // Its own layer, so the cut clears only the glyph's pixels.
+            .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen },
+    ) {
         val stroke = 1.4.dp.toPx()
         val capW = size.width * 0.08f
         val bodyW = size.width - capW
@@ -375,7 +381,7 @@ internal fun BatteryGlyph(pct: Int, charging: Boolean, color: Color, height: Dp,
         val fillW = fullW * (pct.coerceIn(0, 100) / 100f)
         if (fillW > 0f) drawRect(color, Offset(stroke / 2 + inset, top + inset), Size(fillW, bodyH - inset * 2))
         if (charging) {
-            // Bolt in the background colour so it reads on top of the fill.
+            // Cut out of the fill so it reads on top of it; over the empty part, drawn in the colour.
             val cx = stroke / 2 + inset + fullW / 2
             val h = bodyH - inset * 2
             val y0 = top + inset
@@ -388,7 +394,7 @@ internal fun BatteryGlyph(pct: Int, charging: Boolean, color: Color, height: Dp,
                 lineTo(cx, y0 + h * 0.42f)
                 close()
             }
-            drawPath(bolt, if (fillW > fullW / 2) bg else color)
+            if (fillW > fullW / 2) drawPath(bolt, Color.Black, blendMode = androidx.compose.ui.graphics.BlendMode.Clear) else drawPath(bolt, color)
         }
     }
 }

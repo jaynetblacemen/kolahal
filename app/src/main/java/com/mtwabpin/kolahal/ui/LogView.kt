@@ -58,6 +58,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -211,12 +213,22 @@ fun LogLine(
         else -> lineHeight
     }
     Box(Modifier.padding(top = topGap)) {
-    // What the swipe will do, revealed under the line as it moves.
+    // What the swipe will do, revealed as the line moves: drawn only where the line has moved away
+    // from, so the line needs no background of its own and home's page (or wallpaper) shows through.
     if (swipe.value != 0f) {
         Text(
             if (swipe.value > 0) "⧉ Copy" else "Delete ✕",
             style = Term.text.copy(color = if (swipe.value > 0) Term.prompt else Term.error),
-            modifier = Modifier.matchParentSize().wrapContentHeight().padding(horizontal = 16.dp),
+            modifier = Modifier
+                .matchParentSize()
+                .drawWithContent {
+                    val s = swipe.value
+                    clipRect(left = if (s > 0) 0f else size.width + s, right = if (s > 0) s else size.width) {
+                        this@drawWithContent.drawContent()
+                    }
+                }
+                .wrapContentHeight()
+                .padding(horizontal = 16.dp),
             textAlign = if (swipe.value > 0) androidx.compose.ui.text.style.TextAlign.Start else androidx.compose.ui.text.style.TextAlign.End,
         )
     }
@@ -251,8 +263,6 @@ fun LogLine(
                     swipeScope.launch { swipe.snapTo(swipe.value + dx) }
                 }
             }
-            // Solid only while swiped, over what the swipe shows; otherwise home's page shows through.
-            .drawBehind { if (swipe.value != 0f) drawRect(Term.page) }
             .fillMaxWidth()
             .heightIn(min = minHeight)
             .testTag("line-${entry.id}")
@@ -686,7 +696,6 @@ fun ActionSheet(menu: ActionMenu, onDismiss: () -> Unit) {
                                         else -> Term.dim
                                     },
                                     iconSize,
-                                    cutout = Term.surface,
                                 )
                                 null -> Unit
                             }
