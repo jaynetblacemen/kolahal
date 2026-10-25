@@ -3,7 +3,6 @@ package com.mtwabpin.kolahal.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -53,50 +52,15 @@ class AppSelectorTest {
         actions: String = "off",
         icons: Boolean = false,
         letters: Boolean = false,
-        browse: String = "letters",
         filter: Boolean = false,
     ) = compose.setContent {
         Box(Modifier.size(360.dp, 700.dp)) {
             AppSelector(
                 list, emptySet(), onLaunch = { launched = it }, onLongPress = { pressed = it }, heightDp = 300, left = left,
                 position = position, edgeBackGesture = backGesture, actions = actions, icons = icons, letters = letters,
-                browse = browse, filter = filter,
+                filter = filter,
             )
         }
-    }
-
-    /**
-     * The app launched by touching the strip's middle, sliding [slideDp] down it at 40dp a second
-     * (slow: under the aim speed), then off the edge and lifting.
-     */
-    private fun launchAfterSlowSlide(slideDp: Int): AppEntry? {
-        launched = null
-        compose.onNodeWithTag("app-selector").performTouchInput {
-            down(center)
-            repeat(slideDp / 2) { moveBy(Offset(0f, 2.dp.toPx()), delayMillis = 50) }
-            moveBy(Offset(-60.dp.toPx(), 0f), delayMillis = 16)
-            up()
-        }
-        compose.waitForIdle()
-        return launched
-    }
-
-    /** Plan C: a slow slide aims, an app per selector.aim dp, where a glide would run through many more. */
-    @Test fun aSlowSlideAims() {
-        val list = apps.apps.value
-        val order = SelectorMath.build(list.filter { !it.hidden }, { it.label }, { it.key }, { false }, { it.profile.kind.ordinal }).map { it.item.key }
-        var aimDp by mutableIntStateOf(40)
-        compose.setContent {
-            Box(Modifier.size(360.dp, 700.dp)) {
-                AppSelector(list, emptySet(), onLaunch = { launched = it }, onLongPress = {}, heightDp = 300, edgeBackGesture = false, aimDp = aimDp, browse = "apps")
-            }
-        }
-        val start = order.indexOf(launchAfterSlowSlide(0)!!.key)
-        val aimed = order.indexOf(launchAfterSlowSlide(80)!!.key) - start
-        compose.runOnIdle { aimDp = 0 }
-        val glided = order.indexOf(launchAfterSlowSlide(80)!!.key) - order.indexOf(launchAfterSlowSlide(0)!!.key)
-        assertTrue("aimed $aimed apps", aimed in 1..3)
-        assertTrue("glided $glided apps, aimed $aimed", glided > aimed + 1)
     }
 
     /** The app launched by touching the strip [atTop] or at its bottom, and picking it there. */
@@ -226,20 +190,19 @@ class AppSelectorTest {
     }
 
     /**
-     * Gliding (apps): started in the middle, the thumb still reaches the first app at the strip's top end and the last at its
-     * bottom. Picking starts 32dp off the edge: from the 36dp strip's centre, a 60dp slide is well past it.
+     * Started in the middle, the thumb still reaches the first letter at the strip's top end and the last at its bottom,
+     * and picks one of its apps there. Picking starts 32dp off the edge: from the 36dp strip's centre, a 60dp slide is
+     * well past it.
      */
-    @Test fun onceDownTheThumbGlidesTheWholeLength() {
-        val list = apps.apps.value
-        val entries = SelectorMath.build(list.filter { !it.hidden }, { it.label }, { it.key }, { false }, { it.profile.kind.ordinal })
-        show(left = false, position = "bottom", list = list, backGesture = true, browse = "apps")
+    @Test fun onceDownTheThumbSlidesTheWholeLength() {
+        show(left = false, position = "bottom", backGesture = true)
         compose.onNodeWithTag("app-selector").performTouchInput {
             down(center)
             moveTo(Offset(centerX, -48.dp.toPx()))
             moveTo(Offset(centerX - 60.dp.toPx(), -48.dp.toPx()))
             up()
         }
-        compose.runOnIdle { assertEquals(entries.first().item.key, launched?.key) }
+        compose.runOnIdle { assertTrue("${launched?.label}", launched?.key in letterApps(last = false)) }
         launched = null
         compose.onNodeWithTag("app-selector").performTouchInput {
             down(center)
@@ -247,7 +210,7 @@ class AppSelectorTest {
             moveTo(Offset(centerX - 60.dp.toPx(), height + 48.dp.toPx()))
             up()
         }
-        compose.runOnIdle { assertEquals(entries.last().item.key, launched?.key) }
+        compose.runOnIdle { assertTrue("${launched?.label}", launched?.key in letterApps(last = true)) }
     }
 
     /** Three-button navigation: the whole strip starts it, as before, with the short handle. */
@@ -369,14 +332,6 @@ class AppSelectorTest {
         compose.onNodeWithTag("app-selector").performTouchInput { down(Offset(centerX, 2f)) }
         compose.waitForIdle()
         assertTrue("more than the first letter's apps", panelRows() > letterApps(last = false).size)
-    }
-
-    /** Gliding (apps) shows the bubble too: the letter of the app at the thumb. */
-    @Test fun glidingShowsTheLetterToo() {
-        show(left = false, position = "bottom", browse = "apps")
-        compose.onNodeWithTag("app-selector").performTouchInput { down(Offset(centerX, 2f)) }
-        compose.waitForIdle()
-        assertEquals(entries.first().section.toString(), bubble())
     }
 
     /** While the thumb is down home dims and the list narrows, so the wave swings out clear of it; left open, the list widens for the names. */

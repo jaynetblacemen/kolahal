@@ -53,6 +53,23 @@ object ScriptMeta {
     /** Whether the code makes web requests or reads feeds (`http.`, `rss.`): a timed run of it waits for a network. */
     fun goesOnline(code: String) = online.containsMatchIn(code)
 
+    private val internetRef = Regex("""\b(http|rss|url|image)\b""")
+    private val statusRef = Regex("""(?<![.:\w])status\b""")
+    private val notifyRef = Regex("""(?<![.:\w@])notify\b""")
+
+    /**
+     * What a script uses beyond `@uses`, read from the names in its code ([ScriptAccess] switches and
+     * allows only these): the internet for `http` and `rss`, and for the links and pictures its lines
+     * carry (`url`, `image`); its header line for `status`; posting notifications for `notify`.
+     * Anything that mentions the name counts (a comment, `local status`), so a script that calls one
+     * by name always has it; a field such as `res.status` or the `@notify` line doesn't.
+     */
+    fun usesInternet(code: String) = internetRef.containsMatchIn(code)
+
+    fun setsHeader(code: String) = statusRef.containsMatchIn(code)
+
+    fun postsNotifications(code: String) = notifyRef.containsMatchIn(code)
+
     fun description(code: String): String? = desc.find(code)?.groupValues?.get(2)?.trim()?.ifEmpty { null }
 
     /** The text after a `@<name>` directive, or null when there is none (or it is empty). */

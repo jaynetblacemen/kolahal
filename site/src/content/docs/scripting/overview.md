@@ -232,8 +232,13 @@ log. Code you type at the prompt (`lua`, `js`, `=`) may use everything.
 
 ### Switching access off
 
-Each script has an **Access** group in its sheet (Scripts → tap the script), with a switch for
-everything it can use; the pills in its card's details switch the same things. Switched off, a script gets nothing where nothing is an honest answer, and
+Each script's sheet (Scripts → tap the script) has an **Access** group, with a switch for
+everything it uses, and an **Events** group, with one for each event of its `@on` lines; the pills
+in its card's details switch the same things, in the same two groups. What it uses is read from its
+code: **Internet** when it uses `http` or `rss`, or puts links or pictures on its lines (`url`,
+`image`); **Header line** when it calls `status`; **Post notifications** when it calls `notify`;
+and what its `@uses` line names. A script gets only those: one that never mentions `http` can't go
+online. Switched off, a script gets nothing where nothing is an honest answer, and
 stops where it isn't:
 
 | Switch | Switched off, the script… |

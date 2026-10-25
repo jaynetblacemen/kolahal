@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -120,6 +121,7 @@ private class ScriptInfo(val script: Script) {
     val uses = ScriptMeta.uses(script.code)
     val timed = script.intervalMin > 0 || script.atTimes.isNotEmpty()
     val secrets = ScriptMeta.secrets(script.code)
+    val notifies = ScriptMeta.postsNotifications(script.code)
 }
 
 /** What a filter can ask about a script beyond its code: a header line now, a secret not set yet. */
@@ -554,17 +556,27 @@ private fun ScriptDetails(
             Fact("Next run", if (exact) time else "about $time")
         }
         info.usage?.let { Fact("Usage", it) }
-        // Everything it may do, as in its sheet's Access: internet, its header line, notifications,
-        // what it declares with @uses, and its @on events. A tap switches one.
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            for (item in ScriptAccess.items(s.code)) {
-                val name = when {
-                    item in info.events -> "on $item"
-                    else -> USES_SHORT[item] ?: ScriptAccess.label(item).lowercase()
+        // Everything it may do, as in its sheet: its access (internet, its header line and notifications
+        // when its code uses them, what it declares with @uses), and apart from it the events of its @on
+        // lines. A tap switches one.
+        val (events, access) = ScriptAccess.items(s.code).partition { it in info.events }
+        if (access.isNotEmpty() || info.notifies) PillGroup("Access") {
+            // Notifications after internet and the header line, as in the sheet.
+            val (base, declared) = access.partition { it == ScriptAccess.INTERNET || it == ScriptAccess.HEADER }
+            for (item in base + listOfNotNull("notify".takeIf { info.notifies }) + declared) {
+                if (item == "notify") {
+                    AccessPill("notifies", s.notify) { onNotify(!s.notify) }
+                    continue
                 }
+                val name = USES_SHORT[item] ?: ScriptAccess.label(item).lowercase()
                 val allowed = grants.allows(item)
                 AccessPill(if (item in grants.undecided) "$name · not allowed yet" else name, allowed) { onAccess(item, !allowed) }
-                if (item == ScriptAccess.HEADER) AccessPill("notifies", s.notify) { onNotify(!s.notify) }
+            }
+        }
+        if (events.isNotEmpty()) PillGroup("Events") {
+            for (item in events) {
+                val allowed = grants.allows(item)
+                AccessPill(item, allowed) { onAccess(item, !allowed) }
             }
         }
         if (info.secrets.isNotEmpty()) {
@@ -598,6 +610,16 @@ private fun AccessPill(label: String, on: Boolean, onToggle: () -> Unit) {
             )
         },
     )
+}
+
+/** A card's line of pills under a small [label]: what a script may use, or the events it runs on. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PillGroup(label: String, pills: @Composable FlowRowScope.() -> Unit) {
+    Column {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp), content = pills)
+    }
 }
 
 @Composable
@@ -690,6 +712,7 @@ private fun ScriptSheet(
         listOfNotNull(ScriptMeta.version(s.code)?.let { "v$it" }, ScriptMeta.author(s.code)?.let { "by $it" }).joinToString(" · ").ifEmpty { null }
     }
     val access = remember(s.code) { ScriptAccess.items(s.code) }
+    val notifies = remember(s.code) { ScriptMeta.postsNotifications(s.code) }
     val secrets = remember(s.code) { ScriptMeta.secrets(s.code) }
     val secretsVersion by vm.secretsVersion.collectAsStateWithLifecycle()
     val secretsSet by produceState(emptySet<String>(), s.code, s.name, secretsVersion) { value = withContext(Dispatchers.IO) { vm.secretsSet(s) } }
@@ -759,16 +782,23 @@ private fun ScriptSheet(
                 s.enabled,
             ) { onEnabled(it) }
 
-            // What it may use: internet and its header line, notifications it posts, what it declares
-            // with @uses, and the events of its @on lines.
-            Spacer(Modifier.height(16.dp))
-            Text("Access", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(4.dp))
-            access.forEach { item ->
-                SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), grants.allows(item)) { vm.setScriptAccess(s, item, it) }
-                if (item == ScriptAccess.HEADER) {
-                    SwitchRow("Post notifications", "Lets the script notify you", s.notify) { vm.setScriptNotify(s, it) }
-                }
+            // What it may use: internet, its header line and notifications when its code uses them, and
+            // what it declares with @uses; then, in a group of their own, the events of its @on lines.
+            val (events, uses) = access.partition { it in ScriptMeta.EVENTS }
+            if (uses.isNotEmpty() || notifies) {
+                Spacer(Modifier.height(16.dp))
+                Text("Access", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(4.dp))
+                val (base, declared) = uses.partition { it == ScriptAccess.INTERNET || it == ScriptAccess.HEADER }
+                base.forEach { item -> SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), grants.allows(item)) { vm.setScriptAccess(s, item, it) } }
+                if (notifies) SwitchRow("Post notifications", "Lets the script notify you", s.notify) { vm.setScriptNotify(s, it) }
+                declared.forEach { item -> SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), grants.allows(item)) { vm.setScriptAccess(s, item, it) } }
+            }
+            if (events.isNotEmpty()) {
+                Spacer(Modifier.height(16.dp))
+                Text("Events", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(4.dp))
+                events.forEach { item -> SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), grants.allows(item)) { vm.setScriptAccess(s, item, it) } }
             }
 
             // Keys and tokens it declares with @secret: set here, never in its code.

@@ -108,13 +108,9 @@ object Fetch {
         val metrics = context.resources.displayMetrics
         val scale = context.resources.configuration.fontScale
         val size = config[Keys.FONT_SIZE]
-        // The bundled mono fonts are 0.6 em wide. The log's side padding, its gutter, and the time
-        // at the end of each line when log.time shows it on output: 8dp before it, and the time as
-        // the log writes it now, in a font 2sp smaller.
-        val now = java.text.SimpleDateFormat(if (config[Keys.CLOCK_24H]) "HH:mm" else "h:mm", Locale.getDefault()).format(java.util.Date())
-        val time = if (config[Keys.SHOW_TIMESTAMPS] == "all") 8 + now.length * 0.6f * (size - 2) * scale else 0f
+        // The bundled mono fonts are 0.6 em wide. The log's side padding and its gutter.
         val gutter = if (config[Keys.LOG_GUTTER]) 10 else 0
-        val widthDp = (widthPx ?: metrics.widthPixels) / metrics.density - 24 - gutter - time
+        val widthDp = (widthPx ?: metrics.widthPixels) / metrics.density - 24 - gutter
         return (widthDp / (size * scale * 0.6f)).toInt()
     }
 

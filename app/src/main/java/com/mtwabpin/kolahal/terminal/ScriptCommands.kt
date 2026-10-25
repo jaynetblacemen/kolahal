@@ -332,8 +332,12 @@ class ScriptCommands(
     /** `script access <name>`: each switch, on or off, and where it comes from; tap one to change it. */
     private fun listAccess(s: Script) {
         val grants = s.grants
+        val items = ScriptAccess.items(s.code)
+        if (items.isEmpty() && !ScriptMeta.postsNotifications(s.code)) {
+            return info("${s.name}.${s.lang.ext} uses nothing with a switch: no internet, header line, notifications, @uses or @on", scriptCtx(s))
+        }
         info("${s.name}.${s.lang.ext} — 'script allow|deny ${s.name} <what>'", scriptCtx(s))
-        ScriptAccess.items(s.code).forEach { item ->
+        fun row(item: String) {
             val from = when (item) {
                 in ScriptMeta.USES -> " · @uses $item"
                 in ScriptMeta.EVENTS -> " · @on $item"
@@ -349,20 +353,28 @@ class ScriptCommands(
                 ) + LogContext.ALIGNED,
             )
         }
-        out(
+        // As the Scripts screen groups them: internet and the header line, notifications, what it
+        // declares with @uses, and last the events it runs on.
+        val (events, access) = items.partition { it in ScriptMeta.EVENTS }
+        val (base, declared) = access.partition { it == ScriptAccess.INTERNET || it == ScriptAccess.HEADER }
+        base.forEach(::row)
+        if (ScriptMeta.postsNotifications(s.code)) out(
             "${"notify".padEnd(14)}${if (s.notify) "on" else "off"}",
             LogContext.of(LogContext.DESC to "Posting notifications", LogContext.COMMAND to "script notify ${s.name} ${if (s.notify) "off" else "on"}") +
                 LogContext.ALIGNED,
         )
+        declared.forEach(::row)
+        events.forEach(::row)
     }
 
     /** `script allow|deny <name> <what…>`; `notify` is the notifications switch. */
     private fun setAccess(s: Script, items: List<String>, on: Boolean) {
         val all = ScriptAccess.items(s.code)
         items.firstOrNull { it != "notify" && it !in all }?.let { item ->
+            val has = all + listOfNotNull("notify".takeIf { ScriptMeta.postsNotifications(s.code) })
             return error(
                 if (item in ScriptMeta.USES) "${s.name} doesn't declare @uses $item"
-                else "No '$item' for ${s.name} — it has: ${(all + "notify").joinToString(" ")}"
+                else "No '$item' for ${s.name} — " + if (has.isEmpty()) "it has nothing to switch" else "it has: ${has.joinToString(" ")}"
             )
         }
         for (item in items) {
@@ -394,7 +406,7 @@ class ScriptCommands(
                 add(timer)
                 if (ScriptMeta.isCommand(s.code)) add("command")
                 ScriptMeta.events(s.code).takeIf { it.isNotEmpty() }?.let { add("on " + it.joinToString(",")) }
-                if (s.notify) add("notify")
+                if (s.notify && ScriptMeta.postsNotifications(s.code)) add("notify")
                 if (!s.enabled) add("disabled")
                 add(last)
             }

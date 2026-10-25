@@ -66,7 +66,8 @@ internal object ScriptRun {
 
         val host = HostApi(
             ctx, name, script?.id,
-            notifyEnabled = script?.notify ?: true,
+            // Its switch shows only when its code calls notify: one that hides the call can't post.
+            notifyEnabled = script?.let { it.notify && ScriptMeta.postsNotifications(it.code) } ?: true,
             interactive = repl || inputData.getBoolean(ScriptWorker.KEY_INTERACTIVE, false),
             byScript = inputData.getBoolean(ScriptWorker.KEY_BY_SCRIPT, false),
             from = from,

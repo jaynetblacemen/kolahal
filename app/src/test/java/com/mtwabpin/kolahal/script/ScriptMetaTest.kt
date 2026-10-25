@@ -80,4 +80,41 @@ class ScriptMetaTest {
         assertFalse(ScriptMeta.goesOnline("-- night-dnd.lua — No network.\nif device.dnd() == 'off' then device.setDnd('on') end"))
         assertFalse(ScriptMeta.goesOnline("log(\"see https://example.com\")"))
     }
+
+    /** The internet for requests, feeds, links and pictures; the header line for status; notifications for notify. */
+    @Test fun whatTheCodeUsesIsReadFromIt() {
+        assertTrue(ScriptMeta.usesInternet("local r = http.get(u)"))
+        assertTrue(ScriptMeta.usesInternet("local h = http\nh.get(u)"))
+        assertTrue(ScriptMeta.usesInternet("const f = await rss.fetch(u);"))
+        assertTrue(ScriptMeta.usesInternet("log(t, nil, { url = link })"))
+        assertTrue(ScriptMeta.usesInternet("log(t, \"\", { image: pic });"))
+        assertFalse(ScriptMeta.usesInternet("-- @uses dnd\ndevice.setDnd('on')\nlog('see https://example.com')"))
+
+        assertTrue(ScriptMeta.setsHeader("status(\"HN: 3 new\")"))
+        assertTrue(ScriptMeta.setsHeader("status(nil)"))
+        assertTrue(ScriptMeta.setsHeader("if (line) status(`Sun ${'$'}{rise}`);"))
+        assertFalse(ScriptMeta.setsHeader("local r = http.get(u)\nif r.status ~= 200 then return end"))
+        assertFalse(ScriptMeta.setsHeader("const ok = res.status === 200;"))
+
+        assertTrue(ScriptMeta.postsNotifications("notify(\"Battery\", \"low\")"))
+        assertFalse(ScriptMeta.postsNotifications("-- @notify\nlog(\"no notification\")"))
+        assertFalse(ScriptMeta.postsNotifications("if s.notify then log(1) end"))
+    }
+
+    /** Only what the code uses has a switch, and only that is allowed: no internet or header line for one that uses neither. */
+    @Test fun aScriptMayOnlyDoWhatItUses() {
+        val offline = "-- @uses dnd\n-- @on unlock\ndevice.setDnd('on')"
+        assertEquals(listOf("dnd", "unlock"), ScriptAccess.items(offline))
+        val quiet = ScriptAccess.grants(offline, mapOf("dnd" to true))
+        assertFalse(quiet.allows(ScriptAccess.INTERNET))
+        assertFalse(quiet.allows(ScriptAccess.HEADER))
+        assertTrue(quiet.allows("dnd"))
+        assertTrue(quiet.allows("unlock"))
+
+        val online = "local r = http.get(u)\nstatus(r.body)"
+        assertEquals(listOf(ScriptAccess.INTERNET, ScriptAccess.HEADER), ScriptAccess.items(online))
+        assertTrue(ScriptAccess.grants(online, emptyMap()).allows(ScriptAccess.INTERNET))
+        assertFalse(ScriptAccess.grants(online, mapOf(ScriptAccess.INTERNET to false)).allows(ScriptAccess.INTERNET))
+        assertTrue(ScriptAccess.grants(online, emptyMap()).allows(ScriptAccess.HEADER))
+    }
 }

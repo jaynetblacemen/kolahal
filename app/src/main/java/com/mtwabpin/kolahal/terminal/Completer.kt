@@ -217,10 +217,10 @@ class Completer(private val context: Context, private val data: Data) {
                         val s = scriptList.firstOrNull { it.name == parts[2] }
                         words((s?.let { ScriptMeta.secrets(it.code).map { d -> d.name } }).orEmpty())
                     } else if (parts.size >= 4 && (sub == "allow" || sub == "deny")) {
-                        // What can be switched: its access items and `notify`, each once.
+                        // What can be switched: its access items and `notify` when it posts, each once.
                         val s = scriptList.firstOrNull { it.name == parts[2] }
                         val given = parts.subList(3, parts.size - 1)
-                        (s?.let { ScriptAccess.items(it.code) + "notify" }).orEmpty()
+                        (s?.let { ScriptAccess.items(it.code) + listOfNotNull("notify".takeIf { _ -> ScriptMeta.postsNotifications(it.code) }) }).orEmpty()
                             .filter { it.starts(last) && it !in given }
                             .map { Suggestion.Completion(it, (parts.dropLast(1) + it).joinToString(" ") + " ") }
                     } else emptyList()

@@ -110,12 +110,12 @@ class ScriptLifecycleTest {
     }
 
     @Test fun codeFromElsewhereSwitchesItOffAndAsksAgain() {
-        val s = repo.create("lc-a", ScriptLang.LUA, "-- @uses clipboard\nreturn 1")
+        val s = repo.create("lc-a", ScriptLang.LUA, "-- @uses clipboard\nreturn http.get(\"https://example.com\")")
         repo.setAccess(s.id, "internet", false)
         status.set("lc-a", "a line")
         assertTrue(repo.byId(s.id)!!.grants.allows("clipboard"))
 
-        repo.replaceCode(s.id, "-- @uses clipboard\nreturn 2")
+        repo.replaceCode(s.id, "-- @uses clipboard\nreturn http.get(\"https://example.org\")")
         val now = repo.byId(s.id)!!
         assertFalse(now.enabled)
         assertEquals(listOf("clipboard"), now.grants.undecided)

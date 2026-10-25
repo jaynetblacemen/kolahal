@@ -92,77 +92,38 @@ class SelectorMathTest {
         assertEquals(list.size, list.map { it.key }.toSet().size)
     }
 
-    /** Plan C: under the aim speed a slide aims; from two and a half times it, it glides; between, a blend. */
-    @Test fun slowSlidesAimAndFastOnesGlide() {
-        assertEquals(1f, SelectorMath.aimWeight(0f, 100f), 0f)
-        assertEquals(1f, SelectorMath.aimWeight(100f, 100f), 0f)
-        assertEquals(0.5f, SelectorMath.aimWeight(175f, 100f), 0.001f)
-        assertEquals(0f, SelectorMath.aimWeight(250f, 100f), 0f)
-        assertEquals(0f, SelectorMath.aimWeight(900f, 100f), 0f)
-        // No aim speed: always a glide.
-        assertEquals(0f, SelectorMath.aimWeight(10f, 0f), 0f)
-    }
-
-    /** Plan C: aiming moves an app per step, never faster than the glide; a glide goes where the strip maps it. */
-    @Test fun aimingMovesAnAppPerStep() {
-        // The glide would move 4 apps for this 20px slide; aiming at 10px an app moves 2.
-        assertEquals(12f, SelectorMath.aim(10f, 30f, 34f, 20f, 10f, weight = 1f, count = 100), 0.001f)
-        assertEquals(8f, SelectorMath.aim(10f, 34f, 30f, -20f, 10f, weight = 1f, count = 100), 0.001f)
-        // Where the glide moves less than the step (a short list), aiming moves no more than it.
-        assertEquals(10.5f, SelectorMath.aim(10f, 3f, 3.5f, 20f, 10f, weight = 1f, count = 100), 0.001f)
-        // Gliding goes straight to the strip's place, wherever the aim had got to.
-        assertEquals(34f, SelectorMath.aim(10f, 30f, 34f, 20f, 10f, weight = 0f, count = 100), 0.001f)
-        // Half and half: half the aim's step, and half way back to the glide's place.
-        assertEquals(10f + 0.5f * 2f + 0.5f * 24f, SelectorMath.aim(10f, 30f, 34f, 20f, 10f, weight = 0.5f, count = 100), 0.001f)
-        // Never past the list's ends.
-        assertEquals(0f, SelectorMath.aim(0.5f, 3f, 2f, -20f, 10f, weight = 1f, count = 100), 0.001f)
-        assertEquals(99.99f, SelectorMath.aim(99.5f, 90f, 99f, 20f, 10f, weight = 1f, count = 100), 0.001f)
-        // A step of 0 never aims.
-        assertEquals(34f, SelectorMath.aim(10f, 30f, 34f, 20f, 0f, weight = 1f, count = 100), 0.001f)
-    }
-
-    /** Plan C: the measured speed follows the thumb over about 60 ms, so one jittery move doesn't flip it. */
-    @Test fun theSpeedIsSmoothed() {
-        assertEquals(50f, SelectorMath.smoothSpeed(0f, 200f, 15), 0.001f)
-        assertEquals(200f, SelectorMath.smoothSpeed(0f, 200f, 60), 0.001f)
-        assertEquals(200f, SelectorMath.smoothSpeed(0f, 200f, 500), 0.001f)
-    }
-
-    /** Plan D: each section's room goes by the square root of its size: four times the apps, twice the room. */
-    @Test fun everyLetterGetsRoom() {
-        val sections = SelectorMath.Sections(listOf(1, 4, 16))
-        // √1 : √4 : √16 is 1 : 2 : 4, out of 7.
-        assertEquals(1f / 7, sections.shares[0], 1e-5f)
-        assertEquals(2f / 7, sections.shares[1], 1e-5f)
-        assertEquals(4f / 7, sections.shares[2], 1e-5f)
+    /** Every letter gets the same stretch of the strip; the dead bands pin the first and the last. */
+    @Test fun everyLetterGetsTheSameStretch() {
         val d = SelectorMath.DEAD
         fun t(u: Float) = d + u * (1 - 2 * d)
-        // The dead bands pin the ends; halfway across a section's room is halfway through its apps.
-        assertEquals(0f, sections.along(0f), 0f)
-        assertEquals(0f, sections.along(d), 0f)
-        assertEquals(20.99f, sections.along(1f), 0.001f)
-        assertEquals(0.5f, sections.along(t(0.5f / 7)), 1e-3f)
-        assertEquals(1f + 2f, sections.along(t(2f / 7)), 1e-3f)
-        assertEquals(5f + 8f, sections.along(t(5f / 7)), 1e-3f)
+        assertEquals(0f, SelectorMath.alongLetters(0f, 4), 0f)
+        assertEquals(0f, SelectorMath.alongLetters(d, 4), 0f)
+        assertEquals(3.99f, SelectorMath.alongLetters(1f, 4), 0.001f)
+        assertEquals(1f, SelectorMath.alongLetters(t(0.25f), 4), 1e-3f)
+        assertEquals(2.5f, SelectorMath.alongLetters(t(0.625f), 4), 1e-3f)
         // Monotonic and continuous: small finger moves never jump.
         var prev = 0f
         for (i in 0..1000) {
-            val a = sections.along(i / 1000f)
+            val a = SelectorMath.alongLetters(i / 1000f, 27)
             assertTrue(a >= prev)
-            assertTrue(a - prev < 0.2f)
+            assertTrue(a - prev < 0.05f)
             prev = a
         }
-        assertEquals(0f, SelectorMath.Sections(emptyList()).along(0.5f), 0f)
+        // The strip's ends are the first letter and the last.
+        assertEquals(0, SelectorMath.letterAt(SelectorMath.alongLetters(0f, 27), -1, 27))
+        assertEquals(26, SelectorMath.letterAt(SelectorMath.alongLetters(1f, 27), -1, 27))
+        assertEquals(0f, SelectorMath.alongLetters(0.5f, 0), 0f)
     }
 
-    /** Each section's letter goes in the middle of its room. */
-    @Test fun lettersSitInTheMiddleOfTheirRoom() {
+    /** Each letter goes in the middle of its stretch. */
+    @Test fun lettersSitInTheMiddleOfTheirStretch() {
         val d = SelectorMath.DEAD
-        val middles = SelectorMath.Sections(listOf(1, 4, 16)).middles()
-        assertEquals(3, middles.size)
-        assertEquals(d + 0.5f / 7 * (1 - 2 * d), middles[0], 1e-5f)
-        assertEquals(d + 2f / 7 * (1 - 2 * d), middles[1], 1e-5f)
-        assertEquals(d + 5f / 7 * (1 - 2 * d), middles[2], 1e-5f)
+        val middles = SelectorMath.letterMiddles(4)
+        assertEquals(4, middles.size)
+        assertEquals(d + 0.125f * (1 - 2 * d), middles[0], 1e-5f)
+        assertEquals(d + 0.375f * (1 - 2 * d), middles[1], 1e-5f)
+        assertEquals(d + 0.875f * (1 - 2 * d), middles[3], 1e-5f)
+        assertEquals(0, SelectorMath.letterMiddles(0).size)
     }
 
     /** Labels nudged apart just enough: in order, the gap kept, inside the bounds; a crowd spreads around its middle. */
@@ -181,19 +142,6 @@ class SelectorMathTest {
         assertTrue(crowded[3].isNaN())
         assertEquals(100f, crowded[4], 0f)
         assertTrue(SelectorMath.labelPositions(FloatArray(0), 5f, 0f, 100f).isEmpty())
-    }
-
-    @Test fun theStripCoversTheWholeList() {
-        val rows = 100
-        val one = SelectorMath.Sections(listOf(rows))
-        // The strip's top is the first app, its bottom the last, its middle the middle one.
-        assertEquals(0, SelectorMath.focusedIndex(one.along(0f), rows))
-        assertEquals(rows - 1, SelectorMath.focusedIndex(one.along(1f), rows))
-        assertEquals(50, SelectorMath.focusedIndex(one.along(0.5f), rows))
-        // With sections too: the ends are the list's ends.
-        val many = SelectorMath.Sections(listOf(5, 2, 30, 1, 62))
-        assertEquals(0, SelectorMath.focusedIndex(many.along(0f), rows))
-        assertEquals(rows - 1, SelectorMath.focusedIndex(many.along(1f), rows))
     }
 
     /** As Niagara does: the focused app is drawn level with the thumb, wherever on the screen it is. */
@@ -297,14 +245,6 @@ class SelectorMathTest {
             ),
             feels(edge(0, 0), edge(3, 0), edge(5, 1), list(5, 1), list(6, 1), list(6, 1), list(7, 2), edge(9, 3), edge(12, 4)),
         )
-    }
-
-    /** Plan C: aiming along the edge ticks once per app, as picking does; a new letter still ticks as a letter. */
-    @Test fun aimingTicksPerApp() {
-        assertEquals(SelectorMath.Feel.APP, SelectorMath.feel(false, false, 4, 3, 1, 1, aiming = true))
-        assertEquals(SelectorMath.Feel.NONE, SelectorMath.feel(false, false, 4, 3, 1, 1, aiming = false))
-        assertEquals(SelectorMath.Feel.LETTER, SelectorMath.feel(false, false, 5, 4, 2, 1, aiming = true))
-        assertEquals(SelectorMath.Feel.NONE, SelectorMath.feel(false, false, 4, 4, 1, 1, aiming = true))
     }
 
     private fun entries(vararg labels: String) =

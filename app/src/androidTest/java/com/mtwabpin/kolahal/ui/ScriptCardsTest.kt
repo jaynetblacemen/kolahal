@@ -1,6 +1,7 @@
 package com.mtwabpin.kolahal.ui
 
 import android.app.Application
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -52,7 +53,7 @@ class ScriptCardsTest {
     }
 
     @Test fun aPillSwitchesWhatTheScriptMayDo() {
-        val s = scripts.create("scpills", ScriptLang.LUA, "-- @uses clipboard\nreturn 1")
+        val s = scripts.create("scpills", ScriptLang.LUA, "-- @uses clipboard\nif false then notify(\"a\", http.get(\"https://example.com\").body) end")
         scripts.setAccess(s.id, "clipboard", true)
         show()
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("internet"))
@@ -64,6 +65,24 @@ class ScriptCardsTest {
         waitFor("internet on again") { scripts.byId(s.id)!!.grants.allows("internet") }
         compose.onNodeWithText("notifies").performClick()
         waitFor("notifies on") { scripts.byId(s.id)!!.notify }
+    }
+
+    /**
+     * Only what its code uses: no internet, header line or notifications for one that doesn't go online, set a line or
+     * notify. The events it runs on have a line of their own, under its access.
+     */
+    @Test fun aCardShowsOnlyWhatTheScriptUses() {
+        val s = scripts.create("scpills", ScriptLang.LUA, "-- @uses clipboard\n-- @on unlock\nclipboard.set(\"x\")")
+        scripts.setAccess(s.id, "clipboard", true)
+        show()
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("unlock"))
+        compose.onNodeWithText("clipboard").assertExists()
+        listOf("internet", "header line", "notifies").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
+        val access = compose.onNodeWithText("clipboard").getUnclippedBoundsInRoot()
+        val events = compose.onNodeWithText("Events", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val unlock = compose.onNodeWithText("unlock").getUnclippedBoundsInRoot()
+        assertTrue("the Events label under the access pills: $access, $events", events.top >= access.bottom)
+        assertTrue("the event's pill under its label: $events, $unlock", unlock.top >= events.bottom)
     }
 
     @Test fun resetBringsTheLibrarysCopyBackAfterAsking() {

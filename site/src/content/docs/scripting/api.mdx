@@ -229,7 +229,8 @@ status(null);
 Whether this script may use `what`: `"internet"`, `"header"`, `"notifications"`, `"apps"`,
 `"clipboard"`, `"lan"`, `"commands"`, `"dnd"`, `"work"` or an `@on` event such as `"unlock"`. You switch these per script
 ([switching access off](/scripting/overview/#switching-access-off)); with one off, a script can do
-something else instead. Code typed at the prompt gets `true` for everything.
+something else instead. A script has `"internet"` only if its code uses `http`, `rss`, `url` or
+`image`, and `"header"` only if it calls `status`. Code typed at the prompt gets `true` for everything.
 
 <Tabs syncKey="lang">
 <TabItem label="Lua">

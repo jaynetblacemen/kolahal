@@ -12,18 +12,25 @@ import com.mtwabpin.kolahal.data.Script
  * - [ScriptMeta.USES], given by declaring them with `@uses`: off until allowed. Switching a script on
  *   allows the ones not decided yet (the Scripts screen asks first, with everything on); code from
  *   outside that declares more leaves the new ones off.
- * - [INTERNET] and [HEADER]: every script has them unless they are switched off.
+ * - [INTERNET] and [HEADER]: a script whose code uses them ([ScriptMeta.usesInternet],
+ *   [ScriptMeta.setsHeader]) has them unless they are switched off; one that doesn't never has them,
+ *   so the switches shown are all it may do.
  * - Each `@on` event: on unless switched off.
  * Switched off, a script gets an empty answer where that is honest (no apps, no notifications, no
  * clipboard, its header line ignored) and stops where it isn't (internet, the local network).
- * Posting notifications keeps its own switch ([com.mtwabpin.kolahal.data.Script.notify]).
+ * Posting notifications keeps its own switch ([com.mtwabpin.kolahal.data.Script.notify]), shown
+ * for a script that calls `notify` ([ScriptMeta.postsNotifications]).
  */
 object ScriptAccess {
     const val INTERNET = "internet"
     const val HEADER = "header"
 
-    /** Everything a script with [code] can be switched for, in display order. */
-    fun items(code: String): List<String> = listOf(INTERNET, HEADER) + ScriptMeta.uses(code) + ScriptMeta.events(code)
+    /** [INTERNET] and [HEADER], for the ones [code] uses. */
+    private fun base(code: String): List<String> =
+        listOfNotNull(INTERNET.takeIf { ScriptMeta.usesInternet(code) }, HEADER.takeIf { ScriptMeta.setsHeader(code) })
+
+    /** Everything a script with [code] can be switched for, in display order: only what it uses. */
+    fun items(code: String): List<String> = base(code) + ScriptMeta.uses(code) + ScriptMeta.events(code)
 
     fun label(item: String): String = when (item) {
         INTERNET -> "Internet"
@@ -51,16 +58,22 @@ object ScriptAccess {
         else -> "Runs when this happens (@on $item)"
     }
 
-    /** A script's access: what its code declares with `@uses`, and what the user decided. */
-    class Grants(val declared: Set<String>, private val values: Map<String, Boolean>) {
-        fun allows(item: String): Boolean =
-            if (item in ScriptMeta.USES) item in declared && values[item] == true else values[item] != false
+    /**
+     * A script's access: what its code declares with `@uses`, which of [INTERNET] and [HEADER] it
+     * uses ([base]), and what the user decided.
+     */
+    class Grants(val declared: Set<String>, private val values: Map<String, Boolean>, private val base: Set<String> = setOf(INTERNET, HEADER)) {
+        fun allows(item: String): Boolean = when (item) {
+            in ScriptMeta.USES -> item in declared && values[item] == true
+            INTERNET, HEADER -> item in base && values[item] != false
+            else -> values[item] != false
+        }
 
         /** Declared, but not allowed or switched off yet: what switching the script on asks for. */
         val undecided: List<String> get() = declared.filter { it !in values }
     }
 
-    fun grants(code: String, values: Map<String, Boolean>) = Grants(ScriptMeta.uses(code), values)
+    fun grants(code: String, values: Map<String, Boolean>) = Grants(ScriptMeta.uses(code), values, base(code).toSet())
 
     /** [values] with everything [code] declares and nobody decided yet allowed. */
     fun allowUndecided(code: String, values: Map<String, Boolean>): Map<String, Boolean> =
