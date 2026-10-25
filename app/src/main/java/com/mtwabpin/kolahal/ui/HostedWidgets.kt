@@ -92,7 +92,8 @@ internal fun HostedWidget(
 /**
  * Widgets in page order, [spans] twelfths of the width each ([WidgetLayout.COLUMNS]): side by side
  * while they fit, a new row when the next one doesn't, [gap] between them across and down. A row is
- * as tall as its tallest widget, the others at its top. One child per widget.
+ * as tall as its tallest widget, the others at its top. Rows run from the start: right to left in a
+ * right-to-left language. One child per widget.
  */
 @Composable
 internal fun WidgetFlow(spans: List<Int>, gap: Dp, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
@@ -112,7 +113,7 @@ internal fun WidgetFlow(spans: List<Int>, gap: Dp, modifier: Modifier = Modifier
             rows.forEachIndexed { r, row ->
                 var x = 0
                 row.forEach { i ->
-                    placeables[i].place(x, y)
+                    placeables[i].placeRelative(x, y)
                     x += placeables[i].width + gapPx
                 }
                 y += rowHeights[r] + gapPx
