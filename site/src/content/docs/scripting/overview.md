@@ -44,7 +44,8 @@ A script runs:
 
 - **on demand**: `script run <name>`, the **Run** button, or `Ctrl+R` in the editor,
 - **on an interval**: `script every <name> 30m` (`15m`, `2h`, `1d`, a number of minutes, or `off`),
-- **at daily times**: `script at <name> 08:00,18:30` (or `off`),
+- **at daily times**: `script at <name> 08:00,18:30` (or `off`), or in the script's sheet: type them in
+  **Daily at**, or tap its clock to pick one,
 - **as a command**, if it is marked [`@command`](#command-scripts),
 - **on an event**, if it declares [`@on`](#event-triggers).
 

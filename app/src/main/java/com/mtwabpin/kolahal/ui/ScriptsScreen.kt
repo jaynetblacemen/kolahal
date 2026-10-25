@@ -55,6 +55,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerDialog
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
@@ -89,6 +92,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.data.Config
+import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.data.shortTime
@@ -703,6 +707,7 @@ private fun ScriptSheet(
     var confirmDelete by remember(s.id) { mutableStateOf(false) }
     var confirmReplace by remember(s.id) { mutableStateOf(false) }
     var times by remember(s.id, s.atTimes) { mutableStateOf(s.atTimes.joinToString(", ")) }
+    var pickingTime by remember(s.id) { mutableStateOf(false) }
     var timesError by remember(s.id) { mutableStateOf(false) }
     val isCommand = remember(s.code) { ScriptMeta.isCommand(s.code) }
     val desc = remember(s.code) { ScriptMeta.description(s.code) }
@@ -833,6 +838,10 @@ private fun ScriptSheet(
                 onValueChange = { times = it; timesError = false },
                 label = { Text("Daily at") },
                 placeholder = { Text("08:00, 18:30") },
+                // Or pick one on a clock: added to the times and set at once.
+                leadingIcon = {
+                    IconButton(onClick = { pickingTime = true }) { Icon(painterResource(R.drawable.ic_alarm), "Add a time") }
+                },
                 singleLine = true,
                 isError = timesError,
                 supportingText = if (timesError) {
@@ -853,6 +862,24 @@ private fun ScriptSheet(
                 } else null,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            if (pickingTime) {
+                val clock = rememberTimePickerState(initialHour = 8, initialMinute = 0, is24Hour = vm.config[Keys.CLOCK_24H])
+                TimePickerDialog(
+                    onDismissRequest = { pickingTime = false },
+                    title = { Text("Daily at") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            val picked = "%02d:%02d".format(clock.hour, clock.minute)
+                            // With what the box holds now, saved or not.
+                            times = (times.split(',', ' ').filter { it.isNotBlank() } + picked).distinct().sorted().joinToString(", ")
+                            timesError = !vm.setScriptTimes(s, times)
+                            pickingTime = false
+                        }) { Text("Add") }
+                    },
+                    dismissButton = { TextButton(onClick = { pickingTime = false }) { Text("Cancel") } },
+                ) { TimePicker(clock) }
+            }
 
             Spacer(Modifier.height(8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
