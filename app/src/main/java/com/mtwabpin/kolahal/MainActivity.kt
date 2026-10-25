@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
@@ -147,7 +148,11 @@ class MainActivity : ComponentActivity() {
                     // The stored copy carries the last run's time and result, for the editor's [run] feedback.
                     val scriptList by vm.scriptList.collectAsStateWithLifecycle()
                     val stored = scriptList.firstOrNull { it.id == script.id }
-                    ScriptEditor(
+                    // With the phone's wallpaper let through the window (log.wallpaper, widgets.wallpaper),
+                    // everything but home stays solid.
+                    androidx.compose.foundation.layout.Box(
+                        androidx.compose.ui.Modifier.fillMaxSize().background(Term.page),
+                    ) { ScriptEditor(
                         script = script,
                         jumpToLine = jumpLine,
                         lastRun = stored?.lastRun,
@@ -155,7 +160,7 @@ class MainActivity : ComponentActivity() {
                         onSave = { code, done -> vm.saveScript(script, code, done) },
                         onRun = { code, done -> vm.runScript(script, code, done) },
                         onClose = vm::closeEditor,
-                    )
+                    ) }
                 } else {
                     val screen by vm.screen.collectAsStateWithLifecycle()
                     LaunchedEffect(screen) {
@@ -167,7 +172,12 @@ class MainActivity : ComponentActivity() {
                             onRequestNotifications = ::requestNotifications,
                             onPickFolder = { pickFolder.launch(null) },
                         )
-                    } else saved.SaveableStateProvider(screen.name) { when (screen) {
+                    } else saved.SaveableStateProvider(screen.name) { androidx.compose.foundation.layout.Box(
+                        // Solid over the wallpaper too; Settings shows home through it while you hold the eye.
+                        androidx.compose.ui.Modifier.fillMaxSize().then(
+                            if (screen == Screen.SETTINGS) androidx.compose.ui.Modifier else androidx.compose.ui.Modifier.background(Term.page),
+                        ),
+                    ) { when (screen) {
                         Screen.SETTINGS -> SettingsOverHome(
                             vm,
                             onExportBackup = { exportBackup.launch(Backup.FILE_NAME) },
@@ -191,7 +201,7 @@ class MainActivity : ComponentActivity() {
                         Screen.WIDGET_PICKER -> WidgetPickerScreen(vm, onPick = { widgetBinder.add(it) })
                         Screen.THEME_BUILDER -> com.mtwabpin.kolahal.ui.ThemeBuilderScreen(vm)
                         Screen.TERMINAL -> Unit
-                    } }
+                    } } }
                 }
             }
         }
@@ -265,7 +275,21 @@ class MainActivity : ComponentActivity() {
         Term.lineHeight = vm.config[Keys.LOG_LINE_HEIGHT]
         Term.tallerTaps = vm.config[Keys.LOG_TALLER_TAPS]
         Term.chipHeight = vm.config[Keys.CHIP_HEIGHT]
-        window.decorView.setBackgroundColor(Term.page.toArgb())
+        // log.wallpaper, widgets.wallpaper: the window lets the phone's wallpaper through, and home's
+        // pages draw their colour over it, each as faintly as it says (Modifier.page).
+        val wallpaper = vm.config[Keys.LOG_WALLPAPER] > 0 ||
+            (vm.config[Keys.WIDGETS_PAGE] != "off" && vm.config[Keys.WIDGETS_WALLPAPER] > 0)
+        // The surface has to be translucent for it: an opaque one isn't cleared between frames, so
+        // the pages' faint colour piles up over old frames instead of over the wallpaper.
+        if (wallpaper) {
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+            window.setFormat(android.graphics.PixelFormat.TRANSLUCENT)
+            window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        } else {
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+            window.setFormat(android.graphics.PixelFormat.OPAQUE)
+            window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Term.page.toArgb()))
+        }
         applyBars()
     }
 

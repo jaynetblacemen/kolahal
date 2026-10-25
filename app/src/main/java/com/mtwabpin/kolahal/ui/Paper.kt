@@ -170,21 +170,24 @@ object Paper {
 /**
  * Home's background: the theme's colour, or with `theme.paper` in a light version ([Term.paper]),
  * an old page. Its tile is made off the main thread; the last one shows until the next is ready.
+ * With [wallpaper] above 0 (`log.wallpaper`, `widgets.wallpaper`) the phone's wallpaper, which the
+ * window lets through then, shows that many percent: the background is drawn that much fainter.
  */
 @Composable
-fun Modifier.page(): Modifier {
+fun Modifier.page(wallpaper: Int = 0): Modifier {
     val strength = Term.paper
     val bg = Term.bg
+    val alpha = 1f - wallpaper.coerceIn(0, 100) / 100f
     var tile by remember { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(bg, strength) {
         tile = if (strength <= 0) null else withContext(Dispatchers.Default) { Paper.tile(bg, strength) }
     }
-    if (strength <= 0) return background(bg)
+    if (strength <= 0) return background(bg.copy(alpha = bg.alpha * alpha))
     val base = Paper.base(bg, strength)
     val brush = remember(tile) { tile?.let { ShaderBrush(ImageShader(it, TileMode.Repeated, TileMode.Repeated)) } }
     return drawBehind {
-        drawRect(base)
-        brush?.let { drawRect(it) }
-        drawRect(Paper.edges(strength, center, kotlin.math.hypot(size.width, size.height) / 2))
+        drawRect(base, alpha = alpha)
+        brush?.let { drawRect(it, alpha = alpha) }
+        drawRect(Paper.edges(strength, center, kotlin.math.hypot(size.width, size.height) / 2), alpha = alpha)
     }
 }

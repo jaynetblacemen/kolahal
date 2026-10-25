@@ -249,7 +249,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     Column(
         Modifier
             .fillMaxSize()
-            .page()
+            .page(wallpaper = remember(configVersion) { config[Keys.LOG_WALLPAPER] })
             .cutoutSafePadding()
             .navigationBarsPadding()
             .imePadding()

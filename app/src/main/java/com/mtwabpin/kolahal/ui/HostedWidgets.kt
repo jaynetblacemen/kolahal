@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.apps.Profile
 import com.mtwabpin.kolahal.apps.ProfileKind
@@ -133,10 +134,11 @@ fun WidgetPanel(vm: TerminalViewModel) {
     val panel = remember(all) { WidgetOrder.inLocation(all, WidgetLocation.PANEL) }
     val profiles by remember { AppRepository.get(context).profiles }.collectAsStateWithLifecycle()
     val density = LocalDensity.current
+    val version by vm.config.version.collectAsStateWithLifecycle()
     Column(
         Modifier
             .fillMaxSize()
-            .page()
+            .page(wallpaper = remember(version) { vm.config[Keys.WIDGETS_WALLPAPER] })
             .cutoutSafePadding()
             .navigationBarsPadding(),
     ) {

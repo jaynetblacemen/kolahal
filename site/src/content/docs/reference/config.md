@@ -74,6 +74,7 @@ The `theme` and `font` commands are unchanged.
 | `log.gutter` | bool | `on` | thin colour bar at the left of each log line: green for commands, script colour for background output, red for errors |
 | `log.line-height` | number 10–56 | `22` | minimum height of a log line, in sp: 22 is 22 dp at the phone's usual text size, and it grows with the text when the phone's text size is larger. With `log.taller-taps`, tappable lines get +10 and two-column rows +14. Up to 3 dp above and below a line, less as it nears one line of text (19 at text size 14), none at it; lower still, lines are as short as the text allows. Script status lines in the header use it too |
 | `log.taller-taps` | bool | `off` | lines you can tap a little taller than the others, easier to hit; off makes every line the same height |
+| `log.wallpaper` | number 0–100 | `0` | how much of the phone's wallpaper shows behind the log, in percent: `0` none; the higher, the less of the theme's colour over it |
 | `chips.height` | number 20–64 | `48` | height (dp) of suggestion and app-grid chips |
 | `log.keep-days` | number 1–365 | `60` | delete log lines older than this many days (checked at least twice a day) |
 | `log.keep-lines` | number 500–50000 | `5000` | delete the oldest log lines past this many. Typed commands are counted apart, so ↑ history stays. Only with `config set`: the settings screen doesn't show it |
@@ -131,6 +132,7 @@ See [Widgets](/guides/widgets/).
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
 | `widgets.page` | choice: `left` `right` `off` | `left` | a widgets page beside the terminal: swipe sideways on home to reach it |
+| `widgets.wallpaper` | number 0–100 | `0` | how much of the phone's wallpaper shows behind the widgets page, in percent: `0` none; the higher, the less of the theme's colour over it |
 
 ## Keyboard and key bar
 
