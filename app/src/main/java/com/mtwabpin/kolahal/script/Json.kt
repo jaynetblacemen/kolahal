@@ -15,7 +15,10 @@ object Json {
     fun decode(text: String): Any? {
         val tokener = JSONTokener(text)
         val value = tokener.nextValue()
-        if (value is String && !text.trimStart().startsWith('"')) throw org.json.JSONException("Not JSON: ${text.trimStart().take(20)}")
+        // Says what it got without quoting it: the text may hold something a site sent back, a key even.
+        if (value is String && !text.trimStart().startsWith('"')) {
+            throw org.json.JSONException(if (text.trimStart().startsWith('<')) "Not JSON: an HTML or XML page" else "Not JSON: ${text.trim().length} characters of text")
+        }
         if (tokener.nextClean() != 0.toChar()) throw org.json.JSONException("Unexpected text after the JSON value")
         return fromOrg(value)
     }

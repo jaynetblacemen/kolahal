@@ -99,24 +99,49 @@ class HostApi(
         if (over) throw IllegalStateException("$scriptName has finished running")
     }
 
-    /** `secrets.get(name)`: the value you set for a declared `@secret` name, or nil until you set one. */
+    /**
+     * `secrets.get(name)`: a mark standing for the value you set for a declared `@secret` name (nil
+     * until you set one), never the value itself. The script puts it where a request needs the
+     * value, and [httpRequest] puts the value in its place only for the sites the `@secret` line
+     * names, over https: a script can't send a value it never sees anywhere else, however it
+     * changes or hides it. The mark holds this run's [nonce], so it means nothing outside the run.
+     */
     fun secretGet(name: String): String? {
         val s = secrets ?: throw IllegalStateException("secrets.get only works in saved scripts")
         if (s.declared.none { it.name == name }) {
             throw IllegalStateException("secrets.get(\"$name\") needs `@secret $name <site> <description>` at the top of the script")
         }
-        return s.values[name]
+        return if (s.values[name] != null) "__kolahal_secret_${name}_${nonce}__" else null
+    }
+
+    private val nonce = java.util.UUID.randomUUID().toString().replace("-", "").take(12)
+
+    /** This run's marks ([secretGet]): ASCII letters, digits and underscores, so URLs, JSON and headers carry them as they are. */
+    private val marks = Regex("__kolahal_secret_([A-Za-z][A-Za-z0-9_]{0,39})_${nonce}__")
+
+    /**
+     * [text] with this run's marks replaced by their values, for a request to [url]'s host: only a
+     * site the secret's `@secret` line names, over https; anywhere else stops the run.
+     */
+    internal fun fillSecrets(text: String, url: okhttp3.HttpUrl): String = marks.replace(text) { m ->
+        val name = m.groupValues[1]
+        val secret = secrets?.declared?.firstOrNull { it.name == name } ?: return@replace m.value
+        val value = secrets.values[name] ?: return@replace m.value
+        if (!secret.allows(url.host)) throw java.io.IOException("$name may only be sent to ${secret.hosts.joinToString()}, not ${url.host}")
+        if (!url.isHttps) throw java.io.IOException("$name may only be sent over https, not to http://${url.host}")
+        value
     }
 
     /**
      * This script's secret values in every form a request or a line may carry them (as typed,
-     * URL-encoded, JSON-escaped), longest first. Shorter values than [SecretStore.MIN_LENGTH] can't be set.
+     * URL-encoded, JSON-escaped), longest first: a site could send one back. Shorter values than
+     * [SecretStore.MIN_LENGTH] can't be set.
      */
     private val secretForms: List<String> =
         secrets?.values?.values.orEmpty().filter { it.length >= SecretStore.MIN_LENGTH }.flatMap(::forms).distinct().sortedByDescending { it.length }
 
-    /** [text] with each of this script's secret values masked: what a run shows never shows a key. */
-    fun redact(text: String): String = secretForms.fold(text) { t, v -> t.replace(v, "••••") }
+    /** [text] with this script's secrets masked, values and marks alike: what a run shows never shows a key. */
+    fun redact(text: String): String = secretForms.fold(marks.replace(text, "••••")) { t, v -> t.replace(v, "••••") }
 
     /**
      * Private data and local-network reach are only for scripts that declare them: undeclared is a
@@ -214,7 +239,7 @@ class HostApi(
         val text = redact(raw)
         val under = body?.let(::redact)?.takeIf { it.isNotEmpty() }
         val title = mapOf(LogContext.TITLE to "1") + (under?.let { mapOf(LogContext.BODY to it) } ?: emptyMap())
-        buffer(LogKind.SCRIPT, text, LogContext(baseCtx + title + safeCtx(ctx, listOfNotNull(text, under).joinToString("\n")).mapValues { redact(it.value) }))
+        buffer(LogKind.SCRIPT, text, LogContext(baseCtx + title + safeCtx(ctx, listOfNotNull(text, under).joinToString("\n")).entries.associate { (k, v) -> redact(k) to redact(v) }))
     }
 
     /** `logs(titles)`: one title line each, no bodies. */
@@ -313,26 +338,35 @@ class HostApi(
         if (grants != null && !grants.allows(ScriptAccess.INTERNET)) {
             deny(ScriptAccess.INTERNET, "internet is switched off for this script")
         }
-        val h = Json.toStringMap(headers).toMutableMap()
+        // A script names the site, not where it lives: a Host header of its own could send a request
+        // (and a secret meant for the site) to another one behind the same address.
+        if (Json.toStringMap(headers).keys.any { it.equals("Host", ignoreCase = true) }) {
+            throw IllegalArgumentException("http: a request can't set its own Host header")
+        }
+        val target = url.toHttpUrlOrNull() ?: throw IllegalArgumentException("not a web address: ${redact(url)}")
+        // The secrets' values go in now, where the script put their marks, and only for their sites.
+        val realUrl = fillSecrets(url, target)
+        val realBody = body?.let { fillSecrets(it, target) }
+        val h = Json.toStringMap(headers).mapValues { fillSecrets(it.value, target) }.toMutableMap()
         if (h.keys.none { it.equals("User-Agent", ignoreCase = true) }) h["User-Agent"] = USER_AGENT
         val m = method.uppercase()
         // The body's type: `contentType`, else a Content-Type header (OkHttp replaces that header
         // with the body's type, so it must become the body's), else JSON for a table, else text.
         val typeHeader = h.keys.firstOrNull { it.equals("Content-Type", ignoreCase = true) }
         val type = contentType ?: typeHeader?.let { h.remove(it) } ?: if (bodyIsJson) "application/json; charset=utf-8" else "text/plain; charset=utf-8"
-        val reqBody = body?.toRequestBody(type.toMediaTypeOrNull())
+        val reqBody = realBody?.toRequestBody(type.toMediaTypeOrNull())
             ?: if (m in METHODS_REQUIRING_BODY) ByteArray(0).toRequestBody() else null
         // This phone and the local network only with `@uses lan` (or code typed at the prompt).
         val request = Net.reach(Request.Builder(), if (allowsLan) Net.Reach.ANY else Net.Reach.PUBLIC)
-            .url(url)
+            .url(realUrl)
             .headers(h.toHeaders())
             .method(m, if (m != "GET" && m != "HEAD") reqBody else null)
             // Redirects too: every hop is checked before it is sent, with what it carries on.
             .tag(Net.HopCheck::class.java, Net.HopCheck { hop ->
-                checkSecrets(hop.url.host, listOf(hop.url.toString()) + hop.headers.map { it.second } + if (hop.body != null) listOf(body.orEmpty()) else emptyList(), hop.url.isHttps)
+                checkSecrets(hop.url.host, listOf(hop.url.toString()) + hop.headers.map { it.second } + if (hop.body != null) listOf(realBody.orEmpty()) else emptyList(), hop.url.isHttps)
             })
             .build()
-        checkSecrets(request.url.host, listOf(request.url.toString(), body.orEmpty()) + h.values, request.url.isHttps)
+        checkSecrets(request.url.host, listOf(request.url.toString(), realBody.orEmpty()) + h.values, request.url.isHttps)
         try {
             val call = (if (allowsLan) client else Net.publicClient).newCall(request)
             // No longer than the run has left (the client's own limit is 30 s).
@@ -381,11 +415,14 @@ class HostApi(
 
     /**
      * A store key for [url] ([prefix] + the URL): one carrying a secret is hashed, so the key never
-     * sits in the script's store, and so in a backup.
+     * sits in the script's store, and so in a backup; a mark counts by its name, so the key is the
+     * same in every run.
      */
-    private fun urlKey(prefix: String, url: String): String =
-        if (redact(url) == url) prefix + url
-        else prefix + "#" + java.security.MessageDigest.getInstance("SHA-256").digest(url.toByteArray()).joinToString("") { "%02x".format(it) }
+    private fun urlKey(prefix: String, url: String): String {
+        if (redact(url) == url) return prefix + url
+        val stable = marks.replace(url) { "\u0000" + it.groupValues[1] }
+        return prefix + "#" + java.security.MessageDigest.getInstance("SHA-256").digest(stable.toByteArray()).joinToString("") { "%02x".format(it) }
+    }
 
     fun httpGet(url: String, headers: Map<*, *>? = null) = httpRequest(url, headers = headers)
 
@@ -467,6 +504,8 @@ class HostApi(
         if (!may("clipboard", "clipboard.set")) return
         // A clip crosses to Android in one transaction: a huge one would fail it, and the process with it.
         require(text.length <= MAX_CLIP) { "clipboard.set: text over ${MAX_CLIP / 1000}K characters" }
+        // Keyboards keep clipboard history, and Android shows a preview: never a secret.
+        require(redact(text) == text) { "clipboard.set: the text holds one of this script's secrets" }
         val cm = context.getSystemService(android.content.ClipboardManager::class.java)
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             runCatching { cm.setPrimaryClip(android.content.ClipData.newPlainText(scriptName, text)) }
@@ -652,6 +691,8 @@ class HostApi(
 
     fun storeSet(key: String, value: String?) {
         live()
+        // A store goes into backups: never a secret.
+        require(redact(key) == key && (value == null || redact(value) == value)) { "store.set: the key or value holds one of this script's secrets" }
         store.set(key, value)
     }
 

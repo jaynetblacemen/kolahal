@@ -83,29 +83,46 @@ class ScriptRepository private constructor(private val context: Context) {
         val s = byId(id) ?: return
         val newUses = ScriptMeta.uses(code) - ScriptMeta.uses(s.code) - s.access.keys
         val newEvents = ScriptMeta.events(code) - ScriptMeta.events(s.code).toSet() - s.access.keys
+        val newInternet = newInternet(s, code)
         val access = when {
             byUser -> if (s.enabled) s.access + newUses.associateWith { true } else s.access
-            else -> s.access + newEvents.associateWith { false }
+            else -> s.access + (newEvents + newInternet).associateWith { false }
         }
         update(id) {
             put("code", code)
             put("access", ScriptAccess.encode(access))
         }
-        if (!byUser && s.enabled) ScriptAccess.askToAllow(context, s.name, newUses.toList() + newEvents, "now asks for")
+        forgetRemovedSecrets(s.name, code)
+        if (!byUser && s.enabled) ScriptAccess.askToAllow(context, s.name, newUses.toList() + newEvents + newInternet, "now asks for")
+    }
+
+    /**
+     * The internet, used by [code] but not by [s]'s code and not decided yet: code you didn't write
+     * that starts making requests starts with it off, like a new `@uses`, so an update to a script
+     * allowed your clipboard or notifications can't send them out unasked.
+     */
+    private fun newInternet(s: Script, code: String): List<String> =
+        listOf(ScriptAccess.INTERNET).filter { it in ScriptAccess.items(code) && it !in ScriptAccess.items(s.code) && it !in s.access }
+
+    /** Values of `@secret` lines the code no longer has are forgotten, not kept unseen. */
+    private fun forgetRemovedSecrets(script: String, code: String) {
+        com.mtwabpin.kolahal.script.SecretStore(context).forgetUndeclared(script, ScriptMeta.secrets(code).map { it.name })
     }
 
     /**
      * Code from a file, a folder or a backup over an existing script: it is switched off, and what
      * it was allowed goes back to undecided (what you switched off stays off), so turning it on asks
-     * again. Its values ([com.mtwabpin.kolahal.script.SecretStore]) stay, for the sites they were set for.
+     * again; internet it didn't use before starts off. Its values ([com.mtwabpin.kolahal.script.SecretStore])
+     * stay, for the sites they were set for, but for `@secret` lines it no longer has.
      */
     fun replaceCode(id: Long, code: String) {
         val s = byId(id) ?: return
         update(id) {
             put("code", code)
             put("enabled", 0)
-            put("access", ScriptAccess.encode(s.access.filterValues { !it }))
+            put("access", ScriptAccess.encode(s.access.filterValues { !it } + newInternet(s, code).associateWith { false }))
         }
+        forgetRemovedSecrets(s.name, code)
         KvStore(context, HostApi.STATUS_SCOPE).set(s.name, null)
     }
 

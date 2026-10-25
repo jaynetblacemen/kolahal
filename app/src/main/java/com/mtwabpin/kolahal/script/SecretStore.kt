@@ -48,6 +48,12 @@ class SecretStore(private val context: Context) {
     fun usable(script: String, declared: List<ScriptMeta.Secret>): Map<String, String> =
         declared.mapNotNull { d -> get(script, d.name)?.takeIf { it.covers(d) }?.let { d.name to it.value } }.toMap()
 
+    /** Forgets the values of [script]'s secrets its code no longer declares ([declared] names). */
+    fun forgetUndeclared(script: String, declared: Collection<String>) {
+        val kv = KvStore(context, scope(script))
+        kv.all().keys.filter { it !in declared }.forEach { kv.set(it, null) }
+    }
+
     /** Forgets every value of [script] (when it is deleted). */
     fun clear(script: String) {
         val kv = KvStore(context, scope(script))

@@ -287,16 +287,21 @@ on a script whose keys aren't set leaves a line to tap to set them.
 - Values are encrypted with a key kept in Android's Keystore, and stay on this phone: they are left
   out of the [backup file](/guides/backup/), Android's backups and exported scripts. Deleting a
   script forgets them.
-- `secrets.get` returns nil until the value is set. Reading a name without its `@secret` line stops
-  the script with an error, and code typed at the prompt can't read secrets.
+- `secrets.get` returns a stand-in for the value, never the value, or nil until the value is set.
+  The script puts it where the request needs the key, and the value goes in its place only in a
+  request to a site the `@secret` line names, over https. A script that needs to work on the key
+  itself (encode it, sign with it) can't. Reading a name without its `@secret` line stops the script
+  with an error, and code typed at the prompt can't read secrets.
 - A value is at least 4 characters, and never shows: in log lines, the header, notifications,
   results and errors it reads `••••`.
 - A value goes only to the sites its `@secret` line named when you set it. A request carrying it
-  anywhere else stops the script, redirects included, and so does a notification linking there or
-  `launcher.run` with it. If an update or another file names other sites for the key, it isn't
-  used until you set it again; a line in the log says so.
-- This catches mistakes; a script written to leak a key could still find a way, so only give keys
-  to scripts you trust.
+  anywhere else stops the script, redirects included. The clipboard, the script's store and
+  `launcher.run` refuse a stand-in; anywhere else (a line, a notification's link) it stays just that,
+  a stand-in, shown as `••••`. If an update or another file names
+  other sites for the key, it isn't used until you set it again; a line in the log says so. New
+  code without the key's `@secret` line forgets its value.
+- A script never holds the value, so it can't send it anywhere else. It can still use the key at its
+  site the way the site allows, so give keys to scripts you trust.
 
 ## Getting scripts from others
 
