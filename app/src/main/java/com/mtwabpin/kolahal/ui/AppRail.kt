@@ -103,6 +103,7 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sign
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /** One row of the selector list: an app under its section letter (or the favourites section). */
 internal data class SelectorEntry<T>(
@@ -171,7 +172,7 @@ internal object SelectorMath {
         return out
     }
 
-    /** Dead band at each end of the strip: the first and last few percent are the first and last letters. */
+    /** Dead band at each end of the strip: the first and last few percent are the first and last letters, or with apps the list's ends. */
     const val DEAD = 0.04f
 
     /**
@@ -224,7 +225,7 @@ internal object SelectorMath {
         return out
     }
 
-    /** How many entries each section has (★, #, A–Z, in list order). */
+    /** How many entries each section has (★, #, A–Z, in list order): what [Sections] shares the strip by. */
     fun <T> sectionSizes(entries: List<SelectorEntry<T>>): List<Int> {
         val sizes = IntArray((entries.lastOrNull()?.sectionIndex ?: -1) + 1)
         for (e in entries) sizes[e.sectionIndex]++
@@ -239,13 +240,13 @@ internal object SelectorMath {
         return out
     }
 
-    /** A letter changes only this far (in letters) past the end of its stretch, so a thumb resting on the line doesn't flicker between two. */
+    /** `selector.browse letters`: a letter changes only this far (in letters) past the end of its stretch, so a thumb resting on the line doesn't flicker between two. */
     const val STICK = 0.25f
 
     /**
-     * The letter at [pos] along the edge (in letters: letter `i` spans `[i, i + 1)`, as
-     * [alongLetters] gives it), staying on [current] until [pos] is [stick] past either end of its
-     * stretch.
+     * `selector.browse letters`: the letter at [pos] along the edge (in letters: letter `i` spans
+     * `[i, i + 1)`, as [alongLetters] gives it), staying on [current] until [pos] is [stick] past
+     * either end of its stretch.
      */
     fun letterAt(pos: Float, current: Int, count: Int, stick: Float = STICK): Int {
         if (count <= 0) return -1
@@ -344,6 +345,99 @@ internal object SelectorMath {
         return (((t - DEAD) / (1f - 2 * DEAD)).coerceIn(0f, 1f) * count).coerceAtMost(count - 0.01f)
     }
 
+    /**
+     * `selector.browse apps` (Plan D): how the strip is shared out between the list's sections,
+     * [sectionSizes] apps each in list order. Each gets room in proportion to the square root of its
+     * size, so a letter with four times the apps gets twice the room, and a letter with a single app
+     * is no sliver.
+     */
+    class Sections(sectionSizes: List<Int>) {
+        private val sizes = sectionSizes.toIntArray()
+        private val count = sizes.sum()
+
+        /** How many sections there are. */
+        val size: Int get() = sizes.size
+
+        /** Each section's share of the strip between the dead bands; together they make 1. */
+        val shares: FloatArray = FloatArray(sizes.size) { sqrt(sizes[it].toFloat()) }.let { roots ->
+            val sum = roots.sum()
+            FloatArray(roots.size) { if (sum > 0f) roots[it] / sum else 0f }
+        }
+
+        /** Where each section's room is centred, as strip positions (0 top … 1 bottom), in list order. */
+        fun middles(): FloatArray {
+            val out = FloatArray(sizes.size)
+            var acc = 0f
+            for (i in sizes.indices) {
+                out[i] = DEAD + (acc + shares[i] / 2f) * (1f - 2 * DEAD)
+                acc += shares[i]
+            }
+            return out
+        }
+
+        /**
+         * Strip position [t] (0 top … 1 bottom) → list position (rows): the dead bands pin the list's
+         * ends, and across a section's share its apps go by evenly.
+         */
+        fun along(t: Float): Float {
+            if (count == 0) return 0f
+            val u = ((t - DEAD) / (1f - 2 * DEAD)).coerceIn(0f, 1f)
+            var acc = 0f
+            var start = 0
+            for (i in sizes.indices) {
+                val w = shares[i]
+                if (u <= acc + w || i == sizes.lastIndex) {
+                    val f = if (w > 0f) ((u - acc) / w).coerceIn(0f, 1f) else 0f
+                    return (start + f * sizes[i]).coerceIn(0f, count - 0.01f)
+                }
+                acc += w
+                start += sizes[i]
+            }
+            return 0f
+        }
+    }
+
+    /** Plan C: a slide along the strip slower than this (dp a second) aims instead of gliding (`selector.aim-speed`). */
+    const val AIM_SPEED = 100
+
+    /** Plan C: while aiming, the list moves one app per this many dp of the slide (`selector.aim`; 0 never aims). */
+    const val AIM_STEP = 10
+
+    /** From this many times the aim speed, a slide glides the whole list again. */
+    const val GLIDE_FACTOR = 2.5f
+
+    /** How quickly the slide's measured speed follows the thumb (ms): smooths out a jittery touch. */
+    const val SPEED_TAU_MS = 60f
+
+    /**
+     * How much a slide at [speed] (dp a second) aims rather than glides: 1 below [aimSpeed], 0 from
+     * [GLIDE_FACTOR] times it, easing between.
+     */
+    fun aimWeight(speed: Float, aimSpeed: Float): Float {
+        if (aimSpeed <= 0f) return 0f
+        val t = ((speed - aimSpeed) / (aimSpeed * (GLIDE_FACTOR - 1f))).coerceIn(0f, 1f)
+        return 1f - t * t * (3f - 2f * t)
+    }
+
+    /** The slide's speed (dp a second), [smoothed] eased toward the last move's [instant] speed over [SPEED_TAU_MS]. */
+    fun smoothSpeed(smoothed: Float, instant: Float, dtMs: Long): Float =
+        smoothed + (instant - smoothed) * (dtMs / SPEED_TAU_MS).coerceIn(0f, 1f)
+
+    /**
+     * Plan C: the list position (rows) after a slide of [dyPx] along the strip, from [at]. A glide
+     * puts the list where the strip maps it, [glideFrom] before the move and [glideTo] after
+     * ([Sections.along]). Aiming ([weight] 1) moves it one app per [stepPx] of the slide instead, never
+     * faster than the glide; part way ([weight] between), it also drifts back toward the glide's place,
+     * so speeding up again lands where a glide would.
+     */
+    fun aim(at: Float, glideFrom: Float, glideTo: Float, dyPx: Float, stepPx: Float, weight: Float, count: Int): Float {
+        val end = max(0f, count - 0.01f)
+        // No step: it never aims.
+        if (stepPx <= 0f) return glideTo.coerceIn(0f, end)
+        val aimed = sign(dyPx) * min(abs(dyPx) / stepPx, abs(glideTo - glideFrom))
+        return (at + weight * aimed + (1f - weight) * (glideTo - at)).coerceIn(0f, end)
+    }
+
     /** Where the list must be (px) to draw list position [at] (rows) level with [yInPanel]: can be past either end. */
     fun levelWith(at: Float, yInPanel: Float, rowPx: Float): Float = at * rowPx - yInPanel
 
@@ -436,12 +530,14 @@ internal object SelectorMath {
 
     /**
      * The feel of a move to [row] in [section], from [lastRow] in [lastSection] (-1: the first
-     * move), [selecting] in the list or along the letters, [wasSelecting] before it.
+     * move), [selecting] in the list or along the letters, [wasSelecting] before it. [aiming] along
+     * the edge (apps, Plan C) adds a light tick per app, as picking has.
      */
-    fun feel(selecting: Boolean, wasSelecting: Boolean, row: Int, lastRow: Int, section: Int, lastSection: Int): Feel = when {
+    fun feel(selecting: Boolean, wasSelecting: Boolean, row: Int, lastRow: Int, section: Int, lastSection: Int, aiming: Boolean = false): Feel = when {
         selecting != wasSelecting -> Feel.SWITCH
         selecting -> if (row != lastRow && lastRow != -1) Feel.APP else Feel.NONE
         section != lastSection && lastSection != -1 -> Feel.LETTER
+        aiming && row != lastRow && lastRow != -1 -> Feel.APP
         else -> Feel.NONE
     }
 }
@@ -483,7 +579,10 @@ private class SelectorState {
     var padBottom by mutableFloatStateOf(0f)
     /** Picking on the panel's far side: lifting opens the app's actions (`selector.actions far-side`). */
     var far by mutableStateOf(false)
-    /** The letter the thumb is on along the edge (its section); -1 before the first touch. The bubble shows it. */
+    /**
+     * The letter you're at (its section): with `selector.browse letters` the one the thumb is on along
+     * the edge, with `apps` the focused app's; -1 before the first touch. The bubble shows it.
+     */
     var letter by mutableIntStateOf(-1)
 
     fun close() {
@@ -526,15 +625,18 @@ private fun LazyListState.scrollToPx(px: Float, rowPx: Int) {
  * a strip of the edge (`selector.height` long, at the bottom, middle or top: `selector.position`).
  * Touch it and a panel slides in on the other side, the whole height, listing every app
  * (favourites first, then A–Z; at the bottom of the edge favourites last, under the thumb), away
- * from the thumb. Every letter has the same stretch of the strip and sliding goes a letter at a
- * time, ticking once per letter: the letter shows big in a bubble beside the thumb, the letters
- * around it bulging out in a wave, and the list holds still with the letter's apps starting level
- * with its place on the edge (the others dimmed), or with `selector.filter` lists only them; past
- * the list's ends the panel itself moves to keep them there. Slide off the edge, toward the panel,
- * to pick a row, magnified with its neighbours (fisheye; auto-scrolling at the panel's ends); lift
- * to launch, or hold still until its row fills. Lifting on the edge leaves the panel open as a
- * normal list, the letter's apps still beside it (fling, tap, long-press); an outside tap, Back or
- * 4 s idle closes it.
+ * from the thumb. With `selector.browse letters` (the default) every letter has the same stretch of
+ * the strip and sliding goes a letter at a time, ticking once per letter: the list glides to the
+ * letter's apps and holds still with them starting level with its place on the edge (the others
+ * dimmed), or with `selector.filter` lists only them. With `apps`, sliding goes through the whole
+ * list by the number of apps (its top is the first app, its bottom the last, each letter's room by
+ * the square root of its apps), sliding slowly aims, an app at a time (`selector.aim`), and the
+ * focused row is level with the thumb. Either way the letter you're at shows big in a bubble beside
+ * the thumb, the letters around it bulging out in a wave, and past the list's ends the panel itself
+ * moves to keep it level. Slide off the edge, toward the panel, to pick a row, magnified with its
+ * neighbours (fisheye; auto-scrolling at the panel's ends); lift to launch, or hold still until its
+ * row fills. Lifting on the edge leaves the panel open as a normal list (fling, tap, long-press), a
+ * tapped letter's apps still beside it; an outside tap, Back or 4 s idle closes it.
  *
  * The strip consumes all its touches, so the home pager never turns the page under it.
  * Gesture navigation: Android keeps the back swipe off at most 200dp of an edge for an app, so a
@@ -568,7 +670,13 @@ fun AppSelector(
     actions: String = "off",
     /** selector.icons: each row starts with the app's icon (Plan E). */
     icons: Boolean = false,
-    /** selector.filter: the list holds only the letter's apps. */
+    /** selector.aim: a slow slide moves the list an app per this many dp (apps, Plan C); 0 always glides. */
+    aimDp: Int = SelectorMath.AIM_STEP,
+    /** selector.aim-speed: slides slower than this (dp a second) aim. */
+    aimSpeed: Int = SelectorMath.AIM_SPEED,
+    /** selector.browse: `letters` goes a letter at a time along the edge; `apps` goes through the whole list by its apps. */
+    browse: String = "letters",
+    /** selector.filter: with letters, the list holds only the letter's apps. */
     filter: Boolean = false,
     /** selector.system-font: the list, the letters and the bubble in the phone's font, not the terminal's. */
     systemFont: Boolean = false,
@@ -588,11 +696,14 @@ fun AppSelector(
             favouritesLast = favouritesLast,
         )
     }
-    val onlyLetter = filter
+    val byLetter = browse == "letters"
+    val onlyLetter = byLetter && filter
     val starts = remember(entries) { SelectorMath.sectionStarts(entries) }
-    // A letter at a time: every letter gets the same stretch of the edge, a stop of its own.
     val letterCount = starts.size - 1
-    val edgeMiddles = remember(letterCount) { SelectorMath.letterMiddles(letterCount) }
+    // Apps (Plan D): every letter gets room on the strip by the square root of its number of apps.
+    val sections = remember(entries) { SelectorMath.Sections(SelectorMath.sectionSizes(entries)) }
+    // Letters: every letter gets the same stretch of the edge, a stop of its own.
+    val edgeMiddles = remember(letterCount, sections, byLetter) { if (byLetter) SelectorMath.letterMiddles(letterCount) else sections.middles() }
     /** Each section's letter (★, #, A–Z), in list order: only letters that have apps. */
     val sectionLetters = remember(entries) { entries.filter { it.sectionStart }.map { it.section } }
     val state = remember { SelectorState() }
@@ -639,12 +750,13 @@ fun AppSelector(
     LaunchedEffect(active) { if (!active) state.close() }
     if (!active) return
 
-    // The panel can move past the log's edges to keep a letter's apps level with the thumb.
+    // The panel can move past the log's edges to keep a letter's apps, or the focused app, level with the thumb.
     BoxWithConstraints(modifier.fillMaxSize().clipToBounds()) {
         val containerW = constraints.maxWidth.toFloat()
         val containerH = constraints.maxHeight.toFloat()
         // selector.height: a strip of the edge, in the thumb's reach (selector.position), instead of
-        // the whole log height; every letter still has its stretch of it (its top = the first letter).
+        // the whole log height; every letter still has its stretch of it (its top = the first letter,
+        // or with apps the first app).
         val topPx = with(density) { TOP_GAP.toPx() }
         val bottomPx = containerH - with(density) { BOTTOM_GAP.toPx() }
         val stripHPx = min(bottomPx - topPx, with(density) { heightDp.dp.toPx() })
@@ -693,6 +805,8 @@ fun AppSelector(
         val slopPx = with(density) { 8.dp.toPx() }
         val edgeZonePx = with(density) { 56.dp.toPx() }
         val edgeMaxSpeed = with(density) { 1.1.dp.toPx() } // px per ms at full depth
+        val pxPerDp = density.density
+        val aimStepPx = aimDp * pxPerDp
         // The bubble sits between the strip and the list, as far from the edge as the gap allows.
         val bubblePx = with(density) { BUBBLE.toPx() }
         val marginPx = with(density) { 4.dp.toPx() }
@@ -762,7 +876,7 @@ fun AppSelector(
                         enabled = state.mode == Mode.OPEN,
                         // A letter's few apps on their own: no room to magnify the ends.
                         fisheye = !onlyLetter,
-                        dimOthers = !onlyLetter,
+                        dimOthers = byLetter && !onlyLetter,
                         text = text,
                         onClick = { state.close(); launch(entry.item) },
                         onLongClick = { state.close(); longPress(entry.item) },
@@ -910,7 +1024,7 @@ fun AppSelector(
                     val top = ((h - exclusionPx) / 2).coerceAtLeast(0f)
                     Rect(0f, top, c.size.width.toFloat(), min(h, top + exclusionPx))
                 }
-                .pointerInput(entries, rowPx, listHPx, topPx, stripTopPx, stripHPx, zoneTopPx, left, actions, onlyLetter) {
+                .pointerInput(entries, rowPx, listHPx, topPx, stripTopPx, stripHPx, zoneTopPx, left, actions, aimStepPx, aimSpeed, byLetter, onlyLetter) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         down.consume()
@@ -932,6 +1046,12 @@ fun AppSelector(
                         var lastFrame = rowSince
                         val farMode = actions == "far-side"
                         var holdAt = rowSince
+                        // Apps (Plan C): where the list is along the edge (rows). A fast slide glides it to
+                        // where the strip maps it; a slow one aims, an app at a time.
+                        var at = sections.along(y / stripHPx)
+                        var slideSpeed = -1f // dp a second; unknown until the first move
+                        var lastMoveAt = down.uptimeMillis
+                        var aiming = false
                         // Letters: the one the thumb is on, and what the panel lists for it.
                         var onLetter = -1
                         var list = entries
@@ -952,7 +1072,7 @@ fun AppSelector(
                             // list is where the letter put it, a glide still under way ended there at once.
                             var newLetter = false
                             if (selecting) glide?.cancel()
-                            if (!selecting) {
+                            if (byLetter && !selecting) {
                                 // A letter at a time along the edge; the list moves only when it changes.
                                 val l = SelectorMath.letterAt(SelectorMath.alongLetters(y / stripHPx, letterCount), onLetter, letterCount)
                                 if (l != onLetter) {
@@ -969,14 +1089,20 @@ fun AppSelector(
                             // beyond it).
                             val yIn = cy - panelTop
                             if (!selecting) {
-                                // The letter's apps start level with its place on the edge, the first one at
-                                // the thumb's height, so every one is a short move away; moved up only as far
-                                // as keeps them on screen. The list holds still until the letter changes.
-                                val size = starts[onLetter + 1] - starts[onLetter]
-                                val start = if (onlyLetter) 0 else starts[onLetter]
-                                val letterY = stripTopPx + edgeMiddles[onLetter] * stripHPx
-                                val top = SelectorMath.letterTop(letterY, size, rowPx.toFloat(), topPx, topPx + listHPx)
-                                state.listY = SelectorMath.levelWith(start.toFloat(), top - panelTop, rowPx.toFloat())
+                                state.listY = if (byLetter) {
+                                    // The letter's apps start level with its place on the edge, the first one at
+                                    // the thumb's height, so every one is a short move away; moved up only as far
+                                    // as keeps them on screen. The list holds still until the letter changes.
+                                    val size = starts[onLetter + 1] - starts[onLetter]
+                                    val start = if (onlyLetter) 0 else starts[onLetter]
+                                    val letterY = stripTopPx + edgeMiddles[onLetter] * stripHPx
+                                    val top = SelectorMath.letterTop(letterY, size, rowPx.toFloat(), topPx, topPx + listHPx)
+                                    SelectorMath.levelWith(start.toFloat(), top - panelTop, rowPx.toFloat())
+                                } else {
+                                    // The whole list (its top the first app, its bottom the last), or a slow
+                                    // slide's aim, brought level with the finger, as Niagara does.
+                                    SelectorMath.levelWith(at, yIn, rowPx.toFloat())
+                                }
                             }
                             // Scrolled, and past the list's ends the panel moved; a letter's apps on
                             // their own stay on screen.
@@ -1004,13 +1130,14 @@ fun AppSelector(
                                 else -> show(scroll, shiftOn)
                             }
                             // Picking: the app level with the finger, as it moves up and down. Along the
-                            // edge no app is at the thumb yet: the letter is.
-                            state.contact = if (!selecting) Float.NaN else SelectorMath.contact(state.listY, yIn, rowPx.toFloat())
+                            // edge with letters, no app is at the thumb yet: the letter is.
+                            state.contact = if (byLetter && !selecting) Float.NaN else SelectorMath.contact(state.listY, yIn, rowPx.toFloat())
                             val f = SelectorMath.focusedIndex(state.contact, n)
                             val section = if (f >= 0) list[f].sectionIndex else onLetter
+                            if (!byLetter) state.letter = section
                             // Feel where the finger is: crossing between the letters and the list, a
                             // firm tick per letter along the edge, a light one per app in the list.
-                            when (SelectorMath.feel(selecting, wasSelecting, f, tickedRow, section, lastSection)) {
+                            when (SelectorMath.feel(selecting, wasSelecting, f, tickedRow, section, lastSection, aiming && !selecting)) {
                                 SelectorMath.Feel.SWITCH -> haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
                                 SelectorMath.Feel.APP -> haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
                                 SelectorMath.Feel.LETTER -> haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
@@ -1112,11 +1239,12 @@ fun AppSelector(
                                             launch(app)
                                         }
                                     } else {
-                                        // Lifted on the edge: leave the list open for a tap or a fling, the
-                                        // letter's apps where they are, beside it. The whole list keeps them
-                                        // there with room at its ends, so it still scrolls to every app.
+                                        // Lifted on the edge: leave the list open for a tap or a fling. A tapped
+                                        // letter's apps stay where they are, beside it, the whole list keeping them
+                                        // there with room at its ends, so it still scrolls to every app; with apps,
+                                        // the list goes back in its place (scrolled as far as it went).
                                         state.contact = Float.NaN
-                                        if (!onlyLetter) {
+                                        if (byLetter && !onlyLetter) {
                                             if (glide?.isActive == true) {
                                                 glide?.cancel()
                                                 val (s, sh) = SelectorMath.place(state.listY, SelectorMath.maxScroll(list.size, rowPx.toFloat(), panelH(list.size)))
@@ -1129,6 +1257,9 @@ fun AppSelector(
                                             state.scrollPx = scroll
                                             state.shiftPx = 0f
                                             listState.scrollToPx(scroll, rowPx)
+                                        } else if (!onlyLetter) {
+                                            state.listY = state.scrollPx
+                                            state.shiftPx = 0f
                                         }
                                         state.mode = Mode.OPEN
                                         state.interaction++
@@ -1136,14 +1267,29 @@ fun AppSelector(
                                     break
                                 }
                                 change.consume()
+                                val newY = change.position.y + zoneTopPx
+                                // Plan C: how fast the thumb slides along the edge decides between a glide
+                                // and an aim (apps only: letters go a letter at a time).
+                                val dt = (change.uptimeMillis - lastMoveAt).coerceAtLeast(1L)
+                                val instant = abs(newY - y) / pxPerDp / dt * 1000f
+                                slideSpeed = if (slideSpeed < 0f) instant else SelectorMath.smoothSpeed(slideSpeed, instant, dt)
+                                lastMoveAt = change.uptimeMillis
+                                val weight = if (!byLetter && aimStepPx > 0f) SelectorMath.aimWeight(slideSpeed, aimSpeed.toFloat()) else 0f
+                                aiming = weight >= 0.5f
+                                if (!selecting && !byLetter) {
+                                    at = SelectorMath.aim(at, sections.along(y / stripHPx), sections.along(newY / stripHPx), newY - y, aimStepPx, weight, count)
+                                }
                                 x = change.position.x
-                                y = change.position.y + zoneTopPx
+                                y = newY
                                 // Off the edge, toward the panel: the list holds still to pick from.
                                 // Picking starts LEAVE off the edge and ends only halfway back, so a
                                 // thumb resting at the line doesn't flip between the two.
                                 val off = if (left) x - stripWPx else -x
+                                val wasPicking = selecting
                                 selecting = if (selecting) off > leavePx / 2 else off > leavePx
-                                // Back on the edge, it carries on from the letter the thumb is on.
+                                // Back on the edge: with apps, carry on from the app under the thumb, without a
+                                // jump; with letters, from the letter the thumb is on.
+                                if (wasPicking && !selecting && !byLetter && !state.contact.isNaN()) at = state.contact.coerceIn(0f, count - 0.01f)
                                 state.mode = if (selecting) Mode.SELECT else Mode.SCRUB
                                 update(SystemClock.uptimeMillis())
                             }

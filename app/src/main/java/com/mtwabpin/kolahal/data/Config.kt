@@ -99,13 +99,16 @@ object Keys {
     val SUGGESTION_ROWS = ConfigKey.Num("suggestions.rows", 2, 1..2, "Rows of suggestion chips while typing (suggestions.style chips)")
     val SUGGESTIONS_STYLE = ConfigKey.Choice("suggestions.style", "list", listOf("list", "chips"), "While typing: a list above the prompt (best match at the bottom, nearest the thumb) or a strip of chips")
     val SELECTOR_RAIL = ConfigKey.Bool("selector.rail", false, "Slide along the screen's edge to a letter, then onto the list to pick an app; let go on one to launch")
-    val SELECTOR_FILTER = ConfigKey.Bool("selector.filter", false, "The list shows only the letter's apps, instead of the whole list at that letter")
+    val SELECTOR_BROWSE = ConfigKey.Choice("selector.browse", "letters", listOf("letters", "apps"), "Sliding along the edge: letters goes a letter at a time, its apps level with your thumb; apps goes through the whole list by its apps, an app at a time when you slide slowly")
+    val SELECTOR_FILTER = ConfigKey.Bool("selector.filter", false, "With letters: the list shows only the letter's apps, instead of the whole list at that letter")
     val SELECTOR_SIDE = ConfigKey.Choice("selector.side", "right", listOf("right", "left"), "The edge you slide on; the list of apps opens on the other side")
     val SELECTOR_POSITION = ConfigKey.Choice("selector.position", "bottom", listOf("bottom", "middle", "top"), "Where on the edge you slide: keep it away from where you swipe back")
     val SELECTOR_HANDLE = ConfigKey.Bool("selector.handle", true, "Show the slim A–Z handle on the edge; off hides it while the selector keeps working")
     val SELECTOR_LETTERS = ConfigKey.Bool("selector.letters", false, "Show the letters along the edge, each where its apps are, so you can see where to touch")
     val SELECTOR_HEIGHT = ConfigKey.Num("selector.height", 350, 200..900, "Length (dp) of the part of the edge you slide on: shorter means less thumb travel; the list uses the whole height")
     val SELECTOR_ICONS = ConfigKey.Bool("selector.icons", false, "Show each app's icon in the app selector's list")
+    val SELECTOR_AIM = ConfigKey.Num("selector.aim", 10, 0..40, "With selector.browse apps, slide slowly along the edge to aim: the list moves an app per this many dp (0: a slide always glides the whole list)")
+    val SELECTOR_AIM_SPEED = ConfigKey.Num("selector.aim-speed", 100, 20..400, "Slides slower than this (dp a second) aim; from two and a half times it they glide again")
     val SELECTOR_SYSTEM_FONT = ConfigKey.Bool("selector.system-font", false, "The app selector in the phone's own font instead of the terminal font: its list, the letters on the edge and the one beside your thumb")
     val SELECTOR_ACTIONS = ConfigKey.Choice("selector.actions", "off", listOf("far-side", "off"), "While you pick, an app's actions: far-side opens them when you lift on the list's far side; off leaves them to the open list (long-press)")
     val SHOW_TIMESTAMPS = ConfigKey.Choice("log.time", "groups", listOf("off", "commands", "groups"), "Right-aligned times on log lines: groups shows one on each group's first line and when the minute changes, commands on the lines you type")
@@ -147,7 +150,7 @@ object Keys {
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_SHOW, HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
-        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, THEME_ALWAYS_DARK, THEME_PAPER, STATUS_BAR, FONT, FONT_SANS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGEST_ICONS, SUGGESTIONS_WRAP, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_FILTER, SELECTOR_SIDE, SELECTOR_POSITION, SELECTOR_HANDLE, SELECTOR_LETTERS, SELECTOR_HEIGHT, SELECTOR_ACTIONS, SELECTOR_ICONS, SELECTOR_SYSTEM_FONT, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
+        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, THEME_ALWAYS_DARK, THEME_PAPER, STATUS_BAR, FONT, FONT_SANS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGEST_ICONS, SUGGESTIONS_WRAP, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_BROWSE, SELECTOR_FILTER, SELECTOR_SIDE, SELECTOR_POSITION, SELECTOR_HANDLE, SELECTOR_LETTERS, SELECTOR_HEIGHT, SELECTOR_ACTIONS, SELECTOR_ICONS, SELECTOR_SYSTEM_FONT, SELECTOR_AIM, SELECTOR_AIM_SPEED, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_GUTTER, LOG_LINE_HEIGHT, LOG_TALLER_TAPS, LOG_WALLPAPER, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_KEEP_LINES, LOG_FRESH, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP,
         FEEDS_LOG, FEEDS_LOG_LINES, FEEDS_READ_SHOWN, FEEDS_BACKLOG_READ, FEEDS_INTERVAL, FEEDS_NOTIFY, FEEDS_WIFI,
@@ -155,7 +158,7 @@ object Keys {
     )
 
     /** Settings only `config` changes: the Settings screen leaves them out. */
-    val CONFIG_ONLY: Set<ConfigKey<*>> = setOf(LOG_KEEP_LINES, THEME_PAPER)
+    val CONFIG_ONLY: Set<ConfigKey<*>> = setOf(LOG_KEEP_LINES, THEME_PAPER, SELECTOR_AIM, SELECTOR_AIM_SPEED)
 
     /** A setting by name; an old name ([RENAMED]) finds the setting under its new one. */
     fun byName(name: String): ConfigKey<*>? {
@@ -199,8 +202,6 @@ object Keys {
         "gui.colors" to "Settings always use the theme's colours",
         "widgets.home" to "widgets live on the widgets page (widgets.page)",
         "widgets.height" to "widgets live on the widgets page (widgets.page)",
-        "selector.aim" to "the app selector goes a letter at a time",
-        "selector.aim-speed" to "the app selector goes a letter at a time",
     )
 
     /**

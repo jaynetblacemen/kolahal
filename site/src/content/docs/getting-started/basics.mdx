@@ -115,6 +115,15 @@ Once your thumb is down, it slides over the whole length.
   where to touch.
 - **Only the letter's apps** (`selector.filter`, off unless you turn it on): the list holds just the
   letter's apps instead of the whole list at that letter, beside the circle.
+- **Slide through** (`selector.browse`) set to `apps` goes through the whole list by its apps
+  instead of a letter at a time. Your thumb's place on its part of the edge maps smoothly onto the
+  list (its top = the first app, its bottom = the last), so small moves give fine control and a long
+  slide crosses the alphabet. Every letter gets room along the edge by the square root of its number
+  of apps: a letter with four times the apps gets twice the length. The app you're at sits level with
+  your thumb, magnified (its neighbours a little less), and the circle shows its letter. Slide slowly
+  to aim: under about 100 dp a second, the list moves one app for every 10 dp of your slide, with a
+  light tick for each; speed up again and it catches up with where a fast slide would put it.
+  (`selector.aim` and `selector.aim-speed`, with `config set`.)
 - **Slide well off the edge, toward the panel,** and the list holds still: move up or down to pick
   an app (near the panel's top or bottom it keeps scrolling), then **lift to launch** it. A short buzz
   marks leaving the edge or coming back to it, and a lighter tick marks each app you pass. Or hold
