@@ -352,6 +352,9 @@ fun SettingsScreen(
                             Action(R.drawable.ic_book, "Guide", "How everything works, on the Kolahal website") {
                                 if (!openGuide(context)) tapScope.launch { snackbar.showSnackbar("No browser to open $GUIDE_URL") }
                             },
+                            Action(R.drawable.ic_forum, "Discord", "Questions, ideas and help from other people using Kolahal") {
+                                if (!openLink(context, DISCORD_URL)) tapScope.launch { snackbar.showSnackbar("No app to open $DISCORD_URL") }
+                            },
                             Action(R.drawable.ic_bug, "Crash reports", kept, chevron = true) { openId = CRASHES_PAGE },
                             Action(R.drawable.ic_mail, "Email the developer", DEVELOPER_EMAIL) {
                                 if (!emailDeveloper(context, VERSION_TEXT, aboutThisPhone())) {

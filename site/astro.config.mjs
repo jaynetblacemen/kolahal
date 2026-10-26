@@ -9,6 +9,8 @@ import { satteri } from '@astrojs/markdown-satteri';
 const SITE = process.env.DOCS_SITE ?? 'https://mtwabpin.github.io';
 const BASE = process.env.DOCS_BASE ?? '/kolahal';
 const REPO = 'https://github.com/mtwabpin/kolahal';
+// The community's Discord server: questions, ideas and help.
+const DISCORD = 'https://discord.gg/ZNCEYske7';
 
 /**
  * Pages link to each other site-absolute (`/reference/commands/`); this adds the base path at
@@ -41,7 +43,10 @@ export default defineConfig({
 			description: 'A keyboard-first terminal launcher for Android, with work profile support and Lua / JavaScript scripts.',
 			logo: { src: './src/assets/logo.svg', replacesTitle: false },
 			favicon: '/favicon.svg',
-			social: [{ icon: 'github', label: 'GitHub', href: REPO }],
+			social: [
+				{ icon: 'github', label: 'GitHub', href: REPO },
+				{ icon: 'discord', label: 'Discord', href: DISCORD },
+			],
 			editLink: { baseUrl: `${REPO}/edit/master/site/` },
 			customCss: [
 				'@fontsource/jetbrains-mono/400.css',
@@ -102,6 +107,7 @@ export default defineConfig({
 						{ slug: 'reference/commands' },
 						{ slug: 'reference/config' },
 						{ slug: 'reference/privacy' },
+						{ slug: 'reference/security' },
 					],
 				},
 			],

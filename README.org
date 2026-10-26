@@ -11,6 +11,12 @@ private space.
 Kolahal is developed with AI assistance. The developers review every change except the tests.
 #+end_quote
 
+* Status: under review
+
+Kolahal's code is still under review. It is young (0.4), parts of it were written with AI
+assistance, and the review of the codebase as a whole isn't finished. Expect rough edges and changes
+between versions, keep a [[https://mtwabpin.github.io/kolahal/guides/backup/][backup]], and report what you find.
+
 * Get it
 
 - *APK*: the [[https://github.com/mtwabpin/kolahal/releases/latest][latest release]] on GitHub has the full build, with everything in it, and the
@@ -31,7 +37,13 @@ The user guide is at [[https://mtwabpin.github.io/kolahal/][mtwabpin.github.io/k
   [[https://mtwabpin.github.io/kolahal/guides/profiles/][Work profile & private space]]
 - Scripting :: [[https://mtwabpin.github.io/kolahal/scripting/overview/][Overview]] · [[https://mtwabpin.github.io/kolahal/scripting/api/][API reference]] · [[https://mtwabpin.github.io/kolahal/scripting/library/][Script library]] · [[https://mtwabpin.github.io/kolahal/scripting/editor/][Editor]] ·
   [[https://mtwabpin.github.io/kolahal/scripting/examples/][Examples]]
-- Reference :: [[https://mtwabpin.github.io/kolahal/reference/commands/][Commands]] · [[https://mtwabpin.github.io/kolahal/reference/config/][Configuration keys]] · [[https://mtwabpin.github.io/kolahal/reference/privacy/][Privacy & permissions]]
+- Reference :: [[https://mtwabpin.github.io/kolahal/reference/commands/][Commands]] · [[https://mtwabpin.github.io/kolahal/reference/config/][Configuration keys]] · [[https://mtwabpin.github.io/kolahal/reference/privacy/][Privacy & permissions]] ·
+  [[https://mtwabpin.github.io/kolahal/reference/security/][Security]]
+
+* Help
+
+- Questions, ideas and help from other people using Kolahal: the [[https://discord.gg/ZNCEYske7][Discord server]].
+- Something doesn't work: [[https://github.com/mtwabpin/kolahal/issues/new/choose][open an issue]] with the bug report form.
 
 * Working on Kolahal
 
@@ -45,6 +57,21 @@ The user guide is at [[https://mtwabpin.github.io/kolahal/][mtwabpin.github.io/k
 - [[file:docs/codebase-guide.org][docs/codebase-guide.org]]: a guided tour of the code, how its parts fit together and why.
 - [[file:docs/release/README.org][docs/release/]]: how releases are built, signed and published, on GitHub and Google Play.
 - [[file:site/README.md][site/README.md]]: the website, built with Astro and Starlight from =site/=.
+
+* AI policy
+
+Kolahal is built with AI assistance, and contributions may use it too. Vibe coding isn't accepted:
+changes nobody has read, understood or tested, prompted until something seemed to work.
+
+AI assistance is fine as long as you stay the author:
+
+- You read every line you send, and can explain what it does and why in review.
+- You built it and tried it on a phone or the emulator; the tests pass, and new behaviour has tests.
+- You say in the pull request what the AI did.
+
+Pull requests and issues that look generated and unchecked (large unexplained changes, calls to
+functions that don't exist, claims nobody verified) are closed without review. The same goes for
+bug reports: make the problem happen yourself first.
 
 * Tests
 

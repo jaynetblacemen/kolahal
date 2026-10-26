@@ -37,6 +37,8 @@ import com.mtwabpin.kolahal.R
 
 /** Settings → About: the guide, crash reports and a way to write to the developer. */
 internal const val GUIDE_URL = "https://mtwabpin.github.io/kolahal/"
+/** The community's Discord server: questions, ideas and help from other people using Kolahal. */
+internal const val DISCORD_URL = "https://discord.gg/ZNCEYske7"
 internal const val DEVELOPER_EMAIL = "mtwabpin@gmail.com"
 
 /** The page id (in [com.mtwabpin.kolahal.terminal.TerminalViewModel.settingsCategory]) of the crash list. */
@@ -54,8 +56,11 @@ internal fun crashRows(context: Context): List<CrashRow> = CrashReports.list(con
 }
 
 /** Opens the website's guide; false when no app can open it. */
-internal fun openGuide(context: Context): Boolean =
-    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GUIDE_URL))) }.isSuccess
+internal fun openGuide(context: Context): Boolean = openLink(context, GUIDE_URL)
+
+/** Opens [url] in the browser (or the app that takes it); false when no app can open it. */
+internal fun openLink(context: Context, url: String): Boolean =
+    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }.isSuccess
 
 /**
  * A draft to [DEVELOPER_EMAIL] in the user's mail app, which they read and send themselves. Without

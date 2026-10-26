@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: A security problem
+    url: https://mtwabpin.github.io/kolahal/reference/security/
+    about: Don't open a public issue. Report it privately, as this page says.
+  - name: Questions and ideas
+    url: https://discord.gg/ZNCEYske7
+    about: Ask on Kolahal's Discord server.
+  - name: How things work
+    url: https://mtwabpin.github.io/kolahal/
+    about: The guide, with every command, setting and the scripting API.

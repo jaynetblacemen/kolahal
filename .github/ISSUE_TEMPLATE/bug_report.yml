@@ -1,0 +1,75 @@
+name: Bug report
+description: Something in Kolahal doesn't work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. One problem per report, please, and search the open issues first.
+
+        **A security problem?** Don't use this form: issues are public. Report it privately, as the [Security](https://mtwabpin.github.io/kolahal/reference/security/) page says.
+  - type: input
+    id: version
+    attributes:
+      label: Kolahal version
+      description: "`fetch` shows it, or Settings → About → Version (tap to copy)."
+      placeholder: "0.4.6"
+    validations:
+      required: true
+  - type: dropdown
+    id: build
+    attributes:
+      label: Where you got it
+      options:
+        - GitHub, the full build (kolahal-X.Y.Z.apk)
+        - GitHub, the Play build (kolahal-X.Y.Z-play.apk)
+        - Google Play
+        - I built it myself
+    validations:
+      required: true
+  - type: input
+    id: phone
+    attributes:
+      label: Phone and Android version
+      placeholder: "Pixel 8, Android 16"
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: What you saw. A screenshot or a screen recording helps.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen
+      description: The steps, from a fresh start if you can. If a script is involved, include it, without its secrets.
+      placeholder: |
+        1. Type `...`
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: crash
+    attributes:
+      label: Crash report
+      description: If Kolahal crashed, `crashes share` (or Settings → About → Crash reports) shares the report. It holds the version, the phone's model and Android version, and where in the code it failed. Read it before pasting.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you send
+      options:
+        - label: I made this happen myself, on my phone or an emulator. It isn't only an AI tool's output.
+          required: true
+        - label: Nothing here is private (API keys, passwords, other people's messages or numbers).
+          required: true
+        - label: It happens on the latest release.
