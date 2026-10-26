@@ -15,6 +15,7 @@ class FeedCommands(
     private val context: Context,
     /** Finds the app `notifs mute <app>` names. */
     private val appCommands: AppCommands,
+    private val ui: TerminalUi,
 ) {
     private val logs = LogRepository.get(context)
     private val apps = AppRepository.get(context)
@@ -144,7 +145,6 @@ class FeedCommands(
         val actions = com.mtwabpin.kolahal.notifications.NotificationActions
         val store = com.mtwabpin.kolahal.notifications.NotificationStore
         val prefs = com.mtwabpin.kolahal.notifications.NotifPrefs.get(context)
-        if (!com.mtwabpin.kolahal.BuildConfig.NOTIFICATION_ACCESS) return error("This build has no notification access, so notifs isn't available")
         if (!actions.isEnabled(context) && args.firstOrNull() != "enable") {
             logs.add(LogKind.ERROR, "Notification access is off — tap to enable it", ctx = LogContext.of(LogContext.RUN to "notifs enable"))
             return
@@ -164,7 +164,9 @@ class FeedCommands(
                     )
                 }
             }
-            "enable" -> startActivity(actions.settingsIntent(context))
+            // Turning it on, Kolahal first says what it reads and asks (Play's prominent disclosure);
+            // already on, Android's screen opens straight away, to turn it off.
+            "enable" -> if (actions.isEnabled(context)) startActivity(actions.settingsIntent(context)) else ui.askNotificationAccess()
             "unmute" -> args.drop(1).joinToString(" ").takeIf { it in prefs.muted.value }?.let { pkg ->
                 prefs.unmute(pkg)
                 info("${apps.apps.value.firstOrNull { it.pkg == pkg }?.label ?: pkg}: notifications will appear in the log")

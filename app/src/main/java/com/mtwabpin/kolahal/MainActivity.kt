@@ -210,6 +210,12 @@ class MainActivity : ComponentActivity() {
                         Screen.TERMINAL -> Unit
                     } } }
                 }
+                // `notifs enable`, from the prompt, Setup or the tour: asked over whatever is showing.
+                val askingNotifications by vm.notificationAccessAsk.collectAsStateWithLifecycle()
+                if (askingNotifications) com.mtwabpin.kolahal.ui.NotificationAccessDialog(
+                    onAllow = { vm.answerNotificationAccess(true) },
+                    onDismiss = { vm.answerNotificationAccess(false) },
+                )
             }
         }
     }

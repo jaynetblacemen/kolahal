@@ -803,4 +803,4 @@ functions is the quickest way to learn what they promise.
 | =@on=, =@uses= | script directives: run on a device event; declare access to private data or the local network            |
 | fresh screen   | =log.fresh=: home hides old output after a while away (hidden, not deleted)                              |
 | instant run    | =launch.instant=: run without Enter once the input can only mean one thing                               |
-| Play build     | the build for Google Play, without the accessibility service, the notification listener and the call log |
+| Play build     | the build for Google Play, without the accessibility service and the call log                            |

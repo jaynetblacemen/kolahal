@@ -44,7 +44,7 @@ object SetupChecks {
                 Notifier.canPost(context),
                 "notifications",
             ),
-            if (!com.mtwabpin.kolahal.BuildConfig.NOTIFICATION_ACCESS) null else SetupCheck(
+            SetupCheck(
                 "Notification access",
                 "Your notifications in the terminal (notifs) and for scripts",
                 com.mtwabpin.kolahal.notifications.NotificationActions.isEnabled(context),

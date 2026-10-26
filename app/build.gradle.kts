@@ -41,10 +41,9 @@ android {
         versionCode = 15
         versionName = "0.4.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        // The accessibility service (double-tap / `lock`), notification listener and call log are in
-        // the manifest; the play build leaves them out.
+        // The accessibility service (double-tap / `lock`) and the call log are in the manifest; the
+        // play build leaves them out.
         buildConfigField("boolean", "LOCK_SERVICE", "true")
-        buildConfigField("boolean", "NOTIFICATION_ACCESS", "true")
         buildConfigField("boolean", "CALL_LOG", "true")
     }
 
@@ -86,10 +85,10 @@ android {
             enableUnitTestCoverage = coverage
             enableAndroidTestCoverage = coverage
         }
-        // Google Play (`bundlePlay`): the release build without the accessibility service, the
-        // notification listener and the call log (src/play removes them), which Play's policy rules out
-        // or wants declarations, videos and consent screens for. No `lock` or double-tap lock, no
-        // notifications in the log, no media controls, no calls in the log. The bundle is signed with the
+        // Google Play (`bundlePlay`): the release build without the accessibility service and the call
+        // log (src/play removes them), which Play's policy rules out or wants a declaration and a video
+        // for. No `lock` or double-tap lock, no calls in the log. Notification access stays: `notifs
+        // enable` says what it reads and asks first, as Play's User Data policy wants. The bundle is signed with the
         // upload key; without one it stays unsigned, never debug-signed (Play refuses those).
         // `-PplayApk` signs with the release key instead, as the full build: the Play build's APK on
         // GitHub (`assemblePlay -PplayApk`), for phones where Play Protect blocks the full one.
@@ -102,7 +101,6 @@ android {
             matchingFallbacks += listOf("release")
             if (!providers.gradleProperty("playApk").isPresent) signingConfig = signingConfigs.findByName("upload")
             buildConfigField("boolean", "LOCK_SERVICE", "false")
-            buildConfigField("boolean", "NOTIFICATION_ACCESS", "false")
             buildConfigField("boolean", "CALL_LOG", "false")
         }
     }

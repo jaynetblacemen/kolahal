@@ -1438,6 +1438,24 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         _events.tryEmit(UiEvent.RequestLocalNetworkPermission)
     }
 
+    private val _notificationAccessAsk = MutableStateFlow(false)
+    /** Kolahal is asking before Android's Notification access screen opens ([askNotificationAccess]). */
+    val notificationAccessAsk: StateFlow<Boolean> = _notificationAccessAsk.asStateFlow()
+
+    override fun askNotificationAccess() {
+        _notificationAccessAsk.value = true
+    }
+
+    /** The answer: Allow opens Android's screen; Not now opens nothing and leaves a line to ask again. */
+    fun answerNotificationAccess(allow: Boolean) {
+        _notificationAccessAsk.value = false
+        if (allow) {
+            startActivity(com.mtwabpin.kolahal.notifications.NotificationActions.settingsIntent(context))
+        } else {
+            logs.add(LogKind.INFO, "Notification access stays off · tap to turn it on", ctx = LogContext.of(LogContext.RUN to "notifs enable"))
+        }
+    }
+
     fun onLocalNetworkPermission(granted: Boolean) {
         refreshSetup()
         io {

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   The play build type, for Google Play: the app without what Play's policy rules out, or would
-  want declarations, videos and consent screens for.
+  want a declaration and a video for.
   - No accessibility service: Play doesn't count a launcher as an accessibility tool. No
     double-tap lock, no `lock`.
-  - No notification listener: Play wants consent screens for it. No notifications in the log, no
-    `notifs`, no media controls.
   - No call log: Play allows it only to phone, SMS and assistant apps. No calls in the log, no `calls`.
+  The notification listener stays: `notifs enable` says what it reads and asks before Android's
+  Notification access screen opens (Play's prominent disclosure).
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
@@ -16,9 +16,6 @@
     <application>
         <service
             android:name=".gesture.LockService"
-            tools:node="remove" />
-        <service
-            android:name=".notifications.KolahalNotificationListener"
             tools:node="remove" />
     </application>
 </manifest>

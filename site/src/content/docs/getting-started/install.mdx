@@ -17,8 +17,8 @@ Every release comes with two APKs. The newest is Kolahal {VERSION}:
 	<LinkButton href={PLAY_APK} icon="download" iconPlacement="start" variant="secondary">Kolahal {VERSION}, Play build</LinkButton>
 </div>
 
-Take the first one, the full build, unless Play Protect won't install it; then take the Play build
-(below). Release notes and older versions are on the
+Take the first one, the full build: it has everything. The second is the Play build, the version
+for Google Play ([below](#the-play-build)). Release notes and older versions are on the
 [releases page](https://github.com/mtwabpin/kolahal/releases). Both APKs have the same package and
 key, so either installs over the other or over an earlier version (0.3.1 or later), keeping your
 data. Then [sideload it](#sideload-the-apk).
@@ -27,12 +27,12 @@ data. Then [sideload it](#sideload-the-apk).
 
 Google Play Protect blocks sideloaded apps (installed from a browser, a messaging app or a file
 manager) that declare an accessibility service or notification access, in India and some other
-countries. The full build has both: the accessibility service only locks the screen, and
-notification access shows your notifications in the log.
+countries. Both builds declare notification access, which shows your notifications in the log,
+and the full build also has an accessibility service, which only locks the screen.
 
-Take the [Play build](#the-play-build) instead: it has neither, so Play Protect lets it install.
-Or install the full build with scanning turned off: **Play Store → profile → Play Protect → ⚙︎ →
-Scan apps with Play Protect** while installing (and back on after), or with `adb install`.
+Install with scanning turned off: **Play Store → profile → Play Protect → ⚙︎ → Scan apps with Play
+Protect** while installing (and back on after), or with `adb install`. Once Kolahal is on Google
+Play, installing it from there avoids the block.
 
 ### Coming from 0.3.0 or earlier
 
@@ -40,17 +40,17 @@ Versions up to 0.3.0 were signed with a different key, so later ones can't insta
 Move once, keeping everything: **Settings → Backup → Export everything**, uninstall Kolahal,
 install the new version and make it your home app, then **Settings → Backup → Import a backup**.
 Run `setup` to grant the permissions again, and add your widgets again: a backup lists them but
-can't carry them ([Backup](/guides/backup/)). If you had the lite APK, take the Play build: it is
-the same app.
+can't carry them ([Backup](/guides/backup/)). If you had the lite APK, take the Play build, the
+nearest to it.
 
 ### The Play build
 
 The Play build is the version for Google Play, where Kolahal is coming, and its APK is on every
-release. Play's policy doesn't let a launcher read the call log, and asks for declarations, videos
-and consent screens for an accessibility service and notification access, so the Play build leaves
-those three out. It has no `lock` or double-tap lock, no `notifs`, no media controls and
-now-playing line, no calls in the log or `calls`, and scripts get no `notifications.recent()` or
-`@on notification`. Everything else is the same.
+release. Play's policy doesn't let a launcher read the call log, and asks for a declaration and a
+video for an accessibility service, so the Play build leaves those two out: no `lock` or
+double-tap lock, and no calls in the log or `calls`. Everything else is the same, notification
+access included: before Android's Notification access screen opens, Kolahal says what it reads
+and asks, as Play asks of apps that read notifications.
 
 ## Build from source
 

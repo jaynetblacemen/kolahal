@@ -15,8 +15,9 @@ class FeatureCommandsTest {
 
     @Test fun unavailableFollowsTheBuild() {
         assertEquals(!BuildConfig.LOCK_SERVICE, "lock" in CommandProcessor.UNAVAILABLE)
-        assertEquals(!BuildConfig.NOTIFICATION_ACCESS, "notifs" in CommandProcessor.UNAVAILABLE)
-        assertEquals(!BuildConfig.NOTIFICATION_ACCESS, "media" in CommandProcessor.UNAVAILABLE)
+        // Every build has notification access.
+        assertTrue("notifs" !in CommandProcessor.UNAVAILABLE)
+        assertTrue("media" !in CommandProcessor.UNAVAILABLE)
         assertEquals(!BuildConfig.CALL_LOG, "calls" in CommandProcessor.UNAVAILABLE)
         assertTrue("call" !in CommandProcessor.UNAVAILABLE)
     }

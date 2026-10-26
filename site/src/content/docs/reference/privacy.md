@@ -55,9 +55,9 @@ may include Kolahal's data in it, as it does for other apps. Kolahal's own
 
 ## Permissions
 
-The Play build (the Google Play version, also an APK on GitHub) leaves three of these out:
-`READ_CALL_LOG`, the accessibility service and notification access. The calls in the log, the
-screen lock and notifications in the log are only in the full build.
+The Play build (the Google Play version, also an APK on GitHub) leaves two of these out:
+`READ_CALL_LOG` and the accessibility service. The calls in the log and the screen lock are only in
+the full build.
 
 Declared in the manifest:
 
@@ -102,7 +102,9 @@ These are off until you enable them, usually from the [setup checklist](/getting
 | Alarms & reminders (Android 12+) | `remind` and scripts' daily times on the minute | up to an hour late; a script can't pause the work profile at night |
 | Battery unrestricted | timers and feeds run on time | Android may defer them |
 
-Notification text read through notification access stays on the device: it goes into the log and
+Before Android's Notification access screen opens (`notifs enable`, or Setup), Kolahal says what
+it reads and what for, and opens it only if you tap **Allow**. Notification text read through
+notification access stays on the device: it goes into the log and
 an in-memory list, and a copy of the 50 most recent is kept so scripts can call
 `notifications.recent()`: only scripts that ask for it with `@uses notifications` and that you
 allow, and never the private space's notifications. A script could send what it reads somewhere,

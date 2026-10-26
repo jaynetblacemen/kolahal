@@ -12,8 +12,8 @@ Kolahal is young, and its code is still under review. Treat it as beta software:
   only for what you ask of it. [Privacy & permissions](/reference/privacy/) lists every request and
   every permission.
 - **Permissions are yours to give.** Everything beyond the basics is optional and asked for when
-  you first use it. The Play build leaves out the screen lock, notification access and the call log
-  altogether.
+  you first use it; notification access says what it reads before you turn it on. The Play build
+  leaves out the screen lock and the call log altogether.
 - **Scripts run apart.** They run in a process of their own, a minute at most, with their memory
   capped; one stuck in a loop the engine can't interrupt is stopped all the same.
 - **A script gets only what you allow.** Your notifications, clipboard, apps, local network, terminal

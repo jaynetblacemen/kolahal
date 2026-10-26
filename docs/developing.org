@@ -118,7 +118,7 @@ kolahal/
 │       │   ├── assets/licenses/      OFL licences of the bundled fonts
 │       │   ├── java/…/launcher/      Kotlin sources, by package (table below)
 │       │   └── res/                  icons, fonts, XML config (accessibility service, backup rules, network security)
-│       ├── play/AndroidManifest.xml   the Play build: removes the two services and the call log
+│       ├── play/AndroidManifest.xml   the Play build: removes the accessibility service and the call log
 │       ├── release/generated/baselineProfiles/   AOT profile for fast start (generated, committed)
 │       ├── test/               JVM unit tests (pure logic: parsing, ranking, layout math, formats)
 │       └── androidTest/        on-device tests (script engines, sandbox, commands, backup, home and settings screens)

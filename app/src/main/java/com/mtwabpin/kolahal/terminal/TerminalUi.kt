@@ -25,6 +25,11 @@ interface TerminalUi {
     fun requestCallLogPermission() {}
     /** ACCESS_LOCAL_NETWORK (Android 17+) for `local-network`. */
     fun requestLocalNetworkPermission() {}
+    /**
+     * `notifs enable` with access off: what notification access reads and what for, with a choice,
+     * before Android's Notification access screen opens.
+     */
+    fun askNotificationAccess() {}
     /** `log only …` ([filter]) or `log all` (null): the lines the log shows. */
     fun filterLog(filter: LogFilter?) {}
     /** The log's width on screen (px), for output laid out to fit it; null before home has shown. */

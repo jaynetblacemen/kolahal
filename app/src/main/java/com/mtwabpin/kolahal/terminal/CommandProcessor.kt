@@ -50,7 +50,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     private val configCommands = ConfigCommands(context, ui)
     private val people = PeopleCommands(context, ui)
     private val appCommands = AppCommands(context, ::background)
-    private val feedCommands = FeedCommands(context, appCommands)
+    private val feedCommands = FeedCommands(context, appCommands, ui)
 
     private fun background(label: String, block: () -> Unit) {
         backgroundScope.launch {
@@ -653,12 +653,11 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         val RESERVED_NAMES: Set<String> = COMMAND_NAMES + InstantRun.SYNONYMS.keys
 
         /**
-         * The commands of each feature the Play build leaves out (screen lock, notification access,
-         * call log), with whether this build has it.
+         * The commands of each feature the Play build leaves out (screen lock, call log), with whether
+         * this build has it.
          */
         internal val FEATURE_COMMANDS = listOf(
             com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE to setOf("lock", "accessibility"),
-            com.mtwabpin.kolahal.BuildConfig.NOTIFICATION_ACCESS to setOf("notifs", "media", "mp", "next", "prev"),
             com.mtwabpin.kolahal.BuildConfig.CALL_LOG to setOf("calls"),
         )
 

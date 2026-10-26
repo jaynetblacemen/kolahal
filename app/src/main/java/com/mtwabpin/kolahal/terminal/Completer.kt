@@ -96,7 +96,7 @@ class Completer(private val context: Context, private val data: Data) {
             val options = if (cmd in names) usageOptions(cmd, listOf(head, "")).map { it.copy(label = "$head ${it.label}") } else emptyList()
             return (if (enterLaunches) listOf(apps.first()) + cmds.take(3) + apps.drop(1) else options + cmds.take(3) + apps).distinctBy { it.key }
         }
-        // The Play build has no notification access, no call log and no media control: nothing to offer.
+        // The Play build has no call log and no screen lock: nothing to offer.
         if (cmd in CommandProcessor.UNAVAILABLE) return emptyList()
         val specific = argSuggestions(cmd, head, parts, scriptList)
         // Commands without their own completer still get the options their usage line lists.

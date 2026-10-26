@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Checks that the Google Play build leaves out what Play's policy rules out, or would need
-# declarations, videos and consent screens for. A library can add a permission without anyone
+# Checks that the Google Play build leaves out what Play's policy rules out, or would need a
+# declaration and a video for. A library can add a permission without anyone
 # noticing; this catches it before Play does. What it leaves out, and why:
 # docs/release/google-play.org.
 #
@@ -30,9 +30,9 @@ for p in READ_CALL_LOG WRITE_CALL_LOG PROCESS_OUTGOING_CALLS READ_SMS SEND_SMS R
         problems=1
     fi
 done
-# Services Play wants declarations and consent screens for: an accessibility service (a launcher is
-# not an accessibility tool) and a notification listener.
-for s in BIND_ACCESSIBILITY_SERVICE BIND_NOTIFICATION_LISTENER_SERVICE; do
+# A service Play wants a declaration, consent screens and a video for: an accessibility service (a
+# launcher is not an accessibility tool). The notification listener may stay: Kolahal asks first.
+for s in BIND_ACCESSIBILITY_SERVICE; do
     if grep -q "\"android.permission.$s\"" <<<"$manifest"; then
         echo "$(basename "$apk") has a service bound by $s."
         problems=1
