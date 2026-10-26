@@ -67,9 +67,12 @@ version bump + notes/X.Y.Z.md ── commit, push master ── push tag vX.Y.Z
 
 * Making a release
 
-1. Bump =versionCode= (by one) and =versionName= in =app/build.gradle.kts=, and =version= in
-   =site/package.json=. The website's download button reads that version, so it points at the
-   new APK as soon as the site deploys: tag right after pushing.
+1. Bump =versionCode= (by one) and =versionName= in =app/build.gradle.kts= (from =X.Y.Z-dev= to
+   =X.Y.Z=), and =version= in =site/package.json=. The website's download button reads that
+   version, so it points at the new APK as soon as the site deploys: tag right after pushing.
+   Between releases =versionName= says the next version with =-dev= (=0.4.6-dev=), so builds from
+   the branch say what they are; =site/package.json= keeps the released one until the release.
+   Scripts' =@requires= compares the numbers only, so =0.4.6-dev= counts as 0.4.6.
 2. Write =notes/X.Y.Z.md= (see [[file:notes/README.md][notes/README.md]]) and, for Play, =notes/X.Y.Z-play.txt=.
 3. Test on the computer: the unit tests, the on-device tests on the emulator (never on a phone
    you use: they install a debug build and change its settings), the coverage figure in
