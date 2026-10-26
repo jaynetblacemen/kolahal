@@ -22,7 +22,8 @@ top to bottom once; after that, use it as a map.
 text (=C-c C-o= in Emacs). They search for a string rather than a line number, so they keep
 working as the code changes.
 
-*Freshness.* Written on 21 October 2026 against version 0.2.2 (commit =97be986=). Where this
+*Freshness.* Written on 21 October 2026 against version 0.2.2 (commit =97be986=); the scripts,
+the two processes and background work brought up to date on 26 October 2026 (0.4.6). Where this
 guide and the code disagree, the code wins.
 
 * Part 1: What Kolahal is
@@ -126,7 +127,7 @@ when (screen) {
 Compose a value. When =_screen.value= changes, Compose re-runs ("recomposes") this function and
 the new page appears. Nobody calls "refresh the screen"; the subscription does it.
 
-An event going up, from the prompt ([[src:ui/Prompt.kt::onValueChange = vm::onInputChange][Prompt.kt]]):
+An event going up, from the prompt ([[src:ui/Prompt.kt::vm::onInputChange][Prompt.kt]]):
 
 #+begin_src kotlin
 BasicTextField(
@@ -422,16 +423,16 @@ and a Home press while already home (=onNewIntent=) → =vm.onHomePressed()=.
 
 *** The screens
 
-| Screen                         | File                                                                            | Notes                                                                    |
-|--------------------------------+---------------------------------------------------------------------------------+--------------------------------------------------------------------------|
-| Terminal (home)                | [[src:ui/TerminalScreen.kt::fun TerminalScreen][ui/TerminalScreen.kt]]                                                            | header, log, suggestions, prompt, key bar                                |
-| one log line                   | [[src:ui/LogView.kt::fun LogLine][ui/LogView.kt]]                                                                   | =LogLine=, the app grid, the long-press =ActionSheet=                    |
-| prompt                         | [[src:ui/Prompt.kt::fun Prompt][ui/Prompt.kt]]                                                                    | the text field and hardware-key handling                                 |
-| header                         | [[src:ui/TerminalHeader.kt::internal fun Header(][ui/TerminalHeader.kt]]                                                            | =Header= and =CompactHeader=: clock, battery, unlocks, profiles          |
-| app selector on the right edge | [[src:ui/AppRail.kt::fun AppSelector(][ui/AppRail.kt]]                                                                   | =AppSelector=; pure maths split out and unit-tested (=SelectorMathTest=) |
-| Settings                       | [[src:ui/SettingsScreen.kt::fun SettingsScreen][ui/SettingsScreen.kt]]                                                            | pages come from [[src:ui/SettingsCatalog.kt::private val CATEGORIES][ui/SettingsCatalog.kt]]                                    |
-| Script manager and editor      | [[src:ui/ScriptsScreen.kt::fun ScriptsScreen][ui/ScriptsScreen.kt]], [[src:ui/ScriptEditor.kt::fun ScriptEditor][ui/ScriptEditor.kt]]                                         | editor logic in =EditorLogic.kt= (unit-tested)                           |
-| Feeds, widgets, setup          | =FeedsScreen.kt=, =WidgetsScreen.kt=, =WidgetPickerScreen.kt=, =SetupScreen.kt= |                                                                          |
+| Screen                    | File                                                                            | Notes                                                                    |
+|---------------------------+---------------------------------------------------------------------------------+--------------------------------------------------------------------------|
+| Terminal (home)           | [[src:ui/TerminalScreen.kt::fun TerminalScreen][ui/TerminalScreen.kt]]                                                            | header, log, suggestions, prompt, key bar                                |
+| one log line              | [[src:ui/LogView.kt::fun LogLine][ui/LogView.kt]]                                                                   | =LogLine=, the app grid, the long-press =ActionSheet=                    |
+| prompt                    | [[src:ui/Prompt.kt::fun Prompt][ui/Prompt.kt]]                                                                    | the text field and hardware-key handling                                 |
+| header                    | [[src:ui/TerminalHeader.kt::internal fun Header(][ui/TerminalHeader.kt]]                                                            | =Header= and =CompactHeader=: clock, battery, unlocks, profiles          |
+| app selector on an edge   | [[src:ui/AppRail.kt::fun AppSelector(][ui/AppRail.kt]]                                                                   | =AppSelector=; pure maths split out and unit-tested (=SelectorMathTest=) |
+| Settings                  | [[src:ui/SettingsScreen.kt::fun SettingsScreen][ui/SettingsScreen.kt]]                                                            | pages come from [[src:ui/SettingsCatalog.kt::private val CATEGORIES][ui/SettingsCatalog.kt]]                                    |
+| Script manager and editor | [[src:ui/ScriptsScreen.kt::fun ScriptsScreen][ui/ScriptsScreen.kt]], [[src:ui/ScriptEditor.kt::fun ScriptEditor][ui/ScriptEditor.kt]]                                         | editor logic in =EditorLogic.kt= (unit-tested)                           |
+| Feeds, widgets, setup     | =FeedsScreen.kt=, =WidgetsScreen.kt=, =WidgetPickerScreen.kt=, =SetupScreen.kt= |                                                                          |
 
 *** How =TerminalScreen= consumes the ViewModel
 
@@ -479,10 +480,10 @@ that reads =Term.x= recomposes. This is a pragmatic shortcut (see Part 6).
 
 Kolahal runs in /two/ Linux processes:
 
-| Process                       | Runs                                                     | Why                                                              |
-|-------------------------------+----------------------------------------------------------+------------------------------------------------------------------|
-| =com.mtwabpin.kolahal= (main) | the UI, all repositories, feeds, notifications, triggers | the normal app process                                           |
-| =com.mtwabpin.kolahal:script= | user scripts (Lua and JavaScript) inside =ScriptWorker=  | a crash in native script engines can't take down the home screen |
+| Process                       | Runs                                                                                     | Why                                                              |
+|-------------------------------+------------------------------------------------------------------------------------------+------------------------------------------------------------------|
+| =com.mtwabpin.kolahal= (main) | the UI, all repositories, feeds, notifications, triggers                                 | the normal app process                                           |
+| =com.mtwabpin.kolahal:script= | user scripts (Lua and JavaScript): =ScriptWorker=, or =ScriptRunService= at a daily time | a crash in native script engines can't take down the home screen |
 
 How they cooperate:
 
@@ -499,11 +500,18 @@ How they cooperate:
 Keep this in mind when you add state: an in-memory singleton field written in =:script= is
 invisible to the UI. Shared state has to go through the database.
 
+A run that can't be stopped from inside (a stuck C function in Lua, a QuickJS built-in that never
+looks for the interrupt, promise jobs that keep queuing one another) is stopped by
+[[src:script/RunWatchdog.kt::internal class RunWatchdog][RunWatchdog]], which kills the =:script= process past the timeout and a grace period. That is
+the other reason for the split: the main process never waits on a script, so the home screen
+stays.
+
 ** Background work at a glance
 
 | What                             | Mechanism                                                    | Code                                         |
 |----------------------------------+--------------------------------------------------------------+----------------------------------------------|
-| scripts on a timer               | WorkManager periodic and daily work → =ScriptWorker=         | [[src:script/ScriptScheduler.kt::object ScriptScheduler][script/ScriptScheduler.kt]]                    |
+| scripts on an interval           | WorkManager periodic work → =ScriptWorker=                   | [[src:script/ScriptScheduler.kt::object ScriptScheduler][script/ScriptScheduler.kt]]                    |
+| scripts at daily times           | AlarmManager → =ScriptAlarmReceiver= → =ScriptRunService=    | [[src:script/ScriptAlarms.kt::object ScriptAlarms][script/ScriptAlarms.kt]]                       |
 | scripts on device events (=@on=) | runtime receivers in the UI process → one-off =ScriptWorker= | [[src:script/TriggerDispatcher.kt::class TriggerDispatcher][script/TriggerDispatcher.kt]]                  |
 | feed refresh                     | WorkManager → =FeedWorker= (main process)                    | [[src:feeds/FeedScheduler.kt::object FeedScheduler][feeds/FeedScheduler.kt]]                       |
 | reminders                        | AlarmManager → =ReminderReceiver=; re-armed after boot       | [[src:productivity/Reminders.kt::object ReminderScheduler][productivity/Reminders.kt]]                    |
@@ -558,13 +566,18 @@ what it's about, long after the command that wrote it has finished.
 ** Trace 3: a timer script prints a line (across processes)
 
 1. When a script is switched on or its timer changes, =ScriptScheduler.sync()= (re)schedules
-   WorkManager work for it. On app start, =LauncherApp= calls =ScriptScheduler.syncAll()=.
+   it: WorkManager periodic work for an interval, an AlarmManager alarm for each daily time
+   (=ScriptAlarms=). On app start, =LauncherApp= calls =ScriptScheduler.syncAll()=.
 2. At the scheduled time, WorkManager starts [[src:script/ScriptWorker.kt::override suspend fun doRemoteWork][ScriptWorker.doRemoteWork()]] in the
-   =:script= process.
-3. The worker builds a [[src:script/HostApi.kt::class HostApi][HostApi]] (everything a script may call: =log=, =notify=, =http=,
-   =store=, ...) and runs the code with =ScriptEngine.forLang(lang)=: =LuaEngine= or
-   =JsEngine=, with a 60-second timeout.
-4. The script calls =log("...")=. [[src:script/HostApi.kt::fun log(text: String][HostApi.log()]] buffers the line and flushes to
+   =:script= process; for a daily time, the alarm's receiver starts =ScriptRunService=, a short
+   foreground service there. Both call =ScriptRun.run=.
+3. It builds a [[src:script/HostApi.kt::class HostApi][HostApi]] (everything a script may call: =log=, =notify=, =http=,
+   =store=, ...), with the script's switches (=ScriptAccess.Grants=) and its secrets' stand-ins,
+   and runs the code with =ScriptEngine.forLang(lang)=: =LuaEngine= or =JsEngine=, for a minute at
+   most. =HostApi= keeps the run's clock (a =sleep= or a request never waits past it) and refuses
+   side effects once the run is over; in JavaScript, =guard.js= (=JsEngine.GUARD=) hands every host
+   function a checked copy of its arguments.
+4. The script calls =log("...")=. [[src:script/HostApi.kt::fun log(raw: String][HostApi.log()]] buffers the line and flushes to
    =LogRepository.add()=.
 5. This =LogRepository= instance lives in =:script=, so =changed()= broadcasts
    =ACTION_LOGS_CHANGED=.
@@ -631,16 +644,16 @@ All app code is under =app/src/main/java/com/mtwabpin/kolahal/=.
 
 Outside =main=:
 
-| Path                               | What                                                                             |
-|------------------------------------+----------------------------------------------------------------------------------|
-| =app/src/test/=                    | about 170 JVM unit tests: fast, no phone needed                                  |
-| =app/src/androidTest/=             | 29 on-device tests (commands, script engines, backup)                            |
+| Path                               | What                                                                                                  |
+|------------------------------------+-------------------------------------------------------------------------------------------------------|
+| =app/src/test/=                    | about 170 JVM unit tests: fast, no phone needed                                                       |
+| =app/src/androidTest/=             | 29 on-device tests (commands, script engines, backup)                                                 |
 | =app/src/play/AndroidManifest.xml= | removes the accessibility service, the notification listener and =READ_CALL_LOG= for the =play= build |
-| =app/src/release/generated/=       | baseline profiles (pre-compiled start-up code)                                   |
-| =baselineprofile/=                 | the module that generates those profiles                                         |
-| =app/src/main/assets/library/=     | the ready-made scripts of the script library; each describes itself (=@title=, =@every=…) |
-| =site/=                            | the website and user guide (Astro + Starlight)                                  |
-| =docs/=                            | notes for the maintainer: this file, and =release/= on building and publishing   |
+| =app/src/release/generated/=       | baseline profiles (pre-compiled start-up code)                                                        |
+| =baselineprofile/=                 | the module that generates those profiles                                                              |
+| =app/src/main/assets/library/=     | the ready-made scripts of the script library; each describes itself (=@title=, =@every=…)             |
+| =site/=                            | the website and user guide (Astro + Starlight)                                                        |
+| =docs/=                            | notes for the maintainer: this file, and =release/= on building and publishing                        |
 
 * Part 6: Where Kolahal bends textbook MVVM (and why)
 
@@ -690,10 +703,10 @@ ANDROID_SERIAL=emulator-5554 ./gradlew connectedDebugAndroidTest   # on-device t
 Set =ANDROID_SERIAL= for the on-device tests; without it, Gradle runs them on every connected
 device, your own phone included.
 
-| Build type | Package suffix | Minified | Differences                                                                                  |
-|------------+----------------+----------+----------------------------------------------------------------------------------------------|
-| =debug=    | =.debug=       | no       | installs beside a release build                                                              |
-| =release=  | none           | yes      | =isMinifyEnabled= and =isShrinkResources=                                                    |
+| Build type | Package suffix | Minified | Differences                                                                                                                                                                        |
+|------------+----------------+----------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| =debug=    | =.debug=       | no       | installs beside a release build                                                                                                                                                    |
+| =release=  | none           | yes      | =isMinifyEnabled= and =isShrinkResources=                                                                                                                                          |
 | =play=     | none           | yes      | release for Google Play, signed with the upload key: =BuildConfig.LOCK_SERVICE=, =NOTIFICATION_ACCESS= and =CALL_LOG= are false; the manifest drops both services and the call log |
 
 Code checks =BuildConfig.LOCK_SERVICE= / =NOTIFICATION_ACCESS= / =CALL_LOG= wherever behaviour
@@ -777,17 +790,17 @@ functions is the quickest way to learn what they promise.
 
 * Glossary of Kolahal terms
 
-| Term           | Meaning                                                                                       |
-|----------------+-----------------------------------------------------------------------------------------------|
-| log            | the =logs= table and the scrolling list on home                                               |
-| line / entry   | one row of the log (=LogEntry=); its =LogContext= says what tapping it does                   |
-| row            | what the list draws (=LogRow=): an entry plus extras such as day separators                   |
-| prompt         | the input line at the bottom                                                                  |
-| chip           | a tappable suggestion or app in a grid                                                        |
-| profile        | Android user profile: personal =[P]=, work =[W]=, private space =[S]=, clone =[C]=            |
-| quiet          | a paused work profile or a locked private space                                               |
-| script command | a user script marked =@command=, runnable from the prompt by name                             |
-| =@on=, =@uses= | script directives: run on a device event; declare access to private data or the local network |
-| fresh screen   | =log.fresh=: home hides old output after a while away (hidden, not deleted)                   |
-| instant run    | =launch.instant=: run without Enter once the input can only mean one thing                    |
+| Term           | Meaning                                                                                                  |
+|----------------+----------------------------------------------------------------------------------------------------------|
+| log            | the =logs= table and the scrolling list on home                                                          |
+| line / entry   | one row of the log (=LogEntry=); its =LogContext= says what tapping it does                              |
+| row            | what the list draws (=LogRow=): an entry plus extras such as day separators                              |
+| prompt         | the input line at the bottom                                                                             |
+| chip           | a tappable suggestion or app in a grid                                                                   |
+| profile        | Android user profile: personal =[P]=, work =[W]=, private space =[S]=, clone =[C]=                       |
+| quiet          | a paused work profile or a locked private space                                                          |
+| script command | a user script marked =@command=, runnable from the prompt by name                                        |
+| =@on=, =@uses= | script directives: run on a device event; declare access to private data or the local network            |
+| fresh screen   | =log.fresh=: home hides old output after a while away (hidden, not deleted)                              |
+| instant run    | =launch.instant=: run without Enter once the input can only mean one thing                               |
 | Play build     | the build for Google Play, without the accessibility service, the notification listener and the call log |

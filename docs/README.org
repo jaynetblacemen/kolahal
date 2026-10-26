@@ -12,3 +12,12 @@ website and user guide are in =site/= (https://mtwabpin.github.io/kolahal/).
   - [[file:release/github-actions.org][github-actions.org]]: the Build, Release and Website workflows.
   - [[file:release/google-play.org][google-play.org]]: the Play build, Play's policy, the store listing and its graphics.
   - [[file:release/notes/][notes/]]: the release notes, one file per version.
+
+Reports from users:
+
+- Security problems arrive privately on GitHub (private vulnerability reporting is on): the
+  repository's Security tab → Advisories. The website's Security page
+  (=site/src/content/docs/reference/security.md=) tells reporters how, and what counts.
+- Bugs come through the issue form in =.github/ISSUE_TEMPLATE/bug_report.yml=; questions go to the
+  Discord server, whose invite is in =ui/About.kt= (=DISCORD_URL=), =site/astro.config.mjs=,
+  =README.org= and =.github/ISSUE_TEMPLATE/config.yml=: change all four together.

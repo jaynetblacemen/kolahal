@@ -16,7 +16,8 @@ Kolahal itself makes network requests in exactly four cases:
    their code. The [library scripts](/scripting/library/) use wttr.in, Open-Meteo,
    CoinGecko, open.er-api.com, api.ipify.org, Wikipedia, xkcd.com, ZenQuotes, Reddit, GitHub
    and hnrss.org. Requests carry a `User-Agent` of `Kolahal-Launcher/0.1` unless the
-   script sets its own. You can switch internet off for any script
+   script sets its own. A script has the internet only if its code makes requests or puts links
+   on its lines, and you can switch it off
    ([switching access off](/scripting/overview/#switching-access-off)).
 2. **Feeds** you subscribe to: one request per feed when it is due.
 3. **Currency conversion** with `= 100 usd in eur`: a request to open.er-api.com for the base
@@ -103,11 +104,13 @@ These are off until you enable them, usually from the [setup checklist](/getting
 
 Notification text read through notification access stays on the device: it goes into the log and
 an in-memory list, and a copy of the 50 most recent is kept so scripts can call
-`notifications.recent()`. A script you write could send that data somewhere, the same as anything
-else it can read, so only install scripts you trust and read the code of ones you get from others.
+`notifications.recent()`: only scripts that ask for it with `@uses notifications` and that you
+allow, and never the private space's notifications. A script could send what it reads somewhere,
+so only install scripts you trust and read the code of ones you get from others.
 Scripts imported from a file or a backup arrive switched off for that reason, and each script's
 access switches take back what it may read.
 
 API keys you set for scripts ([secrets](/scripting/overview/#api-keys-and-other-secrets)) are
-encrypted with a key kept in Android's Keystore and never leave the phone except in the requests
-their script makes: they aren't in backups, exported scripts or the log.
+encrypted with a key kept in Android's Keystore and never leave the phone except in requests to the
+sites their `@secret` line names, over https: the script itself only holds a stand-in. They aren't in
+backups, exported scripts or the log.
