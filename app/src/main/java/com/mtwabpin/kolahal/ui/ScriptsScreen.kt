@@ -632,34 +632,34 @@ private fun ScriptDetails(
 
 /**
  * Back to this version's library copy, [height] tall (as small as a pill in a card): an edited copy's
- * Reset in the error colours, as your edits go (it asks first); an older copy's Update, as nothing of
- * yours does.
+ * Reset, its icon in the error colour as your edits go (it asks first); an older copy's Update, as
+ * nothing of yours does.
  */
 @Composable
 private fun LibraryCopyButton(state: ScriptLibrary.State, height: Dp, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
     val edited = state == ScriptLibrary.State.MODIFIED
-    FilledTonalButton(
+    OutlinedAction(
+        if (edited) "Reset to library version" else "Update from library",
+        R.drawable.ic_refresh,
+        height,
+        iconTint = if (edited) MaterialTheme.colorScheme.error else null,
         onClick = onClick,
-        shapes = ButtonDefaults.shapesFor(height),
-        colors = if (edited) {
-            ButtonDefaults.filledTonalButtonColors(containerColor = colors.errorContainer, contentColor = colors.onErrorContainer)
-        } else ButtonDefaults.filledTonalButtonColors(),
-        contentPadding = ButtonDefaults.contentPaddingFor(height),
-        modifier = Modifier.heightIn(min = height),
-    ) {
-        Icon(painterResource(R.drawable.ic_refresh), null, Modifier.size(ButtonDefaults.iconSizeFor(height)))
-        Spacer(Modifier.width(ButtonDefaults.iconSpacingFor(height)))
-        Text(if (edited) "Reset to library version" else "Update from library", style = ButtonDefaults.textStyleFor(height))
-    }
+    )
 }
 
 /** A library copy that isn't this version's: edited, or from an older Kolahal. */
 private fun ScriptLibrary.State.differs() = this == ScriptLibrary.State.MODIFIED || this == ScriptLibrary.State.UPDATE_AVAILABLE
 
-/** Compare, [height] tall: opens a library copy against the library version. Bright enough on an on script's tinted card. */
+/** Compare, [height] tall: opens a library copy against the library version. */
 @Composable
-private fun CompareButton(height: Dp, onClick: () -> Unit) {
+private fun CompareButton(height: Dp, onClick: () -> Unit) = OutlinedAction("Compare", R.drawable.ic_visibility, height, onClick = onClick)
+
+/**
+ * Compare's and Reset's button, [height] tall: outlined, in the theme's text and outline colours, so it
+ * sits as well on an on script's tinted card as on the page in every theme; [iconTint] only for its icon.
+ */
+@Composable
+private fun OutlinedAction(label: String, icon: Int, height: Dp, iconTint: Color? = null, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     OutlinedButton(
         onClick = onClick,
@@ -669,9 +669,9 @@ private fun CompareButton(height: Dp, onClick: () -> Unit) {
         contentPadding = ButtonDefaults.contentPaddingFor(height),
         modifier = Modifier.heightIn(min = height),
     ) {
-        Icon(painterResource(R.drawable.ic_visibility), null, Modifier.size(ButtonDefaults.iconSizeFor(height)))
+        Icon(painterResource(icon), null, Modifier.size(ButtonDefaults.iconSizeFor(height)), tint = iconTint ?: colors.onSurface)
         Spacer(Modifier.width(ButtonDefaults.iconSpacingFor(height)))
-        Text("Compare", style = ButtonDefaults.textStyleFor(height))
+        Text(label, style = ButtonDefaults.textStyleFor(height))
     }
 }
 
