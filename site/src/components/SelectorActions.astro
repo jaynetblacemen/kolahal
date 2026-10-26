@@ -1,0 +1,116 @@
+---
+/**
+ * App actions while picking (`selector.actions`), drawn: the thumb slid off the edge onto
+ * Chrome's row, with the setting off and with far-side. Always in the app's default "green"
+ * palette, whatever the site theme, like the home screen demo.
+ */
+---
+
+<div class="sa">
+	<figure>
+		<svg viewBox="0 0 240 440" role="img" aria-label="Off: the thumb is on Chrome's row; lifting anywhere on it opens Chrome.">
+			<defs>
+				<pattern id="sa-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+					<line x1="0" y1="0" x2="0" y2="6" class="hatch" />
+				</pattern>
+			</defs>
+			<rect x="4" y="4" width="232" height="432" rx="30" class="body" />
+			<rect x="12" y="12" width="216" height="416" rx="22" class="screen" />
+			<rect x="12" y="60" width="128" height="330" rx="10" class="panel" />
+			<text x="22" y="86" class="row">Calendar</text>
+			<text x="22" y="124" class="row">Camera</text>
+			<rect x="12" y="140" width="128" height="36" class="focus" />
+			<text x="22" y="162" class="focused">Chrome</text>
+			<text x="22" y="200" class="row">Clock</text>
+			<text x="22" y="238" class="row">Contacts</text>
+			<text x="22" y="276" class="row">Drive</text>
+			<text x="22" y="314" class="row">Files</text>
+			<text x="22" y="352" class="row">Gmail</text>
+			<text x="76" y="408" text-anchor="middle" class="near">OPENS APP</text>
+			<line x1="222" y1="220" x2="222" y2="380" class="strip" />
+			<text x="214" y="214" text-anchor="end" class="note">edge</text>
+			<path d="M222 320 C 190 300, 140 190, 104 160" class="path" />
+			<circle cx="100" cy="158" r="17" class="thumb" />
+		</svg>
+		<figcaption><strong>Off</strong> (the default): lift anywhere on the row and the app opens.</figcaption>
+	</figure>
+
+	<figure>
+		<svg viewBox="0 0 240 440" role="img" aria-label="far-side: the list's third farthest from the edge is the far side. The thumb is there on Chrome's row, which says Actions; lifting opens Chrome's actions. The rest of the list still opens the app.">
+			<rect x="4" y="4" width="232" height="432" rx="30" class="body" />
+			<rect x="12" y="12" width="216" height="416" rx="22" class="screen" />
+			<rect x="12" y="60" width="128" height="330" rx="10" class="panel" />
+			<rect x="12" y="60" width="38" height="330" rx="10" class="far-zone" />
+			<line x1="50" y1="60" x2="50" y2="390" class="far-edge" />
+			<text x="31" y="52" text-anchor="middle" class="far">FAR</text>
+			<text x="95" y="52" text-anchor="middle" class="near">NEAR</text>
+			<text x="22" y="86" class="row">Calendar</text>
+			<text x="22" y="124" class="row">Camera</text>
+			<rect x="12" y="140" width="128" height="36" class="focus" />
+			<text x="22" y="162" class="focused">Chrome</text>
+			<text x="134" y="162" text-anchor="end" class="actions">⋯ Actions</text>
+			<text x="22" y="200" class="row">Clock</text>
+			<text x="22" y="238" class="row">Contacts</text>
+			<text x="22" y="276" class="row">Drive</text>
+			<text x="22" y="314" class="row">Files</text>
+			<text x="22" y="352" class="row">Gmail</text>
+			<text x="31" y="408" text-anchor="middle" class="far">ACTIONS</text>
+			<text x="95" y="408" text-anchor="middle" class="near">OPENS APP</text>
+			<line x1="222" y1="220" x2="222" y2="380" class="strip" />
+			<text x="214" y="214" text-anchor="end" class="note">edge</text>
+			<path d="M222 320 C 190 300, 120 190, 36 160" class="path" />
+			<circle cx="32" cy="158" r="17" class="thumb" />
+		</svg>
+		<figcaption><strong><code>far-side</code></strong>: lift in the far third of the list and the app's actions open; anywhere else, the app opens.</figcaption>
+	</figure>
+</div>
+
+<style>
+	/* The app's default "green" palette (ui/Theme.kt), whatever the site theme. */
+	.sa {
+		--k-bg: #0b0d0b;
+		--k-surface: #151915;
+		--k-fg: #d7ded3;
+		--k-dim: #7f8a7b;
+		--k-prompt: #8fd18a;
+		--k-work: #f2b35b;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 1.5rem;
+		justify-content: center;
+		margin-block: 1.5rem;
+	}
+	figure {
+		margin: 0;
+		flex: 1 1 15rem;
+		max-width: 18rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+	svg {
+		width: 100%;
+		height: auto;
+	}
+	figcaption {
+		font-size: var(--sl-text-sm);
+		line-height: 1.5;
+		color: var(--sl-color-gray-2);
+	}
+	.body { fill: #232a22; }
+	.screen { fill: var(--k-bg); }
+	.panel { fill: var(--k-surface); stroke: rgba(215, 222, 211, 0.16); stroke-width: 1; }
+	.row { fill: var(--k-dim); font-family: var(--sl-font-mono); font-size: 12px; }
+	.focus { fill: rgba(143, 209, 138, 0.18); }
+	.focused { fill: var(--k-prompt); font-family: var(--sl-font-mono); font-size: 12px; font-weight: 700; }
+	.actions { fill: var(--k-prompt); font-family: var(--sl-font-mono); font-size: 10px; }
+	.strip { stroke: var(--k-dim); stroke-width: 4; stroke-linecap: round; }
+	.path { fill: none; stroke: var(--k-dim); stroke-width: 1.5; stroke-dasharray: 4 4; }
+	.thumb { fill: var(--k-fg); fill-opacity: 0.16; stroke: var(--k-fg); stroke-width: 1.5; stroke-opacity: 0.6; }
+	.hatch { stroke: var(--k-work); stroke-width: 1.2; opacity: 0.55; }
+	.far-zone { fill: url(#sa-hatch); }
+	.far-edge { stroke: var(--k-work); stroke-width: 1.5; stroke-dasharray: 3 3; }
+	.far { fill: var(--k-work); font-family: var(--sl-font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.06em; }
+	.near { fill: var(--k-prompt); font-family: var(--sl-font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.06em; }
+	.note { fill: var(--k-dim); font-family: var(--sl-font-mono); font-size: 10px; }
+</style>

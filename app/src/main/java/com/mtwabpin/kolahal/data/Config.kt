@@ -158,7 +158,7 @@ object Keys {
     )
 
     /** Settings only `config` changes: the Settings screen leaves them out. */
-    val CONFIG_ONLY: Set<ConfigKey<*>> = setOf(LOG_KEEP_LINES, THEME_PAPER, SELECTOR_AIM, SELECTOR_AIM_SPEED)
+    val CONFIG_ONLY: Set<ConfigKey<*>> = setOf(LOG_KEEP_LINES, THEME_PAPER, SELECTOR_AIM, SELECTOR_AIM_SPEED, SELECTOR_ACTIONS)
 
     /** A setting by name; an old name ([RENAMED]) finds the setting under its new one. */
     fun byName(name: String): ConfigKey<*>? {

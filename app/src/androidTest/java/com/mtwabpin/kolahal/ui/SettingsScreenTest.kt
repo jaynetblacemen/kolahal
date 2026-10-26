@@ -169,7 +169,7 @@ class SettingsScreenTest {
     /** The app selector has a page of its own, apart from Typing; its settings show once it is on. */
     @Test fun theAppSelectorHasItsOwnPage() {
         assertTrue(allCategories().first { it.id == "typing" }.keys.none { it.key.startsWith("selector.") })
-        // All of them but the ones only `config set` changes (selector.aim and selector.aim-speed).
+        // All of them but the ones only `config set` changes (selector.aim, selector.aim-speed, selector.actions).
         assertTrue(Keys.ALL.filter { it.key.startsWith("selector.") && it !in Keys.CONFIG_ONLY }.all { it in allCategories().first { c -> c.id == "selector" }.keys })
         show("selector")
         compose.onNodeWithText(Keys.SELECTOR_RAIL.key, useUnmergedTree = true).assertExists()

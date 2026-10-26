@@ -5,6 +5,7 @@ description: The prompt, suggestions, launching apps, the log, tap and long-pres
 
 import { Image } from 'astro:assets';
 import terminal from '../../../assets/terminal-feeds.png';
+import SelectorActions from '../../../components/SelectorActions.astro';
 
 <Image src={terminal} alt="The Kolahal home screen: header with clock and status, feed lines and a unit conversion in the log, and the prompt" class="shot shot-single" width={320} />
 
@@ -129,9 +130,8 @@ Once your thumb is down, it slides over the whole length.
   marks leaving the edge or coming back to it, and a lighter tick marks each app you pass. Or hold
   still on an app: its row fills, and when it's full, after most of a second, the app launches
   without your lifting. Moving clears the fill. An app's actions (the same sheet as long-pressing
-  it) are in the list you leave open; with **App actions while picking** set to `far-side`
-  (`selector.actions`), lifting on the list's far side, where the row says ⋯ Actions, opens them
-  too. To back out without launching, slide back onto the edge before you lift.
+  it) are in the list you leave open, or, if you turn on [actions while picking](#app-actions-while-picking),
+  under your thumb as you pick. To back out without launching, slide back onto the edge before you lift.
 - **Lift on the edge** and the panel stays open as a normal list (with **Only the letter's apps**,
   just those), a tapped letter's apps still beside it. It widens almost to the edge, so your thumb
   reaches every row, the top ones too, from its own side: fling it, tap an app to launch, long-press for
@@ -140,6 +140,19 @@ Once your thumb is down, it slides over the whole length.
 
 Android lets an app keep at most 200dp of each screen edge from the back gesture, so only the
 middle 200dp of the edge does; above and below it a swipe in from the edge still goes back.
+
+#### App actions while picking
+
+Off unless you turn it on with `config set selector.actions far-side` (and `off` to turn it back
+off); it isn't in Settings. It changes what lifting does once you've slid off the edge onto the
+list. The third of the list farthest from your thumb's edge becomes its **far side**: slide on into
+it and a short buzz marks it, the row you're on says **⋯ Actions**, and lifting there opens that
+app's actions (the same sheet as long-pressing it) instead of the app. Holding still there doesn't
+launch it either. Anywhere else on the list, lifting launches the app as usual. With the selector
+on the left edge it's mirrored: the list opens on the right, and its far side is its right-hand
+third.
+
+<SelectorActions />
 
 ## The log
 
