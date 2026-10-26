@@ -334,7 +334,10 @@ class AppSelectorTest {
         assertTrue("more than the first letter's apps", panelRows() > letterApps(last = false).size)
     }
 
-    /** While the thumb is down home dims and the list narrows, so the wave swings out clear of it; left open, the list widens for the names. */
+    /**
+     * While the thumb is down home dims and the list narrows, so the wave swings out clear of it; left open, the list
+     * widens nearly to the strip, so a thumb at the edge reaches every row.
+     */
     @Test fun homeDimsAndTheListNarrowsWhileSliding() {
         show(left = false, position = "bottom")
         compose.onAllNodesWithTag("app-selector-scrim").assertCountEquals(0)
@@ -345,9 +348,9 @@ class AppSelectorTest {
         compose.onNodeWithTag("app-selector").performTouchInput { up() }
         compose.waitForIdle()
         val open = compose.onNodeWithTag("app-selector-panel").getUnclippedBoundsInRoot().let { (it.right - it.left).value }
-        // 55% of the width, but at least 200dp.
+        // 55% of the width, but at least 200dp; open, all but the 36dp strip and an 8dp gap.
         assertEquals(200f, sliding, 1f)
-        assertEquals(360 * 0.7f, open, 1f)
+        assertEquals(360f - 36f - 8f, open, 1f)
     }
 
     /** Keyboard up (inactive): nothing shows and an open list closes; down again, it is back as it was. */
@@ -396,6 +399,25 @@ class AppSelectorTest {
 
     /** The centre of the row showing [label], from the top (dp). */
     private fun rowCentre(label: String) = compose.onNodeWithText(label, useUnmergedTree = true).getUnclippedBoundsInRoot().let { (it.top + it.bottom).value / 2 }
+
+    /** Sliding to another letter, its apps glide to their place beside it rather than jumping there. */
+    @Test fun theListGlidesToANewLetter() {
+        // Few enough to fit: the panel itself moves, and the first app's row is always there to measure.
+        val list = apps.apps.value.filter { !it.hidden }.take(10)
+        val first = SelectorMath.build(list, { it.label }, { it.key }, { false }, { it.profile.kind.ordinal }).first().item.label
+        show(left = false, position = "bottom", list = list)
+        compose.onNodeWithTag("app-selector").performTouchInput { down(Offset(centerX, height - 2f)) }
+        compose.waitForIdle()
+        val from = rowCentre(first)
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithTag("app-selector").performTouchInput { moveTo(Offset(centerX, 2f)) }
+        repeat(3) { compose.mainClock.advanceTimeByFrame() }
+        val on = rowCentre(first)
+        compose.mainClock.advanceTimeBy(1_000)
+        val to = rowCentre(first)
+        compose.mainClock.autoAdvance = true
+        assertTrue("on its way from $from to $to: $on", on in minOf(from, to) + 1f..maxOf(from, to) - 1f)
+    }
 
     /**
      * Tapping a letter: its first app starts level with it, and stays there once the thumb lifts, even

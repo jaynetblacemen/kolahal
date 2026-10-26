@@ -49,6 +49,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -87,8 +88,10 @@ import com.mtwabpin.kolahal.apps.AppEntry
 import com.mtwabpin.kolahal.apps.ProfileKind
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.Normalizer
 import kotlin.math.PI
@@ -494,6 +497,10 @@ private class SelectorState {
 }
 
 private val ROW_H = 38.dp
+/** Left open, the panel stops this far short of the strip. */
+private val OPEN_GAP = 8.dp
+/** How the list glides to a new letter's apps while the thumb slides along the edge. */
+private val GLIDE = spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
 /** Past the strip's inner side by this much, the finger is picking from the list, not sliding the edge. */
 private val LEAVE = 32.dp
 private val STRIP_W = 36.dp
@@ -590,6 +597,9 @@ fun AppSelector(
     val sectionLetters = remember(entries) { entries.filter { it.sectionStart }.map { it.section } }
     val state = remember { SelectorState() }
     val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    /** The list's place (as [SelectorState.listY]) while it glides to a new letter's apps. */
+    val glider = remember { Animatable(0f) }
     val haptics = LocalHapticFeedback.current
     val density = LocalDensity.current
     val launch by rememberUpdatedState(onLaunch)
@@ -664,9 +674,9 @@ fun AppSelector(
         val panelTopPx = panelTop(shown.size)
         val stripWPx = with(density) { STRIP_W.toPx() }
         // On the other side from the strip: narrower while the thumb is down, so the wave and the
-        // bubble swing out clear of it, and wider once left open, for the names.
-        val wideW = with(density) { (containerW * 0.7f).toDp() }.coerceAtLeast(220.dp)
-            .coerceAtMost(maxWidth - STRIP_W - 24.dp)
+        // bubble swing out clear of it, and once left open nearly to the strip, so a thumb at the
+        // edge reaches every row (a row takes a tap anywhere along it), the top ones too.
+        val wideW = maxWidth - STRIP_W - OPEN_GAP
         val narrowW = with(density) { (containerW * 0.55f).toDp() }.coerceAtLeast(minOf(200.dp, wideW)).coerceAtMost(wideW)
         val panelW by animateDpAsState(if (state.mode == Mode.OPEN) wideW else narrowW, tween(160), label = "panel")
         val panelWPx = with(density) { panelW.toPx() }
@@ -925,14 +935,28 @@ fun AppSelector(
                         // Letters: the one the thumb is on, and what the panel lists for it.
                         var onLetter = -1
                         var list = entries
+                        // The list gliding to a new letter's apps.
+                        var glide: Job? = null
+
+                        // The list drawn [scroll] px down, the panel moved [shift] px for what scrolling couldn't do.
+                        fun show(scroll: Float, shift: Float) {
+                            state.scrollPx = scroll
+                            state.shiftPx = shift
+                            listState.scrollToPx(scroll, rowPx)
+                        }
 
                         fun update(now: Long) {
                             val cy = stripTopPx + y
                             state.fingerY = cy
+                            // A new letter's apps glide in from where the list is drawn; off the edge the
+                            // list is where the letter put it, a glide still under way ended there at once.
+                            var newLetter = false
+                            if (selecting) glide?.cancel()
                             if (!selecting) {
                                 // A letter at a time along the edge; the list moves only when it changes.
                                 val l = SelectorMath.letterAt(SelectorMath.alongLetters(y / stripHPx, letterCount), onLetter, letterCount)
                                 if (l != onLetter) {
+                                    newLetter = onLetter >= 0
                                     onLetter = l
                                     state.letter = l
                                     list = if (onlyLetter) entries.subList(starts[l], starts[l + 1]) else entries
@@ -956,11 +980,29 @@ fun AppSelector(
                             }
                             // Scrolled, and past the list's ends the panel moved; a letter's apps on
                             // their own stay on screen.
-                            val (scroll, shift) = SelectorMath.place(state.listY, SelectorMath.maxScroll(n, rowPx.toFloat(), panelH))
-                            state.scrollPx = scroll
-                            state.shiftPx = if (onlyLetter) SelectorMath.keepOnScreen(shift, panelH, listHPx) else shift
-                            state.listY = scroll - state.shiftPx
-                            listState.scrollToPx(state.scrollPx, rowPx)
+                            val maxScrollPx = SelectorMath.maxScroll(n, rowPx.toFloat(), panelH)
+                            val (scroll, shift) = SelectorMath.place(state.listY, maxScrollPx)
+                            val shiftOn = if (onlyLetter) SelectorMath.keepOnScreen(shift, panelH, listHPx) else shift
+                            state.listY = scroll - shiftOn
+                            when {
+                                // Along the edge, a new letter: the list glides there rather than jumping (a
+                                // letter's apps on their own are a new list, shown at once).
+                                newLetter && !onlyLetter -> {
+                                    val from = state.scrollPx - state.shiftPx
+                                    val fresh = glide?.isActive != true
+                                    val to = state.listY
+                                    glide = scope.launch {
+                                        if (fresh) glider.snapTo(from)
+                                        glider.animateTo(to, GLIDE) {
+                                            val (s, sh) = SelectorMath.place(value, maxScrollPx)
+                                            show(s, sh)
+                                        }
+                                    }
+                                }
+                                // Still gliding to the letter the thumb is on.
+                                !selecting && glide?.isActive == true -> Unit
+                                else -> show(scroll, shiftOn)
+                            }
                             // Picking: the app level with the finger, as it moves up and down. Along the
                             // edge no app is at the thumb yet: the letter is.
                             state.contact = if (!selecting) Float.NaN else SelectorMath.contact(state.listY, yIn, rowPx.toFloat())
@@ -1075,6 +1117,11 @@ fun AppSelector(
                                         // there with room at its ends, so it still scrolls to every app.
                                         state.contact = Float.NaN
                                         if (!onlyLetter) {
+                                            if (glide?.isActive == true) {
+                                                glide?.cancel()
+                                                val (s, sh) = SelectorMath.place(state.listY, SelectorMath.maxScroll(list.size, rowPx.toFloat(), panelH(list.size)))
+                                                show(s, sh)
+                                            }
                                             val (top, bottom, scroll) = SelectorMath.keepInPlace(state.scrollPx, state.shiftPx)
                                             state.padTop = top
                                             state.padBottom = bottom
@@ -1103,6 +1150,8 @@ fun AppSelector(
                         } catch (e: CancellationException) {
                             state.close()
                             throw e
+                        } finally {
+                            glide?.cancel()
                         }
                     }
                 },
