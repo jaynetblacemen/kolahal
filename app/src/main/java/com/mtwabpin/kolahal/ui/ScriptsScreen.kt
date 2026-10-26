@@ -684,10 +684,13 @@ private fun OutlinedAction(label: String, icon: Int, height: Dp, iconTint: Color
 @Composable
 private fun CompareDialog(vm: TerminalViewModel, s: Script, lib: LibRow, onDismiss: () -> Unit, onReset: () -> Unit) {
     val colors = MaterialTheme.colorScheme
-    val hunks by produceState<List<LineDiff.Hunk>?>(null, s.code, lib.entry) {
+    // Read here, outside the dialog's own composition, and handed in: its counts and its lines then
+    // change together (read inside it, the lines could show while the counts stayed at 0).
+    val hunks = produceState<List<LineDiff.Hunk>?>(null, s.code, lib.entry) {
         value = withContext(Dispatchers.IO) { LineDiff.hunks(LineDiff.lines(vm.library.code(lib.entry), s.code)) }
-    }
-    fun count(kind: LineDiff.Kind) = hunks.orEmpty().sumOf { h -> h.lines.count { it.kind == kind } }
+    }.value
+    val removed = hunks.orEmpty().sumOf { h -> h.lines.count { it.kind == LineDiff.Kind.REMOVED } }
+    val added = hunks.orEmpty().sumOf { h -> h.lines.count { it.kind == LineDiff.Kind.ADDED } }
     fun lines(n: Int) = if (n == 1) "1 line" else "$n lines"
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(color = colors.surface, modifier = Modifier.fillMaxSize().testTag("compare")) {
@@ -707,8 +710,8 @@ private fun CompareDialog(vm: TerminalViewModel, s: Script, lib: LibRow, onDismi
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
-                    DiffKey("- ${lines(count(LineDiff.Kind.REMOVED))} only in the library version", colors.errorContainer)
-                    DiffKey("+ ${lines(count(LineDiff.Kind.ADDED))} only in yours", colors.primaryContainer)
+                    DiffKey("- ${lines(removed)} only in the library version", colors.errorContainer)
+                    DiffKey("+ ${lines(added)} only in yours", colors.primaryContainer)
                 }
                 LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(vertical = 8.dp)) {
                     val shown = hunks
