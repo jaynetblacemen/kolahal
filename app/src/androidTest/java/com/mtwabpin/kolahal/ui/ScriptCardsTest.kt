@@ -127,8 +127,9 @@ class ScriptCardsTest {
         show()
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Compare"))
         compose.onNodeWithText("Compare").performClick()
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("-- mine").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("+ 1 line only in yours").assertExists()
+        // The counts can come a frame after the lines: wait for them.
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("+ 1 line only in yours").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("-- mine").assertExists()
         compose.onNodeWithText("- 0 lines only in the library version").assertExists()
         compose.onNode(hasText("Reset to library version") and hasAnyAncestor(hasTestTag("compare"))).performClick()
         compose.onNodeWithText("Reset countdown.lua?").assertExists()
