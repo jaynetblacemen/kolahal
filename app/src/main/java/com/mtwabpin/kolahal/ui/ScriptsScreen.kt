@@ -2,6 +2,7 @@ package com.mtwabpin.kolahal.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.imePadding
@@ -93,6 +95,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.data.Config
@@ -102,6 +106,7 @@ import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.data.shortTime
 import com.mtwabpin.kolahal.script.ScriptAccess
 import com.mtwabpin.kolahal.script.ScriptCatalog
+import com.mtwabpin.kolahal.script.LineDiff
 import com.mtwabpin.kolahal.script.ScriptLibrary
 import com.mtwabpin.kolahal.script.ScriptMeta
 import com.mtwabpin.kolahal.script.ScriptNames
@@ -176,6 +181,8 @@ fun ScriptsScreen(
     var sheetId by rememberSaveable { mutableStateOf<Long?>(null) }
     var consentFor by remember { mutableStateOf<Script?>(null) }
     var resetting by remember { mutableStateOf<LibRow?>(null) }
+    // The script whose copy Compare shows against the library version.
+    var comparing by remember { mutableStateOf<Long?>(null) }
     var filters by rememberSaveable { mutableStateOf(listOf<String>()) }
     var query by rememberSaveable { mutableStateOf("") }
     var searching by rememberSaveable { mutableStateOf(false) }
@@ -192,6 +199,11 @@ fun ScriptsScreen(
     // Switching on a script that declares what nobody allowed yet asks first, with everything on.
     fun setEnabled(s: Script, on: Boolean) {
         if (on && s.grants.undecided.isNotEmpty()) consentFor = s else vm.setScriptEnabled(s, on)
+    }
+
+    // Back to the library version: an edited copy's edits go, so it asks first; an older copy of yours had none.
+    fun resetFromLibrary(row: LibRow) {
+        if (row.state == ScriptLibrary.State.MODIFIED) resetting = row else vm.installFromLibrary(row.entry)
     }
 
     // The library scripts and their directives come from assets; read them off the main thread.
@@ -354,11 +366,8 @@ fun ScriptsScreen(
                             onRun = { vm.runScriptNow(s) },
                             onAccess = { item, on -> vm.setScriptAccess(s, item, on) },
                             onNotify = { vm.setScriptNotify(s, it) },
-                            onReset = {
-                                val lib = libByName[s.name] ?: return@ScriptCard
-                                // Edits are lost: ask first. An older copy of yours had none.
-                                if (lib.state == ScriptLibrary.State.MODIFIED) resetting = lib else vm.installFromLibrary(lib.entry)
-                            },
+                            onCompare = { comparing = s.id },
+                            onReset = { libByName[s.name]?.let(::resetFromLibrary) },
                         )
                     }
                 }
@@ -396,6 +405,12 @@ fun ScriptsScreen(
 
         resetting?.let { lib ->
             ResetDialog(lib, onDismiss = { resetting = null }) { resetting = null; vm.installFromLibrary(lib.entry) }
+        }
+
+        val compared = comparing?.let { id -> scripts.firstOrNull { it.id == id } }
+        val comparedLib = compared?.let { libByName[it.name] }?.takeIf { it.state.differs() }
+        if (compared != null && comparedLib != null) {
+            CompareDialog(vm, compared, comparedLib, onDismiss = { comparing = null }) { comparing = null; resetFromLibrary(comparedLib) }
         }
 
         consentFor?.let { s ->
@@ -473,6 +488,7 @@ private fun ScriptCard(
     onRun: () -> Unit,
     onAccess: (String, Boolean) -> Unit,
     onNotify: (Boolean) -> Unit,
+    onCompare: () -> Unit,
     onReset: () -> Unit,
 ) {
     val s = info.script
@@ -533,15 +549,15 @@ private fun ScriptCard(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 20.dp, end = 8.dp),
             )
-            if (expanded) ScriptDetails(info, line, secretsSet, library, onAccess, onNotify, onReset)
+            if (expanded) ScriptDetails(info, line, secretsSet, library, onAccess, onNotify, onCompare, onReset)
         }
     }
 }
 
 /**
  * A card's details: its header line, description, next run and usage, a pill for each thing it may
- * do (on or off, a tap switches it), its secrets, and Reset or Update for an edited or older library
- * copy.
+ * do (on or off, a tap switches it), its secrets, and for an edited or older library copy, Compare
+ * and Reset or Update.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -552,6 +568,7 @@ private fun ScriptDetails(
     library: ScriptLibrary.State?,
     onAccess: (String, Boolean) -> Unit,
     onNotify: (Boolean) -> Unit,
+    onCompare: () -> Unit,
     onReset: () -> Unit,
 ) {
     val s = info.script
@@ -603,9 +620,12 @@ private fun ScriptDetails(
         }
         // The last run's failure, worded as the editor words it ("Line 7: …", "Stopped: …").
         if (s.failed()) Text(EditorLogic.runResult(s.lastStatus, com.mtwabpin.kolahal.script.ScriptWorker.TIMEOUT_MS / 1000, tapHint = false).text, style = MaterialTheme.typography.bodySmall, color = colors.error)
-        // A library script edited, or from an older Kolahal: back to this version's copy.
-        if (library == ScriptLibrary.State.MODIFIED || library == ScriptLibrary.State.UPDATE_AVAILABLE) {
-            LibraryCopyButton(library, ButtonDefaults.ExtraSmallContainerHeight, onReset)
+        // A library script edited, or from an older Kolahal: how it differs, and back to this version's copy.
+        if (library != null && library.differs()) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                CompareButton(ButtonDefaults.ExtraSmallContainerHeight, onCompare)
+                LibraryCopyButton(library, ButtonDefaults.ExtraSmallContainerHeight, onReset)
+            }
         }
     }
 }
@@ -630,7 +650,115 @@ private fun LibraryCopyButton(state: ScriptLibrary.State, height: Dp, onClick: (
     ) {
         Icon(painterResource(R.drawable.ic_refresh), null, Modifier.size(ButtonDefaults.iconSizeFor(height)))
         Spacer(Modifier.width(ButtonDefaults.iconSpacingFor(height)))
-        Text(if (edited) "Reset to the library's" else "Update from library", style = ButtonDefaults.textStyleFor(height))
+        Text(if (edited) "Reset to library version" else "Update from library", style = ButtonDefaults.textStyleFor(height))
+    }
+}
+
+/** A library copy that isn't this version's: edited, or from an older Kolahal. */
+private fun ScriptLibrary.State.differs() = this == ScriptLibrary.State.MODIFIED || this == ScriptLibrary.State.UPDATE_AVAILABLE
+
+/** Compare, [height] tall: opens a library copy against the library version. Bright enough on an on script's tinted card. */
+@Composable
+private fun CompareButton(height: Dp, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    OutlinedButton(
+        onClick = onClick,
+        shapes = ButtonDefaults.shapesFor(height),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.onSurface),
+        border = BorderStroke(1.dp, colors.outline),
+        contentPadding = ButtonDefaults.contentPaddingFor(height),
+        modifier = Modifier.heightIn(min = height),
+    ) {
+        Icon(painterResource(R.drawable.ic_visibility), null, Modifier.size(ButtonDefaults.iconSizeFor(height)))
+        Spacer(Modifier.width(ButtonDefaults.iconSpacingFor(height)))
+        Text("Compare", style = ButtonDefaults.textStyleFor(height))
+    }
+}
+
+/**
+ * Compare: your copy of a library script against the library version. Its changed lines with three
+ * unchanged ones around each, those only in the library version in red and those only in yours in
+ * the theme's colour, the rest counted; Reset (or Update) from there.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CompareDialog(vm: TerminalViewModel, s: Script, lib: LibRow, onDismiss: () -> Unit, onReset: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val hunks by produceState<List<LineDiff.Hunk>?>(null, s.code, lib.entry) {
+        value = withContext(Dispatchers.IO) { LineDiff.hunks(LineDiff.lines(vm.library.code(lib.entry), s.code)) }
+    }
+    fun count(kind: LineDiff.Kind) = hunks.orEmpty().sumOf { h -> h.lines.count { it.kind == kind } }
+    fun lines(n: Int) = if (n == 1) "1 line" else "$n lines"
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(color = colors.surface, modifier = Modifier.fillMaxSize().testTag("compare")) {
+            Column(Modifier.safeDrawingPadding()) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 4.dp, top = 8.dp, end = 16.dp)) {
+                    IconButton(onClick = onDismiss) { Icon(painterResource(R.drawable.ic_close), contentDescription = "Close") }
+                    Text(
+                        "${s.name}.${s.lang.ext}",
+                        style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Monospace),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                // What the colours mean, with how many lines each.
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    DiffKey("- ${lines(count(LineDiff.Kind.REMOVED))} only in the library version", colors.errorContainer)
+                    DiffKey("+ ${lines(count(LineDiff.Kind.ADDED))} only in yours", colors.primaryContainer)
+                }
+                LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(vertical = 8.dp)) {
+                    val shown = hunks
+                    if (shown != null && shown.isEmpty()) item {
+                        Text("No differences", color = colors.onSurfaceVariant, modifier = Modifier.padding(16.dp))
+                    }
+                    shown.orEmpty().forEach { hunk ->
+                        if (hunk.skipped > 0) item {
+                            Text(
+                                "⋯ ${lines(hunk.skipped)} the same",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = colors.outline,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            )
+                        }
+                        items(hunk.lines) { DiffLine(it) }
+                    }
+                }
+                Row(Modifier.padding(16.dp)) { LibraryCopyButton(lib.state, ButtonDefaults.MinHeight, onReset) }
+            }
+        }
+    }
+}
+
+/** What a colour in Compare means. */
+@Composable
+private fun DiffKey(label: String, color: Color) {
+    Surface(shape = MaterialTheme.shapes.small, color = color) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+    }
+}
+
+/** One line in Compare: - and red only in the library version, + and the theme's colour only in yours; a long one wraps under its text. */
+@Composable
+private fun DiffLine(line: LineDiff.Line) {
+    val colors = MaterialTheme.colorScheme
+    val (sign, background) = when (line.kind) {
+        LineDiff.Kind.REMOVED -> "-" to colors.errorContainer
+        LineDiff.Kind.ADDED -> "+" to colors.primaryContainer
+        LineDiff.Kind.SAME -> " " to Color.Transparent
+    }
+    val style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
+    val color = if (line.kind == LineDiff.Kind.SAME) colors.onSurfaceVariant else colors.onSurface
+    Row(Modifier.fillMaxWidth().background(background).padding(horizontal = 16.dp, vertical = 1.dp)) {
+        Text("$sign ", style = style, color = color)
+        Text(line.text.replace("\t", "    "), style = style, color = color, modifier = Modifier.weight(1f))
     }
 }
 
@@ -742,6 +870,11 @@ private fun ScriptSheet(
     val state = rememberBottomSheetState(SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
     var confirmDelete by remember(s.id) { mutableStateOf(false) }
     var confirmReplace by remember(s.id) { mutableStateOf(false) }
+    var comparing by remember(s.id) { mutableStateOf(false) }
+    // Back to the library version: an edited copy's edits go, so it asks first; an older copy of yours had none.
+    fun resetFromLibrary(row: LibRow) {
+        if (row.state == ScriptLibrary.State.MODIFIED) confirmReplace = true else vm.installFromLibrary(row.entry)
+    }
     var times by remember(s.id, s.atTimes) { mutableStateOf(s.atTimes.joinToString(", ")) }
     var pickingTime by remember(s.id) { mutableStateOf(false) }
     var timesError by remember(s.id) { mutableStateOf(false) }
@@ -922,13 +1055,9 @@ private fun ScriptSheet(
                 sharedUpdate?.let { e ->
                     FilledTonalButton(onClick = { vm.installSharedScript(e) }) { Text("Update to ${e.version}") }
                 }
-                when (lib?.state) {
-                    // Unedited copy of an older library version: nothing of yours is lost.
-                    ScriptLibrary.State.UPDATE_AVAILABLE ->
-                        LibraryCopyButton(lib.state, ButtonDefaults.MinHeight) { vm.installFromLibrary(lib.entry) }
-                    ScriptLibrary.State.MODIFIED ->
-                        LibraryCopyButton(lib.state, ButtonDefaults.MinHeight) { confirmReplace = true }
-                    else -> Unit
+                if (lib != null && lib.state.differs()) {
+                    CompareButton(ButtonDefaults.MinHeight) { comparing = true }
+                    LibraryCopyButton(lib.state, ButtonDefaults.MinHeight) { resetFromLibrary(lib) }
                 }
                 TextButton(
                     onClick = { confirmDelete = true },
@@ -961,6 +1090,10 @@ private fun ScriptSheet(
         ResetDialog(lib, onDismiss = { confirmReplace = false }) { confirmReplace = false; vm.installFromLibrary(lib.entry) }
     }
 
+    if (comparing && lib != null && lib.state.differs()) {
+        CompareDialog(vm, s, lib, onDismiss = { comparing = false }) { comparing = false; resetFromLibrary(lib) }
+    }
+
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
@@ -978,13 +1111,13 @@ private fun ScriptSheet(
     }
 }
 
-/** Resetting an edited library script to the library's copy: the edits go, so it asks first. */
+/** Resetting an edited library script to the library version: the edits go, so it asks first. */
 @Composable
 private fun ResetDialog(lib: LibRow, onDismiss: () -> Unit, onReset: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Reset ${lib.entry.file}?") },
-        text = { Text("Your copy differs from the library's. Its code becomes the library's and your changes are lost; its timers and switches stay. Export it first to keep a copy.") },
+        text = { Text("Your copy differs from the library version. Its code becomes the library version's and your changes are lost; its timers and switches stay. Export it first to keep a copy.") },
         confirmButton = {
             TextButton(onClick = onReset, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Reset") }
         },

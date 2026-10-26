@@ -65,7 +65,8 @@ and its on/off switch; an on script's card is tinted in the theme's colour, an o
 arrow on a card, or the one at the top for all of them, shows its details: its header line, next
 run, usage, and a pill for everything it may do (internet, its header line, notifications, what it
 declares, its events): filled in the theme's colour when on, faded when off, and a tap switches it.
-A library script you edited (its summary says "edited") gets **Reset to the library's** there too.
+A library script you edited (its summary says "edited") gets **Compare** and **Reset to library
+version** there too.
 Chips filter the cards (commands, timers, events, in the header, failed, off, needs a key, differs
 from the library, and what they use), and the search icon finds one by name.
 Tap a card for **Run**, **Edit**, **Export**, access, notifications, timers and **Delete**.

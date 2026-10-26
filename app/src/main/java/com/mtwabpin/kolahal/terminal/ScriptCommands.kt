@@ -107,7 +107,7 @@ class ScriptCommands(
                 // that name) is only replaced when asked.
                 if ("--replace" !in args && lib.state(entry, scripts.all()) == ScriptLibrary.State.MODIFIED) {
                     return error(
-                        "Your ${entry.name}.${entry.lang.ext} differs from the library's: " +
+                        "Your ${entry.name}.${entry.lang.ext} differs from the library version: " +
                             "'script install ${entry.name} --replace' replaces it (export it first to keep a copy)"
                     )
                 }

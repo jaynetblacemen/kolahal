@@ -2,9 +2,12 @@ package com.mtwabpin.kolahal.ui
 
 import android.app.Application
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -26,8 +29,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The script manager's cards: their pills switch what a script may do; Reset brings the library's copy back; a chip
- * finds the library copies that differ.
+ * The script manager's cards: their pills switch what a script may do; Reset brings the library version back; a chip
+ * finds the library copies that differ, and Compare shows how.
  */
 @RunWith(AndroidJUnit4::class)
 class ScriptCardsTest {
@@ -106,13 +109,31 @@ class ScriptCardsTest {
         val s = library.install(entry)
         scripts.saveCode(s.id, library.code(entry) + "\n-- mine", byUser = true)
         show()
-        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Reset to the library's"))
-        compose.onNodeWithText("Reset to the library's").performClick()
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Reset to library version"))
+        compose.onNodeWithText("Reset to library version").performClick()
         // Edits would be lost: it asks first.
         compose.onNodeWithText("Reset countdown.lua?").assertExists()
         assertFalse(scripts.byId(s.id)!!.code == library.code(entry))
         compose.onNodeWithText("Reset").performClick()
-        waitFor("the library's copy") { scripts.byId(s.id)!!.code == library.code(entry) }
+        waitFor("the library version") { scripts.byId(s.id)!!.code == library.code(entry) }
         assertEquals(ScriptLibrary.State.INSTALLED, library.state(entry, scripts.all()))
+    }
+
+    /** Compare shows the line only in your copy, counted, and resets from there after asking. */
+    @Test fun compareShowsYourLinesAndResetsFromThere() {
+        val entry = library.entries.single { it.name == "countdown" }
+        val s = library.install(entry)
+        scripts.saveCode(s.id, library.code(entry) + "-- mine\n", byUser = true)
+        show()
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Compare"))
+        compose.onNodeWithText("Compare").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("-- mine").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("+ 1 line only in yours").assertExists()
+        compose.onNodeWithText("- 0 lines only in the library version").assertExists()
+        compose.onNode(hasText("Reset to library version") and hasAnyAncestor(hasTestTag("compare"))).performClick()
+        compose.onNodeWithText("Reset countdown.lua?").assertExists()
+        compose.onNodeWithText("-- mine").assertDoesNotExist()
+        compose.onNodeWithText("Reset").performClick()
+        waitFor("the library version") { scripts.byId(s.id)!!.code == library.code(entry) }
     }
 }
