@@ -1,8 +1,10 @@
 #+TITLE: Kolahal on Google Play
 #+STARTUP: showall
 
-Kolahal isn't on Google Play yet (22 October 2026). This is what is ready, what Play's policy
-asked for, and the steps left.
+Kolahal is in internal testing on Google Play: the first bundle (0.4.6-dev, versionCode 15, the
+Play build with notification access) was approved there on 26 October 2026. It isn't in closed
+testing or production yet. This is what is ready, what Play's policy asked for, and the steps
+left. The next bundle needs versionCode 16 or higher.
 
 * Before production
 
