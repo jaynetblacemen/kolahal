@@ -71,6 +71,7 @@ export default defineConfig({
 					items: [
 						{ slug: 'getting-started/install' },
 						{ slug: 'getting-started/setup' },
+						{ slug: 'getting-started/parts' },
 						{ slug: 'getting-started/basics' },
 					],
 				},

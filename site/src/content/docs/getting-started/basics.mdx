@@ -6,11 +6,16 @@ description: The prompt, suggestions, launching apps, the log, tap and long-pres
 import { Image } from 'astro:assets';
 import terminal from '../../../assets/terminal-feeds.png';
 import SelectorActions from '../../../components/SelectorActions.astro';
+import ShotRow from '../../../components/ShotRow.astro';
+import selectorSlide from '../../../assets/parts/selector-slide.png';
+import selectorPick from '../../../assets/parts/selector-pick.png';
+import selectorOpen from '../../../assets/parts/selector-open.png';
 
 <Image src={terminal} alt="The Kolahal home screen: header with clock and status, feed lines and a unit conversion in the log, and the prompt" class="shot shot-single" width={320} />
 
 The home screen has four parts, from top to bottom: the **header**, the **log**, the
 **suggestion strip**, and the **prompt** (`$`), with the **key bar** below it while you type.
+[Parts of the app](/getting-started/parts/) shows each one, numbered on the screen.
 
 ## The prompt
 
@@ -93,6 +98,16 @@ drive with one thumb, no typing needed. **Edge** puts it on the right (the defau
 an app keep the back swipe off only 200 dp of an edge, so a touch starts the selector only in the
 middle 200 dp of that length, where the handle is drawn; at the ends the edge swipes back as usual.
 Once your thumb is down, it slides over the whole length.
+
+<ShotRow
+	items={[
+		{ src: selectorSlide, alt: 'Sliding along the right edge at G: the G bubble beside the thumb, Gmail and Google bright in the list', caption: '<strong>1.</strong> Slide along the edge to a letter. Its apps come level with your thumb.' },
+		{ src: selectorPick, alt: 'Picking Gmail in the list: its row magnified and filling', caption: '<strong>2.</strong> Slide off onto the list, move to an app and lift: it opens. Or hold still until its row fills.' },
+		{ src: selectorOpen, alt: 'The app list left open, almost as wide as the screen', caption: '<strong>Or</strong> lift on the edge: the list stays open, wide, for a tap.' },
+	]}
+/>
+
+[Parts of the app](/getting-started/parts/#app-selector) names every part of these screens.
 
 - **Touch the handle's part of the edge.** Home dims, and a panel slides in on the other side of the
   screen, the whole height, listing *all* your apps in one list:

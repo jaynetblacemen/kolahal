@@ -10,9 +10,11 @@ room.
 ## The widgets page
 
 Swipe sideways on home (from the header, empty space or the prompt; a swipe that starts on a log
-line copies or deletes that line instead) to reach the widgets page. **+ add** and **edit** are at
+line copies or deletes that line instead) to reach the widgets page. **+ Add** and **Edit** are at
 the top. Back or Home returns to the terminal. `widgets.page` picks the side (`left`, the default,
 `right`) or turns the page `off`.
+
+![The widgets page with a clock widget, + Add and Edit at the top](../../../assets/parts/widgets-page.png)
 
 The page can show the phone's wallpaper (the one you set in Android) behind the widgets:
 **Settings → Home screen → Wallpaper showing** (`widgets.wallpaper`) is how much of it shows, from

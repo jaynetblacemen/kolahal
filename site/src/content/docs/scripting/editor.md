@@ -5,7 +5,8 @@ description: The built-in script editor, its symbol bar and keyboard shortcuts.
 
 `script edit <name>`, **Edit** in a script's sheet in the script manager, or tapping a script error
 opens the editor: a monospace text area with line numbers and light syntax colouring for Lua and
-JavaScript, in the terminal theme.
+JavaScript, in the terminal theme. [Parts of the app](/getting-started/parts/#script-editor) numbers
+each part of it.
 
 - The title shows `name.lua`, with `*` while there are unsaved changes.
 - **[save]**, **[run]** and **[close]** sit next to it. Run saves first.

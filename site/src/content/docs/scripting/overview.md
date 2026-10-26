@@ -59,7 +59,8 @@ which one it was ([`event.time`](/scripting/api/#event)), and it waits for a net
 script makes requests and there is none.
 
 `script ls` shows every script with its timers, whether it is a command, notification state and the
-last run's result. The script manager (`scripts`, or the **Scripts** tab in Settings) shows a card per
+last run's result. The script manager (`scripts`, or the **Scripts** tab in Settings;
+[its parts, numbered](/getting-started/parts/#scripts-tab)) shows a card per
 script: its title, how it runs and how its last run went (red if it failed), **Run** for a command,
 and its on/off switch; an on script's card is tinted in the theme's colour, an off one's fades. The
 arrow on a card, or the one at the top for all of them, shows its details: its header line, next

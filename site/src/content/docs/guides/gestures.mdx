@@ -3,6 +3,24 @@ title: Gestures
 description: Double-tap to lock, swipe down for the shade, an optional swipe up, and binding gestures to any command.
 ---
 
+import GestureMap from '../../../components/GestureMap.astro';
+
+Every touch gesture on home, at a glance:
+
+<GestureMap>
+
+1. **Swipe down on the header**: the notification shade (`gesture.swipe-down`).
+2. **Double-tap empty space**: lock the screen (`gesture.double-tap`). One tap brings up the keyboard.
+3. **Pinch the log**: bigger or smaller text.
+4. **Swipe sideways** on the header, empty space or the prompt: the [widgets page](/guides/widgets/).
+5. **Long-press a line**: its actions. A tap does its main action.
+6. **Swipe a line**: right copies it, left deletes it (with Undo for a few seconds).
+7. **Tap the `$`**: quick actions.
+8. **Swipe up on the prompt**: nothing, unless you set `gesture.swipe-up`.
+9. **Slide along the edge**: the [app selector](/getting-started/basics/#app-selector), when it's on.
+
+</GestureMap>
+
 Three gestures are configurable, in **Settings → Gestures** or with `config set`:
 
 | Gesture | Key | Default |

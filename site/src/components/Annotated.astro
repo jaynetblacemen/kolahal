@@ -1,0 +1,102 @@
+---
+/**
+ * A screenshot with numbered markers, beside the list that names them: the slot is an ordered
+ * list (MDX), whose items match the markers in order. Each mark is [x, y] in percent of the image,
+ * set beside the part it names rather than over its text.
+ */
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+	src: ImageMetadata;
+	alt: string;
+	marks: [number, number][];
+	/** Display width (px) of the screenshot. */
+	width?: number;
+}
+
+const { src, alt, marks, width = 320 } = Astro.props;
+---
+
+<figure class="annotated">
+	<div class="ann-shot" style={`max-width: ${width}px`}>
+		<Image src={src} alt={alt} width={width * 2} />
+		{
+			marks.map(([x, y], i) => (
+				<span class="ann-mark" style={`left: ${x}%; top: ${y}%`} aria-hidden="true">
+					{i + 1}
+				</span>
+			))
+		}
+	</div>
+	<div class="ann-legend"><slot /></div>
+</figure>
+
+<style>
+	.annotated {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 1.5rem 2rem;
+		align-items: flex-start;
+		margin-block: 1.5rem 2rem;
+	}
+	.ann-shot {
+		position: relative;
+		flex: 0 1 auto;
+		width: 100%;
+		border-radius: 1rem;
+		overflow: hidden;
+		border: 1px solid var(--sl-color-gray-5);
+		line-height: 0;
+	}
+	.ann-shot img {
+		width: 100%;
+		height: auto;
+		margin: 0;
+	}
+	.ann-mark {
+		position: absolute;
+		transform: translate(-50%, -50%);
+		width: 1.15rem;
+		height: 1.15rem;
+		border-radius: 50%;
+		display: grid;
+		place-items: center;
+		background: #f2b35b;
+		color: #0b0d0b;
+		font: 700 0.65rem/1 var(--sl-font-mono);
+		box-shadow: 0 0 0 2px #0b0d0b;
+	}
+	.ann-legend {
+		flex: 1 1 16rem;
+		min-width: 0;
+	}
+	.ann-legend :global(ol) {
+		list-style: none;
+		counter-reset: mark;
+		padding: 0;
+		margin: 0;
+		display: grid;
+		gap: 0.45rem;
+	}
+	.ann-legend :global(li) {
+		counter-increment: mark;
+		position: relative;
+		padding-left: 2rem;
+		margin: 0;
+	}
+	.ann-legend :global(li)::before {
+		content: counter(mark);
+		position: absolute;
+		left: 0;
+		top: 0.2rem;
+		width: 1.25rem;
+		height: 1.25rem;
+		border-radius: 50%;
+		display: grid;
+		place-items: center;
+		background: #f2b35b;
+		color: #0b0d0b;
+		font: 700 0.68rem/1 var(--sl-font-mono);
+	}
+</style>
