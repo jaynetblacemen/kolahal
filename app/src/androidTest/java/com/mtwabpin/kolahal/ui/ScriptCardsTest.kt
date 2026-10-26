@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.lifecycle.SavedStateHandle
@@ -24,7 +25,10 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** The script manager's cards: their pills switch what a script may do; Reset brings the library's copy back. */
+/**
+ * The script manager's cards: their pills switch what a script may do; Reset brings the library's copy back; a chip
+ * finds the library copies that differ.
+ */
 @RunWith(AndroidJUnit4::class)
 class ScriptCardsTest {
     @get:Rule val compose = createComposeRule()
@@ -83,6 +87,18 @@ class ScriptCardsTest {
         val unlock = compose.onNodeWithText("unlock").getUnclippedBoundsInRoot()
         assertTrue("the Events label under the access pills: $access, $events", events.top >= access.bottom)
         assertTrue("the event's pill under its label: $events, $unlock", unlock.top >= events.bottom)
+    }
+
+    /** Differs from the library keeps a library copy you edited, not a script of your own. */
+    @Test fun aChipFindsTheLibraryCopiesThatDiffer() {
+        val entry = library.entries.single { it.name == "countdown" }
+        val s = library.install(entry)
+        scripts.saveCode(s.id, library.code(entry) + "\n-- mine", byUser = true)
+        scripts.create("scpills", ScriptLang.LUA, "log(\"hi\")")
+        show()
+        compose.onNodeWithText("Differs from the library", substring = true).performScrollTo().performClick()
+        compose.onNodeWithText("countdown.lua").assertExists()
+        compose.onNodeWithText("scpills.lua").assertDoesNotExist()
     }
 
     @Test fun resetBringsTheLibrarysCopyBackAfterAsking() {

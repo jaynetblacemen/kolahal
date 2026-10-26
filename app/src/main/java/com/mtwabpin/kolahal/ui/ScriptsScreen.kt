@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -78,6 +79,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
@@ -88,6 +91,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
@@ -128,8 +132,11 @@ private class ScriptInfo(val script: Script) {
     val notifies = ScriptMeta.postsNotifications(script.code)
 }
 
-/** What a filter can ask about a script beyond its code: a header line now, a secret not set yet. */
-private class ScriptState(val inHeader: Boolean, val needsKey: Boolean)
+/**
+ * What a filter can ask about a script beyond its code: a header line now, a secret not set yet, a
+ * library copy that differs from this version's (edited, or from an older Kolahal).
+ */
+private class ScriptState(val inHeader: Boolean, val needsKey: Boolean, val differs: Boolean)
 
 /** A filter chip: its name and the scripts it keeps. */
 private class ScriptFilter(val id: String, val label: String, val keeps: (info: ScriptInfo, state: ScriptState) -> Boolean)
@@ -145,6 +152,7 @@ private val SCRIPT_FILTERS = listOf(
     ScriptFilter("needs-key", "Needs a key") { _, st -> st.needsKey },
     ScriptFilter("failed", "Failed") { s, _ -> s.script.failed() },
     ScriptFilter("off", "Off") { s, _ -> !s.script.enabled },
+    ScriptFilter("differs", "Differs from the library") { _, st -> st.differs },
 ) + ScriptMeta.USES.map { what -> ScriptFilter("uses:$what", "Uses ${USES_SHORT[what] ?: what}") { s, _ -> what in s.uses } }
 
 /**
@@ -213,12 +221,16 @@ fun ScriptsScreen(
                 .filterValues { it.isNotEmpty() }
         }
     }
-    fun stateOf(info: ScriptInfo) = ScriptState(info.script.name in statuses, info.script.name in missingKeys)
+    fun stateOf(info: ScriptInfo) = ScriptState(
+        info.script.name in statuses,
+        info.script.name in missingKeys,
+        libByName[info.script.name]?.state.let { it == ScriptLibrary.State.MODIFIED || it == ScriptLibrary.State.UPDATE_AVAILABLE },
+    )
     // Only chips something matches, with how many; a selected one stays, so it can be unselected.
-    val chips = remember(infos, statuses, missingKeys, filters) {
+    val chips = remember(infos, statuses, missingKeys, libByName, filters) {
         SCRIPT_FILTERS.map { f -> f to infos.count { f.keeps(it, stateOf(it)) } }.filter { it.second > 0 || it.first.id in filters }
     }
-    val shown = remember(infos, statuses, missingKeys, filters, query) {
+    val shown = remember(infos, statuses, missingKeys, libByName, filters, query) {
         val active = SCRIPT_FILTERS.filter { it.id in filters }
         val words = query.lowercase().split(' ').filter { it.isNotBlank() }
         infos.filter { info ->
@@ -438,7 +450,8 @@ private fun nextRun(s: Script, now: Long = System.currentTimeMillis()): Pair<Lon
 }
 
 /**
- * One script. Compact: a dot (on, failed, off), its title and file name, Run for a command, the
+ * One script, its card tinted in the theme's colour when on and faded when off. Compact: a dot (on,
+ * failed, off), its title and file name, Run for a command, the
  * details arrow, the switch, and one line of how it runs and how its last run went. Expanded, also
  * its header line, description, next run, usage, events and what it may use.
  */
@@ -473,10 +486,11 @@ private fun ScriptCard(
         if (updateAvailable) add("update available")
         if (library == ScriptLibrary.State.MODIFIED) add("edited")
     }.joinToString(" · ")
+    // On or off at a glance: an on script's card takes the theme's colour, an off one's fades into the page.
     Surface(
         onClick = onClick,
         shape = MaterialTheme.shapes.large,
-        color = colors.surfaceContainer,
+        color = if (s.enabled) colors.primaryContainer else colors.surfaceContainerLow,
         modifier = Modifier.fillMaxWidth().animateContentSize().testTag("script-card"),
     ) {
         Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 12.dp)) {
@@ -490,14 +504,14 @@ private fun ScriptCard(
                     Text(
                         info.title ?: s.name,
                         style = MaterialTheme.typography.titleMedium,
-                        color = if (s.enabled) colors.onSurface else colors.onSurfaceVariant,
+                        color = if (s.enabled) colors.onPrimaryContainer else colors.outline,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         "${s.name}.${s.lang.ext}",
                         style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-                        color = if (s.enabled) scriptColor(s.name) else colors.onSurfaceVariant,
+                        color = if (s.enabled) scriptColor(s.name) else colors.outline,
                         maxLines = 1,
                     )
                 }
@@ -526,7 +540,8 @@ private fun ScriptCard(
 
 /**
  * A card's details: its header line, description, next run and usage, a pill for each thing it may
- * do (on or off, a tap switches it), its secrets, and Reset for an edited or older library copy.
+ * do (on or off, a tap switches it), its secrets, and Reset or Update for an edited or older library
+ * copy.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -590,29 +605,50 @@ private fun ScriptDetails(
         if (s.failed()) Text(EditorLogic.runResult(s.lastStatus, com.mtwabpin.kolahal.script.ScriptWorker.TIMEOUT_MS / 1000, tapHint = false).text, style = MaterialTheme.typography.bodySmall, color = colors.error)
         // A library script edited, or from an older Kolahal: back to this version's copy.
         if (library == ScriptLibrary.State.MODIFIED || library == ScriptLibrary.State.UPDATE_AVAILABLE) {
-            OutlinedButton(onClick = onReset) {
-                Icon(painterResource(R.drawable.ic_refresh), null, Modifier.size(ButtonDefaults.IconSize))
-                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text("Reset to the library's")
-            }
+            LibraryCopyButton(library, ButtonDefaults.ExtraSmallContainerHeight, onReset)
         }
     }
 }
 
-/** One thing a script may do: ✓ and filled when on, ✕ and outlined when off; a tap switches it. */
+/**
+ * Back to this version's library copy, [height] tall (as small as a pill in a card): an edited copy's
+ * Reset in the error colours, as your edits go (it asks first); an older copy's Update, as nothing of
+ * yours does.
+ */
+@Composable
+private fun LibraryCopyButton(state: ScriptLibrary.State, height: Dp, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val edited = state == ScriptLibrary.State.MODIFIED
+    FilledTonalButton(
+        onClick = onClick,
+        shapes = ButtonDefaults.shapesFor(height),
+        colors = if (edited) {
+            ButtonDefaults.filledTonalButtonColors(containerColor = colors.errorContainer, contentColor = colors.onErrorContainer)
+        } else ButtonDefaults.filledTonalButtonColors(),
+        contentPadding = ButtonDefaults.contentPaddingFor(height),
+        modifier = Modifier.heightIn(min = height),
+    ) {
+        Icon(painterResource(R.drawable.ic_refresh), null, Modifier.size(ButtonDefaults.iconSizeFor(height)))
+        Spacer(Modifier.width(ButtonDefaults.iconSpacingFor(height)))
+        Text(if (edited) "Reset to the library's" else "Update from library", style = ButtonDefaults.textStyleFor(height))
+    }
+}
+
+/** One thing a script may do, on or off by its colour: filled in the theme's colour when on, faded when off; a tap switches it. */
 @Composable
 private fun AccessPill(label: String, on: Boolean, onToggle: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
     FilterChip(
         selected = on,
         onClick = onToggle,
         label = { Text(label) },
-        leadingIcon = {
-            Icon(
-                painterResource(if (on) R.drawable.ic_check else R.drawable.ic_close),
-                contentDescription = if (on) "on" else "off",
-                modifier = Modifier.size(FilterChipDefaults.IconSize),
-            )
-        },
+        colors = FilterChipDefaults.filterChipColors(
+            labelColor = colors.outline,
+            selectedContainerColor = colors.primary,
+            selectedLabelColor = colors.onPrimary,
+        ),
+        border = FilterChipDefaults.filterChipBorder(enabled = true, selected = on, borderColor = colors.outlineVariant),
+        modifier = Modifier.semantics { stateDescription = if (on) "on" else "off" },
     )
 }
 
@@ -889,9 +925,9 @@ private fun ScriptSheet(
                 when (lib?.state) {
                     // Unedited copy of an older library version: nothing of yours is lost.
                     ScriptLibrary.State.UPDATE_AVAILABLE ->
-                        FilledTonalButton(onClick = { vm.installFromLibrary(lib.entry) }) { Text("Update from library") }
+                        LibraryCopyButton(lib.state, ButtonDefaults.MinHeight) { vm.installFromLibrary(lib.entry) }
                     ScriptLibrary.State.MODIFIED ->
-                        TextButton(onClick = { confirmReplace = true }) { Text("Reset to the library's") }
+                        LibraryCopyButton(lib.state, ButtonDefaults.MinHeight) { confirmReplace = true }
                     else -> Unit
                 }
                 TextButton(

@@ -61,11 +61,13 @@ script makes requests and there is none.
 `script ls` shows every script with its timers, whether it is a command, notification state and the
 last run's result. The script manager (`scripts`, or the **Scripts** tab in Settings) shows a card per
 script: its title, how it runs and how its last run went (red if it failed), **Run** for a command,
-and its on/off switch. The arrow on a card, or the one at the top for all of them, shows its details:
-its header line, next run, usage, and a pill for everything it may do (internet, its header line,
-notifications, what it declares, its events): ✓ when on, ✕ when off, and a tap switches it. A
-library script you edited (its summary says "edited") gets **Reset to the library's** there too. Chips filter the cards (commands,
-timers, events, in the header, failed, off, needs a key, and what they use), and the search icon finds one by name.
+and its on/off switch; an on script's card is tinted in the theme's colour, an off one's fades. The
+arrow on a card, or the one at the top for all of them, shows its details: its header line, next
+run, usage, and a pill for everything it may do (internet, its header line, notifications, what it
+declares, its events): filled in the theme's colour when on, faded when off, and a tap switches it.
+A library script you edited (its summary says "edited") gets **Reset to the library's** there too.
+Chips filter the cards (commands, timers, events, in the header, failed, off, needs a key, differs
+from the library, and what they use), and the search icon finds one by name.
 Tap a card for **Run**, **Edit**, **Export**, access, notifications, timers and **Delete**.
 **Add script** writes a new one, or takes one from the library, from
 [the scripts people share](#getting-scripts-from-others) or from a file.

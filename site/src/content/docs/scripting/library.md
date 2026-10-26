@@ -20,7 +20,8 @@ change them with `script every`, `script at` and `script notify`, or in the scri
 A copy you haven't edited follows Kolahal: when an update brings a newer one, it replaces yours by
 itself (its timers and switches stay, and anything new it asks for with `@uses` or `@on` stays off
 until you allow it, with a line in the log), and the log says which scripts it updated. A copy you
-edited stays yours, marked **(edited)** in `script lib` and "edited" in the script manager. It is
+edited stays yours, marked **(edited)** in `script lib` and "edited" in the script manager, whose
+**Differs from the library** chip lists them all. It is
 only replaced when you ask: `script install weather --replace`, or **Reset to the library's** in its
 card's details or its sheet. Export it first to keep your version.
 
