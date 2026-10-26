@@ -18,6 +18,7 @@ Reports from users:
 - Security problems arrive privately on GitHub (private vulnerability reporting is on): the
   repository's Security tab → Advisories. The website's Security page
   (=site/src/content/docs/reference/security.md=) tells reporters how, and what counts.
-- Bugs come through the issue form in =.github/ISSUE_TEMPLATE/bug_report.yml=; questions go to the
+- Bugs and ideas come through the issue forms in =.github/ISSUE_TEMPLATE/= (=bug_report.yml=,
+  =feature_request.yml=); questions go to the
   Discord server, whose invite is in =ui/About.kt= (=DISCORD_URL=), =site/astro.config.mjs=,
   =README.org= and =.github/ISSUE_TEMPLATE/config.yml=: change all four together.

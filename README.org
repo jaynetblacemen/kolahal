@@ -43,7 +43,8 @@ The user guide is at [[https://mtwabpin.github.io/kolahal/][mtwabpin.github.io/k
 * Help
 
 - Questions, ideas and help from other people using Kolahal: the [[https://discord.gg/3D25w6gXR5][Discord server]].
-- Something doesn't work: [[https://github.com/mtwabpin/kolahal/issues/new/choose][open an issue]] with the bug report form.
+- Something doesn't work, or you'd like it to do more: [[https://github.com/mtwabpin/kolahal/issues/new/choose][open an issue]] with the bug report or
+  feature request form.
 
 * Working on Kolahal
 

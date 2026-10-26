@@ -131,7 +131,7 @@ kolahal/
 ├── tools/check-play-build.sh   checks the Play build leaves out what Play's policy rules out
 ├── tools/play-graphics.sh      renders the Play store icon, feature graphic and screenshots (docs/release/graphics/)
 ├── .github/workflows/          build.yml (every push), release.yml (version tags), site.yml (the website)
-├── .github/ISSUE_TEMPLATE/     the bug report form, and links to the security page, Discord and the guide
+├── .github/ISSUE_TEMPLATE/     the bug report and feature request forms, and links to security, Discord and the guide
 └── README.org                  the front page: links, status, help, the AI policy and the test coverage
 #+end_example
 

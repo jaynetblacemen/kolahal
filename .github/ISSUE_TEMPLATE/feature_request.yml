@@ -1,0 +1,61 @@
+name: Feature request
+description: Something Kolahal could do, or do better.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. One idea per request, please, and check the [guide](https://mtwabpin.github.io/kolahal/) and the open issues first: it may be there already, as a command, a setting or a script.
+
+        Want to talk it over first? Ask on the [Discord server](https://discord.gg/3D25w6gXR5).
+  - type: textarea
+    id: what
+    attributes:
+      label: What you'd like
+      description: What Kolahal would do, in a sentence or two.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What it's for, and what you do today without it.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where it belongs
+      options:
+        - Typing, commands and suggestions
+        - The log
+        - The app selector
+        - The header
+        - Widgets
+        - Scripts
+        - Feeds
+        - Notifications and media
+        - Settings and themes
+        - Somewhere else
+        - Work profile and private space
+    validations:
+      required: true
+  - type: textarea
+    id: how
+    attributes:
+      label: How you picture it
+      description: A command, a setting, a gesture, a screen. A sketch or a screenshot of another app's take helps.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What else you tried
+      description: Other ways you've found to do it, a script for example, and why they fall short.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you send
+      options:
+        - label: I looked in the guide and the open issues; this isn't there yet.
+          required: true
+        - label: This is my own request. If an AI tool helped me write it, I've read it and it says what I mean.
+          required: true
