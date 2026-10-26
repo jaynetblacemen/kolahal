@@ -10,7 +10,7 @@ const SITE = process.env.DOCS_SITE ?? 'https://mtwabpin.github.io';
 const BASE = process.env.DOCS_BASE ?? '/kolahal';
 const REPO = 'https://github.com/mtwabpin/kolahal';
 // The community's Discord server: questions, ideas and help.
-const DISCORD = 'https://discord.gg/ZNCEYske7';
+const DISCORD = 'https://discord.gg/3D25w6gXR5';
 
 /**
  * Pages link to each other site-absolute (`/reference/commands/`); this adds the base path at

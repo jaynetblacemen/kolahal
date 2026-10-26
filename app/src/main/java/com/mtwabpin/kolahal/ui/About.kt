@@ -38,7 +38,7 @@ import com.mtwabpin.kolahal.R
 /** Settings → About: the guide, crash reports and a way to write to the developer. */
 internal const val GUIDE_URL = "https://mtwabpin.github.io/kolahal/"
 /** The community's Discord server: questions, ideas and help from other people using Kolahal. */
-internal const val DISCORD_URL = "https://discord.gg/ZNCEYske7"
+internal const val DISCORD_URL = "https://discord.gg/3D25w6gXR5"
 internal const val DEVELOPER_EMAIL = "mtwabpin@gmail.com"
 
 /** The page id (in [com.mtwabpin.kolahal.terminal.TerminalViewModel.settingsCategory]) of the crash list. */
