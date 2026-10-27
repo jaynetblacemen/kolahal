@@ -399,9 +399,10 @@ class LogRepository private constructor(private val context: Context) {
     }
 
     /** Deletes the whole log, history included. */
+    @Synchronized
     fun clearAll() {
         db.writableDatabase.delete("logs", null, null)
-        prefs.edit { putLong(KEY_CLEARED_UP_TO, 0L).putLong(KEY_HISTORY_FROM, 0L).putLong(KEY_HIDDEN_UP_TO, 0L) }
+        prefs.edit { putLong(KEY_CLEARED_UP_TO, 0L).putLong(KEY_HISTORY_FROM, 0L).putLong(KEY_HIDDEN_UP_TO, 0L).remove(KEY_PURGE_UP_TO) }
         restructured()
     }
 
@@ -438,15 +439,43 @@ class LogRepository private constructor(private val context: Context) {
         "SELECT id, kind, text FROM logs WHERE id > ? ORDER BY id DESC LIMIT 1", arrayOf(visibleAfter().toString()),
     ).use { c -> if (c.moveToFirst()) Triple(c.getLong(0), LogKind.of(c.getString(1)), c.getString(2)) else null }
 
-    /** Hides everything currently on screen; command history is kept for recall. */
-    fun clearScreen() {
+    /** A [clearScreen]: lines up to [upTo] went out of view; [before] is how far the last clear reached. */
+    data class Cleared(val before: Long, val upTo: Long)
+
+    /**
+     * Takes everything on screen out of view at once, and out of the log at the next [purgeCleared]
+     * (command history is kept for recall); until then [undoClear] brings it back.
+     */
+    @Synchronized
+    fun clearScreen(): Cleared {
+        purgeCleared()
+        val before = prefs.getLong(KEY_CLEARED_UP_TO, 0L)
         val maxId = db.readableDatabase.rawQuery("SELECT COALESCE(MAX(id), 0) FROM logs", null)
             .use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
-        prefs.edit { putLong(KEY_CLEARED_UP_TO, maxId) }
-        db.writableDatabase.delete(
-            "logs", "id <= ? AND kind != ?", arrayOf(maxId.toString(), LogKind.COMMAND.key),
-        )
+        prefs.edit { putLong(KEY_CLEARED_UP_TO, maxId).putLong(KEY_PURGE_UP_TO, maxId) }
         restructured()
+        return Cleared(before, maxId)
+    }
+
+    /** Brings back what [cleared] took out of view, unless it is deleted already. */
+    @Synchronized
+    fun undoClear(cleared: Cleared): Boolean {
+        if (prefs.getLong(KEY_PURGE_UP_TO, 0L) != cleared.upTo) return false
+        prefs.edit { putLong(KEY_CLEARED_UP_TO, cleared.before).remove(KEY_PURGE_UP_TO) }
+        restructured()
+        return true
+    }
+
+    /**
+     * Deletes what a clear took out of view, commands aside, up to [upTo]: once its Undo is gone,
+     * before the next clear, and on a fresh start for one a closed launcher left behind.
+     */
+    @Synchronized
+    fun purgeCleared(upTo: Long = prefs.getLong(KEY_PURGE_UP_TO, 0L)) {
+        // Brought back since: they are on screen again.
+        if (upTo <= 0L || prefs.getLong(KEY_CLEARED_UP_TO, 0L) < upTo) return
+        db.writableDatabase.delete("logs", "id <= ? AND kind != ?", arrayOf(upTo.toString(), LogKind.COMMAND.key))
+        if (prefs.getLong(KEY_PURGE_UP_TO, 0L) <= upTo) prefs.edit { remove(KEY_PURGE_UP_TO) }
     }
 
     /**
@@ -591,6 +620,7 @@ class LogRepository private constructor(private val context: Context) {
 
         private const val KEY_CLEARED_UP_TO = "cleared_up_to"
         private const val KEY_HIDDEN_UP_TO = "hidden_up_to"
+        private const val KEY_PURGE_UP_TO = "purge_up_to"
         private const val KEY_TRIMMED_AT = "trimmed_at"
         private const val KEY_SEEN_UP_TO = "seen_up_to"
         private const val KEY_HISTORY_FROM = "history_from"

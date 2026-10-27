@@ -46,7 +46,7 @@ class TerminalFixesTest {
         override fun openEditor(script: Script) = Unit
         override fun askSecret(script: Script, name: String) = Unit
         override fun requestNotificationPermission() = Unit
-        override fun clearScreen() = logs.clearScreen()
+        override fun clearScreen() { logs.clearScreen() }
     }
     private val processor = CommandProcessor(app, ui)
 

@@ -767,30 +767,42 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         viewModelScope.launch(serialIo + errors) { block() }
     }
 
-    private val _undoDelete = MutableStateFlow<LogEntry?>(null)
-    /** The line a swipe just deleted; the terminal offers Undo for a few seconds. */
-    val undoDelete: StateFlow<LogEntry?> = _undoDelete.asStateFlow()
+    private val _undo = MutableStateFlow<UndoOffer?>(null)
+    /** A line a swipe just deleted, or a screen just cleared: the terminal offers Undo for a few seconds. */
+    val undo: StateFlow<UndoOffer?> = _undo.asStateFlow()
     private var undoJob: kotlinx.coroutines.Job? = null
 
-    /** Swipe left on a log line. */
     /** Deletes and restores run here, not on the command queue: a slow command mustn't leave the swiped line's gap on screen. */
     private val deleteIo = Dispatchers.IO.limitedParallelism(1)
 
-    fun swipeDelete(entry: LogEntry) {
-        viewModelScope.launch(deleteIo) { runCatching { logs.delete(entry.id) } }
-        _undoDelete.value = entry
+    init {
+        // What a clear took out of view is deleted once its Undo is gone; a closed launcher's Undo went with it.
+        viewModelScope.launch(deleteIo) { runCatching { logs.purgeCleared() } }
+    }
+
+    /** Main thread only. */
+    private fun offerUndo(offer: UndoOffer) {
+        _undo.value?.expire?.invoke()
+        _undo.value = offer
         undoJob?.cancel()
         undoJob = viewModelScope.launch {
             kotlinx.coroutines.delay(8_000)
-            _undoDelete.value = null
+            _undo.value = null
+            offer.expire()
         }
     }
 
-    fun undoSwipeDelete() {
-        val entry = _undoDelete.value ?: return
-        _undoDelete.value = null
+    fun undo() {
+        val offer = _undo.value ?: return
+        _undo.value = null
         undoJob?.cancel()
-        viewModelScope.launch(deleteIo) { runCatching { logs.restore(entry) } }
+        offer.undo()
+    }
+
+    /** Swipe left on a log line. */
+    fun swipeDelete(entry: LogEntry) {
+        viewModelScope.launch(deleteIo) { runCatching { logs.delete(entry.id) } }
+        offerUndo(UndoOffer("Line deleted") { viewModelScope.launch(deleteIo) { runCatching { logs.restore(entry) } } })
     }
 
     /** Swipe right on a log line. */
@@ -1445,7 +1457,15 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     override fun clearScreen() {
         expandHeader()
-        io { logs.clearScreen() }
+        io {
+            val cleared = logs.clearScreen()
+            withContext(Dispatchers.Main) {
+                offerUndo(UndoOffer(
+                    "Screen cleared",
+                    expire = { viewModelScope.launch(deleteIo) { runCatching { logs.purgeCleared(cleared.upTo) } } },
+                ) { viewModelScope.launch(deleteIo) { runCatching { logs.undoClear(cleared) } } })
+            }
+        }
     }
 
     override fun freshScreen() {

@@ -16,6 +16,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -196,6 +197,21 @@ class HomeScreenTest {
             val helpBaseline = helpBounds.top + wrapped.firstBaseline.toDp()
             assertEquals(nameBaseline.value, helpBaseline.value, 1f)
         }
+    }
+
+    /** `clear` (and Ctrl+L) offers Undo, which brings the lines back. */
+    @Test fun aClearedScreenComesBackWithUndo() {
+        val logs = LogRepository.get(app)
+        val mark = "before the clear ${System.nanoTime()}"
+        logs.add(com.mtwabpin.kolahal.data.LogKind.OUTPUT, mark)
+        val vm = show(360.dp, 700.dp)
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(mark).fetchSemanticsNodes().isNotEmpty() }
+        compose.runOnIdle { vm.clearScreen() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Screen cleared").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(mark).fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithText("Undo").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(mark).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Screen cleared").assertDoesNotExist()
     }
 
     /** gesture.swipe-up is none by default, which turns swiping up off; an action turns it on. */

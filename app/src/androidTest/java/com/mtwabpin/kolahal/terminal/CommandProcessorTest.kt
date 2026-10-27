@@ -37,7 +37,7 @@ class CommandProcessorTest {
         override fun openEditor(script: Script) { opened += script }
         override fun askSecret(script: Script, name: String) = Unit
         override fun requestNotificationPermission() = Unit
-        override fun clearScreen() = logs.clearScreen()
+        override fun clearScreen() { logs.clearScreen() }
     }
     private val processor = CommandProcessor(context, ui)
 

@@ -52,6 +52,12 @@ sealed interface Suggestion {
 }
 
 /**
+ * What the Undo bar under the log offers: [text] says what was done, [undo] takes it back, and
+ * [expire] runs once it can't be any more (it timed out, or another offer took its place).
+ */
+class UndoOffer(val text: String, val expire: () -> Unit = {}, val undo: () -> Unit)
+
+/**
  * One entry of a log line's long-press menu. [icon]: drawn in a fixed-width column, so labels
  * line up whatever its width.
  */

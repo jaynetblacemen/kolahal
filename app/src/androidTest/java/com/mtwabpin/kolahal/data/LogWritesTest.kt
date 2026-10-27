@@ -19,6 +19,36 @@ class LogWritesTest {
 
     @After fun tearDown() = mine().forEach { logs.delete(it.id) }
 
+    /** `clear` takes the screen out of view at once; Undo brings it back until its lines are deleted, commands aside. */
+    @Test fun aClearCanBeUndoneUntilItsLinesGo() {
+        logs.add(LogKind.OUTPUT, "$token out")
+        val command = logs.add(LogKind.COMMAND, "$token cmd")
+        try {
+            val cleared = logs.clearScreen()
+            assertTrue(mine().isEmpty())
+            assertTrue(logs.undoClear(cleared))
+            assertEquals(listOf("$token out", "$token cmd"), mine().map { it.text })
+
+            val again = logs.clearScreen()
+            logs.purgeCleared(again.upTo)
+            assertFalse(logs.undoClear(again))
+            assertTrue(mine().isEmpty())
+            // The output is gone; the command stays for ↑.
+            assertTrue("$token cmd" in logs.commandHistory())
+        } finally {
+            logs.delete(command)
+        }
+    }
+
+    /** An Undo that came too late changes nothing, and a purge never takes lines brought back. */
+    @Test fun aPurgeLeavesWhatAnUndoBroughtBack() {
+        logs.add(LogKind.OUTPUT, "$token kept")
+        val cleared = logs.clearScreen()
+        assertTrue(logs.undoClear(cleared))
+        logs.purgeCleared(cleared.upTo)
+        assertEquals(listOf("$token kept"), mine().map { it.text })
+    }
+
     /** A command that prints fifty lines costs one write, announced once. */
     @Test fun batchedLinesAreWrittenTogether() {
         val version = logs.version.value

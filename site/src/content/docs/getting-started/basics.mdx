@@ -197,8 +197,9 @@ red for errors. Hide it with `log.gutter off`. Output older than the latest comm
   printed in between (`settings`, `settings`) doesn't add another line.
 - Scroll to the top to load older entries. Entries older than `log.keep-days` (60), and past the
   newest `log.keep-lines` (5000), are trimmed. Typed commands are counted apart, so ↑ history stays.
-- `clear` clears the screen, `clear history` forgets the ↑ history but keeps the log, and
-  `clear all` removes both.
+- `clear` (or `Ctrl+L`) clears the screen, with **Undo** under the log for a few seconds; then
+  its lines are deleted, except your commands, which ↑ still recalls. `clear history` forgets the
+  ↑ history but keeps the log, and `clear all` removes both.
 
 ### Searching the log
 

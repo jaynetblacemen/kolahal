@@ -473,17 +473,17 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         // suggestions.auto: hidden on an idle home; shown while typing, or whenever there is input
         // (so hardware-keyboard typing still gets them).
         val suggestionsAuto = remember(configVersion) { config[Keys.SUGGESTIONS_AUTO] }
-        val undoEntry by vm.undoDelete.collectAsStateWithLifecycle()
-        if (undoEntry != null) {
+        val undoOffer by vm.undo.collectAsStateWithLifecycle()
+        undoOffer?.let { offer ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth().background(Term.surface).heightIn(min = 44.dp).padding(start = 12.dp),
             ) {
-                Text("Line deleted", style = Term.text.copy(color = Term.dim), modifier = Modifier.weight(1f))
+                Text(offer.text, style = Term.text.copy(color = Term.dim), modifier = Modifier.weight(1f))
                 Text(
                     "Undo",
                     style = Term.text.copy(color = Term.prompt, fontWeight = FontWeight.Bold),
-                    modifier = Modifier.clickable(onClick = vm::undoSwipeDelete).heightIn(min = 44.dp).wrapContentHeight().padding(horizontal = 16.dp),
+                    modifier = Modifier.clickable(onClick = vm::undo).heightIn(min = 44.dp).wrapContentHeight().padding(horizontal = 16.dp),
                 )
             }
         }
