@@ -22,8 +22,9 @@ between versions, keep a [[https://mtwabpin.github.io/kolahal/guides/backup/][ba
 - *APK*: the [[https://github.com/mtwabpin/kolahal/releases/latest][latest release]] on GitHub has the full build, with everything in it, and the
   Play build, the version for Google Play. The [[https://mtwabpin.github.io/kolahal/getting-started/install/][install guide]] says how
   to sideload them.
-- *Google Play*: coming. The Play version leaves out the screen lock and calls in the log, which
-  Play's policy rules out or wants an accessibility declaration for.
+- *Google Play*: in a closed test; [[https://mtwabpin.github.io/kolahal/getting-started/play-testing/][join it]] to install Kolahal from the Play Store. The
+  Play version leaves out the screen lock and calls in the log, which Play's policy rules out or
+  wants an accessibility declaration for.
 
 * Documentation
 
