@@ -8,8 +8,7 @@ What a file holds, as `0.3.0.md` does (that release was published by hand, so it
 the commit line the workflow now adds):
 
 - the package and the Android version it needs, and what it installs over;
-- the two APKs (the full build and the Play build) and which to pick: the Play build where Play
-  Protect blocks the full one;
+- the two APKs (the full build and the Play build) and what each has;
 - **What's new**, in plain words;
 - **Fixed**, when there is something;
 - a line saying the mapping zip is only for reading crash reports.
