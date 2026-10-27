@@ -118,7 +118,9 @@ fun SettingsOverHome(
         ) {
             lastPeek[0]?.let { p ->
                 Box(Modifier.fillMaxSize()) {
-                    TerminalScreen(vm, onRequestNotifications = {}, onPickFolder = {}, preview = p)
+                    // widgets.wallpaper is about the widgets page: that page shows, not the terminal.
+                    if (p.key == Keys.WIDGETS_WALLPAPER.key) WidgetPanel(vm)
+                    else TerminalScreen(vm, onRequestNotifications = {}, onPickFolder = {}, preview = p)
                     Box(
                         Modifier.fillMaxSize().pointerInput(Unit) {
                             awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }

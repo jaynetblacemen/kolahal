@@ -99,6 +99,9 @@ internal val PEEK_SLIDERS: Map<String, Boolean> = mapOf(
     Keys.SELECTOR_HEIGHT.key to false,
     // Home shows the selector's list open while this one moves.
     Keys.SELECTOR_ROW_HEIGHT.key to false,
+    // The phone's wallpaper through the log, and through the widgets page, which shows instead.
+    Keys.LOG_WALLPAPER.key to false,
+    Keys.WIDGETS_WALLPAPER.key to false,
     Keys.KEYBAR_HEIGHT.key to true,
     Keys.PROMPT_HEIGHT_TYPING.key to true,
     Keys.SUGGESTIONS.key to true,

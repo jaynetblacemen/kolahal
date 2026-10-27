@@ -149,6 +149,45 @@ class SettingsScreenTest {
         assertEquals("", vm.input.text)
     }
 
+    /**
+     * The wallpaper sliders show home at the value under the finger: the log for log.wallpaper, the
+     * widgets page for widgets.wallpaper (not the terminal).
+     */
+    @Test fun wallpaperSlidersShowTheirPage() {
+        show("log")
+        scrollTo(Keys.LOG_WALLPAPER)
+        val log = compose.onNodeWithTag("slider ${Keys.LOG_WALLPAPER.key}")
+        log.performTouchInput {
+            down(center)
+            repeat(8) { moveBy(Offset(width / 4f, 0f)) }
+        }
+        compose.waitForIdle()
+        assertEquals(TerminalViewModel.Peek(Keys.LOG_WALLPAPER.key, typing = false), vm.peek.value)
+        assertEquals(100, config[Keys.LOG_WALLPAPER])
+        home.assertExists()
+        log.performTouchInput { up() }
+        compose.waitForIdle()
+        assertNull(vm.peek.value)
+        assertEquals(100, config[Keys.LOG_WALLPAPER])
+
+        compose.runOnIdle { vm.settingsCategory.value = "home" }
+        scrollTo(Keys.WIDGETS_WALLPAPER)
+        val widgets = compose.onNodeWithTag("slider ${Keys.WIDGETS_WALLPAPER.key}")
+        widgets.performTouchInput {
+            down(center)
+            repeat(8) { moveBy(Offset(width / 4f, 0f)) }
+        }
+        compose.waitForIdle()
+        assertEquals(TerminalViewModel.Peek(Keys.WIDGETS_WALLPAPER.key, typing = false), vm.peek.value)
+        assertEquals(100, config[Keys.WIDGETS_WALLPAPER])
+        compose.onNodeWithText("+ Add").assertExists()
+        home.assertDoesNotExist()
+        widgets.performTouchInput { up() }
+        compose.waitForIdle()
+        assertNull(vm.peek.value)
+        assertEquals(100, config[Keys.WIDGETS_WALLPAPER])
+    }
+
     /** A slider found by searching peeks too, and the search results fade around it. */
     @Test fun aSliderFoundBySearchShowsHome() {
         show(null)
