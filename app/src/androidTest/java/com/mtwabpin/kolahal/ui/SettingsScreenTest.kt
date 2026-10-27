@@ -98,17 +98,12 @@ class SettingsScreenTest {
         home.assertExists()
         compose.onNodeWithText("Let go to come back").assertIsDisplayed()
 
-        compose.mainClock.autoAdvance = false
         eye.performTouchInput { up() }
-        compose.mainClock.advanceTimeByFrame()
+        compose.waitForIdle()
         assertNull(vm.peek.value)
-        // Home goes back down as Settings comes back, the hint with it, then both are gone.
-        compose.mainClock.advanceTimeBy(PEEK_MS / 2L)
-        home.assertExists()
-        compose.onNodeWithText("Let go to come back").assertExists()
-        compose.mainClock.advanceTimeBy(PEEK_MS.toLong())
+        // Home fades out as Settings comes back, then is gone.
+        compose.mainClock.advanceTimeBy(PEEK_FADE_MS + 100L)
         home.assertDoesNotExist()
-        compose.onNodeWithText("Let go to come back").assertDoesNotExist()
     }
 
     @Test fun aTapOnTheEyeSaysToHold() {

@@ -1,8 +1,10 @@
 package com.mtwabpin.kolahal.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -10,7 +12,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.Column
@@ -28,14 +29,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.text.KeyboardActions
@@ -51,7 +48,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.SliderState
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -61,7 +57,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -72,7 +67,6 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,7 +79,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.DpSize
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.data.Config
@@ -97,13 +90,11 @@ import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.abs
-import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
  * Settings, with home drawn underneath while a look setting is being changed (a slider dragged,
- * the eye held): Settings fades away around the control and home comes up as it will look. Home only
+ * the eye held): Settings fades away around the control and home shows as it will look. Home only
  * looks: it takes no touches.
  */
 @Composable
@@ -115,51 +106,33 @@ fun SettingsOverHome(
 ) {
     Box(Modifier.fillMaxSize()) {
         val peek by vm.peek.collectAsStateWithLifecycle()
-        // How far home has come up through Settings: 0 Settings alone, 1 home in full. One value moves
-        // both, there and back, so the two stay in step.
-        val through = remember { mutableFloatStateOf(0f) }
-        LaunchedEffect(peek != null) { through.peekTo(if (peek != null) 1f else 0f) }
-        val homeUp by remember { derivedStateOf { through.floatValue > 0f } }
-        // Kept after the peek ends, so home goes back down as it was instead of vanishing under Settings.
+        // Kept after the peek ends, so home fades out instead of vanishing under Settings.
         val lastPeek = remember { arrayOfNulls<TerminalViewModel.Peek>(1) }
         if (peek != null) lastPeek[0] = peek
-        // A page that can show home keeps it built, out of sight: building it takes a few frames, which
-        // froze the slider just as a drag began.
-        val standby = PEEK_PAGES[vm.settingsCategory.value]?.let { TerminalViewModel.Peek(null, it) }
-        val shown = peek ?: lastPeek[0]?.takeIf { homeUp } ?: standby
-        if (shown != null) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        // Up from a little smaller, rounded like a card, to the whole screen; back down the same way.
-                        val t = through.floatValue
-                        alpha = t
-                        scaleX = PEEK_ZOOM + (1f - PEEK_ZOOM) * t
-                        scaleY = scaleX
-                        shape = RoundedCornerShape(PEEK_CORNER * (1f - t))
-                        clip = true
-                    }
-                    // Out of sight, it's out of reach of TalkBack too.
-                    .then(if (peek == null && !homeUp) Modifier.clearAndSetSemantics {} else Modifier),
-            ) {
-                TerminalScreen(vm, onRequestNotifications = {}, onPickFolder = {}, preview = shown)
-                Box(
-                    Modifier.fillMaxSize().pointerInput(Unit) {
-                        awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
-                    },
-                )
+        AnimatedVisibility(
+            visible = peek != null,
+            enter = fadeIn(tween(PEEK_FADE_MS)),
+            exit = fadeOut(tween(PEEK_FADE_MS)),
+        ) {
+            lastPeek[0]?.let { p ->
+                Box(Modifier.fillMaxSize()) {
+                    TerminalScreen(vm, onRequestNotifications = {}, onPickFolder = {}, preview = p)
+                    Box(
+                        Modifier.fillMaxSize().pointerInput(Unit) {
+                            awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
+                        },
+                    )
+                }
             }
         }
-        SettingsScreen(vm, onExportBackup, onImportBackup, onImportFont, homeShown = { through.floatValue })
+        SettingsScreen(vm, onExportBackup, onImportBackup, onImportFont)
     }
 }
 
 /**
  * Material 3 Expressive settings. The main page has a search box, the setting categories, the
  * manager pages and backup; each category opens its own page with grouped rows. Each row observes
- * only its own value, so a change redraws one row. [homeShown]: how far home has come up through
- * Settings (SettingsOverHome), 0 to 1; read while drawing, so the fade only redraws.
+ * only its own value, so a change redraws one row.
  */
 @Composable
 fun SettingsScreen(
@@ -167,7 +140,6 @@ fun SettingsScreen(
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
     onImportFont: () -> Unit = {},
-    homeShown: () -> Float = { 0f },
 ) {
     val config = vm.config
     val version = vm.config.version.collectAsStateWithLifecycle()
@@ -195,12 +167,10 @@ fun SettingsScreen(
     }
     val crashList = crashes
     // Showing home through Settings (a slider dragged, the eye held): all but that slider fades away.
-    // The slider stays in sight until home has gone back down.
     val peek by vm.peek.collectAsStateWithLifecycle()
-    val keptKey = remember { arrayOfNulls<String>(1) }
-    if (peek != null) keptKey[0] = peek?.key
-    val kept = keptKey[0]
-    val hinted by remember(homeShown) { derivedStateOf { homeShown() > 0f } }
+    val shown by androidx.compose.animation.core.animateFloatAsState(
+        if (peek == null) 1f else 0f, androidx.compose.animation.core.tween(PEEK_FADE_MS), label = "peek",
+    )
     val tapScope = rememberCoroutineScope()
     // Back closes a category page first, then the search, then Settings.
     BackHandler {
@@ -217,14 +187,9 @@ fun SettingsScreen(
         val snackbar = remember { SnackbarHostState() }
         LaunchedEffect(notice) { notice?.let { snackbar.showSnackbar(it.text) } }
 
-        val surface = MaterialTheme.colorScheme.surface
         Scaffold(
-            modifier = Modifier
-                .drawBehind { drawRect(surface, alpha = 1f - homeShown()) }
-                .imePadding()
-                .nestedScroll(scroll.nestedScrollConnection),
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.imePadding().nestedScroll(scroll.nestedScrollConnection),
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = shown),
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
                 LargeFlexibleTopAppBar(
@@ -245,7 +210,7 @@ fun SettingsScreen(
                         }
                     },
                     scrollBehavior = scroll,
-                    modifier = Modifier.graphicsLayer { alpha = 1f - homeShown() },
+                    modifier = Modifier.graphicsLayer { alpha = shown },
                 )
             },
         ) { padding ->
@@ -259,7 +224,7 @@ fun SettingsScreen(
                 if (open != null) {
                     open.manage?.let { (title, subtitle, screen) ->
                         item(key = "manage:${open.id}") {
-                            PeekFade(homeShown) {
+                            PeekFade(peek) {
                                 Spacer(Modifier.height(8.dp))
                                 ActionGroup(listOf(Action(open.icon, title, subtitle, chevron = true) { vm.openScreen(screen) }))
                             }
@@ -269,20 +234,20 @@ fun SettingsScreen(
                         val keys = all.filter { it in applicableKeys }
                         if (keys.isEmpty()) continue
                         item(key = "h:${open.id}:$title") {
-                            PeekFade(homeShown, modifier = Modifier.animateItem()) { if (title != null) GroupHeader(title) else Spacer(Modifier.height(8.dp)) }
+                            PeekFade(peek, modifier = Modifier.animateItem()) { if (title != null) GroupHeader(title) else Spacer(Modifier.height(8.dp)) }
                         }
                         keys.forEachIndexed { index, key ->
                             item(key = key.key) {
-                                PeekFade(homeShown, keep = kept == key.key, modifier = Modifier.animateItem()) {
+                                PeekFade(peek, keep = peek?.key == key.key, modifier = Modifier.animateItem()) {
                                     SettingItem(vm, config, key, version, index, keys.size, onImportFont)
                                 }
                             }
                         }
                     }
                     if (open.id == "look") {
-                        item(key = "h:own-themes") { PeekFade(homeShown) { GroupHeader("Your themes") } }
+                        item(key = "h:own-themes") { PeekFade(peek) { GroupHeader("Your themes") } }
                         item(key = "own-themes") {
-                            PeekFade(homeShown) {
+                            PeekFade(peek) {
                                 ActionGroup(
                                     ownThemes.map { name ->
                                         Action(R.drawable.ic_palette, name, if (name == inUse) "In use · tap to change it" else "Tap to change it", chevron = true) {
@@ -311,9 +276,9 @@ fun SettingsScreen(
                     return@LazyColumn
                 }
 
-                item(key = "tabs") { PeekFade(homeShown) { FeatureTabs(vm, Screen.SETTINGS) } }
+                item(key = "tabs") { PeekFade(peek) { FeatureTabs(vm, Screen.SETTINGS) } }
                 item(key = "search") {
-                  PeekFade(homeShown) {
+                  PeekFade(peek) {
                     OutlinedTextField(
                         value = query,
                         onValueChange = { query = it },
@@ -342,9 +307,9 @@ fun SettingsScreen(
                         }
                     }
                     hits.groupBy({ it.first }, { it.second }).forEach { (c, keys) ->
-                        item(key = "h:hit:${c.id}") { PeekFade(homeShown) { GroupHeader(c.title) } }
+                        item(key = "h:hit:${c.id}") { PeekFade(peek) { GroupHeader(c.title) } }
                         keys.forEachIndexed { index, key ->
-                            item(key = "hit:" + key.key) { PeekFade(homeShown, keep = kept == key.key) { SettingItem(vm, config, key, version, index, keys.size, onImportFont) } }
+                            item(key = "hit:" + key.key) { PeekFade(peek, keep = peek?.key == key.key) { SettingItem(vm, config, key, version, index, keys.size, onImportFont) } }
                         }
                     }
                     return@LazyColumn
@@ -407,7 +372,7 @@ fun SettingsScreen(
                 }
             }
         }
-        if (hinted) PeekHint(homeShown, Modifier.align(Alignment.TopCenter))
+        if (peek != null) PeekHint(Modifier.align(Alignment.TopCenter))
         // A tapped crash report. The sheet stays after Email, so the report can be deleted once sent.
         openCrash?.let { c ->
             CrashSheet(
@@ -430,44 +395,22 @@ fun SettingsScreen(
     }
 }
 
-/** Fades away as home comes up through Settings ([homeShown]), unless it is the setting being changed ([keep]). */
+/** Fades away while Settings shows home through it, unless it is the setting being changed ([keep]). */
 @Composable
 private fun PeekFade(
-    homeShown: () -> Float,
+    peek: TerminalViewModel.Peek?,
     keep: Boolean = false,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    Box(modifier.graphicsLayer { if (!keep) alpha = 1f - homeShown() }) { content() }
+    val alpha by androidx.compose.animation.core.animateFloatAsState(
+        if (peek == null || keep) 1f else 0f, androidx.compose.animation.core.tween(PEEK_FADE_MS), label = "fade",
+    )
+    Box(modifier.graphicsLayer { this.alpha = alpha }) { content() }
 }
 
-/** How long home takes to come up through Settings when a peek starts, and to go back down when it ends. */
-internal const val PEEK_MS = 350
-
-/** The longest a frame counts for while home comes up or goes down: two frames at 60 Hz. */
-private const val PEEK_FRAME_NS = 34_000_000L
-
-/**
- * Moves this value (how far home is up) to [target], speeding up then settling (Material's standard curve)
- * over [PEEK_MS] for the whole way. A slow frame, such as the one that opens the app selector's list,
- * moves it on by [PEEK_FRAME_NS] at most, so none of the way is skipped.
- */
-private suspend fun MutableFloatState.peekTo(target: Float) {
-    val from = floatValue
-    val length = abs(target - from) * PEEK_MS * 1_000_000f
-    var played = 0f
-    var last = withFrameNanos { it }
-    while (played < length) {
-        val now = withFrameNanos { it }
-        played += min(now - last, PEEK_FRAME_NS)
-        last = now
-        floatValue = from + (target - from) * FastOutSlowInEasing.transform(min(played / length, 1f))
-    }
-}
-
-/** Home's size, and its corners' radius, when it starts to come up through Settings. */
-private const val PEEK_ZOOM = 0.94f
-private val PEEK_CORNER = 28.dp
+/** How long Settings and home take to fade into each other when a peek starts or ends. */
+internal const val PEEK_FADE_MS = 220
 
 /** A press shorter than this on the eye is a tap: it says to hold instead of flashing home. */
 private const val PEEK_HOLD_MS = 150L
@@ -502,9 +445,9 @@ private fun PeekButton(onHold: (Boolean) -> Unit, onTap: () -> Unit) {
     }
 }
 
-/** Shown at the top while home shows through Settings; drops in with home ([homeShown]) and leaves with it. */
+/** Shown at the top while home shows through Settings. */
 @Composable
-private fun PeekHint(homeShown: () -> Float, modifier: Modifier) {
+private fun PeekHint(modifier: Modifier) {
     Text(
         "Let go to come back",
         style = MaterialTheme.typography.labelLarge,
@@ -512,11 +455,6 @@ private fun PeekHint(homeShown: () -> Float, modifier: Modifier) {
         modifier = modifier
             .statusBarsPadding()
             .padding(top = 8.dp)
-            .graphicsLayer {
-                val t = homeShown()
-                alpha = t
-                translationY = -(1f - t) * 12.dp.toPx()
-            }
             .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f), CircleShape)
             .padding(horizontal = 14.dp, vertical = 7.dp),
     )
@@ -622,7 +560,6 @@ internal fun SettingItem(
                             val peekTyping = PEEK_SLIDERS[key.key]
                             val interactions = remember { MutableInteractionSource() }
                             val dragging by interactions.collectIsDraggedAsState()
-                            val pressed by interactions.collectIsPressedAsState()
                             if (peekTyping != null) LaunchedEffect(dragging) {
                                 if (dragging) vm.peek(TerminalViewModel.Peek(key.key, peekTyping))
                                 else if (vm.peek.value?.key == key.key) vm.peek(null)
@@ -640,11 +577,6 @@ internal fun SettingItem(
                                     config.preview(key, null)
                                 },
                                 interactionSource = interactions,
-                                // Material's thumb narrows while it's held; this one eases there and back instead of jumping.
-                                thumb = {
-                                    val width by animateDpAsState(if (dragging || pressed) 2.dp else 4.dp, label = "thumb")
-                                    SliderDefaults.Thumb(remember { MutableInteractionSource() }, thumbSize = DpSize(width, 44.dp))
-                                },
                                 modifier = Modifier.testTag("slider ${key.key}"),
                             )
                         }
