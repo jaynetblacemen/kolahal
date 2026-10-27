@@ -30,6 +30,11 @@ Type a command, or any part of an app name, and press Enter.
   - if only one app matches, it launches (`launch.single`);
   - if the top match starts with what you typed, it launches (`launch.top`);
   - otherwise you get a grid of up to 12 matching apps to tap.
+
+  Accents don't matter (`cafe` finds *Café*). When nothing matches what you typed, a slip still
+  finds the app: a letter wrong, missing or extra, or two swapped (`mpas` for *Maps*; two slips
+  from eight letters on). Apps you open often and lately rank first: each launch counts one, and
+  that halves every week, so an app you stopped using drops back even if you open it once more.
 - **Instant launch** (`launch.instant`, default `all`): as soon as what you typed
   can only mean one app, it opens without Enter. With apps *Calculator* and *Calendar*, `calc` opens Calculator
   and `cale` opens Calendar. The same app in several profiles counts as one match (the copy you use most opens),
@@ -55,7 +60,7 @@ up, or there is text in the prompt); `suggestions.auto off` keeps it always visi
 The strip above the prompt changes as you type:
 
 - **Empty prompt**: your [pinned favourites](/guides/apps/#favourites) first, then your most-used apps, ranked
-  by frecency (how often and how recently you opened them).
+  by frecency (how often and how recently you opened them; each launch counts one, halving every week).
   Off by default; turn it on with `config set suggestions.idle on`.
 - **First word**: up to three matching commands, aliases or script commands, plus matching apps.
   When Enter would launch an app, that app is the first, highlighted chip, so Enter, Tab and the

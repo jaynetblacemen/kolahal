@@ -152,6 +152,17 @@ class CompleterTest {
         assertTrue("${app.label} not in ${found.map { it.label }}", found.any { it.app.key == app.key })
     }
 
+    /** Two letters swapped still find the app, when nothing matches as typed; it never launches as you type. */
+    @Test fun aSlipStillFindsTheApp() {
+        val (app, slip) = apps.apps.value.asSequence()
+            .filter { it.profile.kind == ProfileKind.PERSONAL && it.label.length >= 5 && it.label.all(Char::isLetter) }
+            .map { it to it.label.lowercase().let { l -> "" + l[1] + l[0] + l.drop(2) } }
+            .first { (_, slip) -> apps.searchRanked(slip).all { it.second == 5 } }
+        assertTrue("$slip should find ${app.label}", completer.suggestions(slip).any { it is Suggestion.App && it.app.key == app.key })
+        assertTrue(InstantRun.target(slip, InstantRun.APPS, 2, rankedApps = { apps.searchRanked(it) }, appLabel = { it.label },
+            commands = emptyMap(), aliases = emptyMap(), scriptCommands = emptyList()) == null)
+    }
+
     @Test fun emptyPromptFollowsSuggestionsIdle() {
         assertTrue(completer.suggestions("").isEmpty())
         config.set(Keys.SUGGEST_IDLE, "on")

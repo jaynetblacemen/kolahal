@@ -1,0 +1,39 @@
+package com.mtwabpin.kolahal.apps
+
+import java.text.Normalizer
+
+/** The forgiving half of app search: accents that don't matter, and slips of the thumb. */
+internal object Fuzzy {
+    private val MARKS = Regex("\\p{Mn}+")
+
+    /** "Café" and "cafe" read alike: lowercase, without accents. */
+    fun fold(s: String): String = Normalizer.normalize(s.lowercase(), Normalizer.Form.NFD).replace(MARKS, "")
+
+    /**
+     * Whether [q] is a slip for the start of one of [names] (the label, then its words): a letter
+     * wrong, missing, extra, or two swapped (`mpas` for Maps), two of those from eight letters on.
+     * Shorter than four letters, almost anything is a slip of something: never.
+     */
+    fun slip(q: String, names: List<String>): Boolean {
+        if (q.length < 4) return false
+        val max = if (q.length >= 8) 2 else 1
+        return names.any { name ->
+            (q.length - 1..q.length + 1).any { n -> n in 1..name.length && distance(q, name.take(n)) <= max }
+        }
+    }
+
+    /** Edits from [a] to [b], a swap of two neighbours counting as one (optimal string alignment). */
+    fun distance(a: String, b: String): Int {
+        val d = Array(a.length + 1) { IntArray(b.length + 1) }
+        for (i in 0..a.length) d[i][0] = i
+        for (j in 0..b.length) d[0][j] = j
+        for (i in 1..a.length) {
+            for (j in 1..b.length) {
+                val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+                d[i][j] = minOf(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost)
+                if (i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1]) d[i][j] = minOf(d[i][j], d[i - 2][j - 2] + 1)
+            }
+        }
+        return d[a.length][b.length]
+    }
+}

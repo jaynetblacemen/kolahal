@@ -53,8 +53,8 @@ data class AppEntry(
     val pkg: String get() = component.packageName
     val key: String get() = keyOf(component, profile)
 
-    /** For search, worked out once per list load instead of on every keystroke. */
-    internal val lower: String = label.lowercase()
+    /** For search, worked out once per list load instead of on every keystroke: lowercase, accents aside. */
+    internal val lower: String = Fuzzy.fold(label)
     internal val words: List<String> = lower.split(' ', '-', '_', '.')
 }
 
@@ -176,11 +176,11 @@ class AppRepository private constructor(private val context: Context) {
             (serial == null || it.profile.serial == serial)
     }
 
-    /** Ranked fuzzy match: exact > prefix > word prefix > substring > subsequence. */
+    /** Ranked fuzzy match: exact > prefix > word prefix > substring > subsequence; a slip when nothing else matches. */
     fun search(query: String, kind: ProfileKind? = null, includeHidden: Boolean = false): List<AppEntry> =
         searchRanked(query, kind, includeHidden).map { it.first }
 
-    /** Matches with their tier: 0 exact, 1 prefix, 2 word prefix, 3 substring, 4 subsequence. */
+    /** Matches with their tier: 0 exact, 1 prefix, 2 word prefix, 3 substring, 4 subsequence, 5 a slip. */
     /** The last search: instant run and the suggestions ask the same question on every keystroke. */
     private class Memo(
         val q: String, val kind: ProfileKind?, val hidden: Boolean, val apps: List<AppEntry>, val version: Int,
@@ -189,7 +189,7 @@ class AppRepository private constructor(private val context: Context) {
     @Volatile private var memo: Memo? = null
 
     fun searchRanked(query: String, kind: ProfileKind? = null, includeHidden: Boolean = false): List<Pair<AppEntry, Int>> {
-        val q = query.trim().lowercase()
+        val q = Fuzzy.fold(query.trim())
         if (q.isEmpty()) return emptyList()
         val apps = _apps.value
         val version = prefs.version.value
@@ -201,11 +201,11 @@ class AppRepository private constructor(private val context: Context) {
 
     private fun rank(apps: List<AppEntry>, q: String, kind: ProfileKind?, includeHidden: Boolean): List<Pair<AppEntry, Int>> {
         val now = System.currentTimeMillis()
-        return apps
-            .asSequence()
-            .filter { (kind == null || it.profile.kind == kind) && (includeHidden || !it.hidden) }
-            .mapNotNull { app -> score(app, q)?.let { Ranked(app, it) } }
-            .toList()
+        val candidates = apps.asSequence().filter { (kind == null || it.profile.kind == kind) && (includeHidden || !it.hidden) }
+        // Slips only when nothing matches as typed: they never crowd out a real match, or stop
+        // the only match from launching (launch.single).
+        return (candidates.mapNotNull { app -> score(app, q)?.let { Ranked(app, it) } }.toList()
+            .ifEmpty { candidates.filter { Fuzzy.slip(q, listOf(it.lower) + it.words) }.map { Ranked(it, SLIP) }.toList() })
             // Frecency is read once per match, not on every comparison.
             .onEach { it.frecency = prefs.frecency(it.app.key, now) }
             .sortedWith(
@@ -247,6 +247,9 @@ class AppRepository private constructor(private val context: Context) {
         isSubsequence(q, app.lower) -> 4
         else -> null
     }
+
+    /** The tier of a match that is only a slip of the thumb ([Fuzzy.slip]). */
+    private val SLIP = 5
 
     private fun isSubsequence(q: String, s: String): Boolean {
         var i = 0

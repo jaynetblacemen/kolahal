@@ -69,29 +69,35 @@ class AppPrefs private constructor(context: Context) {
 
     // ---- frecency -------------------------------------------------------------------------
 
-    /** Records a launch: count plus last-used time, stored as "count:epochMillis". */
+    /**
+     * Records a launch: the score as it has decayed until now, plus one, stored with the time as
+     * "score:epochMillis". Older versions stored the launch count there with the last launch time,
+     * which reads the same way at first; from the next launch on, old launches have faded.
+     */
     fun recordLaunch(key: String) {
         // Read-modify-write: two launches recorded at once must both count.
         synchronized(this) {
-            val (count, _) = launchStats(key)
-            usage.edit { putString("launch:$key", "${count + 1}:${System.currentTimeMillis()}") }
+            val now = System.currentTimeMillis()
+            usage.edit { putString("launch:$key", "${frecency(key, now) + 1}:$now") }
         }
         _version.update { it + 1 } // refreshes the "most used" suggestions
     }
 
-    private fun launchStats(key: String): Pair<Int, Long> {
-        val raw = usage.getString("launch:$key", null) ?: return 0 to 0L
-        val count = raw.substringBefore(':').toIntOrNull() ?: 0
+    private fun launchStats(key: String): Pair<Double, Long> {
+        val raw = usage.getString("launch:$key", null) ?: return 0.0 to 0L
+        val score = raw.substringBefore(':').toDoubleOrNull() ?: 0.0
         val ts = raw.substringAfter(':', "").toLongOrNull() ?: 0L
-        return count to ts
+        return score to ts
     }
 
-    /** Higher is better: launch count weighted by an exponential decay on age (half-life ~7 days). */
+    /**
+     * Higher is better: every launch adds one, and the sum halves every week ([HALF_LIFE_DAYS]), so
+     * an app opened every day leads, and a habit you dropped fades even if you open it once more.
+     */
     fun frecency(key: String, now: Long = System.currentTimeMillis()): Double {
-        val (count, ts) = launchStats(key)
-        if (count == 0) return 0.0
-        val ageDays = (now - ts).coerceAtLeast(0) / 86_400_000.0
-        return count * exp(-ageDays * LN2 / HALF_LIFE_DAYS)
+        val (score, ts) = launchStats(key)
+        if (score <= 0.0) return 0.0
+        return decayed(score, now - ts)
     }
 
     // ---- aliases --------------------------------------------------------------------------
@@ -119,6 +125,10 @@ class AppPrefs private constructor(context: Context) {
         const val USAGE_FILE = "app_usage"
         private const val LN2 = 0.6931471805599453
         private const val HALF_LIFE_DAYS = 7.0
+
+        /** [score] after [ageMs] of halving every [HALF_LIFE_DAYS]. */
+        internal fun decayed(score: Double, ageMs: Long): Double =
+            score * exp(-(ageMs.coerceAtLeast(0) / 86_400_000.0) * LN2 / HALF_LIFE_DAYS)
 
         @Volatile
         private var instance: AppPrefs? = null
