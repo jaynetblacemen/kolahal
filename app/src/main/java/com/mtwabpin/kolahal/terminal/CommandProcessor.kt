@@ -628,7 +628,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
 
     companion object {
         val COMMANDS = listOf(
-            CommandSpec("help", "help", "Show this list · help <command>: just that one"),
+            CommandSpec("help", "help [<command>]", "Show this list, or just one command"),
             *com.mtwabpin.kolahal.control.ControlCommands.SPECS.toTypedArray(),
             CommandSpec("apps", "apps [work|personal|private|hidden] [-l|-a]", "App grid (-l: one per line, -a: hidden apps too)"),
             CommandSpec("open", "open <app>[:shortcut] [-w|-p|-s]", "Launch an app or one of its shortcuts"),

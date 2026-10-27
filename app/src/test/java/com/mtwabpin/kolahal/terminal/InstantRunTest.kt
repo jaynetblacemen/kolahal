@@ -136,6 +136,12 @@ class InstantRunTest {
         assertEquals("work profile paused: launches as before", Target.App(personal), target(App("Gmail", on = false)))
     }
 
+    /** `help` takes a command (`help todo`): it waits for Enter, and so does `help t` on the way to `help todo`. */
+    @Test fun helpWaitsForItsWord() {
+        assertFalse(InstantRun.canRun("help", CommandProcessor.COMMAND_USAGES, emptyMap(), emptyList()))
+        assertFalse(InstantRun.wholeLine("help t", CommandProcessor.COMMAND_USAGES, emptyMap()))
+    }
+
     @Test fun calculatorLinesAreSensitive() {
         assertTrue("no space after =", InstantRun.isSensitive("=notify('Bank', 'x')"))
         assertTrue(InstantRun.isSensitive("= 6*7"))
