@@ -81,6 +81,13 @@ class CommandFamiliesTest {
         assertTrue(run("help zzzzzz").single().startsWith("No command called 'zzzzzz'"))
     }
 
+    /** Arithmetic is answered at once, as a plain number; what has no answer says why. */
+    @Test fun calculatorAnswersHere() {
+        assertEquals(listOf("1024"), run("= 2^10"))
+        assertEquals(listOf("12"), run("= 15% of 80"))
+        assertEquals(listOf("1/0: can't divide by zero"), run("= 1/0"))
+    }
+
     @Test fun unitConversion() {
         val out = run("= 5 km in mi")
         assertTrue(out.toString(), out.single().contains("3.1"))

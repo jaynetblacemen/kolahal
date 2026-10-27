@@ -33,12 +33,25 @@ config set search.url https://search.example.org/?q=%s
 
 ## Calculator
 
-Anything after `=` that isn't a conversion is evaluated as a **Lua expression**:
+Arithmetic after `=` is worked out on the phone at once, and the answer shows above the prompt
+while you type; tap it to put it in the prompt and go on from it. Enter writes it in the log.
 
 ```sh
-= 2^10            # 1024.0
-= 17 * 3 + 1
-= math.sqrt(2)
+= 2^10            # 1024
+= 17 * 3 + 1      # 52
+= 15% of 80       # 12
+= 80 + 15%        # 92: a percent adds a share of what comes before it
+= sqrt(2)         # 1.41421356237
+= 10 mod 3        # 1 (10 % 3 too)
+```
+
+It knows `+ - * /` (also `×`, `x`, `÷`), `^`, `mod`, `n!`, parentheses, `pi` (`π`) and `e`, and
+`sqrt`, `cbrt`, `abs`, `round`, `floor`, `ceil`, `ln`, `log` (base 10), `log2`, `exp`, `sin`,
+`cos`, `tan` and their `a…` inverses (radians; `sin 30°` takes degrees), `min` and `max`. `2pi`
+and `3(4+5)` multiply. Anything else after `=` is evaluated as a **Lua expression**:
+
+```sh
+= math.random(6)
 = os.date("%A")
 ```
 

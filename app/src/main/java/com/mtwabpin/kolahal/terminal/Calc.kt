@@ -1,0 +1,223 @@
+package com.mtwabpin.kolahal.terminal
+
+import java.math.BigDecimal
+import java.math.MathContext
+import kotlin.math.abs
+import kotlin.math.floor
+
+/**
+ * The `=` calculator's arithmetic, worked out at once on the phone (and shown while you type):
+ * `+ - * /` (also `−`, `×`, `x`, `÷`), `^` or `**`, `mod`, `n!`, parentheses, `pi` (`π`), `e`, and
+ * sqrt, cbrt, abs, round, floor, ceil, ln, log (base 10), log2, exp, sin, cos, tan, asin, acos,
+ * atan (radians; `30°` is degrees), min and max. A percent works as on a phone's calculator:
+ * `15%` is 0.15, `80 + 15%` adds 15% of 80, and `15% of 80` is 12; `%` before a number is the
+ * remainder (`10 % 3`). `2pi` and `3(4+5)` multiply. Anything else (Lua code) is left to Lua.
+ */
+object Calc {
+    /** The answer to [text], or null when it isn't arithmetic this reads. Throws [ArithmeticException] for one with no answer. */
+    fun eval(text: String): Double? {
+        val tokens = tokenize(text) ?: return null
+        if (tokens.isEmpty()) return null
+        val parser = Parser(tokens)
+        val result = runCatching { parser.expression() }.getOrElse { e -> if (e is ArithmeticException) throw e else return null }
+        if (!parser.done()) return null
+        val v = result.value
+        if (v.isNaN()) throw ArithmeticException("not a real number")
+        if (v.isInfinite()) throw ArithmeticException("too big")
+        return v
+    }
+
+    /** [eval] written for the log: `1024`, `1.41421356237`, `1.5e+20`. */
+    fun answer(text: String): String? = eval(text)?.let(::format)
+
+    fun format(v: Double): String {
+        if (v == 0.0) return "0"
+        if (abs(v) >= 1e15 || abs(v) < 1e-9) return BigDecimal(v).round(MathContext(10)).stripTrailingZeros().toString().replace("E", "e")
+        return BigDecimal(v).round(MathContext(12)).stripTrailingZeros().toPlainString()
+    }
+
+    private sealed interface Token
+    private data class Num(val v: Double) : Token
+    private data class Word(val w: String) : Token
+    private data class Op(val c: String) : Token
+
+    private fun tokenize(text: String): List<Token>? {
+        val out = ArrayList<Token>()
+        var i = 0
+        while (i < text.length) {
+            val c = text[i]
+            when {
+                c.isWhitespace() -> i++
+                c.isDigit() || (c == '.' && i + 1 < text.length && text[i + 1].isDigit()) -> {
+                    var j = i
+                    while (j < text.length && (text[j].isDigit() || text[j] == '.')) j++
+                    // An exponent only when digits follow: `2e` is 2 × e.
+                    if (j < text.length && (text[j] == 'e' || text[j] == 'E')) {
+                        val k = if (j + 1 < text.length && (text[j + 1] == '+' || text[j + 1] == '-')) j + 2 else j + 1
+                        if (k < text.length && text[k].isDigit()) {
+                            j = k
+                            while (j < text.length && text[j].isDigit()) j++
+                        }
+                    }
+                    out += Num(text.substring(i, j).toDoubleOrNull() ?: return null)
+                    i = j
+                }
+                c.isLetter() && c != 'π' -> {
+                    var j = i
+                    while (j < text.length && text[j].isLetterOrDigit() && text[j] != 'π') j++
+                    out += Word(text.substring(i, j).lowercase())
+                    i = j
+                }
+                c == 'π' -> { out += Word("pi"); i++ }
+                c == '*' && text.getOrNull(i + 1) == '*' -> { out += Op("^"); i += 2 }
+                else -> {
+                    val op = when (c) {
+                        '+' -> "+"
+                        '-', '−' -> "-"
+                        '*', '×', '·' -> "*"
+                        '/', '÷' -> "/"
+                        '^' -> "^"
+                        '(', ')', '!', '%', '°', ',' -> c.toString()
+                        else -> return null
+                    }
+                    out += Op(op)
+                    i++
+                }
+            }
+        }
+        return out
+    }
+
+    /** A value, and whether it is a percent (`15%`), which `+` and `-` take as a share of the left side. */
+    private class Value(val value: Double, val percent: Boolean = false)
+
+    private class Parser(private val tokens: List<Token>) {
+        private var pos = 0
+
+        fun done() = pos == tokens.size
+
+        private fun peek(): Token? = tokens.getOrNull(pos)
+        private fun isOp(c: String) = (peek() as? Op)?.c == c
+        private fun isWord(w: String) = (peek() as? Word)?.w == w
+
+        fun expression(): Value {
+            var left = term()
+            while (isOp("+") || isOp("-")) {
+                val minus = (tokens[pos++] as Op).c == "-"
+                val right = term()
+                val amount = if (right.percent) left.value * right.value else right.value
+                left = Value(if (minus) left.value - amount else left.value + amount)
+            }
+            return left
+        }
+
+        private fun term(): Value {
+            var left = unary()
+            while (true) {
+                left = when {
+                    isOp("*") || isWord("x") || isWord("of") -> { pos++; Value(left.value * unary().value) }
+                    isOp("/") -> {
+                        pos++
+                        val d = unary().value
+                        if (d == 0.0) throw ArithmeticException("can't divide by zero")
+                        Value(left.value / d)
+                    }
+                    isWord("mod") || isOp("%") -> {
+                        pos++
+                        val d = unary().value
+                        if (d == 0.0) throw ArithmeticException("can't divide by zero")
+                        Value(left.value - floor(left.value / d) * d)
+                    }
+                    // `2pi`, `3(4+5)`, `2 sqrt 9`: side by side, they multiply.
+                    isOp("(") || (peek() is Word && !isWord("x") && !isWord("of") && !isWord("mod")) -> Value(left.value * unary().value)
+                    else -> return left
+                }
+            }
+        }
+
+        private fun unary(): Value = when {
+            isOp("-") -> { pos++; Value(-unary().value) }
+            isOp("+") -> { pos++; unary() }
+            else -> power()
+        }
+
+        private fun power(): Value {
+            val base = postfix()
+            if (!isOp("^")) return base
+            pos++
+            return Value(Math.pow(base.value, unary().value))
+        }
+
+        private fun postfix(): Value {
+            var v = primary()
+            while (true) {
+                v = when {
+                    isOp("!") -> { pos++; Value(factorial(v.value)) }
+                    // A percent, unless a number follows: then it is the remainder (`10 % 3`).
+                    isOp("%") && (tokens.getOrNull(pos + 1).let { it !is Num && (it as? Op)?.c != "(" }) -> { pos++; Value(v.value / 100, percent = true) }
+                    isOp("°") -> { pos++; Value(Math.toRadians(v.value)) }
+                    else -> return v
+                }
+            }
+        }
+
+        private fun primary(): Value {
+            val t = tokens.getOrNull(pos++) ?: throw IllegalStateException("ends early")
+            return when (t) {
+                is Num -> Value(t.v)
+                is Op -> if (t.c == "(") expression().also { expect(")") } else throw IllegalStateException("unexpected ${t.c}")
+                is Word -> when (t.w) {
+                    "pi" -> Value(Math.PI)
+                    "e" -> Value(Math.E)
+                    in FUNCTIONS -> Value(FUNCTIONS.getValue(t.w)(arguments(t.w)))
+                    else -> throw IllegalStateException("unknown ${t.w}")
+                }
+            }
+        }
+
+        /** `max(1, 2)` or `sqrt 2`: in parentheses, several; without, the one value after it. */
+        private fun arguments(name: String): List<Double> {
+            if (!isOp("(")) return listOf(power().value)
+            pos++
+            val args = arrayListOf(expression().value)
+            while (isOp(",")) { pos++; args += expression().value }
+            expect(")")
+            if (name !in MANY && args.size != 1) throw IllegalStateException("$name takes one value")
+            return args
+        }
+
+        private fun expect(c: String) {
+            if (!isOp(c)) throw IllegalStateException("expected $c")
+            pos++
+        }
+    }
+
+    private fun factorial(n: Double): Double {
+        if (n < 0 || n != floor(n)) throw ArithmeticException("! needs a whole number")
+        if (n > 170) throw ArithmeticException("too big")
+        return (2..n.toInt()).fold(1.0) { acc, k -> acc * k }
+    }
+
+    private val MANY = setOf("min", "max")
+
+    private val FUNCTIONS: Map<String, (List<Double>) -> Double> = mapOf(
+        "sqrt" to { a -> Math.sqrt(a[0]) },
+        "cbrt" to { a -> Math.cbrt(a[0]) },
+        "abs" to { a -> abs(a[0]) },
+        "round" to { a -> Math.round(a[0]).toDouble() },
+        "floor" to { a -> floor(a[0]) },
+        "ceil" to { a -> Math.ceil(a[0]) },
+        "ln" to { a -> Math.log(a[0]) },
+        "log" to { a -> Math.log10(a[0]) },
+        "log2" to { a -> Math.log(a[0]) / Math.log(2.0) },
+        "exp" to { a -> Math.exp(a[0]) },
+        "sin" to { a -> Math.sin(a[0]) },
+        "cos" to { a -> Math.cos(a[0]) },
+        "tan" to { a -> Math.tan(a[0]) },
+        "asin" to { a -> Math.asin(a[0]) },
+        "acos" to { a -> Math.acos(a[0]) },
+        "atan" to { a -> Math.atan(a[0]) },
+        "min" to { a -> a.min() },
+        "max" to { a -> a.max() },
+    )
+}

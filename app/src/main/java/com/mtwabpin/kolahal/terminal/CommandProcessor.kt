@@ -368,6 +368,13 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 return background("convert") { currency(amount, from.uppercase(), to.uppercase()) }
             }
         }
+        // Arithmetic is answered here at once; anything else (Lua code) goes to Lua.
+        val answer = try {
+            Calc.answer(expr)
+        } catch (e: ArithmeticException) {
+            return error("$expr: ${e.message}")
+        }
+        if (answer != null) return out(answer, LogContext.of(LogContext.COPY to answer))
         eval(ScriptLang.LUA, expr)
     }
 
@@ -604,7 +611,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("unlocks", "unlocks [<days>]", "Unlock counts"),
             CommandSpec("fetch", "fetch", "This phone and Kolahal at a glance, fastfetch style"),
             CommandSpec("script", "script <sub> <name>", "Subcommands: ls lib install get new edit run every at notify on off access allow deny secret triggers mv rm cat diff dir export import"),
-            CommandSpec("=", "= <expr>", "Calculator · = 5 km in mi · = 72 f to c · = 100 usd in eur"),
+            CommandSpec("=", "= <expr>", "Calculator · = 15% of 80 · = 5 km in mi · = 100 usd in eur"),
             CommandSpec("lua", "lua <code>", "Evaluate Lua 5.4"),
             CommandSpec("js", "js <code>", "Evaluate JavaScript (QuickJS)"),
             CommandSpec("rss", "rss <url>", "Fetch a feed into the log once"),

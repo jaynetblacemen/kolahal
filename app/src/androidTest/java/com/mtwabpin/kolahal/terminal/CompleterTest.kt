@@ -121,6 +121,15 @@ class CompleterTest {
         assertTrue("todo undo 2" in lines("todo undo "))
     }
 
+    /** `= …` shows the answer while you type; a tap puts it in the prompt. */
+    @Test fun theAnswerShowsAsYouType() {
+        val first = completer.suggestions("= 2^10").first() as Suggestion.Completion
+        assertEquals("= 1024", first.label)
+        assertEquals("= 1024", first.replacement)
+        assertEquals("5 km = 3.1069 mi", completer.suggestions("= 5 km in mi").first().label)
+        assertTrue(completer.suggestions("= 2 +").isEmpty())
+    }
+
     @Test fun theTypedLineIsNotOfferedAgain() {
         history = listOf("echo hi")
         assertFalse(lines("echo hi").contains("echo hi"))

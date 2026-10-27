@@ -69,6 +69,7 @@ class Completer(private val context: Context, private val data: Data) {
         if (text.isBlank()) {
             return if (config[Keys.SUGGEST_IDLE]) appsRepo.top(config[Keys.SUGGESTIONS]).map { Suggestion.App(it) } else emptyList()
         }
+        if (text.trimStart().startsWith("=")) return calcSuggestions(text)
         val parts = text.trimStart().split(' ')
         val head = parts.first().lowercase()
         // The command a synonym stands for: what decides the completions; [head] is what is typed back.
@@ -132,6 +133,21 @@ class Completer(private val context: Context, private val data: Data) {
         }
         if (!picksBest) return rows
         return listOf(if (first is Suggestion.App) first.copy(enter = true) else (first as Suggestion.Completion).copy(enter = true)) + rows.drop(1)
+    }
+
+    /**
+     * `= 2^10`: the answer as you type (a conversion's too), which a tap puts in the prompt to go on
+     * from; then earlier calculations that continue the line.
+     */
+    private fun calcSuggestions(text: String): List<Suggestion> {
+        val expr = text.trimStart().drop(1).trim()
+        val converted = Units.parse(expr)?.let { (amount, from, to) -> Units.convert(amount, from, to) }
+        val answer = converted?.let { it to it.substringAfter("= ").substringBefore(' ').replace(",", "") }
+            ?: runCatching { Calc.answer(expr) }.getOrNull()?.let { "= $it" to it }
+        val row = answer?.takeIf { it.second != expr }?.let { (label, value) ->
+            Suggestion.Completion(label, "= $value", help = "the answer · tap to go on from it")
+        }
+        return (listOfNotNull(row) + historySuggestions(text)).distinctBy { it.key }
     }
 
     /** What a command's row says beside its name: a command script's `@desc`, or what an alias stands for. */
