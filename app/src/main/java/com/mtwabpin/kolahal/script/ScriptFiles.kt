@@ -2,7 +2,6 @@ package com.mtwabpin.kolahal.script
 
 import android.content.Context
 import android.net.Uri
-import android.provider.OpenableColumns
 import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.data.ScriptRepository
@@ -19,7 +18,7 @@ class ScriptFiles(private val context: Context) {
         val updated = ArrayList<String>()
         val skipped = ArrayList<String>()
         for (uri in uris) {
-            val fileName = displayName(uri) ?: uri.lastPathSegment ?: "?"
+            val fileName = Files.displayName(context, uri) ?: uri.lastPathSegment ?: "?"
             val lang = ScriptLang.of(fileName.substringAfterLast('.', ""))
             val name = fileName.substringBeforeLast('.').lowercase().replace(Regex("[^a-z0-9_-]"), "-").trim('-').take(40)
             if (lang == null || name.isEmpty()) {
@@ -64,10 +63,4 @@ class ScriptFiles(private val context: Context) {
     fun export(script: Script, uri: Uri) {
         Files.writeText(context, uri, script.code)
     }
-
-    private fun displayName(uri: Uri): String? = runCatching {
-        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
-            if (c.moveToFirst()) c.getString(0) else null
-        }
-    }.getOrNull()
 }

@@ -1,6 +1,7 @@
 package com.mtwabpin.kolahal.ui
 
 import android.app.Application
+import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -52,7 +53,8 @@ class ThemeBuilderTest {
 
     @After fun tearDown() {
         Term.palette = Palettes.green
-        listOf("tb-test", "tb-renamed").forEach { CustomThemes.delete(app, it) }
+        listOf("tb-test", "tb-test-2", "tb-renamed").forEach { CustomThemes.delete(app, it) }
+        shared.delete()
         Keys.ALL.forEach(config::reset)
     }
 
@@ -68,6 +70,8 @@ class ThemeBuilderTest {
             }
         }
     }
+
+    private val shared = File(app.cacheDir, "shared theme.json")
 
     private fun name(text: String) = compose.onNodeWithTag("theme-name").performTextReplacement(text)
     private val save get() = compose.onNodeWithText("Save and use")
@@ -166,6 +170,53 @@ class ThemeBuilderTest {
         assertNull(CustomThemes.colors("tb-test"))
         assertTrue(config.isDefault(Keys.THEME))
         assertEquals("green", config[Keys.THEME])
+    }
+
+    /** Exported, a theme's file carries its name; imported, it is kept as yours, under a free name, and used. */
+    @Test fun aThemeTravelsInAFile() {
+        CustomThemes.save(app, "tb-test", Palettes.colorsOf(Palettes.amber))
+        val amber = CustomThemes.colors("tb-test")
+        open("tb-test")
+        compose.onNodeWithContentDescription("Export theme").assertExists()
+        shared.delete()
+        vm.exportTheme("tb-test", Uri.fromFile(shared))
+        compose.waitUntil(5_000) { shared.length() > 0 }
+        assertTrue(shared.readText(), shared.readText().startsWith("{\n  \"name\": \"tb-test\","))
+
+        // On another phone: its own name, not the file's, and in use.
+        CustomThemes.delete(app, "tb-test")
+        vm.importTheme(Uri.fromFile(shared))
+        compose.waitUntil(5_000) { config[Keys.THEME] == "tb-test" }
+        assertEquals(amber, CustomThemes.colors("tb-test"))
+
+        // A different theme of yours by that name stays: the file's takes the next free name.
+        CustomThemes.save(app, "tb-test", Palettes.colorsOf(Palettes.dracula))
+        vm.importTheme(Uri.fromFile(shared))
+        compose.waitUntil(5_000) { config[Keys.THEME] == "tb-test-2" }
+        assertEquals(amber, CustomThemes.colors("tb-test-2"))
+        assertEquals(Palettes.colorsOf(Palettes.dracula), CustomThemes.colors("tb-test"))
+
+        // Imported again: you already have it, so nothing new.
+        config.set(Keys.THEME, "green")
+        val before = CustomThemes.names
+        File(app.cacheDir, "again.json").apply { writeText(CustomThemes.encode(Palettes.colorsOf(Palettes.dracula), "tb-test")) }.let {
+            vm.importTheme(Uri.fromFile(it))
+            compose.waitUntil(5_000) { config[Keys.THEME] == "tb-test" }
+            it.delete()
+        }
+        assertEquals(before, CustomThemes.names)
+
+        // Not a theme: nothing is kept.
+        shared.writeText("{ \"background\": \"#000000\" }")
+        vm.importTheme(Uri.fromFile(shared))
+        compose.waitUntil(5_000) { vm.notice.value?.text?.startsWith("theme import failed") == true }
+        assertEquals(before, CustomThemes.names)
+    }
+
+    /** A new theme has nothing saved to export yet. */
+    @Test fun onlyASavedThemeExports() {
+        open(null)
+        compose.onNodeWithContentDescription("Export theme").assertDoesNotExist()
     }
 
     /** A saved theme is a theme like the built-in ones, and comes back from its file at start. */

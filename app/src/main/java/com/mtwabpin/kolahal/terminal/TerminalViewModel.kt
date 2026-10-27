@@ -28,6 +28,8 @@ import com.mtwabpin.kolahal.script.ScriptLibrary
 import com.mtwabpin.kolahal.script.ScriptTemplates
 import com.mtwabpin.kolahal.script.SecretStore
 import com.mtwabpin.kolahal.data.Backup
+import com.mtwabpin.kolahal.data.CustomThemes
+import com.mtwabpin.kolahal.script.Files
 import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.script.HostApi
 import com.mtwabpin.kolahal.data.KvStore
@@ -1380,6 +1382,26 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                 config.set(Keys.FONT, TermFonts.CUSTOM)
             }
             notice("Font = custom (${name ?: "imported font"})")
+        }
+    }
+
+    /** Settings → Your themes → Import a theme: a theme someone shared, kept with yours and used. */
+    fun importTheme(uri: Uri?) {
+        if (uri == null) return
+        fileOp("theme import") {
+            val (name, added) = CustomThemes.import(context, Files.readText(context, uri), Files.displayName(context, uri))
+            withContext(Dispatchers.Main) { config.set(Keys.THEME, name) }
+            notice(if (added) "Theme $name imported and in use" else "You already have theme $name: it's in use")
+        }
+    }
+
+    /** The theme builder's Export: one of your themes, as last saved, in a file to share. */
+    fun exportTheme(name: String, uri: Uri?) {
+        if (uri == null) return
+        fileOp("theme export") {
+            val colors = CustomThemes.colors(name) ?: throw IllegalStateException("$name was deleted")
+            Files.writeText(context, uri, CustomThemes.encode(colors, name))
+            notice("Exported theme $name")
         }
     }
 

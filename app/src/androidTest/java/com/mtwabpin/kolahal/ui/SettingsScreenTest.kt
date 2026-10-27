@@ -241,6 +241,7 @@ class SettingsScreenTest {
         assertEquals(TEST_THEME, vm.themeBuilderName.value)
 
         compose.runOnIdle { vm.closeScreen() }
+        compose.onNodeWithText("Import a theme").assertExists()
         compose.onNodeWithText("Create a theme").performClick()
         assertEquals(Screen.THEME_BUILDER, vm.screen.value)
         assertNull(vm.themeBuilderName.value)

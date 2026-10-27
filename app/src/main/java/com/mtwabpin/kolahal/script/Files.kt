@@ -2,6 +2,7 @@ package com.mtwabpin.kolahal.script
 
 import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
 
 /** Storage Access Framework helpers shared by backup, script import/export and folder sync. */
 object Files {
@@ -26,6 +27,13 @@ object Files {
             return out.toString(Charsets.UTF_8.name())
         }
     }
+
+    /** The picked file's name, as its provider gives it; null when it gives none. */
+    fun displayName(context: Context, uri: Uri): String? = runCatching {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+            if (c.moveToFirst()) c.getString(0) else null
+        }
+    }.getOrNull()
 
     /** Some providers reject truncate mode "wt"; fall back to "w". */
     fun writeText(context: Context, uri: Uri, text: String) {

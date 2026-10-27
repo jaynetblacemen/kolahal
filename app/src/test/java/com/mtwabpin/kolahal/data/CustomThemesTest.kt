@@ -55,6 +55,25 @@ class CustomThemesTest {
         assertEquals(colors.keys, CustomThemes.complete(old)!!.keys)
     }
 
+    /** A file to share starts with the theme's name; its colours read the same. */
+    @Test fun aSharedFileCarriesItsName() {
+        val text = CustomThemes.encode(colors, "dusk")
+        assertTrue(text, text.startsWith("{\n  \"name\": \"dusk\",\n  \"background\""))
+        assertEquals(colors, CustomThemes.decode(text))
+    }
+
+    /** An imported theme's name: tidied into a theme name, and never one a theme already has. */
+    @Test fun anImportedNameIsTidiedAndFree() {
+        assertEquals("my-dusk-2", CustomThemes.tidy(" My Dusk_2 "))
+        assertEquals("dusk-1", CustomThemes.tidy("dusk (1)"))
+        assertEquals("", CustomThemes.tidy("—"))
+        assertEquals("dusk", CustomThemes.freeName("dusk", setOf("green")))
+        assertEquals("dusk-3", CustomThemes.freeName("dusk", setOf("dusk", "dusk-2")))
+        assertEquals("green-2", CustomThemes.freeName("green", Keys.BUILT_IN_THEMES.toSet()))
+        val long = "a".repeat(24)
+        assertEquals("a".repeat(22) + "-2", CustomThemes.freeName(long, setOf(long)))
+    }
+
     @Test fun hexCodes() {
         assertEquals("#0B0D0B", CustomThemes.hex(0xFF0B0D0B.toInt()))
         assertEquals(0xFF8FD18A.toInt(), CustomThemes.parseHex("#8fd18a"))

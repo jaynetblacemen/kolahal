@@ -82,11 +82,41 @@ object CustomThemes {
         _themes.value = _themes.value - name
     }
 
-    /** `{ "background": "#0B0D0B", …, "light-background": "#F3F7F1", … }`, one role per line. */
-    fun encode(colors: Map<String, Int>): String {
+    /**
+     * `{ "background": "#0B0D0B", …, "light-background": "#F3F7F1", … }`, one role per line. A file to
+     * share starts with the theme's [name], which [import] takes.
+     */
+    fun encode(colors: Map<String, Int>, name: String? = null): String {
         val keys = ROLES + (light(colors)?.let { ROLES.map { LIGHT + it } } ?: emptyList())
-        return keys.joinToString(",\n", "{\n", "\n}\n") { "  \"$it\": \"${hex(colors.getValue(it))}\"" }
+        val lines = listOfNotNull(name?.let { "  \"name\": \"$it\"" }) + keys.map { "  \"$it\": \"${hex(colors.getValue(it))}\"" }
+        return lines.joinToString(",\n", "{\n", "\n}\n")
     }
+
+    private val NAMED = Regex("\"name\"\\s*:\\s*\"([^\"]{1,64})\"")
+
+    /**
+     * A shared theme's file ([text], called [fileName]) kept as one of yours: under the name in it,
+     * or else its file's, with -2, -3 … added when a built-in theme or one of yours has that name.
+     * Returns the name, and false when you already have it (the same name and colours).
+     */
+    fun import(context: Context, text: String, fileName: String?): Pair<String, Boolean> {
+        val colors = decode(text) ?: throw IllegalArgumentException("not a Kolahal theme")
+        val wanted = listOfNotNull(NAMED.find(text)?.groupValues?.get(1), fileName?.substringBeforeLast('.'))
+            .map(::tidy).firstOrNull { NAME.matches(it) } ?: "imported"
+        if (colors(wanted) == colors) return wanted to false
+        val name = freeName(wanted, Keys.BUILT_IN_THEMES.toSet() + names)
+        save(context, name, colors)
+        return name to true
+    }
+
+    /** [text] as a theme's name: lowercase, spaces and underscores as hyphens, anything else left out. */
+    fun tidy(text: String): String =
+        text.trim().lowercase().replace(Regex("[\\s_]+"), "-").replace(Regex("[^a-z0-9-]"), "").trimStart('-').take(24)
+
+    /** [wanted], or with -2, -3 … when [taken] has it, still no longer than a name may be. */
+    fun freeName(wanted: String, taken: Set<String>): String = generateSequence(1) { it + 1 }
+        .map { if (it == 1) wanted else wanted.take(24 - "-$it".length).trimEnd('-') + "-$it" }
+        .first { it !in taken }
 
     /** The colours in [text] ([encode]'s form); null unless every role of the dark version is there. */
     fun decode(text: String): Map<String, Int>? {

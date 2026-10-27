@@ -1,6 +1,8 @@
 package com.mtwabpin.kolahal.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -40,6 +42,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderState
 import androidx.compose.material3.Text
@@ -50,12 +54,14 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -129,17 +135,26 @@ fun ThemeBuilderScreen(vm: TerminalViewModel) {
         else -> null
     }
     BackHandler { vm.closeScreen() }
+    val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        editing?.let { vm.exportTheme(it, uri) }
+    }
+    val notice by vm.notice.collectAsStateWithLifecycle()
+    val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(notice) { notice?.let { snackbar.showSnackbar(it.text) } }
 
     GuiTheme {
         Scaffold(
             modifier = Modifier.imePadding(),
             containerColor = MaterialTheme.colorScheme.surface,
+            snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
                 TopAppBar(
                     title = { Text(if (editing == null) "New theme" else "Edit theme") },
                     navigationIcon = { BackButton(vm::closeScreen) },
                     actions = {
                         if (editing != null) {
+                            // As saved: changes not saved yet stay out of the file.
+                            IconButton(onClick = { export.launch("$editing.json") }) { Icon(painterResource(R.drawable.ic_download), "Export theme") }
                             IconButton(onClick = { confirmDelete = true }) { Icon(painterResource(R.drawable.ic_delete), "Delete theme") }
                         }
                     },

@@ -1,6 +1,8 @@
 package com.mtwabpin.kolahal.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -172,6 +174,7 @@ fun SettingsScreen(
         if (peek == null) 1f else 0f, androidx.compose.animation.core.tween(PEEK_FADE_MS), label = "peek",
     )
     val tapScope = rememberCoroutineScope()
+    val importTheme = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument(), vm::importTheme)
     // Back closes a category page first, then the search, then Settings.
     BackHandler {
         when {
@@ -255,6 +258,8 @@ fun SettingsScreen(
                                         }
                                     } + Action(R.drawable.ic_add, "Create a theme", "Start from the theme in use and pick any colour", chevron = true) {
                                         vm.openThemeBuilder(null)
+                                    } + Action(R.drawable.ic_upload, "Import a theme", "A theme's file someone shared, or one you exported") {
+                                        importTheme.launch(arrayOf("application/json", "text/*", "application/octet-stream"))
                                     },
                                 )
                             }
