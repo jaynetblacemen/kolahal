@@ -2,6 +2,7 @@ package com.mtwabpin.kolahal.notifications
 
 import android.app.Notification
 import com.mtwabpin.kolahal.notifications.KolahalNotificationListener.Companion.isMessage
+import com.mtwabpin.kolahal.notifications.KolahalNotificationListener.Companion.isNewLine
 import com.mtwabpin.kolahal.notifications.KolahalNotificationListener.Companion.isQuietRepost
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -39,6 +40,21 @@ class QuietRepostTest {
 
     @Test fun aMessageWithProgressIsStillQuiet() =
         assertTrue(isQuietRepost(known = true, flags = alertOnce, progressMax = 10, indeterminate = false, message = true, changed = true))
+
+    /** "are you free?" then "never mind, call me now" ten seconds later: both reach the log. */
+    @Test fun everyNewMessageIsALine() {
+        val first = 1_000_000L to "Asha — are you free?"
+        assertTrue(isNewLine(first, "Asha — never mind, call me now", first.first + 10_000, message = true))
+        assertFalse(isNewLine(first, "Asha — are you free?", first.first + 10_000, message = true))
+    }
+
+    /** Anything else re-posted with new text keeps its first line for 30 seconds. */
+    @Test fun otherUpdatesWaitHalfAMinute() {
+        val first = 1_000_000L to "Mail — 3 new emails"
+        assertFalse(isNewLine(first, "Mail — 4 new emails", first.first + 10_000, message = false))
+        assertTrue(isNewLine(first, "Mail — 4 new emails", first.first + 30_000, message = false))
+        assertTrue(isNewLine(null, "Mail — 4 new emails", first.first, message = false))
+    }
 
     @Test fun messagesAreTheMessagingStyleOrTheMessageCategory() {
         assertTrue(isMessage("android.app.Notification\$MessagingStyle", null))

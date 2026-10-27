@@ -77,6 +77,7 @@ class KolahalNotificationListener : NotificationListenerService() {
         val shown = NotificationStore.find(n.key)?.takeIf { !it.removed }
         NotificationStore.put(n, sbn.notification.contentIntent)
         val extras = sbn.notification.extras
+        val message = isMessage(extras.getString(Notification.EXTRA_TEMPLATE), sbn.notification.category)
         // Download/upload progress and "alert once" updates re-post the same key many times a
         // second; keep the store current but don't spam the log or fire scripts for each tick.
         // A chat's conversation is the exception: its silent update carries the next message.
@@ -85,13 +86,13 @@ class KolahalNotificationListener : NotificationListenerService() {
                 flags = sbn.notification.flags,
                 progressMax = extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0),
                 indeterminate = extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false),
-                message = isMessage(extras.getString(Notification.EXTRA_TEMPLATE), sbn.notification.category),
+                message = message,
                 changed = shown != null && shown.line != n.line,
             )
         ) return
         mirror()
         // The line is written once its icon is saved, so it never shows the app name first.
-        maybeLog(n, scope.launch { saveIcon(n, sbn) })
+        maybeLog(n, message, scope.launch { saveIcon(n, sbn) })
         // The private space's notifications stay out of scripts' reach, as its apps do (apps.list).
         if (isPrivate(sbn.user)) return
         com.mtwabpin.kolahal.script.TriggerDispatcher.get(this).fire(
@@ -163,14 +164,12 @@ class KolahalNotificationListener : NotificationListenerService() {
                 packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, PackageManager.GET_META_DATA)).toString()
             }.getOrDefault(pkg)
 
-    private fun maybeLog(n: Notif, iconSaved: kotlinx.coroutines.Job) {
+    private fun maybeLog(n: Notif, message: Boolean, iconSaved: kotlinx.coroutines.Job) {
         if (!NotifPrefs.get(this).shouldLog(n.pkg)) return
         val line = n.line
         if (line.isEmpty()) return
         val now = System.currentTimeMillis()
-        val last = lastLogged[n.key]
-        // Chat apps re-post the same key on every message; one line per 30s is enough.
-        if (last != null && (last.second == line || now - last.first < RATE_LIMIT_MS)) return
+        if (!isNewLine(lastLogged[n.key], line, now, message)) return
         lastLogged[n.key] = now to line
         if (lastLogged.size > NotificationStore.CAP * 2) lastLogged.entries.removeAll { now - it.value.first > RATE_LIMIT_MS }
 
@@ -218,6 +217,14 @@ class KolahalNotificationListener : NotificationListenerService() {
             changed: Boolean = false,
         ): Boolean =
             known && (progressMax > 0 || indeterminate || (flags and Notification.FLAG_ONLY_ALERT_ONCE != 0 && !(message && changed)))
+
+        /**
+         * Whether a post of [line] gets a log line, after [last] (when and what this notification
+         * last logged): a chat re-posts its notification for every message, and each new message is
+         * a line; anything else updating within 30 seconds (a count going up) keeps its first one.
+         */
+        internal fun isNewLine(last: Pair<Long, String>?, line: String, now: Long, message: Boolean): Boolean =
+            last == null || (last.second != line && (message || now - last.first >= RATE_LIMIT_MS))
 
         /** A messaging-style notification ([Notification.EXTRA_TEMPLATE]) or one an app files as a message. */
         internal fun isMessage(template: String?, category: String?): Boolean =
