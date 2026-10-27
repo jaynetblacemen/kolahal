@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -55,12 +56,13 @@ class AppSelectorTest {
         letters: Boolean = false,
         browse: String = "letters",
         filter: Boolean = false,
+        rowHeightDp: Int = Keys.SELECTOR_ROW_HEIGHT.default,
     ) = compose.setContent {
         Box(Modifier.size(360.dp, 700.dp)) {
             AppSelector(
                 list, emptySet(), onLaunch = { launched = it }, onLongPress = { pressed = it }, heightDp = 300, left = left,
                 position = position, edgeBackGesture = backGesture, actions = actions, icons = icons, letters = letters,
-                browse = browse, filter = filter,
+                browse = browse, filter = filter, rowHeightDp = rowHeightDp,
             )
         }
     }
@@ -331,6 +333,21 @@ class AppSelectorTest {
     }
     private fun bubble() = compose.onNodeWithTag("app-selector-bubble", useUnmergedTree = true).fetchSemanticsNode()
         .config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString("")
+
+    /** selector.row-height: left open, the list's names are a row's height apart. */
+    @Test fun rowHeightSpacesOutTheList() {
+        show(left = false, position = "bottom", rowHeightDp = 56)
+        compose.onNodeWithTag("app-selector").performTouchInput { down(center) }
+        compose.onNodeWithTag("app-selector").performTouchInput { up() }
+        compose.waitForIdle()
+        val labels = entries.map { it.item.label }
+        val shown = labels.withIndex().filter { (_, l) ->
+            labels.count { it == l } == 1 && compose.onAllNodesWithText(l, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        val (a, b) = shown.zipWithNext().first { (x, y) -> y.index == x.index + 1 }
+        val top = { l: String -> compose.onNodeWithText(l, useUnmergedTree = true).getUnclippedBoundsInRoot().top.value }
+        assertEquals("${a.value} to ${b.value}", 56f, top(b.value) - top(a.value), 1f)
+    }
 
     private val entries get() = SelectorMath.build(apps.apps.value.filter { !it.hidden }, { it.label }, { it.key }, { false }, { it.profile.kind.ordinal })
 

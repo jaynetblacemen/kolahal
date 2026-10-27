@@ -595,7 +595,6 @@ private class SelectorState {
     }
 }
 
-private val ROW_H = 38.dp
 /** Left open, the panel stops this far short of the strip. */
 private val OPEN_GAP = 8.dp
 /** How the list glides to a new letter's apps while the thumb slides along the edge. */
@@ -670,6 +669,8 @@ fun AppSelector(
     actions: String = "off",
     /** selector.icons: each row starts with the app's icon (Plan E). */
     icons: Boolean = false,
+    /** selector.row-height: each row's height (dp), more when the text needs it. */
+    rowHeightDp: Int = com.mtwabpin.kolahal.data.Keys.SELECTOR_ROW_HEIGHT.default,
     /** selector.aim: a slow slide moves the list an app per this many dp (apps, Plan C); 0 always glides. */
     aimDp: Int = SelectorMath.AIM_STEP,
     /** selector.aim-speed: slides slower than this (dp a second) aim. */
@@ -768,7 +769,7 @@ fun AppSelector(
         if (stripHPx < with(density) { 160.dp.toPx() }) return@BoxWithConstraints
         val count = entries.size
         // Rows grow with the text: at a large text size a fixed row would overlap the next.
-        val rowH = maxOf(ROW_H, with(density) { (Term.fontSize * 1.36f).sp.toDp() } + 8.dp)
+        val rowH = maxOf(rowHeightDp.dp, with(density) { (Term.fontSize * 1.36f).sp.toDp() } + 8.dp)
         val rowPx = with(density) { rowH.roundToPx() }
         // Plan E: a 26dp icon in a 38dp row, growing with the row up to 32dp.
         val iconSize = minOf(rowH - 12.dp, 32.dp)

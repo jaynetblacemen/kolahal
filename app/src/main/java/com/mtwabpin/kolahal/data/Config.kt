@@ -107,6 +107,7 @@ object Keys {
     val SELECTOR_LETTERS = ConfigKey.Bool("selector.letters", false, "Show the letters along the edge, each where its apps are, so you can see where to touch")
     val SELECTOR_HEIGHT = ConfigKey.Num("selector.height", 350, 200..900, "Length (dp) of the part of the edge you slide on: shorter means less thumb travel; the list uses the whole height")
     val SELECTOR_ICONS = ConfigKey.Bool("selector.icons", false, "Show each app's icon in the app selector's list")
+    val SELECTOR_ROW_HEIGHT = ConfigKey.Num("selector.row-height", 38, 32..64, "Height (dp) of each app in the app selector's list: taller spaces the names out; it grows with a large text size")
     val SELECTOR_AIM = ConfigKey.Num("selector.aim", 10, 0..40, "With selector.browse apps, slide slowly along the edge to aim: the list moves an app per this many dp (0: a slide always glides the whole list)")
     val SELECTOR_AIM_SPEED = ConfigKey.Num("selector.aim-speed", 100, 20..400, "Slides slower than this (dp a second) aim; from two and a half times it they glide again")
     val SELECTOR_SYSTEM_FONT = ConfigKey.Bool("selector.system-font", false, "The app selector in the phone's own font instead of the terminal font: its list, the letters on the edge and the one beside your thumb")
@@ -150,7 +151,7 @@ object Keys {
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_SHOW, HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
-        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, THEME_ALWAYS_DARK, THEME_PAPER, STATUS_BAR, FONT, FONT_SANS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGEST_ICONS, SUGGESTIONS_WRAP, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_BROWSE, SELECTOR_FILTER, SELECTOR_SIDE, SELECTOR_POSITION, SELECTOR_HANDLE, SELECTOR_LETTERS, SELECTOR_HEIGHT, SELECTOR_ACTIONS, SELECTOR_ICONS, SELECTOR_SYSTEM_FONT, SELECTOR_AIM, SELECTOR_AIM_SPEED, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
+        HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, THEME_ALWAYS_DARK, THEME_PAPER, STATUS_BAR, FONT, FONT_SANS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGEST_ICONS, SUGGESTIONS_WRAP, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_BROWSE, SELECTOR_FILTER, SELECTOR_SIDE, SELECTOR_POSITION, SELECTOR_HANDLE, SELECTOR_LETTERS, SELECTOR_HEIGHT, SELECTOR_ACTIONS, SELECTOR_ICONS, SELECTOR_ROW_HEIGHT, SELECTOR_SYSTEM_FONT, SELECTOR_AIM, SELECTOR_AIM_SPEED, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_GUTTER, LOG_LINE_HEIGHT, LOG_TALLER_TAPS, LOG_WALLPAPER, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_KEEP_LINES, LOG_FRESH, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP,
         FEEDS_LOG, FEEDS_LOG_LINES, FEEDS_READ_SHOWN, FEEDS_BACKLOG_READ, FEEDS_INTERVAL, FEEDS_NOTIFY, FEEDS_WIFI,

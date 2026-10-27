@@ -53,6 +53,7 @@ internal val TITLES = mapOf(
     "selector.handle" to "Show the A–Z handle",
     "selector.letters" to "Show letters on the edge",
     "selector.height" to "Length on the edge (dp)",
+    "selector.row-height" to "Row height (dp)",
     "selector.icons" to "Show app icons",
     "selector.system-font" to "Phone's font",
     "suggestions.rows" to "Chip rows",
@@ -126,6 +127,7 @@ private val SHOWN_WHEN: Map<ConfigKey<*>, (Config) -> Boolean> = run {
         Keys.SELECTOR_LETTERS to on(Keys.SELECTOR_RAIL),
         Keys.SELECTOR_HEIGHT to on(Keys.SELECTOR_RAIL),
         Keys.SELECTOR_ICONS to on(Keys.SELECTOR_RAIL),
+        Keys.SELECTOR_ROW_HEIGHT to on(Keys.SELECTOR_RAIL),
         Keys.SELECTOR_SYSTEM_FONT to on(Keys.SELECTOR_RAIL),
         Keys.FEEDS_LOG_LINES to on(Keys.FEEDS_LOG),
         Keys.FEEDS_READ_SHOWN to on(Keys.FEEDS_LOG),
@@ -184,7 +186,7 @@ private val CATEGORIES = listOf(
         listOf(
             null to listOf(Keys.SELECTOR_RAIL),
             "On the edge" to listOf(Keys.SELECTOR_BROWSE, Keys.SELECTOR_SIDE, Keys.SELECTOR_POSITION, Keys.SELECTOR_HEIGHT, Keys.SELECTOR_HANDLE, Keys.SELECTOR_LETTERS),
-            "The list" to listOf(Keys.SELECTOR_FILTER, Keys.SELECTOR_ICONS, Keys.SELECTOR_SYSTEM_FONT),
+            "The list" to listOf(Keys.SELECTOR_FILTER, Keys.SELECTOR_ROW_HEIGHT, Keys.SELECTOR_ICONS, Keys.SELECTOR_SYSTEM_FONT),
         ),
     ),
     Category(

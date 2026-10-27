@@ -110,6 +110,7 @@ The `theme` and `font` commands are unchanged.
 | `selector.letters` | bool | `off` | show the letters along the edge at rest, each where its stretch is, so you can see where to touch; only letters that have apps |
 | `selector.height` | number 200–900 | `350` | length (dp) of the part of the edge you slide on: shorter means less thumb travel; the list uses the whole height. With gesture navigation a touch starts it only in the middle 200 dp, where the handle is |
 | `selector.actions` | choice: `far-side` `off` | `off` | while you pick, an app's actions: `far-side` opens them when you lift on the list's far side; `off` leaves them to the open list (long-press); not in Settings ([what it does](/getting-started/basics/#app-actions-while-picking)) |
+| `selector.row-height` | number 32–64 | `38` | height (dp) of each app in the app selector's list: taller spaces the names out; it grows with a large text size |
 | `selector.icons` | bool | `off` | show each app's icon in the app selector's list |
 | `selector.system-font` | bool | `off` | the app selector in the phone's own font instead of the terminal font: its list, the letters on the edge and the one beside your thumb |
 | `selector.aim` | number 0–40 | `10` | with `selector.browse apps`, slide slowly along the edge to aim: the list moves an app per this many dp (`0`: a slide always goes where the edge maps it); not in Settings |
