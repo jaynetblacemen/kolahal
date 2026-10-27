@@ -39,7 +39,7 @@ android {
         minSdk = 28
         targetSdk = 37
         versionCode = 16
-        versionName = "0.4.6"
+        versionName = "0.4.7-dev"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // The accessibility service (double-tap / `lock`) and the call log are in the manifest; the
         // play build leaves them out.
@@ -106,7 +106,7 @@ android {
     }
 
     // The same startup profile as release.
-    sourceSets.getByName("play").baselineProfiles.srcDir("src/release/generated/baselineProfiles")
+    sourceSets.getByName("play").baselineProfiles.directories.add("src/release/generated/baselineProfiles")
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
