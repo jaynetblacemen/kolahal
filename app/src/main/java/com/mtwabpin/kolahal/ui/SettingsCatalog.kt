@@ -94,6 +94,8 @@ internal val PEEK_SLIDERS: Map<String, Boolean> = mapOf(
     Keys.LOG_LINE_HEIGHT.key to false,
     Keys.LOG_SPACING.key to false,
     Keys.SELECTOR_HEIGHT.key to false,
+    // Home shows the selector's list open while this one moves.
+    Keys.SELECTOR_ROW_HEIGHT.key to false,
     Keys.KEYBAR_HEIGHT.key to true,
     Keys.PROMPT_HEIGHT_TYPING.key to true,
     Keys.SUGGESTIONS.key to true,

@@ -57,12 +57,13 @@ class AppSelectorTest {
         browse: String = "letters",
         filter: Boolean = false,
         rowHeightDp: Int = Keys.SELECTOR_ROW_HEIGHT.default,
+        showList: Boolean = false,
     ) = compose.setContent {
         Box(Modifier.size(360.dp, 700.dp)) {
             AppSelector(
                 list, emptySet(), onLaunch = { launched = it }, onLongPress = { pressed = it }, heightDp = 300, left = left,
                 position = position, edgeBackGesture = backGesture, actions = actions, icons = icons, letters = letters,
-                browse = browse, filter = filter, rowHeightDp = rowHeightDp,
+                browse = browse, filter = filter, rowHeightDp = rowHeightDp, showList = showList,
             )
         }
     }
@@ -347,6 +348,16 @@ class AppSelectorTest {
         val (a, b) = shown.zipWithNext().first { (x, y) -> y.index == x.index + 1 }
         val top = { l: String -> compose.onNodeWithText(l, useUnmergedTree = true).getUnclippedBoundsInRoot().top.value }
         assertEquals("${a.value} to ${b.value}", 56f, top(b.value) - top(a.value), 1f)
+    }
+
+    /** Settings' row height preview: the list stands open without a touch, and the idle close leaves it. */
+    @Test fun thePreviewShowsTheListOpen() {
+        show(left = false, position = "bottom", showList = true)
+        compose.waitForIdle()
+        compose.onNodeWithTag("app-selector-panel").assertIsDisplayed()
+        compose.mainClock.advanceTimeBy(6_000)
+        compose.waitForIdle()
+        compose.onNodeWithTag("app-selector-panel").assertIsDisplayed()
     }
 
     private val entries get() = SelectorMath.build(apps.apps.value.filter { !it.hidden }, { it.label }, { it.key }, { false }, { it.profile.kind.ordinal })

@@ -458,6 +458,8 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 actions = remember(configVersion) { config[Keys.SELECTOR_ACTIONS] },
                 icons = remember(configVersion) { config[Keys.SELECTOR_ICONS] },
                 rowHeightDp = remember(configVersion) { config[Keys.SELECTOR_ROW_HEIGHT] },
+                // Its Settings slider dragged: the list open, to see its rows.
+                showList = preview?.key == Keys.SELECTOR_ROW_HEIGHT.key,
                 aimDp = remember(configVersion) { config[Keys.SELECTOR_AIM] },
                 aimSpeed = remember(configVersion) { config[Keys.SELECTOR_AIM_SPEED] },
                 browse = remember(configVersion) { config[Keys.SELECTOR_BROWSE] },

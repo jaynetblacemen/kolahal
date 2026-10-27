@@ -683,6 +683,8 @@ fun AppSelector(
     systemFont: Boolean = false,
     /** Drawn and taking touches; off (the keyboard up), nothing shows but the list stays built. */
     active: Boolean = true,
+    /** Settings' preview of selector.row-height: the list stands open, as lifting on the edge leaves it, and stays. */
+    showList: Boolean = false,
 ) {
     val text = if (systemFont) Term.phoneText else Term.text
     // Plan F: with the strip at the bottom of the edge, favourites go last, where the thumb rests.
@@ -737,9 +739,12 @@ fun AppSelector(
     val waveLetters = remember(sectionLetters, waveStyle) { sectionLetters.map { measurer.measure(it.toString(), waveStyle) } }
 
     BackHandler(enabled = state.mode == Mode.OPEN) { state.close() }
-    // Left open: closes after a few idle seconds (scrolling it counts as use).
-    LaunchedEffect(state.mode, state.interaction) {
-        if (state.mode != Mode.OPEN) return@LaunchedEffect
+    LaunchedEffect(showList) {
+        if (showList) state.mode = Mode.OPEN else if (state.mode == Mode.OPEN) state.close()
+    }
+    // Left open: closes after a few idle seconds (scrolling it counts as use), unless it's a preview.
+    LaunchedEffect(state.mode, state.interaction, showList) {
+        if (state.mode != Mode.OPEN || showList) return@LaunchedEffect
         snapshotFlow { listState.isScrollInProgress }.collectLatest { scrolling ->
             if (!scrolling) {
                 delay(IDLE_MS)
