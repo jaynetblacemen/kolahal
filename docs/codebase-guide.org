@@ -508,16 +508,17 @@ stays.
 
 ** Background work at a glance
 
-| What                             | Mechanism                                                    | Code                                         |
-|----------------------------------+--------------------------------------------------------------+----------------------------------------------|
-| scripts on an interval           | WorkManager periodic work → =ScriptWorker=                   | [[src:script/ScriptScheduler.kt::object ScriptScheduler][script/ScriptScheduler.kt]]                    |
-| scripts at daily times           | AlarmManager → =ScriptAlarmReceiver= → =ScriptRunService=    | [[src:script/ScriptAlarms.kt::object ScriptAlarms][script/ScriptAlarms.kt]]                       |
-| scripts on device events (=@on=) | runtime receivers in the UI process → one-off =ScriptWorker= | [[src:script/TriggerDispatcher.kt::class TriggerDispatcher][script/TriggerDispatcher.kt]]                  |
-| feed refresh                     | WorkManager → =FeedWorker= (main process)                    | [[src:feeds/FeedScheduler.kt::object FeedScheduler][feeds/FeedScheduler.kt]]                       |
-| reminders                        | AlarmManager → =ReminderReceiver=; re-armed after boot       | [[src:productivity/Reminders.kt::object ReminderScheduler][productivity/Reminders.kt]]                    |
-| notifications in the log         | =NotificationListenerService=                                | [[src:notifications/KolahalNotificationListener.kt::class KolahalNotificationListener][notifications/KolahalNotificationListener.kt]] |
-| installs and uninstalls          | package callbacks, settle-and-diff                           | [[src:apps/PackageEvents.kt::class PackageEvents][apps/PackageEvents.kt]]                        |
-| calls in the log                 | call-log observer                                            | [[src:calls/CallEvents.kt::class CallEvents][calls/CallEvents.kt]]                          |
+| What                             | Mechanism                                                                 | Code                                                                                                                                  |
+|----------------------------------+---------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------|
+| scripts on an interval           | WorkManager periodic work → =ScriptWorker=                                | [[src:script/ScriptScheduler.kt::object ScriptScheduler][script/ScriptScheduler.kt]]                                                  |
+| scripts at daily times           | AlarmManager → =ScriptAlarmReceiver= → =ScriptRunService=                 | [[src:script/ScriptAlarms.kt::object ScriptAlarms][script/ScriptAlarms.kt]]                                                           |
+| scripts on device events (=@on=) | runtime receivers in the UI process → one-off =ScriptWorker=              | [[src:script/TriggerDispatcher.kt::class TriggerDispatcher][script/TriggerDispatcher.kt]]                                             |
+| feed refresh                     | WorkManager → =FeedWorker= (main process)                                 | [[src:feeds/FeedScheduler.kt::object FeedScheduler][feeds/FeedScheduler.kt]]                                                          |
+| reminders                        | AlarmManager → =ReminderReceiver=; re-armed after boot; repeats set again | [[src:productivity/Reminders.kt::object ReminderScheduler][productivity/Reminders.kt]]                                                |
+| automatic backups                | WorkManager periodic work → =AutoBackupWorker= (main process)             | [[src:data/AutoBackup.kt::object AutoBackup][data/AutoBackup.kt]]                                                                     |
+| notifications in the log         | =NotificationListenerService=                                             | [[src:notifications/KolahalNotificationListener.kt::class KolahalNotificationListener][notifications/KolahalNotificationListener.kt]] |
+| installs and uninstalls          | package callbacks, settle-and-diff                                        | [[src:apps/PackageEvents.kt::class PackageEvents][apps/PackageEvents.kt]]                                                             |
+| calls in the log                 | call-log observer                                                         | [[src:calls/CallEvents.kt::class CallEvents][calls/CallEvents.kt]]                                                                    |
 
 All of them report the same way: by writing log lines.
 
@@ -646,8 +647,8 @@ Outside =main=:
 
 | Path                               | What                                                                                                  |
 |------------------------------------+-------------------------------------------------------------------------------------------------------|
-| =app/src/test/=                    | about 170 JVM unit tests: fast, no phone needed                                                       |
-| =app/src/androidTest/=             | 29 on-device tests (commands, script engines, backup)                                                 |
+| =app/src/test/=                    | about 340 JVM unit tests: fast, no phone needed                                                       |
+| =app/src/androidTest/=             | about 330 on-device tests (commands, script engines, backup, the screens)                             |
 | =app/src/play/AndroidManifest.xml= | removes the accessibility service, =READ_CALL_LOG= and =READ_CONTACTS= for the =play= build           |
 | =app/src/release/generated/=       | baseline profiles (pre-compiled start-up code)                                                        |
 | =baselineprofile/=                 | the module that generates those profiles                                                              |
@@ -674,7 +675,8 @@ from "fixing" deliberate choices, and from copying shortcuts where they don't fi
 3. *Singletons instead of dependency injection.* =Thing.get(context)= is simple and has no
    framework, but you can't easily swap a fake repository into a test. Kolahal's answer is to
    pull logic into pure functions and objects that need no Android at all (=buildRows=,
-   =InstantRun=, =Pipes=, =Units=, =TimeSpec=, =WidgetModel=, the =AppRail= maths) and test
+   =InstantRun=, =Pipes=, =Units=, =Calc=, =TimeSpec=, =Repeat=, =Fuzzy=, =ScriptCheck=, =Tips=,
+   =WidgetModel=, the =AppRail= maths) and test
    those on the JVM, and to test the rest on a device with real singletons.
 
 4. *Commands write to the database instead of returning.* Unusual, but it's the design (Part 3),
@@ -716,7 +718,7 @@ with Android's contact picker (=ContactPicker=), remembered on the phone.
 ** How the tests are organised
 
 - Pure logic has a JVM test with the same name plus =Test=: [[repo:app/src/test/java/com/mtwabpin/kolahal/terminal/LogRowsTest.kt::class LogRowsTest][LogRowsTest]] for =buildRows=,
-  =InstantRunTest=, =PipesTest=, =UnitsTest=, =TimeSpecTest=, =EditorLogicTest=,
+  =InstantRunTest=, =PipesTest=, =UnitsTest=, =CalcTest=, =TimeSpecTest=, =EditorLogicTest=,
   =SelectorMathTest=, =WidgetModelTest=, ...
 - Anything that needs Android (the database, real apps, script engines) is in =androidTest=.
 - =LogRowsTest= is a good first read: small, and it shows how a pure function makes UI
