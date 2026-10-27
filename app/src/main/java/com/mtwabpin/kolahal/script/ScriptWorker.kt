@@ -66,7 +66,8 @@ internal object ScriptRun {
         // Queued before a switch went off: the event (or, for a notification, reading notifications)
         // is checked again as the run starts.
         val on = event?.get("name") as? String
-        if (script != null && on != null && on in ScriptMeta.EVENTS &&
+        // A sample event run from the editor is asked for: it runs.
+        if (script != null && on != null && on in ScriptMeta.EVENTS && !inputData.getBoolean(ScriptWorker.KEY_INTERACTIVE, false) &&
             (!script.grants.allows(on) || (on == "notification" && !script.grants.allows("notifications")))
         ) return true
 

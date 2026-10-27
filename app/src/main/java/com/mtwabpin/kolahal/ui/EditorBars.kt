@@ -2,6 +2,7 @@ package com.mtwabpin.kolahal.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -54,15 +55,71 @@ import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.script.ApiDoc
 import com.mtwabpin.kolahal.script.ApiDocs
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-internal fun EditorButton(label: String, onClick: () -> Unit) {
+internal fun EditorButton(label: String, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
     Text(
         "[$label]",
         style = Term.code.copy(color = Term.fg),
         modifier = Modifier
-            .clickable(onClick = onClick)
+            .then(if (onLongClick == null) Modifier.clickable(onClick = onClick) else Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick))
             .heightIn(min = 48.dp)
             .padding(horizontal = 12.dp, vertical = 14.dp),
+    )
+}
+
+/**
+ * The editor's Run with (a long press on run): the words to run it with, as `args` when it runs as
+ * a command, and an event to run it as, with made-up values ([ScriptMeta.sampleEvent]): its `@on`
+ * events and `@at` times, or none.
+ */
+@Composable
+internal fun RunWithDialog(code: String, onDismiss: () -> Unit, onRun: (List<String>, Map<String, Any?>?) -> Unit) {
+    var words by remember { mutableStateOf(TextFieldValue("")) }
+    val events = remember(code) {
+        com.mtwabpin.kolahal.script.ScriptMeta.events(code).map { it to null } +
+            com.mtwabpin.kolahal.script.ScriptMeta.at(code).map { "at" to it }
+    }
+    var chosen by remember { mutableStateOf<Pair<String, String?>?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Run with", style = Term.code.copy(color = Term.prompt, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)) },
+        containerColor = Term.surface,
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = words,
+                    onValueChange = { words = it },
+                    singleLine = true,
+                    label = { Text("args") },
+                    placeholder = { Text("words after its name", style = Term.code.copy(color = Term.dim)) },
+                    textStyle = Term.code.copy(color = Term.fg),
+                    keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
+                    modifier = Modifier.fillMaxWidth().testTag("run-args"),
+                )
+                if (events.isNotEmpty()) {
+                    Text("as the event", style = Term.code.copy(color = Term.dim), modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+                    (listOf<Pair<String, String?>?>(null) + events).forEach { e ->
+                        Text(
+                            (if (e == chosen) "● " else "○ ") + when {
+                                e == null -> "none"
+                                e.second != null -> "at ${e.second}"
+                                else -> e.first
+                            },
+                            style = Term.code.copy(color = if (e == chosen) Term.prompt else Term.fg),
+                            modifier = Modifier.fillMaxWidth().clickable { chosen = e }.heightIn(min = 40.dp).padding(vertical = 8.dp),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val args = com.mtwabpin.kolahal.terminal.CommandParsing.tokenize(words.text)
+                onRun(args, chosen?.let { com.mtwabpin.kolahal.script.ScriptMeta.sampleEvent(it.first, it.second) })
+            }) { Text("run", style = Term.code.copy(color = Term.prompt)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("cancel", style = Term.code.copy(color = Term.fg)) } },
     )
 }
 
@@ -173,8 +230,8 @@ internal fun FindBar(
                     },
                     modifier = Modifier.weight(1f).padding(start = 12.dp).testTag("replace"),
                 )
-                EditorButton("replace", onReplace)
-                EditorButton("all", onReplaceAll)
+                EditorButton("replace", onClick = onReplace)
+                EditorButton("all", onClick = onReplaceAll)
             }
         }
     }

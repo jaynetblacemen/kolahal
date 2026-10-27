@@ -90,6 +90,30 @@ class ScriptFixesTest {
         assertTrue(KvStore(app, ScriptOptions.scope("$name-2")).all().isEmpty())
     }
 
+    /** `@every` and `@at` typed in the editor set its timers when saved; taken out, they take back what they set. */
+    @Test fun timersTypedInTheEditorApply() {
+        val name = "sfedit${System.nanoTime() % 1_000_000}"
+        val s = scripts.create(name, ScriptLang.LUA, "log(1)")
+        lateinit var vm: TerminalViewModel
+        instrumentation.runOnMainSync { vm = TerminalViewModel(app, SavedStateHandle()) }
+        fun save(code: String): String? {
+            val done = java.util.concurrent.CompletableFuture<String?>()
+            instrumentation.runOnMainSync { vm.saveScript(scripts.byId(s.id)!!, code) { _, changed -> done.complete(changed) } }
+            return done.get(10, java.util.concurrent.TimeUnit.SECONDS)
+        }
+        try {
+            assertEquals("runs every 1h · daily at 07:00", save("-- @every 1h\n-- @at 7:00\nlog(1)"))
+            assertEquals(60, scripts.byId(s.id)!!.intervalMin)
+            assertEquals(listOf("07:00"), scripts.byId(s.id)!!.atTimes)
+            assertNull(save("-- @every 1h\n-- @at 7:00\nlog(2)"))
+            assertEquals("timer off · no daily times", save("log(3)"))
+            assertEquals(0, scripts.byId(s.id)!!.intervalMin)
+        } finally {
+            ScriptScheduler.cancel(app, s.id)
+            scripts.delete(s.id)
+        }
+    }
+
     @Test fun dailyTimesSwitchAScriptOn() {
         val s = scripts.create("sftimes", ScriptLang.LUA, "return 1", enabled = false)
         lateinit var vm: TerminalViewModel

@@ -1,0 +1,50 @@
+package com.mtwabpin.kolahal.script
+
+import com.mtwabpin.kolahal.data.ScriptLang
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class ScriptCheckTest {
+    private fun lua(code: String) = ScriptCheck.check(code.trimIndent(), ScriptLang.LUA)
+
+    @Test fun aNameTheApiDoesntHave() {
+        assertEquals(listOf(ScriptCheck.Issue(2, "http.gte isn't in the API: http.get?")), lua("""
+            local ok = 1
+            local r = http.gte("https://example.com")
+        """))
+    }
+
+    @Test fun linesCountWithCommentsAboveThem() {
+        assertEquals(listOf(3), lua("-- @every 1h\n-- a note\nlocal r = http.gte('x')").map { it.line })
+    }
+
+    @Test fun aCallThatNeedsUses() {
+        assertEquals(listOf(ScriptCheck.Issue(1, "clipboard.get needs a `-- @uses clipboard` line")), lua("log(clipboard.get())"))
+        assertTrue(lua("-- @uses clipboard\nlog(clipboard.get())").isEmpty())
+        assertEquals("launcher.run needs a `// @uses commands` line", ScriptCheck.check("launcher.run('torch')", ScriptLang.JS).single().text)
+    }
+
+    @Test fun headerLinesItCantRead() {
+        val issues = lua("""
+            -- @evrey 1h
+            -- @every 5x
+            -- @at 25:00
+            -- @on unlok
+            -- @uses clipbord
+        """)
+        assertEquals(listOf(1, 2, 3, 4, 5), issues.map { it.line })
+        assertEquals("@evrey isn't one Kolahal reads: @every?", issues[0].text)
+        assertTrue(issues[1].text.startsWith("@every 5x isn't an interval"))
+        assertTrue(issues[2].text.startsWith("@at 25:00 isn't a time"))
+        assertTrue(issues[3].text.startsWith("@on unlok isn't an event"))
+        assertTrue(issues[4].text.startsWith("@uses clipbord isn't one"))
+    }
+
+    /** A comment isn't a call, and a table of the script's own by that name is its own. */
+    @Test fun notEverythingIsAnIssue() {
+        assertTrue(lua("-- http.gte is a typo of mine\nlog(1)").isEmpty())
+        assertTrue(lua("local store = {}\nstore.thing = 1").isEmpty())
+        assertTrue(lua("-- @every 1h\n-- @at 07:00, 18:30\n-- @on unlock\nlog(http.get('x').status)").isEmpty())
+    }
+}

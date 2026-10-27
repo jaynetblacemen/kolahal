@@ -62,6 +62,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.data.Script
+import com.mtwabpin.kolahal.data.shownText
 import com.mtwabpin.kolahal.script.ApiDoc
 import com.mtwabpin.kolahal.script.ScriptWorker
 import kotlinx.coroutines.Dispatchers
@@ -71,7 +72,9 @@ import kotlinx.coroutines.withContext
 
 /**
  * Monospace editor for scripts: line numbers, light syntax colouring, undo/redo, find/replace,
- * API completion and inline docs.
+ * API completion and inline docs. Saving says what it changed beyond the code (a timer its `@every`
+ * line set) and what [ScriptCheck] finds; a run's lines show under the code ([runLines]), and a
+ * long press on run runs it with args or as an event ([RunWithDialog]).
  * Ctrl+S saves, Ctrl+R saves and runs, Ctrl+Z / Ctrl+Shift+Z undo/redo, Ctrl+F find, Ctrl+H replace,
  * F3 / Shift+F3 next/previous match, Ctrl+G go to line, Tab accepts the first suggestion,
  * Esc closes the find bar, then saves and closes the editor (as does Back).
@@ -86,8 +89,9 @@ fun ScriptEditor(
     jumpToLine: Int?,
     lastRun: Long?,
     lastStatus: String?,
-    onSave: (String, (Throwable?) -> Unit) -> Unit,
-    onRun: (String, (Throwable?) -> Unit) -> Unit,
+    onSave: (String, (Throwable?, String?) -> Unit) -> Unit,
+    onRun: (String, List<String>, Map<String, Any?>?, (Throwable?, String?) -> Unit) -> Unit,
+    runLines: suspend (since: Long) -> List<com.mtwabpin.kolahal.data.LogEntry>,
     onClose: (unsaved: String?) -> Unit,
 ) {
     var value by rememberSaveable(script.id, stateSaver = TextFieldValue.Saver) {
@@ -113,6 +117,9 @@ fun ScriptEditor(
 
     var gotoOpen by remember { mutableStateOf(false) }
     var referenceOpen by remember { mutableStateOf(false) }
+    var runWithOpen by remember { mutableStateOf(false) }
+    // The last run's lines, under the code until closed or the next run.
+    var output by remember(script.id) { mutableStateOf<List<com.mtwabpin.kolahal.data.LogEntry>?>(null) }
 
     // What the last button did; a run waits for its recorded result.
     var message by remember(script.id) { mutableStateOf<EditorMessage?>(null) }
@@ -138,7 +145,11 @@ fun ScriptEditor(
         if (lastRun == null || lastRun < since) return@LaunchedEffect
         runSince = null
         val r = EditorLogic.runResult(lastStatus, ScriptWorker.TIMEOUT_MS / 1000)
-        message = EditorMessage(r.text, if (r.failed) EditorMessage.Kind.ERROR else EditorMessage.Kind.OK, r.line)
+        // The lines are written as the run ends, its result just after.
+        val lines = runLines(since)
+        output = lines
+        val text = if (lines.isEmpty() || r.failed) r.text else r.text.replace("its output is in the log", "${lines.size} line${if (lines.size == 1) "" else "s"} below")
+        message = EditorMessage(text, if (r.failed) EditorMessage.Kind.ERROR else EditorMessage.Kind.OK, r.line)
     }
 
     // Scrolling to a match / line
@@ -167,6 +178,15 @@ fun ScriptEditor(
         }
     }
 
+    /** "Saved", what saving changed, and the first of what [ScriptCheck] finds (a tap goes to its line). */
+    fun savedMessage(text: String, changed: String?): EditorMessage {
+        val head = listOfNotNull("Saved", changed).joinToString(" · ")
+        val issues = com.mtwabpin.kolahal.script.ScriptCheck.check(text, script.lang)
+        val first = issues.firstOrNull() ?: return EditorMessage(head, EditorMessage.Kind.OK)
+        val more = if (issues.size > 1) " (and ${issues.size - 1} more)" else ""
+        return EditorMessage("$head · line ${first.line}: ${first.text}$more", EditorMessage.Kind.ERROR, first.line)
+    }
+
     /** [quiet]: leaving the app saves without a message. */
     fun save(quiet: Boolean = false) {
         if (!dirty) {
@@ -174,25 +194,26 @@ fun ScriptEditor(
             return
         }
         val text = value.text
-        onSave(text) { failure ->
+        onSave(text) { failure, changed ->
             if (failure == null) {
                 saved = text
-                if (!quiet) message = EditorMessage("Saved", EditorMessage.Kind.OK)
+                if (!quiet) message = savedMessage(text, changed)
             } else {
                 message = EditorMessage("Couldn't save: ${failure.message ?: failure.javaClass.simpleName}", EditorMessage.Kind.ERROR)
             }
         }
     }
 
-    fun run() {
+    fun run(args: List<String> = emptyList(), event: Map<String, Any?>? = null) {
         // Running saves the text first; it counts as saved once it is, so a failed save keeps the edits.
         val text = value.text
         runSince = System.currentTimeMillis()
+        output = null
         message = EditorMessage("Saving…", EditorMessage.Kind.BUSY)
-        onRun(text) { failure ->
+        onRun(text, args, event) { failure, changed ->
             if (failure == null) {
                 saved = text
-                message = EditorMessage("Saved · running…", EditorMessage.Kind.BUSY)
+                message = EditorMessage(listOfNotNull("Saved", changed, "running…").joinToString(" · "), EditorMessage.Kind.BUSY)
             } else {
                 message = EditorMessage("Couldn't save: ${failure.message ?: failure.javaClass.simpleName}", EditorMessage.Kind.ERROR)
             }
@@ -399,6 +420,7 @@ fun ScriptEditor(
                 if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when {
                     e.isCtrlPressed && e.key == Key.S -> { save(); true }
+                    e.isCtrlPressed && e.isShiftPressed && e.key == Key.R -> { runWithOpen = true; true }
                     e.isCtrlPressed && e.key == Key.R -> { run(); true }
                     e.isCtrlPressed && e.key == Key.F -> { openFind(false); true }
                     e.isCtrlPressed && e.key == Key.H -> { openFind(true); true }
@@ -434,7 +456,7 @@ fun ScriptEditor(
             }
             EditorButton("?") { referenceOpen = true }
             EditorButton("save") { save() }
-            EditorButton("run") { run() }
+            EditorButton("run", onLongClick = { runWithOpen = true }) { run() }
             EditorButton("close") { close() }
         }
         if (findOpen) {
@@ -516,6 +538,9 @@ fun ScriptEditor(
                     )
                 }
             }
+        }
+        output?.let { lines ->
+            RunOutput(lines, maxHeight = with(density) { (viewportHeight * 0.4f).toDp() }) { output = null }
         }
         val shown = message
         if (shown != null) {
@@ -608,6 +633,12 @@ fun ScriptEditor(
         }
     }
 
+    if (runWithOpen) {
+        RunWithDialog(value.text, onDismiss = { runWithOpen = false }) { args, event ->
+            runWithOpen = false
+            run(args, event)
+        }
+    }
     if (gotoOpen) {
         GotoLineDialog(lineCount, onDismiss = { gotoOpen = false }) { line ->
             gotoOpen = false
@@ -635,6 +666,32 @@ fun ScriptEditor(
                 focusEditor()
             },
         )
+    }
+}
+
+/** A run's lines under the code, as the log shows them in plain text, errors red; ✕ closes it. */
+@Composable
+private fun RunOutput(lines: List<com.mtwabpin.kolahal.data.LogEntry>, maxHeight: androidx.compose.ui.unit.Dp, onClose: () -> Unit) {
+    Column(Modifier.fillMaxWidth().background(Term.surface.copy(alpha = 0.6f)).testTag("run-output")) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 12.dp)) {
+            Text(
+                if (lines.isEmpty()) "output · nothing" else "output · ${lines.size} line${if (lines.size == 1) "" else "s"}",
+                style = Term.code.copy(color = Term.dim),
+                modifier = Modifier.weight(1f),
+            )
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp).clickable(onClick = onClose)) {
+                Text("✕", style = Term.code.copy(color = Term.dim))
+            }
+        }
+        Column(Modifier.fillMaxWidth().heightIn(max = maxHeight).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp)) {
+            lines.forEach { e ->
+                Text(
+                    e.shownText,
+                    style = Term.code.copy(color = if (e.kind == com.mtwabpin.kolahal.data.LogKind.ERROR) Term.error else Term.fg),
+                    modifier = Modifier.padding(vertical = 2.dp),
+                )
+            }
+        }
     }
 }
 

@@ -147,7 +147,7 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `script get [<name>] [--refresh] [--replace]` | list the [shared scripts](/scripting/overview/#getting-scripts-from-others), or install or update one |
 | `script new <name>[.lua\|.js] [lua\|js] [--cmd]` | create from a template and open the editor |
 | `script edit <name>` | open the editor |
-| `script run <name>` | run now |
+| `script run <name> [<words>]` | run now; the words are its `args`, as when it runs by name |
 | `script cat <name>` | print the code with line numbers (alias `show`) |
 | `script diff <name>` | a library script against the library version: lines only in it `-` (red), only in yours `+`, three unchanged around each; Copy text on its first line copies it as a plain diff |
 | `script every <name> <15m\|30m\|2h\|1d\|off>` | interval timer |

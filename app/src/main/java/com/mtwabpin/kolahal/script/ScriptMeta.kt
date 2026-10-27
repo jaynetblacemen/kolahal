@@ -49,6 +49,24 @@ object ScriptMeta {
 
     fun isCommand(code: String) = command.containsMatchIn(code)
 
+    /**
+     * An `event` like the one [name] brings (or a daily [time]'s, `at`), with made-up values, for
+     * trying a script from the editor.
+     */
+    fun sampleEvent(name: String, time: String? = null): Map<String, Any?> = when (name) {
+        "charger" -> mapOf("name" to name, "level" to 64, "plug" to "ac")
+        "unplug" -> mapOf("name" to name, "level" to 64)
+        "notification" -> mapOf(
+            "name" to name, "app" to "Messages", "pkg" to "com.google.android.apps.messaging",
+            "title" to "Asha", "text" to "Running late, there in 10", "time" to System.currentTimeMillis(),
+        )
+        "headset" -> mapOf("name" to name, "type" to "wired", "device" to "Headset", "mic" to true)
+        "wifi" -> mapOf("name" to name, "network" to "wifi")
+        "boot" -> mapOf("name" to name, "uptime" to 42)
+        "at" -> mapOf("name" to name, "time" to (time ?: "09:00"))
+        else -> mapOf("name" to name)
+    }
+
     private val online = Regex("""\b(http|rss)\s*\.\s*\w""")
 
     /** Whether the code makes web requests or reads feeds (`http.`, `rss.`): a timed run of it waits for a network. */

@@ -827,35 +827,82 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     // ---- script editor --------------------------------------------------------------------
 
-    /** Saves the editor's text; [onDone] gets null once it is written, or what went wrong. */
-    fun saveScript(script: Script, code: String, onDone: (Throwable?) -> Unit = {}) {
+    /**
+     * Saves the editor's text; [onDone] gets null once it is written, with what saving changed
+     * beyond the code ([saveCode]), or what went wrong.
+     */
+    fun saveScript(script: Script, code: String, onDone: (Throwable?, String?) -> Unit = { _, _ -> }) {
         _editing.value = script.copy(code = code)
         viewModelScope.launch {
+            var changed: String? = null
             val failure = withContext(serialIo) {
                 runCatching {
-                    scripts.saveCode(script.id, code, byUser = true)
-                    // Whether its timer waits for a network follows the code.
-                    scripts.byId(script.id)?.let { ScriptScheduler.sync(context, it) }
+                    changed = saveCode(script, code)
                     refreshScriptCaches()
                 }.exceptionOrNull()
             }
-            onDone(failure)
+            onDone(failure, changed)
         }
     }
 
-    /** Saves [code] and runs the script; [onDone] gets what went wrong with the save, if anything. */
-    fun runScript(script: Script, code: String, onDone: (Throwable?) -> Unit = {}) {
+    /**
+     * Saves [code] and runs the script, with [args] and as [event] when given (the editor's Run
+     * with); [onDone] gets what went wrong with the save, if anything, and what saving changed.
+     */
+    fun runScript(
+        script: Script, code: String, args: List<String> = emptyList(), event: Map<String, Any?>? = null,
+        onDone: (Throwable?, String?) -> Unit = { _, _ -> },
+    ) {
         viewModelScope.launch {
+            var changed: String? = null
             val failure = withContext(serialIo) {
                 runCatching {
-                    scripts.saveCode(script.id, code, byUser = true)
+                    changed = saveCode(script, code)
                     refreshScriptCaches()
-                    scripts.byId(script.id)?.let { ScriptScheduler.runNow(context, it) }
+                    scripts.byId(script.id)?.let { ScriptScheduler.runNow(context, it, args, event = event) }
                     logs.add(LogKind.INFO, "Running ${script.name}…", ctx = LogContext.of(LogContext.SCRIPT to script.name))
                 }.exceptionOrNull()
             }
-            onDone(failure)
+            onDone(failure, changed)
         }
+    }
+
+    /**
+     * Writes [code] typed in the editor, and what its `@every` and `@at` lines say to its timers: a
+     * new or changed line sets them, one taken out takes back what it had set (a timer set in the
+     * sheet stays). Its timers are synced either way (whether it waits for a network follows the
+     * code). Returns what changed, such as "runs every 1h", or null.
+     */
+    private fun saveCode(script: Script, code: String): String? {
+        val before = scripts.byId(script.id) ?: return null
+        scripts.saveCode(script.id, code, byUser = true)
+        val notes = ArrayList<String>()
+        val oldEvery = ScriptMeta.every(before.code)?.coerceAtLeast(ScriptScheduler.MIN_INTERVAL_MIN)
+        val newEvery = ScriptMeta.every(code)?.coerceAtLeast(ScriptScheduler.MIN_INTERVAL_MIN)
+        if (newEvery != oldEvery) {
+            val minutes = newEvery ?: if (before.intervalMin == oldEvery) 0 else before.intervalMin
+            if (minutes != before.intervalMin) {
+                scripts.setInterval(script.id, minutes)
+                notes += if (minutes == 0) "timer off" else "runs every ${CommandParsing.formatInterval(minutes)}"
+            }
+        }
+        val oldAt = ScriptMeta.at(before.code)
+        val newAt = ScriptMeta.at(code)
+        if (newAt != oldAt) {
+            val times = newAt.ifEmpty { if (before.atTimes.sorted() == oldAt) emptyList() else before.atTimes }
+            if (times != before.atTimes) {
+                scripts.setAtTimes(script.id, times)
+                notes += if (times.isEmpty()) "no daily times" else "daily at ${times.joinToString(", ")}"
+            }
+        }
+        scripts.byId(script.id)?.let { ScriptScheduler.sync(context, it) }
+        if (notes.isNotEmpty() && !before.enabled) notes += "once it's switched on"
+        return notes.joinToString(" · ").ifEmpty { null }
+    }
+
+    /** What [script] logged from [since] on, oldest first: a run's output, for the editor. */
+    suspend fun runLines(script: String, since: Long): List<LogEntry> = withContext(Dispatchers.IO) {
+        logs.recent(limit = 200).filter { it.source == script && it.ts >= since }
     }
 
     fun onHeaderTap(target: HeaderTarget) {

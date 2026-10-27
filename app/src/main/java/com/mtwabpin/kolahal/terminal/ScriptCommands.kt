@@ -137,8 +137,9 @@ class ScriptCommands(
                 ui.openEditor(script)
             }
             "edit" -> withScript(target) { ui.openEditor(it) }
+            // The words after its name are its args, as when it runs by name.
             "run" -> withScript(target) {
-                ScriptScheduler.runNow(context, it)
+                ScriptScheduler.runNow(context, it, args.drop(2))
                 info("Running ${it.name}…", scriptCtx(it))
             }
             "every" -> withScript(target) { s ->
