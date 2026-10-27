@@ -170,7 +170,7 @@ Script names use lowercase letters, digits, `-` and `_` (up to 40), and can't be
 
 | Usage | Aliases | Description |
 | --- | --- | --- |
-| `help` | `?` | show the command list |
+| `help [<command>]` | `?` | show the command list; with a command, just its usage and what it does |
 | `history` | | recent commands (tap to reuse) |
 | `clear [history\|all]` | `cls` | clear the screen, the ↑ history, or both |
 | `log only <name\|kind>` / `log all` | | only one script's, feed's or app's lines, or one kind's (`commands`, `scripts`, `feeds`, `notifications`, `apps`, `calls`, `reminders`), until `log all`, ✕, back or another command |

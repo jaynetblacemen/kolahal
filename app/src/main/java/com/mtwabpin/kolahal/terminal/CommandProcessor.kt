@@ -108,7 +108,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "alias" -> alias(rest)
                 "unalias" -> unalias(args)
                 in AppCommands.NAMES -> appCommands.run(name, args)
-                "help", "?" -> help()
+                "help", "?" -> if (args.isEmpty()) help() else commandHelp(args.first())
                 "unlocks" -> unlocks(args)
                 "fetch", "neofetch", "fastfetch" -> fetch()
                 "clear", "cls" -> clear(args)
@@ -566,9 +566,33 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         info("Pipes: help | grep feed · history | tail 5 · contacts | count  (grep [-v], head, tail, sort, uniq, count)")
     }
 
+    /** `help todo`: that command's usage and what it does, its other names, and where the guide says more. */
+    private fun commandHelp(word: String) {
+        val typed = word.lowercase()
+        val offered = COMMANDS.filter { it.name !in UNAVAILABLE }
+        fun line(spec: CommandSpec) = out(spec.usage, LogContext.of(LogContext.COMMAND to spec.name + " ", LogContext.DESC to spec.help))
+        offered.firstOrNull { it.name == InstantRun.canonical(typed) }?.let { spec ->
+            line(spec)
+            val also = InstantRun.SYNONYMS.filterValues { it == spec.name }.keys
+            if (also.isNotEmpty()) info("Also typed as ${also.joinToString(", ")}")
+            info("More in the guide's command list", LogContext.of(LogContext.URL to com.mtwabpin.kolahal.ui.GUIDE_URL + "reference/commands/"))
+            return
+        }
+        prefs.alias(typed)?.let { return info("$typed is your alias for: $it", LogContext.of(LogContext.COMMAND to "$typed ")) }
+        scripts.all().firstOrNull { it.name == typed && ScriptMeta.isCommand(it.code) }?.let { s ->
+            val desc = ScriptMeta.description(s.code) ?: "${s.lang.ext} script"
+            return out(ScriptMeta.usage(s.code, s.name) ?: s.name, LogContext.of(LogContext.COMMAND to s.name + " ", LogContext.SCRIPT to s.name, LogContext.DESC to desc))
+        }
+        // Not a command: those it may be the start of, or a typo of.
+        val near = offered.filter { it.name.startsWith(typed) || CommandParsing.editDistance(typed, it.name) <= (if (it.name.length <= 4) 1 else 2) }
+        if (near.isEmpty()) return error("No command called '$word' · help lists them all")
+        info("No command called '$word'; nearest:")
+        near.take(8).forEach(::line)
+    }
+
     companion object {
         val COMMANDS = listOf(
-            CommandSpec("help", "help", "Show this list"),
+            CommandSpec("help", "help", "Show this list · help <command>: just that one"),
             *com.mtwabpin.kolahal.control.ControlCommands.SPECS.toTypedArray(),
             CommandSpec("apps", "apps [work|personal|private|hidden] [-l|-a]", "App grid (-l: one per line, -a: hidden apps too)"),
             CommandSpec("open", "open <app>[:shortcut] [-w|-p|-s]", "Launch an app or one of its shortcuts"),

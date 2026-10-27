@@ -70,6 +70,17 @@ class CommandFamiliesTest {
         assertEquals(2, run("help | grep -v zzz | head 2").size)
     }
 
+    /** `help todo` is that command alone; a synonym finds its command, a near miss the nearest ones. */
+    @Test fun helpForOneCommand() {
+        val todo = CommandProcessor.COMMANDS.first { it.name == "todo" }
+        val one = run("help todo")
+        assertEquals(todo.usage, one.first())
+        assertTrue(one.toString(), one.size <= 3)
+        assertTrue(run("help cls").let { it.first() == CommandProcessor.COMMANDS.first { c -> c.name == "clear" }.usage && "Also typed as cls" in it })
+        assertTrue(run("help tod").toString(), todo.usage in run("help tod"))
+        assertTrue(run("help zzzzzz").single().startsWith("No command called 'zzzzzz'"))
+    }
+
     @Test fun unitConversion() {
         val out = run("= 5 km in mi")
         assertTrue(out.toString(), out.single().contains("3.1"))

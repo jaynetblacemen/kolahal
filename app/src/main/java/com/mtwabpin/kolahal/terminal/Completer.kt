@@ -196,6 +196,9 @@ class Completer(private val context: Context, private val data: Data) {
                 if (cmd == "unalias") Suggestion.Completion("$name = $command", "$head $name")
                 else Suggestion.Completion("$name = $command", "$head $name = $command")
             } else emptyList()
+            // `help to`: the commands.
+            "help" -> if (parts.size == 2) (CommandProcessor.COMMAND_NAMES - CommandProcessor.UNAVAILABLE).filter { it.starts(last) }
+                .map { Suggestion.Completion(it, "$head $it", help = CommandProcessor.COMMANDS.firstOrNull { c -> c.name == it }?.help) } else emptyList()
             "status" -> if (parts.size == 3 && parts[1] == "clear") words(data.statusNames.toList() + "all", R.drawable.ic_code) else emptyList()
             "feed" -> when {
                 parts.size == 3 && parts[1] in FEED_ID_SUBCOMMANDS -> data.feeds
