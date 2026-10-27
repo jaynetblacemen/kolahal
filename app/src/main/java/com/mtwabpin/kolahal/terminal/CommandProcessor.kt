@@ -596,9 +596,11 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("play", "play <query>", "Search the Play Store"),
             CommandSpec("usage", "usage [<days>]", "Screen time per app"),
             CommandSpec("installs", "installs [<n>]", "Recent app installs, updates and uninstalls"),
-            CommandSpec("call", "call <name|number>", "Dial a contact or number"),
-            CommandSpec("sms", "sms <name|number> [<text>]", "Start a text message"),
-            CommandSpec("contacts", "contacts [<query>|--allow]", "Find contacts (favourites when empty)"),
+            // The Play build has no READ_CONTACTS: no name opens Android's contact picker.
+            CommandSpec("call", if (com.mtwabpin.kolahal.BuildConfig.CONTACTS) "call <name|number>" else "call [<name|number>]", "Dial a contact or number"),
+            CommandSpec("sms", if (com.mtwabpin.kolahal.BuildConfig.CONTACTS) "sms <name|number> [<text>]" else "sms [<name|number> [<text>]]", "Start a text message"),
+            if (com.mtwabpin.kolahal.BuildConfig.CONTACTS) CommandSpec("contacts", "contacts [<query>|--allow]", "Find contacts (favourites when empty)")
+            else CommandSpec("contacts", "contacts [<query>|--forget <name>]", "Pick a contact, or find one picked before"),
             CommandSpec("calls", "calls [<n>|--allow|--settings]", "Recent calls: incoming, outgoing and missed"),
             CommandSpec("url", "url <address>", "Open a link"),
             CommandSpec("history", "history", "Recent commands (tap to reuse)"),

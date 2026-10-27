@@ -17,6 +17,7 @@
     <exclude domain="sharedpref" path="logs.xml" />
     <exclude domain="sharedpref" path="app_usage.xml" />
     <exclude domain="sharedpref" path="unlocks.xml" />
+    <exclude domain="sharedpref" path="picked_contacts.xml" />
     <!-- Crash reports belong to this phone. -->
     <exclude domain="file" path="crash/" />
     <exclude domain="sharedpref" path="crash.xml" />

@@ -327,7 +327,13 @@ class Completer(private val context: Context, private val data: Data) {
      */
     private fun contactSuggestions(cmd: String, head: String, parts: List<String>): List<Suggestion> {
         val repo = com.mtwabpin.kolahal.contacts.ContactsRepository.get(context)
-        if (!repo.hasPermission()) return listOf(Suggestion.Completion("Allow contacts access", "contacts --allow", icon = R.drawable.ic_person))
+        if (!repo.picker && !repo.hasPermission()) return listOf(Suggestion.Completion("Allow contacts access", "contacts --allow", icon = R.drawable.ic_person))
+        // `contacts --forget <name>`: the names picked before.
+        if (repo.picker && cmd == "contacts" && parts.getOrNull(1) == "--forget") {
+            val q = parts.drop(2).joinToString(" ")
+            return (if (q.isBlank()) repo.contacts.value else repo.search(q, cap)).map { it.name }.distinct().take(cap)
+                .map { Suggestion.Completion(it, "$head --forget $it", icon = R.drawable.ic_person) }
+        }
         val sms = cmd == "sms"
         // `sms <number> hello…`: the recipient is done, the rest is the message.
         if (sms && parts.size > 2 && com.mtwabpin.kolahal.contacts.ContactsRepository.looksLikeNumber(parts[1])) return emptyList()
@@ -337,6 +343,8 @@ class Completer(private val context: Context, private val data: Data) {
         if (all.isEmpty() && !contactsLoadRequested) { contactsLoadRequested = true; repo.refresh() }
         val list = if (query.isBlank()) all.take(cap) else repo.search(query, cap)
         val numbersPerName = numbersPerName(all)
+        // The Play build knows only the contacts picked before: the picker is a line away.
+        val pick = if (repo.picker) Suggestion.Completion("Pick a contact", cmd, icon = R.drawable.ic_person, help = "Enter opens Android's contact picker") else null
         return list.map { c ->
             val shared = (numbersPerName[c.name.lowercase()] ?: 1) > 1
             val label = (if (c.starred) "★ " else "") + c.name + if (shared) " · ${c.label} ${c.number}" else ""
@@ -347,7 +355,7 @@ class Completer(private val context: Context, private val data: Data) {
                 else -> c.name
             }
             Suggestion.Completion(label, "$head $target" + if (sms) " " else "", icon = R.drawable.ic_person)
-        }
+        } + listOfNotNull(pick)
     }
 
     private fun flagFor(app: AppEntry) = when (app.profile.kind) {

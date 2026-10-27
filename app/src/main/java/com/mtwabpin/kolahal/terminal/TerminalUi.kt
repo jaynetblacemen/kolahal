@@ -8,6 +8,8 @@ enum class Screen { TERMINAL, SETTINGS, SCRIPTS, SCRIPT_LIBRARY, GET_SCRIPTS, SE
 /** UI-only operations the processor cannot do from an application context. */
 interface TerminalUi {
     fun requestContactsPermission()
+    /** Android's contact picker (the Play build, without READ_CONTACTS); [then] gets the contact picked, if one is. */
+    fun pickContact(then: (com.mtwabpin.kolahal.contacts.Contact) -> Unit) {}
     fun openScreen(screen: Screen)
     fun pickScriptFolder()
     /** File picker for `font import` (a .ttf/.otf). */

@@ -30,9 +30,9 @@ optional, and `a|b` means one of.
 
 | Usage | Aliases | Description |
 | --- | --- | --- |
-| `call <name\|number>` | `dial` | dial a contact or number |
-| `sms <name\|number> [<text>]` | `text` | start a text message |
-| `contacts [<query>]` | `contact` | find contacts (favourites when empty) |
+| `call <name\|number>` | `dial` | dial a contact or number (the Play build: no name opens the contact picker) |
+| `sms <name\|number> [<text>]` | `text` | start a text message (the Play build: no name opens the contact picker) |
+| `contacts [<query>]` | `contact` | find contacts (favourites when empty; the Play build: pick one, or `--forget <name>`) |
 | `calls [<n>]` | | recent calls, incoming, outgoing and missed (20 by default; `calls --allow` asks for call log access) |
 
 ## Web

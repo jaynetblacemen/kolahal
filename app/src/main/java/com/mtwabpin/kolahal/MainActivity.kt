@@ -53,6 +53,9 @@ class MainActivity : ComponentActivity() {
     private val contactsPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { vm.onContactsPermission(it) }
 
+    private val contactPicker =
+        registerForActivityResult(com.mtwabpin.kolahal.contacts.ContactPicker) { vm.onContactPicked(it) }
+
     private val calendarPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { vm.onCalendarPermission(it) }
 
@@ -132,6 +135,8 @@ class MainActivity : ComponentActivity() {
                 when (it) {
                     UiEvent.RequestNotificationPermission -> requestNotifications()
                     UiEvent.RequestContactsPermission -> contactsPermission.launch(Manifest.permission.READ_CONTACTS)
+                    UiEvent.PickContact ->
+                        try { contactPicker.launch(Unit) } catch (_: android.content.ActivityNotFoundException) { vm.onContactPickerMissing() }
                     UiEvent.RequestCalendarPermission -> calendarPermission.launch(Manifest.permission.READ_CALENDAR)
                     UiEvent.RequestCallLogPermission -> callLogPermission.launch(Manifest.permission.READ_CALL_LOG)
                     UiEvent.RequestLocalNetworkPermission ->

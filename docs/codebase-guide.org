@@ -648,7 +648,7 @@ Outside =main=:
 |------------------------------------+-------------------------------------------------------------------------------------------------------|
 | =app/src/test/=                    | about 170 JVM unit tests: fast, no phone needed                                                       |
 | =app/src/androidTest/=             | 29 on-device tests (commands, script engines, backup)                                                 |
-| =app/src/play/AndroidManifest.xml= | removes the accessibility service, the notification listener and =READ_CALL_LOG= for the =play= build |
+| =app/src/play/AndroidManifest.xml= | removes the accessibility service, =READ_CALL_LOG= and =READ_CONTACTS= for the =play= build           |
 | =app/src/release/generated/=       | baseline profiles (pre-compiled start-up code)                                                        |
 | =baselineprofile/=                 | the module that generates those profiles                                                              |
 | =app/src/main/assets/library/=     | the ready-made scripts of the script library; each describes itself (=@title=, =@every=…)             |
@@ -707,10 +707,11 @@ device, your own phone included.
 |------------+----------------+----------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | =debug=    | =.debug=       | no       | installs beside a release build                                                                                                                                                    |
 | =release=  | none           | yes      | =isMinifyEnabled= and =isShrinkResources=                                                                                                                                          |
-| =play=     | none           | yes      | release for Google Play, signed with the upload key: =BuildConfig.LOCK_SERVICE=, =NOTIFICATION_ACCESS= and =CALL_LOG= are false; the manifest drops both services and the call log |
+| =play=     | none           | yes      | release for Google Play, signed with the upload key: =BuildConfig.LOCK_SERVICE=, =CALL_LOG= and =CONTACTS= are false; the manifest drops the accessibility service, the call log and contacts |
 
-Code checks =BuildConfig.LOCK_SERVICE= / =NOTIFICATION_ACCESS= / =CALL_LOG= wherever behaviour
-differs in =play=.
+Code checks =BuildConfig.LOCK_SERVICE= / =CALL_LOG= / =CONTACTS= wherever behaviour differs in
+=play=. Without =CONTACTS=, =ContactsRepository.picker= is on: names come from the contacts picked
+with Android's contact picker (=ContactPicker=), remembered on the phone.
 
 ** How the tests are organised
 

@@ -45,10 +45,11 @@ One commit makes three files:
 - All three install as the same app, signed with the same key on the phone, so any one installs
   over another, keeping the data. (Until 0.3.0 the GitHub APK without the three was called lite.)
 
-How: =app/src/play/AndroidManifest.xml= removes the accessibility service and =READ_CALL_LOG=; the
-=play= build type starts from =release= (=app/build.gradle.kts=). The =BuildConfig= switches
-=LOCK_SERVICE= and =CALL_LOG= turn the features off: their commands aren't suggested or listed in
-=help=, and typed anyway they say "This build has no …".
+How: =app/src/play/AndroidManifest.xml= removes the accessibility service, =READ_CALL_LOG= and
+=READ_CONTACTS=; the =play= build type starts from =release= (=app/build.gradle.kts=). The
+=BuildConfig= switches =LOCK_SERVICE= and =CALL_LOG= turn the features off: their commands aren't
+suggested or listed in =help=, and typed anyway they say "This build has no …". =CONTACTS= switches
+=call=, =sms= and =contacts= to Android's contact picker.
 =tools/check-play-build.sh= checks the Play APK (=assemblePlay=, the bundle's manifest) and fails if
 it ever asks for a restricted permission again.
 

@@ -55,9 +55,11 @@ may include Kolahal's data in it, as it does for other apps. Kolahal's own
 
 ## Permissions
 
-The Play build (the Google Play version, also an APK on GitHub) leaves two of these out:
-`READ_CALL_LOG` and the accessibility service. The calls in the log and the screen lock are only in
-the full build.
+The Play build (the Google Play version, also an APK on GitHub) leaves three of these out:
+`READ_CALL_LOG`, `READ_CONTACTS` and the accessibility service. The calls in the log and the screen
+lock are only in the full build. Instead of reading your contacts, the Play build opens Android's
+contact picker, which shows Kolahal only the person you pick; it keeps their name and numbers on
+the phone, out of Android's cloud backup, until `contacts --forget` ([People](/guides/people/#in-the-play-build)).
 
 Declared in the manifest:
 
@@ -66,7 +68,7 @@ Declared in the manifest:
 | `INTERNET` | scripts, feeds and currency rates (see above) |
 | `ACCESS_LOCAL_NETWORK` | Android 17 and newer: scripts with `@uses lan` and feeds on your own network (a home server, a router page). Asked for with `local-network`; optional |
 | `ACCESS_NETWORK_STATE` | the `net` item in the header and `device.network()` |
-| `READ_CONTACTS` | `call`, `sms` and `contacts` name matching. Asked for on first use; optional |
+| `READ_CONTACTS` | `call`, `sms` and `contacts` name matching. Asked for on first use; optional. Not in the Play build |
 | `READ_CALENDAR` | `agenda` lists upcoming events. Asked for on first use; optional; nothing leaves the device |
 | `SET_ALARM` | `timer` and `alarm` hand the timer or alarm to your clock app |
 | `SCHEDULE_EXACT_ALARM` | `remind` and scripts' daily times fire on time (Android 12+ lets you turn it off; they may then be up to an hour late) |

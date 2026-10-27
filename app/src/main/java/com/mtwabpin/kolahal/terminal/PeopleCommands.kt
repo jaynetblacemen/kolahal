@@ -5,16 +5,22 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import com.mtwabpin.kolahal.calls.CallEvents
+import com.mtwabpin.kolahal.contacts.Contact
+import com.mtwabpin.kolahal.contacts.ContactsRepository
 import com.mtwabpin.kolahal.data.Config
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
 import com.mtwabpin.kolahal.data.LogRepository
 
-/** `call`, `sms`, `contacts` and `calls`. Kept out of [CommandProcessor] like the other command groups. */
+/**
+ * `call`, `sms`, `contacts` and `calls`. Kept out of [CommandProcessor] like the other command groups.
+ * The Play build has no READ_CONTACTS ([ContactsRepository.picker]): a name is looked up among the
+ * contacts picked before, and no name, or one it doesn't know, opens Android's contact picker.
+ */
 class PeopleCommands(private val context: Context, private val ui: TerminalUi) {
     private val logs = LogRepository.get(context)
     private val conf = Config.get(context)
-    private val contacts = com.mtwabpin.kolahal.contacts.ContactsRepository.get(context)
+    private val contacts = ContactsRepository.get(context)
 
     private fun out(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.OUTPUT, text, ctx = ctx) }
     private fun info(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.INFO, text, ctx = ctx) }
@@ -41,44 +47,51 @@ class PeopleCommands(private val context: Context, private val ui: TerminalUi) {
         list.reversed().forEach { out(CallEvents.line(it, conf, withDay = true), CallEvents.ctx(it)) }
     }
 
-    /** Resolves a name to one contact; null (with a message) when permission is missing or ambiguous. */
-    private fun resolveContact(query: String): com.mtwabpin.kolahal.contacts.Contact? {
-        if (!contacts.hasPermission()) {
+    /** Finds [query]'s contact and runs [then] with it; when several match, they're listed instead. */
+    private fun withContact(query: String, then: (Contact) -> Unit) {
+        if (contacts.picker) {
+            if (query.isBlank() || contacts.search(query).isEmpty()) return ui.pickContact(then)
+        } else if (!contacts.hasPermission()) {
             logs.add(LogKind.ERROR, "Contacts permission needed — tap to allow", ctx = LogContext.of(LogContext.RUN to "contacts --allow"))
             ui.requestContactsPermission()
-            return null
+            return
         }
         val matches = contacts.search(query)
-        if (matches.isEmpty()) { error("No contact matches '$query'"); return null }
+        if (matches.isEmpty()) return error("No contact matches '$query'")
         if (matches.size > 1 && !matches[0].name.equals(query, ignoreCase = true)) {
             matches.take(8).forEach(::contactLine)
             info("${matches.size} contacts match — tap one to call, long-press for more")
-            return null
+            return
         }
-        return matches[0]
+        then(matches[0])
     }
 
-    private fun contactLine(c: com.mtwabpin.kolahal.contacts.Contact) = out(
-        c.name + if (c.starred) " ★" else "",
-        LogContext.of(LogContext.PHONE to c.number, LogContext.CONTACT to c.lookupUri.toString(), LogContext.DESC to "${c.number} · ${c.label}"),
-    )
+    private fun contactLine(c: Contact) = out(c.name + if (c.starred) " ★" else "", ctx(c))
 
     fun call(rest: String) {
-        if (rest.isBlank()) return error("Usage: call <name|number>")
-        val number = if (com.mtwabpin.kolahal.contacts.ContactsRepository.looksLikeNumber(rest)) rest else resolveContact(rest)?.number ?: return
+        if (rest.isBlank() && !contacts.picker) return error("Usage: call <name|number>")
+        if (ContactsRepository.looksLikeNumber(rest)) dial(rest) else withContact(rest) { dial(it.number) }
+    }
+
+    private fun dial(number: String) {
         startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", number, null)))
         info("Dialing $number", LogContext.of(LogContext.PHONE to number))
     }
 
     fun sms(args: List<String>) {
-        val who = args.firstOrNull() ?: return error("Usage: sms <name|number> [message]")
-        val number = if (com.mtwabpin.kolahal.contacts.ContactsRepository.looksLikeNumber(who)) who else resolveContact(who)?.number ?: return
+        val who = args.firstOrNull()
+        if (who == null && !contacts.picker) return error("Usage: sms <name|number> [message]")
         val body = args.drop(1).joinToString(" ")
+        if (who != null && ContactsRepository.looksLikeNumber(who)) message(who, body) else withContact(who.orEmpty()) { message(it.number, body) }
+    }
+
+    private fun message(number: String, body: String) {
         startActivity(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", number, null)).putExtra("sms_body", body))
         info("Message to $number", LogContext.of(LogContext.PHONE to number))
     }
 
     fun listContacts(query: String) {
+        if (contacts.picker) return pickedContacts(query)
         if (query == "--allow" || !contacts.hasPermission()) {
             if (contacts.hasPermission()) return info("Contacts are allowed")
             ui.requestContactsPermission()
@@ -87,5 +100,33 @@ class PeopleCommands(private val context: Context, private val ui: TerminalUi) {
         val list = if (query.isBlank()) contacts.contacts.value.filter { it.starred }.ifEmpty { contacts.contacts.value.take(20) } else contacts.search(query, 20)
         if (list.isEmpty()) return info(if (query.isBlank()) "No contacts" else "No contact matches '$query'")
         list.forEach(::contactLine)
+    }
+
+    /** The Play build's `contacts`: picks one, finds one picked before, or (`--forget`) drops one. */
+    private fun pickedContacts(query: String) {
+        when {
+            query == "--allow" -> info("This build doesn't read your contacts: call, sms and contacts open Android's contact picker, and remember who you pick")
+            query == "--forget" || query.startsWith("--forget ") -> forget(query.removePrefix("--forget").trim())
+            query.isBlank() -> ui.pickContact(::contactLine)
+            else -> contacts.search(query, 20).ifEmpty { return ui.pickContact(::contactLine) }.forEach(::contactLine)
+        }
+    }
+
+    private fun forget(name: String) {
+        if (name.isBlank()) return error("Usage: contacts --forget <name>")
+        val names = contacts.search(name, 50).map { it.name }.distinct()
+        val target = names.firstOrNull { it.equals(name, ignoreCase = true) } ?: names.singleOrNull()
+            ?: return error(if (names.isEmpty()) "No picked contact matches '$name'" else "'$name' matches ${names.joinToString(", ")}: give the whole name")
+        contacts.forget(target)
+        info("Forgot $target")
+    }
+
+    companion object {
+        /** A contact line's context: tap dials, long-press calls, messages, opens the contact or copies the number. */
+        fun ctx(c: Contact) = LogContext.of(
+            LogContext.PHONE to c.number,
+            LogContext.CONTACT to c.lookupUri.toString().ifEmpty { null },
+            LogContext.DESC to listOf(c.number, c.label).filter { it.isNotEmpty() }.joinToString(" · "),
+        )
     }
 }

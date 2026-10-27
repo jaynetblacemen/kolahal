@@ -23,7 +23,8 @@ account, you can be one of them.
 
 ## What you get
 
-The version for Google Play: everything in Kolahal except the screen lock and calls in the log
+The version for Google Play: everything in Kolahal except the screen lock and calls in the log,
+and it finds people with Android's contact picker
 ([the Play build](/getting-started/install/#the-play-build)). Updates come through the Play Store
 like any app's. [First run & setup](/getting-started/setup/) walks you through the rest.
 

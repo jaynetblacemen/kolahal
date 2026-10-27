@@ -5,6 +5,8 @@
   - No accessibility service: Play doesn't count a launcher as an accessibility tool. No
     double-tap lock, no `lock`.
   - No call log: Play allows it only to phone, SMS and assistant apps. No calls in the log, no `calls`.
+  - No contacts: Play's Contacts policy wants the contact picker where it will do. `call`, `sms` and
+    `contacts` open Android's contact picker and remember who you pick.
   The notification listener stays: `notifs enable` says what it reads and asks before Android's
   Notification access screen opens (Play's prominent disclosure).
 -->
@@ -12,6 +14,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.READ_CALL_LOG" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" tools:node="remove" />
 
     <application>
         <service

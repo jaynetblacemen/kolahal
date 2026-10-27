@@ -14,13 +14,14 @@ before day 14 don't count.
 
 * On Play: the Play build, and why it has less
 
-Google Play gets the Play build, the full app without two things, packaged as a bundle:
+Google Play gets the Play build, the full app without three things, packaged as a bundle:
 =./gradlew :app:bundlePlay= (the Release workflow too). What it leaves out:
 
 | Left out                                  | What goes with it                                  | Play's rule                                                                                                                                            |
 |-------------------------------------------+----------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------|
 | =READ_CALL_LOG=                           | calls in the log, =calls=                          | not allowed: Play's SMS and Call Log policy names "calls appearing in wallpaper, launcher, and other tools" as invalid, and launchers get no exception |
 | the accessibility service (=LockService=) | double-tap to lock, =lock=                         | Play says launchers are not accessibility tools, so it would need a declaration, an in-app disclosure with consent, and a video of it                  |
+| =READ_CONTACTS=                           | contacts read by name; the picker instead (below)  | Play's Contacts policy (apps targeting Android 17, from 27 January 2027): broad access only where Android's contact picker can't do the job, with a declaration |
 
 The maintainer chose (26 October 2026) to leave both out for good rather than risk the
 declaration.
@@ -34,8 +35,15 @@ safety answer stays "no data collected": notifications never leave the phone. Th
 GitHub has it too, so Play Protect can block it when sideloaded in India and some other countries,
 like the full build.
 
+Contacts are out since 0.4.7, by the same choice: no declaration. =call=, =sms= and =contacts= open
+Android's contact picker (=ContactPicker=: Android 17's =ACTION_PICK_CONTACTS= session, before it
+=ACTION_PICK= on phone numbers), which lets Kolahal read only the person picked. Kolahal keeps that
+person's name and numbers on the phone (=picked_contacts= prefs, out of cloud backups) so the name
+works by itself next time; =contacts --forget <name>= drops one. The Data safety answer stays "no
+data collected": they never leave the phone.
+
 Everything else stays, because Play doesn't restrict it or needs only a clear runtime request:
-contacts, calendar, exact alarms (=SCHEDULE_EXACT_ALARM=, the one the user grants; the restricted
+calendar, exact alarms (=SCHEDULE_EXACT_ALARM=, the one the user grants; the restricted
 one is =USE_EXACT_ALARM=), usage access, system settings, Do Not Disturb, the private space, the
 status bar, uninstall requests, and the app list (Kolahal uses =<queries>=, not the restricted
 =QUERY_ALL_PACKAGES=). Scripts in Lua and JavaScript are allowed: Play forbids downloading
@@ -50,13 +58,9 @@ Foreground service permissions: it runs a script the user installed, at a time t
 seconds, started by an exact alarm the user allowed.
 
 =tools/check-play-build.sh= checks the Play APK: it fails if any of these appear: the
-call log or SMS permissions, =QUERY_ALL_PACKAGES=, =USE_EXACT_ALARM=, =REQUEST_INSTALL_PACKAGES=,
+call log, SMS or contacts permissions, =QUERY_ALL_PACKAGES=, =USE_EXACT_ALARM=, =REQUEST_INSTALL_PACKAGES=,
 =MANAGE_EXTERNAL_STORAGE=, =ACCESS_BACKGROUND_LOCATION= or an accessibility service. Both
 workflows run it, so a library that adds one is caught.
-
-Coming up: from 27 January 2027, Play's Contacts policy wants apps that don't need broad contact
-access to use the Contact Picker. Kolahal's =call= and =sms= name suggestions read contacts;
-decide before then whether that counts as needing broad access.
 
 Policy pages (opened 22 October 2026):
 [[https://support.google.com/googleplay/android-developer/answer/9047303][SMS and Call Log]],
@@ -133,7 +137,7 @@ A LOG YOU CAN ACT ON
 LITTLE TOOLS BUILT IN
 • A calculator with units and currencies: = 2^10, = 5 km in mi, = 100 usd in eur
 • Web search with the engine you choose
-• Call and text people by name, with contact suggestions
+• Call and text people by name: pick them once from your contacts
 • To-dos, notes, reminders that survive a restart, timers and alarms through your clock app, and your calendar's agenda
 • Screen time per app and an unlock counter
 • Torch, volume, ring mode, Do Not Disturb, brightness, rotation and screen timeout from the prompt

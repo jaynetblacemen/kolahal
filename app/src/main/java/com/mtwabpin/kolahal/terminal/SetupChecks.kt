@@ -68,7 +68,8 @@ object SetupChecks {
                 android.provider.Settings.System.canWrite(context),
                 "brightness access",
             ),
-            SetupCheck(
+            // The Play build has no READ_CONTACTS: call, sms and contacts use Android's contact picker.
+            if (!com.mtwabpin.kolahal.BuildConfig.CONTACTS) null else SetupCheck(
                 "Contacts (call, sms, contacts)",
                 "Optional: call and text people by name, with contact suggestions",
                 com.mtwabpin.kolahal.contacts.ContactsRepository.get(context).hasPermission(),

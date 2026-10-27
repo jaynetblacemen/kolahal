@@ -51,9 +51,11 @@ nearest to it.
 The Play build is the version for Google Play, where Kolahal is coming, and its APK is on every
 release. Play's policy doesn't let a launcher read the call log, and asks for a declaration and a
 video for an accessibility service, so the Play build leaves those two out: no `lock` or
-double-tap lock, and no calls in the log or `calls`. Everything else is the same, notification
-access included: before Android's Notification access screen opens, Kolahal says what it reads
-and asks, as Play asks of apps that read notifications.
+double-tap lock, and no calls in the log or `calls`. It doesn't read your contacts either, as Play
+asks of apps that Android's contact picker serves: `call`, `sms` and `contacts` open the picker and
+remember who you pick ([People](/guides/people/#in-the-play-build)). Everything else is the same,
+notification access included: before Android's Notification access screen opens, Kolahal says what
+it reads and asks, as Play asks of apps that read notifications.
 
 ## Build from source
 

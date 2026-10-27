@@ -1320,6 +1320,38 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         _events.tryEmit(UiEvent.RequestContactsPermission)
     }
 
+    /** What the contact being picked is for; null once it's back (or after the process restarted). */
+    @Volatile private var contactPicked: ((com.mtwabpin.kolahal.contacts.Contact) -> Unit)? = null
+
+    override fun pickContact(then: (com.mtwabpin.kolahal.contacts.Contact) -> Unit) {
+        contactPicked = then
+        _events.tryEmit(UiEvent.PickContact)
+    }
+
+    /**
+     * Android's contact picker is back with [uri], or null when nothing was picked. Its numbers are
+     * read now, while the picker allows it, and remembered for the next time the name is typed.
+     */
+    fun onContactPicked(uri: android.net.Uri?) {
+        val then = contactPicked
+        contactPicked = null
+        if (uri == null) return
+        io {
+            val picked = com.mtwabpin.kolahal.contacts.ContactPicker.read(context, uri)
+            val c = picked.firstOrNull() ?: run {
+                logs.add(LogKind.ERROR, "That contact has no phone number")
+                return@io
+            }
+            com.mtwabpin.kolahal.contacts.ContactsRepository.get(context).remember(picked)
+            if (then != null) then(c) else logs.add(LogKind.OUTPUT, c.name, ctx = PeopleCommands.ctx(c))
+        }
+    }
+
+    fun onContactPickerMissing() {
+        contactPicked = null
+        io { logs.add(LogKind.ERROR, "This phone has no contact picker") }
+    }
+
     fun onContactsPermission(granted: Boolean) {
         refreshSetup()
         if (granted) com.mtwabpin.kolahal.contacts.ContactsRepository.get(context).refresh()

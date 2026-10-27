@@ -24,6 +24,8 @@
         <!-- Which apps you open and when, and how often you unlock: not for the cloud. -->
         <exclude domain="sharedpref" path="app_usage.xml" />
         <exclude domain="sharedpref" path="unlocks.xml" />
+        <!-- The Play build's picked contacts: names and numbers stay on the phone. -->
+        <exclude domain="sharedpref" path="picked_contacts.xml" />
         <!-- Crash reports belong to this phone. -->
         <exclude domain="file" path="crash/" />
         <exclude domain="sharedpref" path="crash.xml" />

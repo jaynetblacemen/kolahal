@@ -12,7 +12,8 @@ contacts sam              # search (alias: contact)
 ```
 
 - The first time you use one of these, Kolahal asks for the **Contacts** permission. Nothing is
-  uploaded; contacts are only read to match names.
+  uploaded; contacts are only read to match names. The Play build never asks: it uses Android's
+  contact picker ([below](#in-the-play-build)).
 - After `call `, `sms ` or `contacts ` your contacts appear as suggestions right away, favourites (★)
   first, and narrow as you type a name or number. A contact with several numbers gets one row per
   number; choosing one fills in that number. `sms` always completes to the number, so you can type
@@ -23,6 +24,27 @@ contacts sam              # search (alias: contact)
   opens your messaging app with the text pre-filled, ready for you to send.
 - Contact and number lines in the log stay tappable later: tap dials, long-press offers call,
   message, open contact and copy number.
+
+## In the Play build
+
+The [Play build](/getting-started/install/#the-play-build) doesn't read your contacts: Google Play
+wants apps to use Android's contact picker when it's enough. So `call`, `sms` and `contacts` work
+from the people you pick:
+
+```sh
+call                      # pick someone, then dial them
+sms asha running late     # Asha picked before: straight to the message
+contacts                  # pick someone and show them in the log
+contacts --forget asha    # Kolahal forgets Asha
+```
+
+- With no name, or a name Kolahal doesn't know yet, Android's contact picker opens. Pick someone
+  and Kolahal carries on: dials them, starts the message (with your text) or shows them in the log.
+- Kolahal sees only the person you pick, and keeps only their name and numbers, on the phone, so
+  the name works by itself next time: `call asha`. They are your suggestions after `call `, `sms `
+  and `contacts `, with **Pick a contact** at the end to add someone.
+- `contacts --forget <name>` forgets someone. Uninstalling Kolahal or clearing its data forgets
+  everyone.
 
 ## Calls in the log
 

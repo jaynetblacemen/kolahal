@@ -10,6 +10,8 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
+import com.mtwabpin.kolahal.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,6 +21,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 
 data class Contact(
     val id: Long,
@@ -32,6 +36,9 @@ data class Contact(
 /**
  * Contacts with phone numbers, cached in memory for instant `call` / `sms` suggestions.
  * Empty until READ_CONTACTS is granted; refreshes when the contacts database changes.
+ *
+ * The Play build ([picker]) has no READ_CONTACTS: its contacts are the ones picked with Android's
+ * contact picker ([ContactPicker]), remembered on the phone so a name works again without picking.
  */
 class ContactsRepository private constructor(private val context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
@@ -39,10 +46,21 @@ class ContactsRepository private constructor(private val context: Context) {
     val contacts: StateFlow<List<Contact>> = _contacts.asStateFlow()
     private var observing = false
 
+    /** Contacts come from Android's contact picker, not READ_CONTACTS: the Play build. */
+    var picker = !BuildConfig.CONTACTS
+        internal set(value) { field = value; _contacts.value = emptyList(); refresh() }
+
+    private val prefs by lazy { context.getSharedPreferences(PICKED, Context.MODE_PRIVATE) }
+
     fun hasPermission() = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) ==
         PackageManager.PERMISSION_GRANTED
 
     fun refresh() {
+        if (picker) {
+            // In step with remember and forget, so a load that started first can't land after them.
+            scope.launch { synchronized(this@ContactsRepository) { _contacts.value = loadPicked() } }
+            return
+        }
         if (!hasPermission()) return
         if (!observing) {
             observing = true
@@ -108,6 +126,43 @@ class ContactsRepository private constructor(private val context: Context) {
         return out
     }
 
+    /** Picker: remembers the numbers of a contact just picked, replacing what was kept for it. */
+    @Synchronized
+    fun remember(picked: List<Contact>) {
+        if (picked.isEmpty()) return
+        val names = picked.map { it.name }.toSet()
+        savePicked(picked + loadPicked().filter { it.name !in names })
+    }
+
+    /** Picker: forgets every number kept under [name]; false when none was. */
+    @Synchronized
+    fun forget(name: String): Boolean {
+        val all = loadPicked()
+        val kept = all.filterNot { it.name.equals(name, ignoreCase = true) }
+        if (kept.size == all.size) return false
+        savePicked(kept)
+        return true
+    }
+
+    /** Newest pick first, like the list it was saved from. */
+    private fun loadPicked(): List<Contact> = runCatching {
+        val a = JSONArray(prefs.getString(KEY_PICKED, "[]"))
+        (0 until a.length()).map { i ->
+            val o = a.getJSONObject(i)
+            Contact(o.optLong("id"), o.getString("name"), o.getString("number"), o.optString("label"), o.optBoolean("starred"), Uri.parse(o.optString("lookup")))
+        }
+    }.getOrDefault(emptyList())
+
+    private fun savePicked(list: List<Contact>) {
+        val kept = list.take(MAX_PICKED)
+        _contacts.value = kept
+        val a = JSONArray()
+        kept.forEach { c ->
+            a.put(JSONObject().put("id", c.id).put("name", c.name).put("number", c.number).put("label", c.label).put("starred", c.starred).put("lookup", c.lookupUri.toString()))
+        }
+        prefs.edit { putString(KEY_PICKED, a.toString()) }
+    }
+
     /** Name or number matches, favourites first. */
     fun search(query: String, limit: Int = 12): List<Contact> {
         val q = query.trim().lowercase()
@@ -134,6 +189,10 @@ class ContactsRepository private constructor(private val context: Context) {
 
     companion object {
         private const val RELOAD_DEBOUNCE_MS = 1_000L
+        /** Picked contacts' prefs: left out of cloud backups (data_extraction_rules.xml). */
+        private const val PICKED = "picked_contacts"
+        private const val KEY_PICKED = "list"
+        private const val MAX_PICKED = 200
 
         @SuppressLint("StaticFieldLeak") // application context only
 
