@@ -102,7 +102,9 @@ class Completer(private val context: Context, private val data: Data) {
                     help = helpFor(head) ?: CommandProcessor.COMMANDS.firstOrNull { it.name == cmd }?.help, enter = true))
             } else emptyList()
             val options = if (cmd in names) usageOptions(cmd, listOf(head, "")).map { it.copy(label = "$head ${it.label}") } else emptyList()
-            return (if (enterLaunches) listOf(apps.first().copy(enter = true)) + cmds.take(3) + apps.drop(1) else whole + options + cmds.take(3) + apps).distinctBy { it.key }
+            // Not a command's name: commands and settings that say they do it, after the apps.
+            val about = if (cmd !in names) described(head, shown = cmds.take(3).mapTo(HashSet()) { it.label }) else emptyList()
+            return (if (enterLaunches) listOf(apps.first().copy(enter = true)) + cmds.take(3) + apps.drop(1) + about else whole + options + cmds.take(3) + apps + about).distinctBy { it.key }
         }
         // The Play build has no call log and no screen lock: nothing to offer.
         if (cmd in CommandProcessor.UNAVAILABLE) return emptyList()
@@ -148,6 +150,26 @@ class Completer(private val context: Context, private val data: Data) {
             Suggestion.Completion(label, "= $value", help = "the answer · tap to go on from it")
         }
         return (listOfNotNull(row) + historySuggestions(text)).distinctBy { it.key }
+    }
+
+    /**
+     * Commands (built-in and your script commands) and settings whose description has a word starting
+     * with [word]: `flash` finds `torch` (Flashlight), `silent` finds `ring`, `24` the 24-hour clock.
+     * At most three of each, leaving out the commands already [shown] by name.
+     */
+    private fun described(word: String, shown: Set<String>): List<Suggestion> {
+        if (word.length < (if (word.all(Char::isDigit)) 2 else 3)) return emptyList()
+        fun says(text: String) = text.split(NOT_WORD).any { it.startsWith(word, ignoreCase = true) }
+        val builtIn = CommandProcessor.COMMANDS.asSequence()
+            .filter { it.name !in CommandProcessor.UNAVAILABLE && it.name !in shown && it.name != word }
+            // The options its usage lists count too (`ring … silent`), but not short ones such as `on`.
+            .filter { spec -> says(spec.help) || says(KEYWORDS[spec.name].orEmpty()) || spec.usage.split(NOT_WORD).drop(1).any { it.length >= 4 && it.startsWith(word, ignoreCase = true) } }
+            .map { Suggestion.Completion(it.name, "${it.name} ", help = it.help) }
+        val scripted = data.scriptDescriptions.asSequence().filter { (name, desc) -> name !in shown && says(desc) }
+            .map { (name, desc) -> Suggestion.Completion(name, "$name ", icon = R.drawable.ic_code, help = desc) }
+        val settings = Keys.ALL.asSequence().filter { says(com.mtwabpin.kolahal.ui.TITLES[it.key].orEmpty()) || says(it.help) }
+            .map { Suggestion.Completion(it.key, "config set ${it.key} ", icon = R.drawable.ic_tune, help = com.mtwabpin.kolahal.ui.TITLES[it.key] ?: it.help) }
+        return (builtIn + scripted).take(3).toList() + settings.take(3).toList()
     }
 
     /** What a command's row says beside its name: a command script's `@desc`, or what an alias stands for. */
@@ -438,6 +460,24 @@ class Completer(private val context: Context, private val data: Data) {
     }
 
     companion object {
+        /** What splits a description into words. */
+        private val NOT_WORD = Regex("[^\\p{L}\\p{N}]+")
+
+        /** Everyday words for what a command does that its description doesn't use. */
+        private val KEYWORDS = mapOf(
+            "media" to "music song player",
+            "volume" to "sound loud quiet",
+            "brightness" to "light dim",
+            "data" to "mobile cellular",
+            "wifi" to "wireless network internet",
+            "bt" to "bluetooth headphones",
+            "=" to "math sum",
+            "date" to "clock",
+            "theme" to "colours colors dark light",
+            "battery" to "power",
+            "toggles" to "quick",
+        )
+
         /** Profile flags typed after an app name (`-w`, `-p`), dropped before searching. */
         private val FLAGS = Regex("\\s-\\w+")
 

@@ -662,7 +662,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("cal", "cal [<month>] [<year>]", "The month as a calendar, today in bold · cal dec · cal dec 2027 · cal 2027-12"),
             CommandSpec("alias", "alias [name = command]", "List or define aliases"),
             CommandSpec("unalias", "unalias <name>", "Remove an alias"),
-            CommandSpec("pin", "pin <app>", "Favourite: first in the empty-prompt strip (pins lists them)"),
+            CommandSpec("pin", "pin <app>", "Favourite: first on an empty prompt (suggestions.idle) and starred in the app selector (pins lists them)"),
             CommandSpec("unpin", "unpin <app>", "Remove a favourite"),
             CommandSpec("hide", "hide <app> [-w]", "Hide an app from lists and search"),
             CommandSpec("unhide", "unhide <app>", "Show a hidden app again ('apps hidden')"),

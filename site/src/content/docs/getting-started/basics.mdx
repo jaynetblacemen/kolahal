@@ -59,7 +59,9 @@ The strip above the prompt changes as you type:
   Off by default; turn it on with `config set suggestions.idle on`.
 - **First word**: up to three matching commands, aliases or script commands, plus matching apps.
   When Enter would launch an app, that app is the first, highlighted chip, so Enter, Tab and the
-  highlight always agree.
+  highlight always agree. After the apps come commands and settings that say they do what you
+  typed: `flash` offers `torch`, `silent` offers `ring`, `music` offers `media`, and `24` the
+  24-hour clock setting (as `config set clock.24h`).
 - **Arguments**: almost every command completes what comes next.
   - App names after `open`, `info`, `hide`, `rename`, `pin`, `shortcuts`, `notifs mute` and
     similar. After `open maps:` you get that app's shortcuts.

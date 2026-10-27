@@ -121,6 +121,17 @@ class CompleterTest {
         assertTrue("todo undo 2" in lines("todo undo "))
     }
 
+    /** Commands and settings by what they do: `flash` finds torch, `silent` ring, `24` the 24-hour clock. */
+    @Test fun commandsAndSettingsByWhatTheyDo() {
+        assertTrue(labels("flash").toString(), "torch" in labels("flash"))
+        assertTrue(labels("silent").toString(), "ring" in labels("silent"))
+        assertTrue(labels("music").toString(), "media" in labels("music"))
+        assertTrue(lines("24").toString(), "config set clock.24h" in lines("24"))
+        // A command's own name doesn't bring in others that mention it.
+        assertTrue(labels("clear").none { it == "crashes" || it == "notifs" })
+        assertTrue(labels("fl").none { it == "torch" })
+    }
+
     /** `= …` shows the answer while you type; a tap puts it in the prompt. */
     @Test fun theAnswerShowsAsYouType() {
         val first = completer.suggestions("= 2^10").first() as Suggestion.Completion
