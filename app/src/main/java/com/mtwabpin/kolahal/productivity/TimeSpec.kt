@@ -4,6 +4,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.Month
 
 /** Pure parsing of the times and durations typed after `remind`, `timer` and `alarm`. */
 object TimeSpec {
@@ -64,28 +65,74 @@ object TimeSpec {
         return DayOfWeek.entries.firstOrNull { it.name.lowercase().startsWith(t) }
     }
 
+    /** "dec", "december" (three letters at least). */
+    private fun month(token: String): Month? {
+        val t = token.lowercase().trimEnd('.')
+        if (t.length < 3) return null
+        return Month.entries.firstOrNull { it.name.lowercase().startsWith(t) }
+    }
+
+    /** "3", "3rd", "21st". */
+    private fun dayOfMonth(token: String): Int? =
+        token.lowercase().removeSuffix("st").removeSuffix("nd").removeSuffix("rd").removeSuffix("th")
+            .takeIf { it.isNotEmpty() && it.all(Char::isDigit) }?.toIntOrNull()?.takeIf { it in 1..31 }
+
+    private val ISO_DATE = Regex("^\\d{4}-\\d{2}-\\d{2}$")
+    private val YEAR = Regex("^\\d{4}$")
+
+    /** A date at [tokens] from [i], how many tokens it took, and whether it named its year. */
+    private data class Day(val date: LocalDate, val used: Int, val yearGiven: Boolean)
+
+    /** `dec 3`, `3 dec`, `december 3rd`, either with a year after it (`dec 3 2027`), or `2027-12-03`. */
+    private fun parseDate(tokens: List<String>, i: Int, today: LocalDate): Day? {
+        val a = tokens.getOrNull(i) ?: return null
+        if (ISO_DATE.matches(a)) return runCatching { Day(LocalDate.parse(a), 1, true) }.getOrNull()
+        val b = tokens.getOrNull(i + 1) ?: return null
+        val (m, d) = month(a)?.let { m -> dayOfMonth(b)?.let { m to it } }
+            ?: dayOfMonth(a)?.let { d -> month(b)?.let { it to d } }
+            ?: return null
+        val year = tokens.getOrNull(i + 2)?.takeIf { YEAR.matches(it) }?.toInt()
+        val date = runCatching { LocalDate.of(year ?: today.year, m, d) }.getOrNull() ?: return null
+        return Day(date, if (year != null) 3 else 2, year != null)
+    }
+
     /** Default time for a day given without one ("tomorrow", "fri"). */
     val DEFAULT_TIME: LocalTime = LocalTime.of(9, 0)
 
     /**
      * Parses the start of [tokens]: `10m`, `in 2h`, `1h30m`, `18:30`, `at 6pm`, `tomorrow 9:00`,
-     * `today 17:00`, `fri 8am`. A clock time that has already passed today means tomorrow.
-     * Returns null when the tokens don't start with a time.
+     * `today 17:00`, `fri 8am`, `dec 3`, `on 3 dec 2027 at 10:00`, `2027-12-03`. A clock time that
+     * has already passed today means tomorrow; a weekday's, next week; a date's without a year,
+     * next year. Returns null when the tokens don't start with a time.
      */
     fun parseWhen(tokens: List<String>, now: LocalDateTime): Parsed? {
         var i = 0
         val first = tokens.getOrNull(0)?.lowercase() ?: return null
-        if (first == "in" || first == "at") i = 1
+        if (first == "in" || first == "at" || first == "on") i = 1
         val head = tokens.getOrNull(i)?.lowercase() ?: return null
 
-        if (first != "at") parseDuration(head)?.let { return Parsed(now.plusSeconds(it).withNano(0), i + 1) }
+        if (first != "at" && first != "on") parseDuration(head)?.let { return Parsed(now.plusSeconds(it).withNano(0), i + 1) }
         if (first == "in") return null
 
+        parseDate(tokens, i, now.toLocalDate())?.let { day ->
+            var j = i + day.used
+            val at = tokens.getOrNull(j)?.lowercase() == "at"
+            if (at) j++
+            // A bare hour only after `at`: `dec 3 2 tickets` is about two tickets.
+            val time = tokens.getOrNull(j)?.let { parseClock(it, allowBareHour = at) }
+            var whenAt = day.date.atTime(time ?: DEFAULT_TIME)
+            if (!day.yearGiven && !whenAt.isAfter(now)) whenAt = whenAt.plusYears(1)
+            if (!whenAt.isAfter(now)) return null
+            return Parsed(whenAt, if (time != null) j + 1 else i + day.used)
+        }
+
+        val weekday = weekday(head)
         val day: LocalDate? = when {
             head == "today" -> now.toLocalDate()
             head == "tomorrow" || head == "tmrw" || head == "tmr" -> now.toLocalDate().plusDays(1)
-            else -> weekday(head)?.let { dow ->
-                var d = now.toLocalDate().plusDays(1)
+            // Today's own name is today, if its time is still ahead.
+            else -> weekday?.let { dow ->
+                var d = now.toLocalDate()
                 while (d.dayOfWeek != dow) d = d.plusDays(1)
                 d
             }
@@ -94,7 +141,8 @@ object TimeSpec {
             var j = i + 1
             if (tokens.getOrNull(j)?.lowercase() == "at") j++
             val time = tokens.getOrNull(j)?.let { parseClock(it, allowBareHour = true) }
-            val at = day.atTime(time ?: DEFAULT_TIME)
+            var at = day.atTime(time ?: DEFAULT_TIME)
+            if (weekday != null && !at.isAfter(now)) at = at.plusWeeks(1)
             // "today 9:00" at 10:00 is in the past: refuse rather than fire at once.
             if (!at.isAfter(now)) return null
             return Parsed(at, if (time != null) j + 1 else i + 1)
@@ -104,6 +152,44 @@ object TimeSpec {
         var at = now.toLocalDate().atTime(time)
         if (!at.isAfter(now)) at = at.plusDays(1)
         return Parsed(at, i + 1)
+    }
+
+    /** A repeating reminder: its [Repeat] rule, its first time and how many leading tokens said so. */
+    data class Repeating(val rule: String, val at: LocalDateTime, val consumed: Int)
+
+    /**
+     * `every day 8:00`, `every weekday`, `every weekend`, `every mon,thu 19:00`, `every month 1st`,
+     * `every year mar 14` (each with `at` and a time or not; 9:00 by default). Null when [tokens]
+     * don't start with `every` and one of those.
+     */
+    fun parseRepeat(tokens: List<String>, now: LocalDateTime): Repeating? {
+        if (tokens.getOrNull(0)?.lowercase() != "every") return null
+        val head = tokens.getOrNull(1)?.lowercase() ?: return null
+        val today = now.toLocalDate()
+        var j = 2
+        val rule = when (head) {
+            "day", "days", "daily" -> "day"
+            "weekday", "weekdays" -> "weekdays"
+            "weekend", "weekends" -> "weekend"
+            "month" -> {
+                val n = tokens.getOrNull(2)?.let(::dayOfMonth)
+                if (n != null) j = 3
+                "month:${n ?: today.dayOfMonth}"
+            }
+            "year" -> {
+                val day = parseDate(tokens, 2, today)?.takeIf { !it.yearGiven }
+                if (day != null) j = 2 + day.used
+                val d = day?.date ?: today
+                "year:%02d-%02d".format(d.monthValue, d.dayOfMonth)
+            }
+            else -> head.split(',').map { weekday(it) ?: return null }.distinct().sorted()
+                .joinToString(",") { it.name.lowercase().take(3) }
+        }
+        val at = tokens.getOrNull(j)?.lowercase() == "at"
+        if (at) j++
+        val time = tokens.getOrNull(j)?.let { parseClock(it, allowBareHour = at) }
+        if (time != null) j++ else if (at) return null
+        return Repeating(rule, Repeat.next(rule, time ?: DEFAULT_TIME, now), j)
     }
 
     /** 7800 -> "2h 10m"; 45 -> "45s"; 90000 -> "1d 1h". */

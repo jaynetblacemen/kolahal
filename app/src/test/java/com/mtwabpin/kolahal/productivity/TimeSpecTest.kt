@@ -24,6 +24,37 @@ class TimeSpecTest {
     @Test fun tomorrowDefaultsToNine() = assertEquals(TimeSpec.Parsed(LocalDateTime.of(2026, 10, 18, 9, 0), 1), parse("tomorrow call mom"))
     @Test fun weekday() = assertEquals(TimeSpec.Parsed(LocalDateTime.of(2026, 10, 23, 8, 0), 2), parse("fri 8am standup"))
     @Test fun sameWeekdayIsNextWeek() = assertEquals(LocalDateTime.of(2026, 10, 24, 9, 0), parse("saturday x")?.at)
+    /** Today's own name, with a time still ahead today, is today. */
+    @Test fun sameWeekdayLaterIsToday() = assertEquals(LocalDateTime.of(2026, 10, 17, 18, 0), parse("sat 18:00 x")?.at)
+
+    @Test fun dates() {
+        assertEquals(TimeSpec.Parsed(LocalDateTime.of(2026, 12, 3, 9, 0), 2), parse("dec 3 dentist"))
+        assertEquals(TimeSpec.Parsed(LocalDateTime.of(2026, 12, 3, 10, 30), 3), parse("3 december 10:30 dentist"))
+        assertEquals(TimeSpec.Parsed(LocalDateTime.of(2026, 12, 3, 10, 0), 5), parse("on dec 3rd at 10 dentist"))
+        assertEquals(TimeSpec.Parsed(LocalDateTime.of(2027, 12, 3, 9, 0), 3), parse("dec 3 2027 dentist"))
+        assertEquals(TimeSpec.Parsed(LocalDateTime.of(2027, 1, 5, 8, 0), 2), parse("2027-01-05 8am x"))
+        // Gone this year: next year's.
+        assertEquals(LocalDateTime.of(2027, 3, 14, 9, 0), parse("mar 14 x")?.at)
+        // A bare number after a date is not an hour.
+        assertEquals(TimeSpec.Parsed(LocalDateTime.of(2026, 12, 3, 9, 0), 2), parse("dec 3 2 tickets"))
+        assertNull(parse("dec 3 2025 x"))
+        assertNull(parse("feb 30 x"))
+        assertNull(parse("may I ask"))
+    }
+
+    private fun every(s: String) = TimeSpec.parseRepeat(s.split(" "), now)
+
+    @Test fun repeats() {
+        assertEquals(TimeSpec.Repeating("day", LocalDateTime.of(2026, 10, 18, 8, 0), 3), every("every day 8:00 pills"))
+        assertEquals(TimeSpec.Repeating("weekdays", LocalDateTime.of(2026, 10, 19, 9, 0), 2), every("every weekday standup"))
+        assertEquals(TimeSpec.Repeating("mon,thu", LocalDateTime.of(2026, 10, 19, 19, 0), 4), every("every thu,monday at 19:00 bins"))
+        assertEquals(TimeSpec.Repeating("weekend", LocalDateTime.of(2026, 10, 17, 18, 0), 3), every("every weekend 6pm run"))
+        assertEquals(TimeSpec.Repeating("month:1", LocalDateTime.of(2026, 11, 1, 9, 0), 3), every("every month 1st rent"))
+        assertEquals(TimeSpec.Repeating("year:03-14", LocalDateTime.of(2027, 3, 14, 9, 0), 4), every("every year mar 14 mum's birthday"))
+        assertNull(every("every blue moon"))
+        assertNull(every("every day at nonsense"))
+        assertNull(every("daily x"))
+    }
     @Test fun todayPassedIsRejected() = assertNull(parse("today 9:00 x"))
     @Test fun bareNumberIsNotATime() = assertNull(parse("2 tickets"))
     @Test fun wordsAreNotATime() = assertNull(parse("buy milk"))

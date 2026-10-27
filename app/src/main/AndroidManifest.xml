@@ -114,6 +114,11 @@
             android:name=".productivity.ReminderReceiver"
             android:exported="false" />
 
+        <!-- The reminder notification's Snooze and Done buttons. -->
+        <receiver
+            android:name=".productivity.ReminderActionReceiver"
+            android:exported="false" />
+
         <!-- remind and scripts' daily times: re-arms their alarms after a reboot or update, and when
              exact alarms are allowed. -->
         <receiver

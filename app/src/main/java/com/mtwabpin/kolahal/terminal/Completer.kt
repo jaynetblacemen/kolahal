@@ -447,8 +447,10 @@ class Completer(private val context: Context, private val data: Data) {
             "notes" -> if (sub == "rm") items(data.notes.mapIndexed { i, n -> i + 1 to n.text }, R.drawable.ic_edit) else subs(ProductivityCommands.NOTES_SUBCOMMANDS)
             "remind" -> when {
                 sub == "rm" -> items(data.reminders.mapIndexed { i, r -> i + 1 to r.text }, R.drawable.ic_alarm)
-                parts.size == 2 -> (listOf("rm", "exact") + listOf("10m", "30m", "1h", "tomorrow 9:00"))
+                parts.size == 2 -> (listOf("rm", "exact", "every") + listOf("10m", "30m", "1h", "tomorrow 9:00"))
                     .filter { it.starts(sub) }.map { Suggestion.Completion(it, "$head $it ") }
+                sub == "every" && parts.size == 3 -> listOf("day", "weekday", "weekend", "mon", "tue", "wed", "thu", "fri", "sat", "sun", "month", "year")
+                    .filter { it.starts(parts[2]) }.map { Suggestion.Completion(it, "$head every $it ") }
                 else -> emptyList()
             }
             "timer" -> if (parts.size == 2) listOf("5m", "10m", "15m", "25m", "1h")

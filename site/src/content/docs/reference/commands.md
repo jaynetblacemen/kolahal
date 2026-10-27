@@ -110,7 +110,7 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `todo all` / `todo clear` | | include finished items / delete finished items |
 | `note <text>` | | save a quick note |
 | `notes [grep <text>\|rm <n>]` | | notes, newest first; tap copies |
-| `remind <when> <text>` | | notification later: `10m`, `2h`, `1h30m`, `18:30`, `6pm`, `tomorrow 9:00`, `fri 8am` |
+| `remind <when> <text>` | | notification later: `10m`, `2h`, `1h30m`, `18:30`, `6pm`, `tomorrow 9:00`, `fri 8am`, `dec 3 10:00`; again and again: `every day 8:00`, `every weekday`, `every mon,thu 19:00`, `every month 1st`, `every year mar 14` |
 | `reminders` / `remind rm <n>` | | pending reminders / cancel one |
 | `remind exact` | | allow exact alarms, so reminders fire on time |
 | `timer <5m\|1h30m\|25> [<label>]` | | start a timer in the clock app (no args: show timers) |

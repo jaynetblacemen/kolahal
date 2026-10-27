@@ -46,13 +46,34 @@ remind 1h30m stretch
 remind 18:30 gym          # today, or tomorrow if 18:30 has passed
 remind 6pm call home
 remind tomorrow 9:00 call the bank
-remind fri 8am standup notes
+remind fri 8am standup notes  # today, if it's Friday and 8am is still ahead
+remind dec 3 10:30 dentist    # or 3 dec, december 3rd, 2027-12-03; 9:00 without a time
+remind on dec 3 2027 at 10 renew passport
 reminders                 # pending, soonest first
 remind rm 1               # cancel
 ```
 
-- A reminder posts a notification on the **Reminders** channel and adds a line to the log. Tap that
-  line to put a 10-minute snooze in the prompt.
+A date without a year that has passed this year means next year's. After a date, a bare number is
+an hour only after `at` (`dec 3 at 10`), so `remind dec 3 2 tickets` is about two tickets.
+
+### Repeating reminders
+
+```sh
+remind every day 8:00 pills
+remind every weekday 9:30 standup     # Monday to Friday
+remind every weekend 10:00 long run
+remind every mon,thu 19:00 bins       # days with commas, no spaces
+remind every month 1st rent           # the last day in shorter months for the 29th to 31st
+remind every year mar 14 Asha's birthday
+```
+
+A repeating reminder fires at the same time on each of its days, 9:00 when you give no time, and
+stays in `reminders` with how it repeats. `remind rm` ends it.
+
+- A reminder posts a notification on the **Reminders** channel and adds a line to the log. The
+  notification's **Snooze 10 min** and **Snooze 1 hour** set it again once (a repeating one keeps its
+  own days too), and **Done** takes it away. Tapping the log line puts a 10-minute snooze in the
+  prompt.
 - Reminders survive restarts and reboots.
 - Android 12 and later let you turn off exact alarms for an app. Kolahal then schedules reminders
   normally, and they may arrive late, up to an hour. `remind` prints a line you can tap to allow

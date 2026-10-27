@@ -57,7 +57,10 @@ object Notifier {
 
     const val CHANNEL_REMINDERS = "reminders"
 
-    /** Posts a `remind` notification; tapping opens the launcher. One notification per reminder id. */
+    /**
+     * Posts a `remind` notification; tapping opens the launcher, and its buttons snooze it for 10
+     * minutes or an hour, or take it away. One notification per reminder id.
+     */
     fun postReminder(context: Context, id: Long, text: String): Boolean {
         if (!canPost(context, CHANNEL_REMINDERS)) return false
         val pi = PendingIntent.getActivity(
@@ -65,6 +68,16 @@ object Notifier {
             Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        fun button(action: String, minutes: Int = 0) = PendingIntent.getBroadcast(
+            context, "reminder$id/$action/$minutes".hashCode(),
+            Intent(context, com.mtwabpin.kolahal.productivity.ReminderActionReceiver::class.java)
+                .setAction(action)
+                .putExtra(com.mtwabpin.kolahal.productivity.ReminderScheduler.EXTRA_ID, id)
+                .putExtra(com.mtwabpin.kolahal.productivity.ReminderActionReceiver.EXTRA_TEXT, text)
+                .putExtra(com.mtwabpin.kolahal.productivity.ReminderActionReceiver.EXTRA_MINUTES, minutes),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val snooze = com.mtwabpin.kolahal.productivity.ReminderActionReceiver.ACTION_SNOOZE
         val notification = NotificationCompat.Builder(context, CHANNEL_REMINDERS)
             .setSmallIcon(R.drawable.ic_stat_terminal)
             .setContentTitle(text)
@@ -74,12 +87,19 @@ object Notifier {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pi)
             .setAutoCancel(true)
+            .addAction(0, "Snooze 10 min", button(snooze, 10))
+            .addAction(0, "Snooze 1 hour", button(snooze, 60))
+            .addAction(0, "Done", button(com.mtwabpin.kolahal.productivity.ReminderActionReceiver.ACTION_DONE))
             .build()
         return runCatching {
             @Suppress("MissingPermission")
             NotificationManagerCompat.from(context).notify(CHANNEL_REMINDERS, id.toInt(), notification)
             true
         }.getOrDefault(false)
+    }
+
+    fun cancelReminder(context: Context, id: Long) {
+        NotificationManagerCompat.from(context).cancel(CHANNEL_REMINDERS, id.toInt())
     }
 
     /**

@@ -118,6 +118,44 @@ class CommandFamiliesTest {
         assertTrue(run("remind someday x").single().startsWith("Usage: remind"))
     }
 
+    /** A repeating reminder is set again for its next time when it fires; Snooze adds a one-off copy. */
+    @Test fun aRepeatingReminderComesBack() {
+        val store = com.mtwabpin.kolahal.productivity.ReminderStore.get(context)
+        fun mine() = store.all().filter { it.text == "cptest pills" }
+        fun waitFor(what: String, ok: () -> Boolean) {
+            val until = System.currentTimeMillis() + 10_000
+            while (!ok() && System.currentTimeMillis() < until) Thread.sleep(100)
+            assertTrue(what, ok())
+        }
+        try {
+            assertTrue(run("remind every day 8:00 cptest pills").first().contains("then every day: cptest pills"))
+            val r = mine().single()
+            assertEquals("day", r.repeat)
+            assertTrue(run("reminders").toString(), logs.recent(20).any { it.ctx.values[com.mtwabpin.kolahal.data.LogContext.DESC]?.endsWith("every day") == true })
+
+            context.sendBroadcast(
+                android.content.Intent(context, com.mtwabpin.kolahal.productivity.ReminderReceiver::class.java)
+                    .putExtra(com.mtwabpin.kolahal.productivity.ReminderScheduler.EXTRA_ID, r.id),
+            )
+            waitFor("set for the next day") { mine().singleOrNull()?.at?.let { it > r.at } == true }
+            val next = java.time.Instant.ofEpochMilli(mine().single().at).atZone(java.time.ZoneId.systemDefault())
+            assertEquals(java.time.LocalTime.of(8, 0), next.toLocalTime())
+
+            context.sendBroadcast(
+                android.content.Intent(context, com.mtwabpin.kolahal.productivity.ReminderActionReceiver::class.java)
+                    .setAction(com.mtwabpin.kolahal.productivity.ReminderActionReceiver.ACTION_SNOOZE)
+                    .putExtra(com.mtwabpin.kolahal.productivity.ReminderScheduler.EXTRA_ID, r.id)
+                    .putExtra(com.mtwabpin.kolahal.productivity.ReminderActionReceiver.EXTRA_TEXT, "cptest pills")
+                    .putExtra(com.mtwabpin.kolahal.productivity.ReminderActionReceiver.EXTRA_MINUTES, 10),
+            )
+            waitFor("a snoozed copy") { mine().size == 2 }
+            val snoozed = mine().single { it.repeat == null }
+            assertTrue(kotlin.math.abs(snoozed.at - (System.currentTimeMillis() + 600_000)) < 60_000)
+        } finally {
+            mine().forEach { com.mtwabpin.kolahal.productivity.ReminderScheduler.cancel(context, it.id); store.remove(it.id) }
+        }
+    }
+
     @Test fun crashesListAndClear() {
         assertTrue(run("crashes").single().startsWith("No crash reports"))
         crashDir.mkdirs()

@@ -10,6 +10,9 @@ import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
 import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.notify.Notifier
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 /** Schedules `remind` alarms with AlarmManager (exact when allowed, otherwise inexact while idle). */
 object ReminderScheduler {
@@ -58,7 +61,7 @@ object ReminderScheduler {
     const val MAX_ALARMS = 400
 }
 
-/** Fires one reminder: notification plus a log line, then the reminder is gone. */
+/** Fires one reminder: notification plus a log line, then the reminder is gone, or set for its next time. */
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getLongExtra(ReminderScheduler.EXTRA_ID, -1)
@@ -68,7 +71,17 @@ class ReminderReceiver : BroadcastReceiver() {
             try {
                 val store = ReminderStore.get(context)
                 val r = store.byId(id) ?: return@Thread // cancelled meanwhile
-                store.remove(id)
+                val rule = r.repeat
+                if (rule == null) {
+                    store.remove(id)
+                } else {
+                    // The same wall-clock time on its next day; a phone off for days skips to the next one ahead.
+                    val zone = ZoneId.systemDefault()
+                    val fired = Instant.ofEpochMilli(r.at).atZone(zone).toLocalDateTime()
+                    val next = Repeat.next(rule, fired.toLocalTime(), maxOf(fired, LocalDateTime.now(zone))).atZone(zone).toInstant().toEpochMilli()
+                    store.setAt(id, next)
+                    ReminderScheduler.schedule(context, r.copy(at = next))
+                }
                 // More reminders than alarms: the next one waiting gets its alarm now.
                 if (store.all().size >= ReminderScheduler.MAX_ALARMS) ReminderScheduler.rescheduleAll(context)
                 Notifier.postReminder(context, id, r.text)
@@ -81,6 +94,40 @@ class ReminderReceiver : BroadcastReceiver() {
                 result.finish()
             }
         }.start()
+    }
+}
+
+/**
+ * The reminder notification's buttons: Snooze sets it again, once, [EXTRA_MINUTES] from now (a
+ * repeating one keeps its own times too); Done only takes the notification away.
+ */
+class ReminderActionReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val id = intent.getLongExtra(ReminderScheduler.EXTRA_ID, -1)
+        val text = intent.getStringExtra(EXTRA_TEXT) ?: return
+        Notifier.cancelReminder(context, id)
+        if (intent.action != ACTION_SNOOZE) return
+        val minutes = intent.getIntExtra(EXTRA_MINUTES, 10)
+        val result = goAsync()
+        Thread {
+            try {
+                val r = ReminderStore.get(context).add(System.currentTimeMillis() + minutes * 60_000L, text)
+                ReminderScheduler.schedule(context, r)
+                LogRepository.get(context).add(
+                    LogKind.SCRIPT, "Snoozed for ${TimeSpec.formatDuration(minutes * 60L)}: $text", "remind",
+                    LogContext.of(LogContext.REMINDER to r.id.toString(), LogContext.COPY to text),
+                )
+            } finally {
+                result.finish()
+            }
+        }.start()
+    }
+
+    companion object {
+        const val ACTION_SNOOZE = "com.mtwabpin.kolahal.REMINDER_SNOOZE"
+        const val ACTION_DONE = "com.mtwabpin.kolahal.REMINDER_DONE"
+        const val EXTRA_TEXT = "text"
+        const val EXTRA_MINUTES = "minutes"
     }
 }
 

@@ -18,6 +18,7 @@ import com.mtwabpin.kolahal.productivity.NoteStore
 import com.mtwabpin.kolahal.productivity.Reminder
 import com.mtwabpin.kolahal.productivity.ReminderScheduler
 import com.mtwabpin.kolahal.productivity.ReminderStore
+import com.mtwabpin.kolahal.productivity.Repeat
 import com.mtwabpin.kolahal.productivity.TimeSpec
 import com.mtwabpin.kolahal.productivity.Todo
 import com.mtwabpin.kolahal.productivity.TodoStore
@@ -229,15 +230,21 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
         }
         val zone = ZoneId.systemDefault()
         val now = LocalDateTime.now(zone)
-        val parsed = TimeSpec.parseWhen(w, now)
-            ?: return error("Usage: remind <10m|2h|1h30m|18:30|tomorrow 9:00|fri 8am> <text>")
+        val repeating = TimeSpec.parseRepeat(w, now)
+        if (w.firstOrNull()?.lowercase() == "every" && repeating == null) {
+            return error("Usage: remind every <day|weekday|weekend|mon,thu|month 1st|year dec 3> [at] [time] <text>")
+        }
+        val parsed = repeating?.let { TimeSpec.Parsed(it.at, it.consumed) } ?: TimeSpec.parseWhen(w, now)
+            ?: return error("Usage: remind <10m|2h|18:30|tomorrow 9:00|fri 8am|dec 3 10:00|every mon 19:00> <text>")
         val text = w.drop(parsed.consumed).joinToString(" ")
         if (text.isBlank()) return error("What should I remind you of? remind ${w.take(parsed.consumed).joinToString(" ")} <text>")
-        val at = TimeSpec.relativeSeconds(w)?.let { System.currentTimeMillis() + it * 1000 } ?: parsed.at.atZone(zone).toInstant().toEpochMilli()
-        val r = reminders.add(at, text)
+        val at = (if (repeating == null) TimeSpec.relativeSeconds(w) else null)?.let { System.currentTimeMillis() + it * 1000 }
+            ?: parsed.at.atZone(zone).toInstant().toEpochMilli()
+        val r = reminders.add(at, text, repeating?.rule)
         ReminderScheduler.schedule(context, r)
+        val then = repeating?.let { ", then ${Repeat.label(it.rule)}" }.orEmpty()
         info(
-            "Reminder set for ${whenLabel(at)} (in ${TimeSpec.formatDuration((at - System.currentTimeMillis() + 999) / 1000)}): $text",
+            "Reminder set for ${whenLabel(at)} (in ${TimeSpec.formatDuration((at - System.currentTimeMillis() + 999) / 1000)})$then: $text",
             reminderCtx(r),
         )
         if (!Notifier.canPost(context, Notifier.CHANNEL_REMINDERS)) {
@@ -250,13 +257,14 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
 
     private fun listReminders() {
         val all = reminders.all()
-        if (all.isEmpty()) return info("No reminders — e.g. remind 10m tea, remind tomorrow 9:00 call mom")
+        if (all.isEmpty()) return info("No reminders — e.g. remind 10m tea, remind tomorrow 9:00 call mom, remind every mon 19:00 bins")
         val nowMs = System.currentTimeMillis()
         all.forEachIndexed { i, r ->
             out(
                 "${(i + 1).toString().padStart(2)}. ${r.text}",
                 reminderCtx(r) + mapOf(
-                    LogContext.DESC to "${whenLabel(r.at)} · in ${TimeSpec.formatDuration(((r.at - nowMs) / 1000).coerceAtLeast(0))}",
+                    LogContext.DESC to "${whenLabel(r.at)} · in ${TimeSpec.formatDuration(((r.at - nowMs) / 1000).coerceAtLeast(0))}" +
+                        r.repeat?.let { " · ${Repeat.label(it)}" }.orEmpty(),
                 ) + LogContext.ALIGNED,
             )
         }
@@ -268,7 +276,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
         LogContext.COPY to r.text,
     )
 
-    /** "18:30", "tomorrow 09:00" or "Fri 23 Oct 08:00". */
+    /** "18:30", "tomorrow 09:00", "Fri 23 Oct 08:00", or "Thu 2 Dec 2027 08:00" in another year. */
     private fun whenLabel(at: Long): String {
         val zone = ZoneId.systemDefault()
         val t = Instant.ofEpochMilli(at).atZone(zone)
@@ -277,7 +285,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
         return when (t.toLocalDate()) {
             today -> time
             today.plusDays(1) -> "tomorrow $time"
-            else -> DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault()).format(t) + " " + time
+            else -> DateTimeFormatter.ofPattern(if (t.year == today.year) "EEE d MMM" else "EEE d MMM yyyy", Locale.getDefault()).format(t) + " " + time
         }
     }
 

@@ -670,7 +670,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("todo", "todo [<text>|add|done|undo|edit|rm <n>|all|clear]", "Todo list (tap an item to tick it)"),
             CommandSpec("note", "note <text>", "Save a quick note"),
             CommandSpec("notes", "notes [grep <text>|rm <n>]", "Your notes, newest first (tap copies)"),
-            CommandSpec("remind", "remind <when> <text>", "Notify later · 10m · 1h30m · 18:30 · tomorrow 9:00 · fri 8am · rm <n>"),
+            CommandSpec("remind", "remind <when> <text>", "Notify later · 10m · 18:30 · tomorrow 9:00 · fri 8am · dec 3 10:00 · every mon 19:00 · rm <n>"),
             CommandSpec("reminders", "reminders", "Pending reminders"),
             CommandSpec("timer", "timer <5m|1h30m> [<label>]", "Start a timer in the clock app (no args: show timers)"),
             CommandSpec("alarm", "alarm <HH:MM> [<label>]", "Set an alarm in the clock app"),

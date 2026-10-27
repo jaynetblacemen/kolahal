@@ -6,7 +6,8 @@ import com.mtwabpin.kolahal.data.Db
 
 data class Todo(val id: Long, val text: String, val done: Boolean, val created: Long, val doneAt: Long?)
 data class Note(val id: Long, val text: String, val created: Long)
-data class Reminder(val id: Long, val at: Long, val text: String)
+/** [repeat]: a [Repeat] rule, or null for a reminder that fires once. */
+data class Reminder(val id: Long, val at: Long, val text: String, val repeat: String? = null)
 
 /**
  * Picks an item by what the user typed: `#12` is a database id (used by tap actions, stable
@@ -96,27 +97,33 @@ class NoteStore private constructor(context: Context) {
     }
 }
 
-/** Pending reminders, soonest first. A reminder is deleted once it fires or is cancelled. */
+/** Pending reminders, soonest first. A reminder is deleted once it fires (unless it repeats) or is cancelled. */
 class ReminderStore private constructor(context: Context) {
     private val db = Db.get(context)
 
     fun all(): List<Reminder> {
         val out = ArrayList<Reminder>()
-        db.readableDatabase.rawQuery("SELECT id, at, text FROM reminders ORDER BY at, id", null).use { c ->
-            while (c.moveToNext()) out += Reminder(c.getLong(0), c.getLong(1), c.getString(2))
+        db.readableDatabase.rawQuery("SELECT id, at, text, repeat_rule FROM reminders ORDER BY at, id", null).use { c ->
+            while (c.moveToNext()) out += Reminder(c.getLong(0), c.getLong(1), c.getString(2), c.getString(3))
         }
         return out
     }
 
     fun byId(id: Long): Reminder? = all().firstOrNull { it.id == id }
 
-    fun add(at: Long, text: String): Reminder {
+    fun add(at: Long, text: String, repeat: String? = null): Reminder {
         val id = db.writableDatabase.insertOrThrow("reminders", null, ContentValues().apply {
             put("at", at)
             put("text", text)
             put("created", System.currentTimeMillis())
+            put("repeat_rule", repeat)
         })
-        return Reminder(id, at, text)
+        return Reminder(id, at, text, repeat)
+    }
+
+    /** A repeating reminder's next time. */
+    fun setAt(id: Long, at: Long) {
+        db.writableDatabase.update("reminders", ContentValues().apply { put("at", at) }, "id = ?", arrayOf(id.toString()))
     }
 
     fun remove(id: Long) = db.writableDatabase.delete("reminders", "id = ?", arrayOf(id.toString()))

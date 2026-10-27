@@ -87,7 +87,8 @@ class Db private constructor(context: Context) :
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 at INTEGER NOT NULL,
                 text TEXT NOT NULL,
-                created INTEGER NOT NULL
+                created INTEGER NOT NULL,
+                repeat_rule TEXT
             )
             """.trimIndent()
         )
@@ -99,6 +100,8 @@ class Db private constructor(context: Context) :
         if (oldVersion < 3) createProductivityTables(db)
         if (oldVersion < 4) addScriptAccess(db)
         if (oldVersion < 5) dropRunHeaders(db)
+        // Repeating reminders (version 6): how one repeats, null for once.
+        if (oldVersion < 6 && !hasColumn(db, "reminders", "repeat_rule")) db.execSQL("ALTER TABLE reminders ADD COLUMN repeat_rule TEXT")
     }
 
     /**
@@ -125,7 +128,7 @@ class Db private constructor(context: Context) :
 
     companion object {
         private const val NAME = "kolahal.db"
-        private const val VERSION = 5
+        private const val VERSION = 6
 
         /** Run headers (`── hn · 22:40 ──`) are gone (version 5): every line shows its time and its script. */
         internal fun dropRunHeaders(db: SQLiteDatabase): Int =
