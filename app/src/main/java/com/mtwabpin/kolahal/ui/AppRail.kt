@@ -560,6 +560,8 @@ private class SelectorState {
     var mode by mutableStateOf(Mode.CLOSED)
     /** List position (rows) under the finger while it is down; NaN when not touching. */
     var contact by mutableFloatStateOf(Float.NaN)
+    /** Where the fisheye was last centred (rows, as [contact]): it shrinks back there once the finger leaves the list. */
+    var lensAt by mutableFloatStateOf(Float.NaN)
     /** Finger Y in the selector's coordinates (moves the handle). */
     var fingerY by mutableFloatStateOf(0f)
     /** Scroll offset (px) set by scrubbing. */
@@ -594,6 +596,9 @@ private class SelectorState {
         // places it again.
     }
 }
+
+/** How long the fisheye takes to grow or shrink back, and the other letters' apps to fade back or in. */
+private const val LENS_MS = 220
 
 /** Left open, the panel stops this far short of the strip. */
 private val OPEN_GAP = 8.dp
@@ -726,6 +731,12 @@ fun AppSelector(
     }
     // The bubble and the wave come out from the edge while the thumb slides along it.
     val sliding = state.mode == Mode.SCRUB && letter in sectionLetters.indices
+    // The fisheye grows while the thumb picks from the list and shrinks back where it was once the
+    // finger lifts or goes back to the edge; the other letters' apps fade back and in again the same
+    // way. Neither jumps between sliding and the list left open.
+    val lensOn by remember { derivedStateOf { !state.contact.isNaN() } }
+    val lens = animateFloatAsState(if (lensOn) 1f else 0f, tween(LENS_MS), label = "lens")
+    val dim = animateFloatAsState(if (state.mode == Mode.SCRUB || state.mode == Mode.SELECT) 1f else 0f, tween(LENS_MS), label = "dim")
     val waveIn by animateFloatAsState(if (sliding) 1f else 0f, tween(140), label = "wave")
     /** Where the wave is centred along the strip (0 top … 1 bottom): the letter's middle, gliding to the next one's. */
     val waveAt = remember { Animatable(0f) }
@@ -882,7 +893,9 @@ fun AppSelector(
                         enabled = state.mode == Mode.OPEN,
                         // A letter's few apps on their own: no room to magnify the ends.
                         fisheye = !onlyLetter,
+                        lens = { lens.value },
                         dimOthers = byLetter && !onlyLetter,
+                        dim = { dim.value },
                         text = text,
                         onClick = { state.close(); launch(entry.item) },
                         onLongClick = { state.close(); longPress(entry.item) },
@@ -1138,6 +1151,7 @@ fun AppSelector(
                             // Picking: the app level with the finger, as it moves up and down. Along the
                             // edge with letters, no app is at the thumb yet: the letter is.
                             state.contact = if (byLetter && !selecting) Float.NaN else SelectorMath.contact(state.listY, yIn, rowPx.toFloat())
+                            if (!state.contact.isNaN()) state.lensAt = state.contact
                             val f = SelectorMath.focusedIndex(state.contact, n)
                             val section = if (f >= 0) list[f].sectionIndex else onLetter
                             if (!byLetter) state.letter = section
@@ -1327,8 +1341,12 @@ private fun SelectorRow(
     enabled: Boolean,
     /** Magnify the row at the thumb and its neighbours while picking. */
     fisheye: Boolean,
+    /** How far the fisheye is out (0 to 1), easing in and out; read while drawing. */
+    lens: () -> Float,
     /** Letters: while the thumb is down, the other letters' apps fade back (unless picked). */
     dimOthers: Boolean,
+    /** How far they are faded back (0 to 1), easing in and out; read while drawing. */
+    dim: () -> Float,
     /** The row's text style: the terminal's font, or the phone's with selector.system-font. */
     text: TextStyle,
     onClick: () -> Unit,
@@ -1340,6 +1358,7 @@ private fun SelectorRow(
     }
     val quiet = app.profile.quiet
     val holdColor = Term.prompt.copy(alpha = 0.3f)
+    val focusColor = Term.prompt.copy(alpha = 0.14f)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -1348,20 +1367,29 @@ private fun SelectorRow(
             // Fisheye in the draw phase only: no recomposition or relayout per frame.
             .graphicsLayer {
                 val c = state.contact
-                if (c.isNaN() || !fisheye) {
+                // While it shrinks back, where it last was.
+                val at = if (c.isNaN()) state.lensAt else c
+                val l = lens()
+                if (at.isNaN() || !fisheye || l == 0f) {
                     scaleX = 1f; scaleY = 1f; translationY = 0f
                 } else {
-                    val x = index + 0.5f - c
-                    val s = SelectorMath.fisheyeScale(x)
+                    val x = index + 0.5f - at
+                    val s = 1f + (SelectorMath.fisheyeScale(x) - 1f) * l
                     scaleX = s; scaleY = s
-                    translationY = SelectorMath.fisheyeShift(x) * rowPx
+                    translationY = SelectorMath.fisheyeShift(x) * rowPx * l
                 }
                 transformOrigin = TransformOrigin(0f, 0.5f)
-                val faded = dimOthers && (state.mode == Mode.SCRUB || state.mode == Mode.SELECT) &&
-                    entry.sectionIndex != state.letter && SelectorMath.focusedIndex(c, count) != index
-                alpha = (if (quiet) 0.45f else 1f) * (if (faded) 0.4f else 1f)
+                val faded = dimOthers && entry.sectionIndex != state.letter && SelectorMath.focusedIndex(c, count) != index
+                alpha = (if (quiet) 0.45f else 1f) * (if (faded) 1f - 0.6f * dim() else 1f)
             }
-            .background(if (focused) Term.prompt.copy(alpha = 0.14f) else Color.Transparent, RoundedCornerShape(6.dp))
+            // The row at the thumb is marked, the mark fading with the fisheye.
+            .drawBehind {
+                val c = state.contact
+                val l = lens()
+                if (l > 0f && SelectorMath.focusedIndex(if (c.isNaN()) state.lensAt else c, count) == index) {
+                    drawRoundRect(focusColor, alpha = l, cornerRadius = CornerRadius(6.dp.toPx()))
+                }
+            }
             // Plan B: the held row fills from its start as the hold counts (read in the draw phase only).
             .drawBehind {
                 if (SelectorMath.focusedIndex(state.contact, count) == index) {

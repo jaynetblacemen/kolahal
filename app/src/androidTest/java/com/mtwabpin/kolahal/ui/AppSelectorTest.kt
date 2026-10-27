@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
@@ -348,6 +349,30 @@ class AppSelectorTest {
         val (a, b) = shown.zipWithNext().first { (x, y) -> y.index == x.index + 1 }
         val top = { l: String -> compose.onNodeWithText(l, useUnmergedTree = true).getUnclippedBoundsInRoot().top.value }
         assertEquals("${a.value} to ${b.value}", 56f, top(b.value) - top(a.value), 1f)
+    }
+
+    /** The widest gap between the list's rows against a plain one: above 1 where the fisheye spreads them. */
+    private fun magnified(): Float {
+        val rows = compose.onNodeWithTag("app-selector-panel").onChildren()
+        val tops = rows.fetchSemanticsNodes().indices.map { i -> rows[i].getUnclippedBoundsInRoot().top.value }.sorted()
+        val gaps = tops.zipWithNext { a, b -> b - a }
+        return gaps.max() / gaps.sorted()[gaps.size / 2]
+    }
+
+    /** Lifted on the edge, the list stays open and its fisheye shrinks back, rather than the rows jumping flat. */
+    @Test fun theFisheyeShrinksBackWhenTheThumbLifts() {
+        show(left = false, position = "bottom", browse = "apps")
+        compose.onNodeWithTag("app-selector").performTouchInput { down(center); moveBy(Offset(0f, 4.dp.toPx())) }
+        compose.waitForIdle()
+        assertTrue("sliding: ${magnified()}", magnified() > 1.3f)
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithTag("app-selector").performTouchInput { up() }
+        compose.mainClock.advanceTimeBy(80)
+        val easing = magnified()
+        assertTrue("just lifted: $easing", easing > 1.05f && easing < 1.3f)
+        compose.mainClock.advanceTimeBy(400)
+        assertEquals(1f, magnified(), 0.01f)
+        compose.onNodeWithTag("app-selector-panel").assertIsDisplayed()
     }
 
     /** Settings' row height preview: the list stands open without a touch, and the idle close leaves it. */
