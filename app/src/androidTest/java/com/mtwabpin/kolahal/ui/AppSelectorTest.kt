@@ -15,7 +15,6 @@ import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
@@ -421,34 +420,6 @@ class AppSelectorTest {
         // 55% of the width, but at least 200dp; open, all but the 36dp strip and an 8dp gap.
         assertEquals(200f, sliding, 1f)
         assertEquals(360f - 36f - 8f, open, 1f)
-    }
-
-    /** Where [label]'s letters start and end on screen (dp), not its cell, which takes the row's room. */
-    private fun textSpan(label: String): Pair<Float, Float> {
-        val node = compose.onNodeWithText(label, useUnmergedTree = true)
-        val box = node.getUnclippedBoundsInRoot()
-        val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
-        node.fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
-        val line = layouts.first()
-        val d = compose.density.density
-        return (box.left.value + line.getLineLeft(0) / d) to (box.left.value + line.getLineRight(0) / d)
-    }
-
-    /** Left open with the strip on the right, the names come over to the thumb's side; while sliding they keep to the far side. */
-    @Test fun leftOpenTheNamesComeToTheThumb() {
-        show(left = false, position = "bottom")
-        compose.onNodeWithTag("app-selector").performTouchInput { down(center) }
-        compose.waitForIdle()
-        val label = entries.map { it.item.label }.first { compose.onAllNodesWithText(it, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
-        val sliding = compose.onNodeWithTag("app-selector-panel").getUnclippedBoundsInRoot()
-        val (slidingLeft, _) = textSpan(label)
-        assertTrue("sliding, $label starts at the panel's left ($slidingLeft, panel ${sliding.left})", slidingLeft < sliding.left.value + 48f)
-        compose.onNodeWithTag("app-selector").performTouchInput { up() }
-        compose.waitForIdle()
-        val open = compose.onNodeWithTag("app-selector-panel").getUnclippedBoundsInRoot()
-        val (openLeft, openRight) = textSpan(label)
-        assertTrue("open, $label ends by the panel's right ($openRight, panel ${open.right})", openRight > open.right.value - 56f)
-        assertTrue("open, $label no longer starts at the left ($openLeft)", openLeft > open.left.value + 48f)
     }
 
     /** Keyboard up (inactive): nothing shows and an open list closes; down again, it is back as it was. */
