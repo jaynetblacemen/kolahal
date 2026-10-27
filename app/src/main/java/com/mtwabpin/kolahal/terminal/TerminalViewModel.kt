@@ -567,6 +567,18 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         unlockCounter.refresh()
         appsRepo.refresh()
         mediaRepo.start() // picks up notification access granted while we were away
+        // keyboard.on-home: back from an app or the lock screen is home shown too. The keyboard
+        // only opens for a focused window, which comes just after this ([onWindowFocused]).
+        focusOnWindowFocus = true
+    }
+
+    private var focusOnWindowFocus = false
+
+    /** Home's window has focus again: after [onResume], keyboard.on-home opens the keyboard on the terminal. */
+    fun onWindowFocused() {
+        if (!focusOnWindowFocus) return
+        focusOnWindowFocus = false
+        if (config[Keys.FOCUS_ON_HOME] && _screen.value == Screen.TERMINAL && _editing.value == null) _events.tryEmit(UiEvent.FocusPrompt)
     }
 
     // ---- prompt ---------------------------------------------------------------------------

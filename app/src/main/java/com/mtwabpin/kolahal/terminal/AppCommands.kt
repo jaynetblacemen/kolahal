@@ -33,11 +33,20 @@ class AppCommands(
     private fun info(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.INFO, text, ctx = ctx) }
     private fun error(text: String) { logs.add(LogKind.ERROR, text) }
 
+    /** Where a pinned app shows, with the settings as they are. */
+    private fun pinnedWhere(): String {
+        val conf = com.mtwabpin.kolahal.data.Config.get(context)
+        return listOfNotNull(
+            "it leads the suggestions on an empty prompt".takeIf { conf[com.mtwabpin.kolahal.data.Keys.SUGGEST_IDLE] },
+            "it is a ★ favourite in the app selector".takeIf { conf[com.mtwabpin.kolahal.data.Keys.SELECTOR_RAIL] },
+        ).joinToString(", and ").ifEmpty { "pinned apps lead the suggestions on an empty prompt once they are on (config set suggestions.idle on)" }
+    }
+
     /** Runs one of [NAMES]. */
     fun run(name: String, args: List<String>) {
         when (name) {
             "hide" -> withApp(args) { setHidden(it, true) }
-            "pin", "fav" -> if (args.isEmpty()) listPinned() else withApp(args) { app -> prefs.setPinned(app.key, true); info("Pinned ${app.label} — it leads the suggestions on an empty prompt") }
+            "pin", "fav" -> if (args.isEmpty()) listPinned() else withApp(args) { app -> prefs.setPinned(app.key, true); info("Pinned ${app.label} — ${pinnedWhere()}") }
             "unpin", "unfav" -> withApp(args) { app -> prefs.setPinned(app.key, false); info("Unpinned ${app.label}") }
             "pins", "favs" -> listPinned()
             "unhide" -> withApp(args, includeHidden = true) { setHidden(it, false) }

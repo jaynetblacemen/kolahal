@@ -13,6 +13,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -35,6 +36,9 @@ import com.mtwabpin.kolahal.data.Config
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
+import com.mtwabpin.kolahal.terminal.UiEvent
+import kotlinx.coroutines.flow.onSubscription
+import kotlinx.coroutines.launch
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -196,6 +200,32 @@ class HomeScreenTest {
             val nameBaseline = nameBounds.top + name.layout().firstBaseline.toDp()
             val helpBaseline = helpBounds.top + wrapped.firstBaseline.toDp()
             assertEquals(nameBaseline.value, helpBaseline.value, 1f)
+        }
+    }
+
+    /** keyboard.on-home: coming back to home (from an app, or unlocking) focuses the prompt, not only Home. */
+    @Test fun keyboardOnHomeAlsoOnReturn() {
+        val vm = show(360.dp, 700.dp)
+        val asked = java.util.concurrent.atomic.AtomicInteger()
+        val subscribed = java.util.concurrent.CountDownLatch(1)
+        val job = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
+            vm.events.onSubscription { subscribed.countDown() }.collect { if (it == UiEvent.FocusPrompt) asked.incrementAndGet() }
+        }
+        try {
+            subscribed.await()
+            compose.runOnIdle { vm.onResume(); vm.onWindowFocused() }
+            Thread.sleep(300)
+            assertEquals("off: nothing asks for the keyboard", 0, asked.get())
+
+            compose.runOnIdle { config.set(Keys.FOCUS_ON_HOME, "on"); vm.onResume(); vm.onWindowFocused() }
+            compose.waitUntil(5_000) { asked.get() == 1 }
+            // Once per return: focus coming back otherwise (the shade closing) leaves the keyboard be.
+            compose.runOnIdle { vm.onWindowFocused() }
+            Thread.sleep(300)
+            assertEquals(1, asked.get())
+            compose.waitUntil(5_000) { runCatching { compose.onNodeWithTag("prompt").assertIsFocused() }.isSuccess }
+        } finally {
+            job.cancel()
         }
     }
 

@@ -233,6 +233,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.onResume()
+        if (hasWindowFocus()) vm.onWindowFocused()
         com.mtwabpin.kolahal.apps.PackageEvents.get(this).recheck()
         com.mtwabpin.kolahal.calls.CallEvents.get(this).check()
     }
@@ -273,6 +274,7 @@ class MainActivity : ComponentActivity() {
         super.onWindowFocusChanged(hasFocus)
         // Dialogs and other apps can bring the bars back; re-apply when home regains focus.
         if (hasFocus) applyBars()
+        if (hasFocus) vm.onWindowFocused()
     }
 
     /** The phone is in dark mode (or `theme.always-dark`): the theme's dark version shows. */

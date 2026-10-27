@@ -19,7 +19,7 @@ optional, and `a|b` means one of.
 | `uninstall <app> [-w]` | | uninstall an app |
 | `hide <app> [-w]` | | hide an app from lists and search |
 | `unhide <app>` | | show a hidden app again (`apps hidden` lists them) |
-| `pin <app>` | `fav` | favourite: first in the empty-prompt strip (`pin` alone lists them) |
+| `pin <app>` | `fav` | favourite: first in the suggestions on an empty prompt (`suggestions.idle`), and starred in the app selector (`pin` alone lists them) |
 | `unpin <app>` | `unfav` | remove a favourite |
 | `pins` | `favs` | grid of pinned apps |
 | `rename <app> = <name>` | | custom label; `rename <app> =` restores the original |
