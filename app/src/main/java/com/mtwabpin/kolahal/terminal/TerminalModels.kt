@@ -26,7 +26,10 @@ sealed interface Suggestion {
     /** Identity in the suggestion lists; [TerminalViewModel.suggestions] never returns two with the same key. */
     val key: String
 
-    data class App(val app: AppEntry) : Suggestion {
+    /** Enter does what this row does: only ever the first row, highlighted with a ⏎. */
+    val enter: Boolean
+
+    data class App(val app: AppEntry, override val enter: Boolean = false) : Suggestion {
         override val label get() = app.label
         override val key get() = "a:" + app.key
     }
@@ -42,6 +45,7 @@ sealed interface Suggestion {
         val app: AppEntry? = null,
         val icon: Int? = null,
         val help: String? = null,
+        override val enter: Boolean = false,
     ) : Suggestion {
         override val key get() = "c:" + replacement.trimEnd()
     }

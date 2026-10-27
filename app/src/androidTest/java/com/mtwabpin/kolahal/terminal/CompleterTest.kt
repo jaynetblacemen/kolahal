@@ -188,10 +188,34 @@ class CompleterReviewTest {
         assertTrue(lines("screentime ").toString(), "screentime 7" in lines("screentime "))
     }
 
+    /** Enter runs the command typed: it is the first row, marked, then its options, then longer commands. */
     @Test fun aWholeCommandsOptionsComeBeforeLongerCommands() {
-        val first = completer.suggestions("feed").first()
-        assertEquals("feed add", first.label)
+        val all = completer.suggestions("feed")
+        assertEquals("feed", all.first().label)
+        assertTrue(all.first().enter)
+        assertEquals("feed add", all[1].label)
         assertTrue(labels("feed").toString(), "feeds" in labels("feed"))
+        assertTrue(all.drop(1).none { it.enter })
+    }
+
+    /** Only a row Enter acts on is marked: not `torch on` when Enter toggles, but the app `open` picks. */
+    @Test fun theEnterRowIsWhatEnterDoes() {
+        assertEquals("torch", labels("torch").first())
+        assertTrue(labels("torch").toString(), "torch on" in labels("torch"))
+        assertTrue(completer.suggestions("torch").first().enter)
+        assertTrue(completer.suggestions("torch ").none { it.enter })
+        // Part of a command's name, and no app's: Enter says it isn't one.
+        val partial = listOf("torc", "restar", "crashe").first { apps.searchRanked(it).isEmpty() }
+        assertTrue(completer.suggestions(partial).none { it.enter })
+        // One word, and not a command's name, so Enter launches it.
+        val app = apps.apps.value.first {
+            it.profile.kind == ProfileKind.PERSONAL && it.label.length >= 4 && ' ' !in it.label &&
+                it.label.lowercase() !in CommandProcessor.COMMAND_NAMES && it.label.lowercase() !in InstantRun.SYNONYMS
+        }
+        val best = apps.search(app.label.take(4)).first()
+        val open = completer.suggestions("open ${app.label.take(4)}")
+        assertTrue(open.toString(), (open.first() as Suggestion.App).app == best && open.first().enter)
+        assertTrue(completer.suggestions(best.label).first().let { it is Suggestion.App && it.app == best && it.enter })
     }
 
     /** Among the commands; an app Enter would launch still comes before them. */

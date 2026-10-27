@@ -86,15 +86,22 @@ class Completer(private val context: Context, private val data: Data) {
                 .sortedBy { recent[InstantRun.canonical(it)] ?: Int.MAX_VALUE }
                 .map { Suggestion.Completion(it, "$it ", icon = if (it in data.commandNames) R.drawable.ic_code else null, help = helpFor(it)) }
             val ranked = appsRepo.searchRanked(head).take(cap)
-            // When Enter would launch an app (launch.top + a prefix match), that app is the first,
-            // highlighted chip, so Enter, TAB and the highlight agree.
-            val enterLaunches = config[Keys.LAUNCH_TOP] && ranked.firstOrNull()?.second?.let { it <= 2 } == true &&
-                names.none { it == head } && head !in InstantRun.SYNONYMS
+            // When Enter would launch an app (as the prompt's fallback does: its whole name, the only
+            // match, or launch.top and a prefix match), that app is the first, highlighted row, so
+            // Enter, TAB and the highlight agree.
+            val top = ranked.firstOrNull()
+            val enterLaunches = top != null && names.none { it == head } && head !in InstantRun.SYNONYMS &&
+                (top.first.label.equals(head, ignoreCase = true) || (ranked.size == 1 && config[Keys.AUTO_LAUNCH]) ||
+                    (config[Keys.LAUNCH_TOP] && top.second <= 2))
             val apps = ranked.map { Suggestion.App(it.first) }
-            // A whole command name already: its options come first, since Enter runs that command,
-            // not a longer one (`feed` offers `feed add` before `feeds`).
+            // A whole command name already: Enter runs it, so it is the first row, then its options,
+            // then longer commands (`feed` offers `feed add` before `feeds`). TAB adds the space.
+            val whole = if (cmd in names) {
+                listOf(Suggestion.Completion(head, "$head ", icon = if (head in data.commandNames) R.drawable.ic_code else null,
+                    help = helpFor(head) ?: CommandProcessor.COMMANDS.firstOrNull { it.name == cmd }?.help, enter = true))
+            } else emptyList()
             val options = if (cmd in names) usageOptions(cmd, listOf(head, "")).map { it.copy(label = "$head ${it.label}") } else emptyList()
-            return (if (enterLaunches) listOf(apps.first()) + cmds.take(3) + apps.drop(1) else options + cmds.take(3) + apps).distinctBy { it.key }
+            return (if (enterLaunches) listOf(apps.first().copy(enter = true)) + cmds.take(3) + apps.drop(1) else whole + options + cmds.take(3) + apps).distinctBy { it.key }
         }
         // The Play build has no call log and no screen lock: nothing to offer.
         if (cmd in CommandProcessor.UNAVAILABLE) return emptyList()
@@ -109,9 +116,22 @@ class Completer(private val context: Context, private val data: Data) {
                 is Suggestion.App -> "$head ${s.app.label}"
             }.trim().lowercase()
         }
-        return (specific + options + historySuggestions(text).filterNot { it.replacement.trim().lowercase() in covered })
+        val rows = (specific + options + historySuggestions(text).filterNot { it.replacement.trim().lowercase() in covered })
             .filter { it !is Suggestion.Completion || it.replacement.trim() != typed }
             .distinctBy { it.key }
+        // Otherwise Enter runs the line as typed, which no row is (`torch ` toggles, it isn't `torch on`);
+        // but `open ma`, `info ma`, … act on the best match for the name, the first row when it is that app.
+        val arg = parts.drop(1).joinToString(" ").trim()
+        val best = if (cmd in PICK_BEST_APP && arg.isNotEmpty() && FLAGS.find(" $arg") == null && !(cmd == "open" && ':' in arg)) {
+            appsRepo.search(arg).firstOrNull()
+        } else null
+        val first = rows.firstOrNull() ?: return rows
+        val picksBest = best != null && when (first) {
+            is Suggestion.App -> first.app == best
+            is Suggestion.Completion -> first.app == best
+        }
+        if (!picksBest) return rows
+        return listOf(if (first is Suggestion.App) first.copy(enter = true) else (first as Suggestion.Completion).copy(enter = true)) + rows.drop(1)
     }
 
     /** What a command's row says beside its name: a command script's `@desc`, or what an alias stands for. */
@@ -401,6 +421,9 @@ class Completer(private val context: Context, private val data: Data) {
     companion object {
         /** Profile flags typed after an app name (`-w`, `-p`), dropped before searching. */
         private val FLAGS = Regex("\\s-\\w+")
+
+        /** Commands that act on the best match for the app name typed after them, as their first row shows it. */
+        private val PICK_BEST_APP = setOf("open", "info", "uninstall", "hide", "shortcuts", "pin")
 
         /** `feed <sub> <id>`: the subcommands that take a feed. */
         private val FEED_ID_SUBCOMMANDS = setOf("rm", "remove", "read", "all", "open", "notify", "every", "fetch", "refresh", "on", "off")

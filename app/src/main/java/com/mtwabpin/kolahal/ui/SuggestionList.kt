@@ -69,7 +69,7 @@ internal fun completionHelp(label: String, replacement: String): String? {
 
 /**
  * `suggestions.style list`: matches stacked above the prompt, best one at the bottom nearest the
- * thumb (it is what Enter / TAB act on, so it is highlighted). At most ~40% of the screen tall,
+ * thumb (TAB takes it; it is highlighted when Enter acts on it too). At most ~40% of the screen tall,
  * and no taller than the room above the prompt; more scroll. Tap picks; long-press an app for its actions.
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -91,7 +91,8 @@ fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppL
     ) {
         itemsIndexed(items, key = { _, s -> s.key }) { index, s ->
             val iconSize = minOf(Term.fontSize + 10, minOf(44, Term.chipHeight) - 8).dp
-            val first = index == 0
+            // Highlighted only when Enter does what it does.
+            val first = index == 0 && s.enter
             val color = when (s) {
                 is Suggestion.App -> Term.profileColor(s.app.profile.kind)
                 is Suggestion.Completion -> Term.prompt
@@ -185,7 +186,7 @@ fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppL
 internal fun SuggestionStrip(items: List<Suggestion>, rows: Int, onPick: (Suggestion) -> Unit, icons: Boolean = false) {
     if (items.isEmpty()) return
     val key = { _: Int, s: Suggestion -> s.key }
-    // Keep the first chip (what Enter / TAB take) in view when the matches change.
+    // Keep the first chip (what TAB takes) in view when the matches change.
     val first = items.first().key
     // suggestions.rows 2: twice as many chips in reach before any sideways scrolling.
     if (rows >= 2 && items.size > 3) {
@@ -203,7 +204,7 @@ internal fun SuggestionStrip(items: List<Suggestion>, rows: Int, onPick: (Sugges
             horizontalItemSpacing = 8.dp,
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            items(items.size, key = { key(it, items[it]) }) { index -> SuggestionChip(index, items[index], onPick, icons) }
+            items(items.size, key = { key(it, items[it]) }) { index -> SuggestionChip(items[index], onPick, icons) }
         }
         return
     }
@@ -218,12 +219,12 @@ internal fun SuggestionStrip(items: List<Suggestion>, rows: Int, onPick: (Sugges
         contentPadding = PaddingValues(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        itemsIndexed(items, key = key) { index, s -> SuggestionChip(index, s, onPick, icons) }
+        itemsIndexed(items, key = key) { _, s -> SuggestionChip(s, onPick, icons) }
     }
 }
 
 @Composable
-private fun SuggestionChip(index: Int, s: Suggestion, onPick: (Suggestion) -> Unit, icons: Boolean = false) {
+private fun SuggestionChip(s: Suggestion, onPick: (Suggestion) -> Unit, icons: Boolean = false) {
         run {
             val (color, tag) = when (s) {
                 is Suggestion.App -> Term.profileColor(s.app.profile.kind) to s.app.profile.kind.tag
@@ -234,9 +235,9 @@ private fun SuggestionChip(index: Int, s: Suggestion, onPick: (Suggestion) -> Un
                 modifier = Modifier
                     .heightIn(min = Term.chipHeight.dp)
                     .alpha(if (s is Suggestion.App && s.app.profile.quiet) 0.45f else 1f)
-                    // The first chip is what Enter / TAB act on: fill it so that is visible.
-                    .background(if (index == 0) color.copy(alpha = 0.18f) else Color.Transparent, RoundedCornerShape(4.dp))
-                    .border(1.dp, color.copy(alpha = if (index == 0) 0.9f else 0.6f), RoundedCornerShape(4.dp))
+                    // The chip Enter acts on (the first, when Enter does what it does): fill it so that is visible.
+                    .background(if (s.enter) color.copy(alpha = 0.18f) else Color.Transparent, RoundedCornerShape(4.dp))
+                    .border(1.dp, color.copy(alpha = if (s.enter) 0.9f else 0.6f), RoundedCornerShape(4.dp))
                     .clickable { onPick(s) }
                     .padding(horizontal = 12.dp, vertical = (if (Term.chipHeight < 40) 2 else 8).dp),
             ) {
