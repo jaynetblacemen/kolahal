@@ -33,8 +33,5 @@ class SettingsCatalogTest {
         assertEquals(Keys.ALL.toSet() - Keys.CONFIG_ONLY, shown.toSet())
         assertTrue(Keys.LOG_KEEP_LINES in Keys.CONFIG_ONLY)
         assertTrue(Keys.LOG_KEEP_LINES in Keys.ALL)
-        // Not ready for Settings yet: `config set theme.paper` only, off unless set.
-        assertTrue(Keys.THEME_PAPER in Keys.CONFIG_ONLY)
-        assertEquals(0, Keys.THEME_PAPER.default)
     }
 }

@@ -33,8 +33,6 @@ class ThemeModeTest {
     @After fun tearDown() {
         config.reset(Keys.THEME)
         config.reset(Keys.THEME_ALWAYS_DARK)
-        config.preview(Keys.THEME_PAPER, null)
-        config.reset(Keys.THEME_PAPER)
         shell("cmd uimode night $night")
     }
 
@@ -42,32 +40,6 @@ class ThemeModeTest {
         val until = SystemClock.uptimeMillis() + 5_000
         while (Term.palette != palette && SystemClock.uptimeMillis() < until) Thread.sleep(50)
         assertEquals(palette, Term.palette)
-    }
-
-    private fun papers(strength: Int) {
-        val until = SystemClock.uptimeMillis() + 5_000
-        while (Term.paper != strength && SystemClock.uptimeMillis() < until) Thread.sleep(50)
-        assertEquals(strength, Term.paper)
-    }
-
-    /** `theme.paper` is an old page behind a light version only, and follows its slider while dragged. */
-    @Test fun paperOnlyBehindALightVersion() {
-        config.set(Keys.THEME_PAPER, "60")
-        shell("cmd uimode night no")
-        ActivityScenario.launch(MainActivity::class.java).use {
-            papers(60)
-            config.set(Keys.THEME_ALWAYS_DARK, "on")
-            papers(0)
-            config.set(Keys.THEME_ALWAYS_DARK, "off")
-            papers(60)
-            // Dragged in Settings: home shows the value under the finger, and goes back when it is dropped.
-            config.preview(Keys.THEME_PAPER, "90")
-            papers(90)
-            config.preview(Keys.THEME_PAPER, null)
-            papers(60)
-            shell("cmd uimode night yes")
-            papers(0)
-        }
     }
 
     @Test fun thePhonesModePicksTheVersionAndAlwaysDarkKeepsTheDarkOne() {

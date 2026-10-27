@@ -163,7 +163,7 @@ class MainActivity : ComponentActivity() {
                     // With the phone's wallpaper let through the window (log.wallpaper, widgets.wallpaper),
                     // everything but home stays solid.
                     androidx.compose.foundation.layout.Box(
-                        androidx.compose.ui.Modifier.fillMaxSize().background(Term.page),
+                        androidx.compose.ui.Modifier.fillMaxSize().background(Term.bg),
                     ) { ScriptEditor(
                         script = script,
                         jumpToLine = jumpLine,
@@ -187,7 +187,7 @@ class MainActivity : ComponentActivity() {
                     } else saved.SaveableStateProvider(screen.name) { androidx.compose.foundation.layout.Box(
                         // Solid over the wallpaper too; Settings shows home through it while you hold the eye.
                         androidx.compose.ui.Modifier.fillMaxSize().then(
-                            if (screen == Screen.SETTINGS) androidx.compose.ui.Modifier else androidx.compose.ui.Modifier.background(Term.page),
+                            if (screen == Screen.SETTINGS) androidx.compose.ui.Modifier else androidx.compose.ui.Modifier.background(Term.bg),
                         ),
                     ) { when (screen) {
                         Screen.SETTINGS -> SettingsOverHome(
@@ -287,8 +287,6 @@ class MainActivity : ComponentActivity() {
 
     private fun applyTheme() {
         Term.palette = Palettes.named(vm.config[Keys.THEME], darkTheme())
-        // An old page only behind a light version (a theme made dark in both stays flat).
-        Term.paper = if (darkTheme() || Term.bg.luminance() < 0.5f) 0 else vm.config[Keys.THEME_PAPER]
         Term.fontSize = vm.config[Keys.FONT_SIZE]
         val font = vm.config[Keys.FONT]
         val family = TermFonts.family(this, font)
@@ -307,7 +305,7 @@ class MainActivity : ComponentActivity() {
             window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
         } else {
             window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
-            window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Term.page.toArgb()))
+            window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Term.bg.toArgb()))
         }
         applyBars()
     }

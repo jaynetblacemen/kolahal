@@ -208,7 +208,7 @@ private fun Welcome() = Page("") {
     val shape = RoundedCornerShape(16.dp)
     Column(
         verticalArrangement = Arrangement.spacedBy(2.dp),
-        modifier = Modifier.fillMaxWidth().clip(shape).background(Term.page, shape).border(1.dp, Term.dim.copy(alpha = 0.3f), shape).padding(14.dp),
+        modifier = Modifier.fillMaxWidth().clip(shape).background(Term.bg, shape).border(1.dp, Term.dim.copy(alpha = 0.3f), shape).padding(14.dp),
     ) {
         @Composable
         fun line(text: String, command: Boolean = false) = Text(

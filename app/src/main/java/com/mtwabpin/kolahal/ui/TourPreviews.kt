@@ -91,7 +91,7 @@ internal fun HomeFrame(height: Dp, modifier: Modifier = Modifier, tag: String = 
             .fillMaxWidth()
             .height(height)
             .clip(shape)
-            .background(Term.page, shape)
+            .background(Term.bg, shape)
             .border(1.dp, Term.dim.copy(alpha = 0.3f), shape)
             .testTag(tag),
         content = content,
@@ -526,7 +526,7 @@ internal fun PermissionExample(fix: String) {
             .padding(top = 8.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(Term.page)
+            .background(Term.bg)
             .padding(horizontal = 10.dp, vertical = 6.dp),
     ) {
         lines.forEach { Text(it, style = Term.text.copy(color = Term.fg, fontSize = (Term.fontSize - 3).sp), maxLines = 2) }

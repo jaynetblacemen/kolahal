@@ -1,5 +1,6 @@
 package com.mtwabpin.kolahal.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.only
@@ -203,13 +204,8 @@ object Term {
     /** Minimum height (dp) of suggestion and app-grid chips (`chips.height`). */
     var chipHeight by mutableIntStateOf(48)
 
-    /** `theme.paper` as home shows it ([Paper]): 0 in a dark version, or flat. */
-    var paper by mutableIntStateOf(0)
-
     val bg get() = palette.bg
 
-    /** Home's background where it must be one colour (a line being swiped, the window): the page under [paper]'s texture. */
-    val page: Color get() = if (paper > 0) Paper.base(bg, paper) else bg
     val surface get() = palette.surface
     val fg get() = palette.fg
     val dim get() = palette.dim
@@ -300,3 +296,11 @@ fun androidx.compose.ui.Modifier.cutoutSafePadding(): androidx.compose.ui.Modifi
         .union(androidx.compose.foundation.layout.WindowInsets.displayCutout)
         .only(androidx.compose.foundation.layout.WindowInsetsSides.Top + androidx.compose.foundation.layout.WindowInsetsSides.Horizontal),
 )
+
+/**
+ * Home's background: the theme's colour. With [wallpaper] above 0 (`log.wallpaper`,
+ * `widgets.wallpaper`) the phone's wallpaper, which the window lets through then, shows that many
+ * percent: the background is drawn that much fainter.
+ */
+fun androidx.compose.ui.Modifier.page(wallpaper: Int = 0): androidx.compose.ui.Modifier =
+    background(Term.bg.copy(alpha = Term.bg.alpha * (1f - wallpaper.coerceIn(0, 100) / 100f)))
