@@ -67,6 +67,7 @@ internal val TITLES = mapOf(
     "keyboard.suggestions" to "Keyboard autocorrect & suggestions",
     "keyboard.on-home" to "Open the keyboard on Home",
     "backup.auto" to "Back up on its own",
+    "log.tips" to "A tip a day",
     "backup.keep" to "Backups to keep",
     "launch.instant" to "Instant launch",
     "launch.instant-letters" to "Letters before instant launch",
@@ -198,6 +199,7 @@ private val CATEGORIES = listOf(
         listOf(
             "Display" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_GUTTER, Keys.LOG_SPACING, Keys.LOG_LINE_HEIGHT, Keys.LOG_TALLER_TAPS, Keys.LOG_WALLPAPER),
             "History" to listOf(Keys.LOG_FRESH, Keys.LOG_KEEP_DAYS),
+            "Tips" to listOf(Keys.LOG_TIPS),
         ),
     ),
     Category(

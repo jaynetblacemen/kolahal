@@ -122,6 +122,7 @@ object Keys {
     val LOG_KEEP_DAYS = ConfigKey.Num("log.keep-days", 60, 1..365, "Delete log lines older than this many days")
     val LOG_KEEP_LINES = ConfigKey.Num("log.keep-lines", 5000, 500..50_000, "Delete the oldest log lines past this many; typed commands are counted apart, so ↑ history stays")
     val LOG_FRESH = ConfigKey.Num("log.fresh", 10, 0..240, "Start home with a clean screen after this many minutes away (0: never); earlier output is one tap away")
+    val LOG_TIPS = ConfigKey.Bool("log.tips", true, "A tip a day in the log for your first two weeks: something you haven't used yet")
     val FEEDS_LOG = ConfigKey.Bool("feeds.log", true, "Post new feed items in the log")
     val FEEDS_LOG_LINES = ConfigKey.Num("feeds.log-lines", 10, 1..50, "New items per feed and refresh shown in the log; the rest is one '+N more' line")
     val FEEDS_READ_SHOWN = ConfigKey.Bool("feeds.read-shown", false, "Items posted in the log count as read (otherwise only opened or listed ones do)")
@@ -153,7 +154,7 @@ object Keys {
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_SHOW, HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
         HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, THEME_ALWAYS_DARK, STATUS_BAR, FONT, FONT_SANS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGEST_ICONS, SUGGESTIONS_WRAP, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_BROWSE, SELECTOR_FILTER, SELECTOR_SIDE, SELECTOR_POSITION, SELECTOR_HANDLE, SELECTOR_LETTERS, SELECTOR_HEIGHT, SELECTOR_ACTIONS, SELECTOR_ICONS, SELECTOR_ROW_HEIGHT, SELECTOR_SYSTEM_FONT, SELECTOR_AIM, SELECTOR_AIM_SPEED, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
-        SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_GUTTER, LOG_LINE_HEIGHT, LOG_TALLER_TAPS, LOG_WALLPAPER, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_KEEP_LINES, LOG_FRESH, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS, BACKUP_AUTO, BACKUP_KEEP,
+        SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_GUTTER, LOG_LINE_HEIGHT, LOG_TALLER_TAPS, LOG_WALLPAPER, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_KEEP_LINES, LOG_FRESH, LOG_TIPS, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS, BACKUP_AUTO, BACKUP_KEEP,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP,
         FEEDS_LOG, FEEDS_LOG_LINES, FEEDS_READ_SHOWN, FEEDS_BACKLOG_READ, FEEDS_INTERVAL, FEEDS_NOTIFY, FEEDS_WIFI,
         HEADER_TODO, WIDGETS_PAGE, WIDGETS_WALLPAPER,

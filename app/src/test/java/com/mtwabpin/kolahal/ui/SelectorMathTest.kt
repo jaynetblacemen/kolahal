@@ -295,7 +295,7 @@ class SelectorMathTest {
     }
 
     @Test fun completionHelpForCommandsAndKeys() {
-        assertEquals("Show this list", completionHelp("help", "help "))
+        assertEquals("Show this list · help <command>: just that one", completionHelp("help", "help "))
         assertEquals(com.mtwabpin.kolahal.data.Keys.SELECTOR_RAIL.help, completionHelp("selector.rail", "config set selector.rail "))
         assertNull(completionHelp("on", "config set selector.rail on"))
     }

@@ -567,12 +567,32 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         unlockCounter.refresh()
         appsRepo.refresh()
         mediaRepo.start() // picks up notification access granted while we were away
+        io { tipOfTheDay() }
         // keyboard.on-home: back from an app or the lock screen is home shown too. The keyboard
         // only opens for a focused window, which comes just after this ([onWindowFocused]).
         focusOnWindowFocus = true
     }
 
     private var focusOnWindowFocus = false
+
+    /**
+     * `log.tips`: on the first look at home each day, from the second day after installing to the
+     * fourteenth, a line about something not used yet ([Tips]); tapping it puts the example in the prompt.
+     */
+    private fun tipOfTheDay() {
+        if (!config[Keys.LOG_TIPS]) return
+        val prefs = context.getSharedPreferences("tips", android.content.Context.MODE_PRIVATE)
+        val today = java.time.LocalDate.now().toString()
+        if (prefs.getString("day", null) == today) return
+        val installed = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime }.getOrNull() ?: return
+        if ((System.currentTimeMillis() - installed) / 86_400_000L !in Tips.DAYS) return
+        val shown = prefs.getStringSet("shown", emptySet()).orEmpty()
+        val tip = Tips.next(logs.commandHistory(), shown) ?: return
+        prefs.edit { putString("day", today).putStringSet("shown", shown + tip.id) }
+        // The first one says how they stop.
+        val off = if (shown.isEmpty()) " (config set log.tips off: no more tips)" else ""
+        logs.add(LogKind.INFO, "Tip: ${tip.text} · tap to try it$off", ctx = LogContext.of(LogContext.COMMAND to tip.example.trimEnd() + " "))
+    }
 
     /** Home's window has focus again: after [onResume], keyboard.on-home opens the keyboard on the terminal. */
     fun onWindowFocused() {
