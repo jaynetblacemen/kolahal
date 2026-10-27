@@ -2,6 +2,7 @@ package com.mtwabpin.kolahal.ui
 
 import android.os.SystemClock
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -42,6 +43,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -80,8 +82,10 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mtwabpin.kolahal.apps.AppEntry
@@ -874,6 +878,8 @@ fun AppSelector(
                         pinned = entry.item.key in pinned,
                         icon = if (icons) iconSize else null,
                         enabled = state.mode == Mode.OPEN,
+                        // Left open with the strip on the right, the names come over to the thumb's side.
+                        mirrored = !left && state.mode == Mode.OPEN,
                         // A letter's few apps on their own: no room to magnify the ends.
                         fisheye = !onlyLetter,
                         dimOthers = byLetter && !onlyLetter,
@@ -1305,7 +1311,11 @@ fun AppSelector(
     }
 }
 
-/** One list row: section letter in the gutter, profile tag in its colour, ★, the label. */
+/**
+ * One list row: section letter in the gutter, profile tag in its colour, ★, the label. [mirrored],
+ * it runs right to left: the letter at the panel's right edge and the label right-aligned beside the
+ * icon, by the thumb on the right edge; it crossfades as the open panel widens.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SelectorRow(
@@ -1319,6 +1329,8 @@ private fun SelectorRow(
     /** The app's icon at this size at the row's start (Plan E), or none. */
     icon: androidx.compose.ui.unit.Dp?,
     enabled: Boolean,
+    /** Right to left, next to a strip on the right: the list left open. */
+    mirrored: Boolean,
     /** Magnify the row at the thumb and its neighbours while picking. */
     fisheye: Boolean,
     /** Letters: while the thumb is down, the other letters' apps fade back (unless picked). */
@@ -1334,6 +1346,8 @@ private fun SelectorRow(
     }
     val quiet = app.profile.quiet
     val holdColor = Term.prompt.copy(alpha = 0.3f)
+    Crossfade(mirrored, animationSpec = tween(160), label = "row-side") { rightToLeft ->
+    CompositionLocalProvider(LocalLayoutDirection provides if (rightToLeft) LayoutDirection.Rtl else LocalLayoutDirection.current) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -1395,11 +1409,15 @@ private fun SelectorRow(
             ),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            // Right to left, the name keeps to the right whatever its script.
+            textAlign = if (rightToLeft) TextAlign.Right else null,
             modifier = Modifier.weight(1f),
         )
         // B2: on the far side, lifting opens the app's actions; the row says so.
         if (focused && state.far) {
             Text("⋯ Actions", style = text.copy(color = Term.prompt, fontSize = (Term.fontSize - 2).sp), maxLines = 1)
         }
+    }
+    }
     }
 }
