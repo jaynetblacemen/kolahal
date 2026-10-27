@@ -1403,7 +1403,56 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         setCommandScripts(list)
     }
 
-    fun setConfig(key: ConfigKey<*>, raw: String): Boolean = config.set(key, raw)
+    fun setConfig(key: ConfigKey<*>, raw: String): Boolean = config.set(key, raw).also { set ->
+        // Backups on their own need somewhere to go.
+        if (set && key == Keys.BACKUP_AUTO && raw != "off" && com.mtwabpin.kolahal.data.AutoBackup.folder(context) == null) askBackupFolder(false)
+    }
+
+    // ---- backups --------------------------------------------------------------------------
+
+    private val _backupVersion = MutableStateFlow(0)
+    /** Bumped when the backup folder changes or a backup is written, for Settings' line about them. */
+    val backupVersion: StateFlow<Int> = _backupVersion.asStateFlow()
+
+    @Volatile private var backUpOncePicked = false
+
+    override fun askBackupFolder(thenBackUp: Boolean) {
+        backUpOncePicked = thenBackUp
+        _events.tryEmit(UiEvent.PickBackupFolder)
+    }
+
+    /** The backup folder and the last backup's time, for Settings; null with no folder. */
+    fun backupFolderLine(): String? {
+        val name = com.mtwabpin.kolahal.data.AutoBackup.folderName(context) ?: return null
+        val last = com.mtwabpin.kolahal.data.AutoBackup.last(context)?.let {
+            "last backup " + java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date(it))
+        }
+        return listOfNotNull(name, last ?: "no backup yet").joinToString(" · ")
+    }
+
+    fun onBackupFolderPicked(uri: Uri?) {
+        val thenBackUp = backUpOncePicked
+        backUpOncePicked = false
+        if (uri == null) return
+        fileOp("backup folder") {
+            com.mtwabpin.kolahal.data.AutoBackup.setFolder(context, uri)
+            _backupVersion.value++
+            notice("Backups go to ${com.mtwabpin.kolahal.data.AutoBackup.folderName(context) ?: "that folder"}")
+            if (thenBackUp) backUp()
+        }
+    }
+
+    /** Settings' Back up now: today's backup in the folder, which is asked for first if there is none. */
+    fun backUpNow() {
+        if (com.mtwabpin.kolahal.data.AutoBackup.folder(context) == null) return askBackupFolder(true)
+        fileOp("backup") { backUp() }
+    }
+
+    private fun backUp() {
+        val name = com.mtwabpin.kolahal.data.AutoBackup.backUp(context)
+        _backupVersion.value++
+        notice("Backed up: $name in ${com.mtwabpin.kolahal.data.AutoBackup.folderName(context) ?: "the backup folder"}")
+    }
 
     fun resetConfig(key: ConfigKey<*>) = config.reset(key)
 

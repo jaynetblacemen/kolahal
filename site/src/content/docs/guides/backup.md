@@ -3,7 +3,7 @@ title: Backup & moving devices
 description: Back up everything to one JSON file — settings, apps, scripts, todos, notes, reminders, feeds and the log — or sync scripts with a folder.
 ---
 
-There are three ways to move your setup between phones.
+There are four ways to keep your setup or move it between phones.
 
 ## Backup file
 
@@ -61,6 +61,34 @@ they can be added again). Notification and call lines, the copy of recent notifi
 for scripts, and what this phone has seen of its calls and apps stay on the phone (a restore
 keeps the new phone's, so it doesn't log every app as installed). The file can still contain private things
 (notes, the rest of the log), so keep it somewhere safe.
+
+## Automatic backups
+
+The backup file can write itself, every day or every week, to a folder you pick: **Settings →
+Backup → Back up on its own**, or
+
+```sh
+backup every daily     # or weekly, or off
+backup                 # one now
+backup dir             # pick the folder
+```
+
+Each one is `kolahal-backup-2026-10-27.json`, the date it was written; one written later the same
+day replaces that day's. The newest 7 are kept and older ones deleted (`config set backup.keep 30`
+keeps more); other files in the folder are left alone. Turning backups on without a folder asks for
+one, and `backup` with none picks one and then writes the backup. **Backup folder** in Settings
+shows where they go and when the last one was written. A backup that fails (the folder was
+deleted, say) leaves a line in the log to tap and pick the folder again.
+
+Pick a folder that is copied off the phone (one your cloud drive's app syncs, or a memory card) to
+have a backup after losing the phone.
+
+## Moving to a new phone
+
+Android's own transfer from your old phone to your new one (over a cable or Wi-Fi, on Android 12
+and newer) carries your settings and everything else: scripts, todos, notes, reminders, feeds and
+the log. Script secrets don't work on the new phone (only the old phone's Keystore can read them):
+set them again. Android's cloud backup carries only settings; for the rest, use the backup file.
 
 ## Single script files
 

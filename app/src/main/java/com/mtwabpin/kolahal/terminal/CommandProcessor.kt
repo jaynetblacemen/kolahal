@@ -112,6 +112,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "unlocks" -> unlocks(args)
                 "fetch", "neofetch", "fastfetch" -> fetch()
                 "clear", "cls" -> clear(args)
+                "backup" -> backup(args)
                 "log" -> logFilter(args)
                 "fresh" -> ui.freshScreen()
                 "restart", "reboot" -> restart(args)
@@ -503,6 +504,34 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         }
     }
 
+    /**
+     * `backup` writes today's backup file to the backup folder (asking for one first), `backup
+     * every daily|weekly|off` sets automatic backups, `backup dir` picks the folder.
+     */
+    private fun backup(args: List<String>) {
+        val auto = com.mtwabpin.kolahal.data.AutoBackup
+        when (args.firstOrNull()?.lowercase()) {
+            null, "now" -> if (auto.folder(context) == null) {
+                info("Pick a folder for backups; the backup is written there")
+                ui.askBackupFolder(thenBackUp = true)
+            } else background("backup") {
+                val name = auto.backUp(context)
+                val every = conf[Keys.BACKUP_AUTO].takeIf { it != "off" }?.let { " · automatic: $it" } ?: " · 'backup every daily' does it on its own"
+                info("Backed up: $name in ${auto.folderName(context) ?: "the backup folder"}$every")
+            }
+            "every", "auto" -> {
+                val value = when (val v = args.getOrNull(1)?.lowercase()) { "day" -> "daily"; "week" -> "weekly"; else -> v }
+                if (value == null || value !in Keys.BACKUP_AUTO.choices) return error("Usage: backup every daily|weekly|off")
+                conf.set(Keys.BACKUP_AUTO, value)
+                if (value == "off") return info("Automatic backups off")
+                info("Backups $value to ${auto.folderName(context) ?: "a folder you pick"}, the newest ${conf[Keys.BACKUP_KEEP]} kept (backup.keep)")
+                if (auto.folder(context) == null) ui.askBackupFolder(thenBackUp = false)
+            }
+            "dir", "folder" -> ui.askBackupFolder(thenBackUp = false)
+            else -> error("Usage: backup [now|every daily|weekly|off|dir]")
+        }
+    }
+
     /** `restart` relaunches the launcher; `restart scripts` stops the :script process (stuck scripts). */
     private fun restart(args: List<String>) {
         when (args.firstOrNull()) {
@@ -636,6 +665,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("url", "url <address>", "Open a link"),
             CommandSpec("history", "history", "Recent commands (tap to reuse)"),
             CommandSpec("clear", "clear [history|all]", "Clear the screen, the ↑ history, or both"),
+            CommandSpec("backup", "backup [now|every <daily|weekly|off>|dir]", "Back up everything to a folder now, or every day or week"),
             CommandSpec("log", "log [only <name|kind>|all]", "Only one script's, feed's or app's lines, or one kind's"),
             CommandSpec("fresh", "fresh", "Start a clean screen now, like log.fresh; earlier lines are one tap away (not logged)"),
             CommandSpec("restart", "restart [scripts]", "Restart the launcher, or stop running scripts"),
@@ -716,7 +746,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "profiles" to listOf("work", "private"),
             "productivity" to listOf("todo", "note", "notes", "remind", "reminders", "timer", "alarm", "alarms", "stopwatch", "agenda"),
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
-            "terminal" to listOf("help", "history", "clear", "fresh", "restart", "alias", "unalias", "config", "theme", "font", "echo", "date", "cal"),
+            "terminal" to listOf("help", "history", "clear", "fresh", "restart", "alias", "unalias", "config", "theme", "font", "backup", "echo", "date", "cal"),
             "widgets" to listOf("widgets", "widget"),
             "device" to listOf("settings", "setup", "tour", "unlocks", "notifications", "usage-access", "local-network", "crashes", "battery", "home", "lock", "shade", "accessibility", "system"),
         )

@@ -136,6 +136,8 @@ object Keys {
     )
     val SEARCH_URL = ConfigKey.Text("search.url", "https://duckduckgo.com/?q=%s", "Custom search URL (%s = query), used when search.engine = custom")
     val FOCUS_ON_HOME = ConfigKey.Bool("keyboard.on-home", false, "Open the soft keyboard whenever home is shown")
+    val BACKUP_AUTO = ConfigKey.Choice("backup.auto", "off", listOf("off", "daily", "weekly"), "Write a backup file to a folder you pick, every day or every week")
+    val BACKUP_KEEP = ConfigKey.Num("backup.keep", 7, 1..60, "How many automatic backups to keep in the folder; the oldest go")
     val IME_SUGGESTIONS = ConfigKey.Bool(
         "keyboard.suggestions", false,
         "Prompt keyboard suggestions (off uses a password-type field: no autocorrect, but Latin-only on some keyboards)",
@@ -151,14 +153,14 @@ object Keys {
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_SHOW, HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
         HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, THEME_ALWAYS_DARK, STATUS_BAR, FONT, FONT_SANS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGEST_ICONS, SUGGESTIONS_WRAP, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_BROWSE, SELECTOR_FILTER, SELECTOR_SIDE, SELECTOR_POSITION, SELECTOR_HANDLE, SELECTOR_LETTERS, SELECTOR_HEIGHT, SELECTOR_ACTIONS, SELECTOR_ICONS, SELECTOR_ROW_HEIGHT, SELECTOR_SYSTEM_FONT, SELECTOR_AIM, SELECTOR_AIM_SPEED, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
-        SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_GUTTER, LOG_LINE_HEIGHT, LOG_TALLER_TAPS, LOG_WALLPAPER, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_KEEP_LINES, LOG_FRESH, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS,
+        SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_GUTTER, LOG_LINE_HEIGHT, LOG_TALLER_TAPS, LOG_WALLPAPER, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_KEEP_LINES, LOG_FRESH, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS, BACKUP_AUTO, BACKUP_KEEP,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP,
         FEEDS_LOG, FEEDS_LOG_LINES, FEEDS_READ_SHOWN, FEEDS_BACKLOG_READ, FEEDS_INTERVAL, FEEDS_NOTIFY, FEEDS_WIFI,
         HEADER_TODO, WIDGETS_PAGE, WIDGETS_WALLPAPER,
     )
 
     /** Settings only `config` changes: the Settings screen leaves them out. */
-    val CONFIG_ONLY: Set<ConfigKey<*>> = setOf(LOG_KEEP_LINES, SELECTOR_AIM, SELECTOR_AIM_SPEED, SELECTOR_ACTIONS)
+    val CONFIG_ONLY: Set<ConfigKey<*>> = setOf(LOG_KEEP_LINES, SELECTOR_AIM, SELECTOR_AIM_SPEED, SELECTOR_ACTIONS, BACKUP_KEEP)
 
     /** A setting by name; an old name ([RENAMED]) finds the setting under its new one. */
     fun byName(name: String): ConfigKey<*>? {

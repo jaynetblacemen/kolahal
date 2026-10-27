@@ -20,6 +20,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToKey
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
@@ -208,6 +209,19 @@ class SettingsScreenTest {
         compose.onNode(row, useUnmergedTree = true).assertDoesNotExist()
         compose.runOnIdle { config.set(Keys.SEARCH_ENGINE, "custom") }
         compose.onNode(row, useUnmergedTree = true).assertExists()
+    }
+
+    /** Backup: automatic backups, their folder and Back up now; search finds backup.auto though no page lists it. */
+    @Test fun backupsOnTheirOwn() {
+        show(null)
+        compose.onNode(hasScrollToKeyAction()).performScrollToKey("backup")
+        compose.onNodeWithText("Backup folder").assertExists()
+        compose.onNodeWithText("Back up now").assertExists()
+        compose.onNode(hasScrollToKeyAction()).performScrollToKey("backup-auto")
+        compose.onNodeWithText("Back up on its own").assertExists()
+        compose.onNode(hasScrollToKeyAction()).performScrollToIndex(0)
+        compose.onNode(hasSetTextAction()).performTextInput("backup")
+        compose.onNode(hasText(Keys.BACKUP_AUTO.key) and !hasSetTextAction(), useUnmergedTree = true).assertExists()
     }
 
     /** About lists the crash reports kept on the phone; a tap offers email or delete, and delete takes that one. */

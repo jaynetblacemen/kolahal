@@ -149,3 +149,12 @@ See [Widgets](/guides/widgets/).
 | `keybar.row2` | text | `TAB,\|,.,LEFT,DOWN,RIGHT,ENTER` | second key bar row (same syntax; empty for one row) |
 | `keyboard.on-home` | bool | `off` | open the soft keyboard whenever home is shown |
 | `keyboard.suggestions` | bool | `off` | prompt keyboard suggestions. Off uses a password-type field: no autocorrect, but Latin-only on some keyboards |
+
+## Backups
+
+See [Automatic backups](/guides/backup/#automatic-backups).
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `backup.auto` | choice: `off` `daily` `weekly` | `off` | write the backup file to the folder you picked (`backup dir`), every day or every week |
+| `backup.keep` | number 1–60 | `7` | how many automatic backups the folder keeps; the oldest go (config only) |

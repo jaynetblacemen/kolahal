@@ -68,6 +68,9 @@ class MainActivity : ComponentActivity() {
     private val pickFolder =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { vm.onScriptFolderPicked(it) }
 
+    private val pickBackupFolder =
+        registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { vm.onBackupFolderPicked(it) }
+
     private val exportBackup =
         registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { vm.exportBackup(it) }
 
@@ -142,6 +145,7 @@ class MainActivity : ComponentActivity() {
                     UiEvent.RequestLocalNetworkPermission ->
                         if (Build.VERSION.SDK_INT >= 37) localNetworkPermission.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
                     UiEvent.PickFont -> launchFontPicker()
+                    UiEvent.PickBackupFolder -> pickBackupFolder.launch(null)
                     else -> Unit
                 }
             }

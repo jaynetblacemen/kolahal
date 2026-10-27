@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Android 12+ backup rules. Settings (shared prefs) are backed up; the databases are not:
-    kolahal.db holds the terminal log (which can contain other apps' notification text), script
-    key-value data and the notification mirror; feeds.db is just a re-fetchable cache.
-    "logs" prefs belong to the terminal log too.
+    Android 12+ backup rules. To the cloud, settings (shared prefs) are backed up; the databases are
+    not: kolahal.db holds the terminal log (which can contain other apps' notification text), script
+    key-value data and the notification mirror; feeds.db is just a re-fetchable cache. "logs" prefs
+    belong to the terminal log too. A transfer from your old phone to your new one, over a cable or
+    Wi-Fi, carries those too: your scripts, todos, notes, reminders and feeds are in them.
 -->
 <data-extraction-rules>
     <cloud-backup>
@@ -31,20 +32,11 @@
         <exclude domain="sharedpref" path="crash.xml" />
     </cloud-backup>
     <device-transfer>
-        <exclude domain="database" path="kolahal.db" />
-        <exclude domain="database" path="kolahal.db-journal" />
-        <exclude domain="database" path="kolahal.db-wal" />
-        <exclude domain="database" path="kolahal.db-shm" />
-        <exclude domain="database" path="feeds.db" />
-        <exclude domain="database" path="feeds.db-journal" />
-        <exclude domain="database" path="feeds.db-wal" />
-        <exclude domain="database" path="feeds.db-shm" />
         <!-- The scripts' work queue: a waiting @on notification run holds that notification's text. -->
         <exclude domain="database" path="androidx.work.workdb" />
         <exclude domain="database" path="androidx.work.workdb-journal" />
         <exclude domain="database" path="androidx.work.workdb-wal" />
         <exclude domain="database" path="androidx.work.workdb-shm" />
-        <exclude domain="sharedpref" path="logs.xml" />
         <exclude domain="file" path="crash/" />
         <exclude domain="sharedpref" path="crash.xml" />
     </device-transfer>

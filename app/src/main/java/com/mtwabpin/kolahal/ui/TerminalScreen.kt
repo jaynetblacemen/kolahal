@@ -125,7 +125,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 UiEvent.ScrollToBottom -> { pinned = true; listState.scrollToItem(0) }
                 // Handled by MainActivity so it works from every page (setup, script manager).
                 UiEvent.RequestNotificationPermission, UiEvent.RequestContactsPermission, UiEvent.PickContact, UiEvent.RequestCalendarPermission, UiEvent.RequestCallLogPermission,
-                UiEvent.RequestLocalNetworkPermission, UiEvent.PickFont -> Unit
+                UiEvent.RequestLocalNetworkPermission, UiEvent.PickFont, UiEvent.PickBackupFolder -> Unit
                 UiEvent.ShowQuick -> Unit // opened by the collector below, where the menu lives
                 UiEvent.FocusPrompt -> {
                     runCatching { focus.requestFocus() }

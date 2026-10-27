@@ -171,6 +171,26 @@ class CommandFamiliesTest {
         }
     }
 
+    /** `backup every` sets automatic backups, which schedule themselves, and asks for a folder when there is none. */
+    @Test fun backupEverySchedulesBackups() {
+        val wm = androidx.work.WorkManager.getInstance(context)
+        fun state() = wm.getWorkInfosForUniqueWork("auto-backup").get().lastOrNull()?.state
+        try {
+            assertTrue(run("backup every weekly").first().startsWith("Backups weekly to "))
+            assertEquals("weekly", config[Keys.BACKUP_AUTO])
+            val until = System.currentTimeMillis() + 5_000
+            while (state() != androidx.work.WorkInfo.State.ENQUEUED && System.currentTimeMillis() < until) Thread.sleep(100)
+            assertEquals(androidx.work.WorkInfo.State.ENQUEUED, state())
+            assertEquals(listOf("Usage: backup every daily|weekly|off"), run("backup every hourly"))
+            assertEquals(listOf("Automatic backups off"), run("backup every off"))
+            val off = System.currentTimeMillis() + 5_000
+            while (state() == androidx.work.WorkInfo.State.ENQUEUED && System.currentTimeMillis() < off) Thread.sleep(100)
+            assertEquals(androidx.work.WorkInfo.State.CANCELLED, state())
+        } finally {
+            config.reset(Keys.BACKUP_AUTO)
+        }
+    }
+
     @Test fun crashesListAndClear() {
         assertTrue(run("crashes").single().startsWith("No crash reports"))
         crashDir.mkdirs()

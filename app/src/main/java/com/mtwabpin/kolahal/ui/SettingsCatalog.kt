@@ -66,6 +66,8 @@ internal val TITLES = mapOf(
     "prompt.height" to "Prompt height while typing (dp)",
     "keyboard.suggestions" to "Keyboard autocorrect & suggestions",
     "keyboard.on-home" to "Open the keyboard on Home",
+    "backup.auto" to "Back up on its own",
+    "backup.keep" to "Backups to keep",
     "launch.instant" to "Instant launch",
     "launch.instant-letters" to "Letters before instant launch",
     "launch.top" to "Enter opens the best match",
@@ -228,16 +230,21 @@ private val CATEGORIES = listOf(
     ),
 )
 
+/** Automatic backups: shown in the main page's Backup group, not as a page of its own; search still finds it. */
+internal const val BACKUP_CATEGORY = "backup"
+
+private val BACKUP = Category(BACKUP_CATEGORY, "Backup", "Automatic backups", R.drawable.ic_download, listOf(null to listOf(Keys.BACKUP_AUTO)))
+
 /** Keys no page lists (e.g. added later) still get a home under "More"; [Keys.CONFIG_ONLY] ones don't. */
 private val OTHER: Category by lazy {
-    val listed = CATEGORIES.flatMap { it.keys }.toSet()
+    val listed = (CATEGORIES + BACKUP).flatMap { it.keys }.toSet()
     Category("other", "More", "Everything else", R.drawable.ic_tune, listOf(null to Keys.ALL.filter { it !in listed && it !in Keys.CONFIG_ONLY }))
 }
 
 /** The feeds category: shown in the Feeds tab ([categorySettings]), not in the Settings list. */
 internal const val FEEDS_CATEGORY = "feeds"
 
-internal fun allCategories() = CATEGORIES + listOfNotNull(OTHER.takeIf { it.keys.isNotEmpty() })
+internal fun allCategories() = CATEGORIES + BACKUP + listOfNotNull(OTHER.takeIf { it.keys.isNotEmpty() })
 
 internal fun matches(key: ConfigKey<*>, q: String): Boolean {
     val title = TITLES[key.key] ?: key.key

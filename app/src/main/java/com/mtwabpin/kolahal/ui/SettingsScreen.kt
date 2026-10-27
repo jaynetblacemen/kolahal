@@ -323,7 +323,7 @@ fun SettingsScreen(
                 item(key = "h:settings") { GroupHeader("Settings") }
                 item(key = "categories") {
                     // Feed settings live in the Feeds tab; search still finds them here.
-                    ActionGroup(allCategories().filter { it.id != FEEDS_CATEGORY }.map { c -> Action(c.icon, c.title, c.subtitle, chevron = true) { openId = c.id } })
+                    ActionGroup(allCategories().filter { it.id != FEEDS_CATEGORY && it.id != BACKUP_CATEGORY }.map { c -> Action(c.icon, c.title, c.subtitle, chevron = true) { openId = c.id } })
                 }
                 item(key = "h:manage") { GroupHeader("Manage") }
                 item(key = "manage") {
@@ -336,9 +336,15 @@ fun SettingsScreen(
                     )
                 }
                 item(key = "h:backup") { GroupHeader("Backup") }
+                // backup.auto: picking daily or weekly with no folder yet asks for one.
+                item(key = "backup-auto") { SettingItem(vm, config, Keys.BACKUP_AUTO, version, 0, 1) }
                 item(key = "backup") {
+                    val backupVersion by vm.backupVersion.collectAsStateWithLifecycle()
+                    val folder by produceState<String?>(null, backupVersion) { value = withContext(Dispatchers.IO) { vm.backupFolderLine() } }
                     ActionGroup(
                         listOf(
+                            Action(R.drawable.ic_folder, "Backup folder", folder ?: "Not chosen yet: automatic backups and Back up now write there") { vm.askBackupFolder(false) },
+                            Action(R.drawable.ic_download, "Back up now", "Today's backup file, in the backup folder", onClick = { vm.backUpNow() }),
                             Action(R.drawable.ic_download, "Export everything", "Settings, apps, scripts, todos, notes, reminders, feeds and the log in one file (notification and call lines stay on the phone)", onClick = onExportBackup),
                             Action(R.drawable.ic_upload, "Import a backup", "Restores everything (replaces todos, notes, feeds and the log)", onClick = onImportBackup),
                         )

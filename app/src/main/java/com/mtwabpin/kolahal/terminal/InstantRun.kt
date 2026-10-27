@@ -15,7 +15,7 @@ object InstantRun {
     val SENSITIVE = setOf(
         "call", "sms", "uninstall", "work", "private", "clear", "restart", "lock", "script", "alias", "unalias",
         "config", "hide", "unhide", "rename", "feed", "feeds", "notifs", "lua", "js", "=", "url", "echo",
-        "todo", "note", "notes", "remind", "timer", "alarm", "widget",
+        "todo", "note", "notes", "remind", "timer", "alarm", "widget", "backup",
         // `rss <url>` fetches with no script's internet switch; `crashes clear` deletes the reports.
         "rss", "crashes",
         // These leave the launcher or change the phone: typing `sy` on the way to something else

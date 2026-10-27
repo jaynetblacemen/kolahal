@@ -116,6 +116,12 @@ class LauncherApp : Application(), Configuration.Provider {
             addAction(Intent.ACTION_TIMEZONE_CHANGED)
             addAction(Intent.ACTION_TIME_CHANGED)
         }, ContextCompat.RECEIVER_NOT_EXPORTED)
+        // Automatic backups follow backup.auto, however it changes (Settings, config, a restore).
+        scope.launch {
+            config.version.map { config[Keys.BACKUP_AUTO] }.distinctUntilChanged().collect {
+                runCatching { com.mtwabpin.kolahal.data.AutoBackup.sync(this@LauncherApp) }
+            }
+        }
         // Wi-Fi only or not changes every feed's schedule, whether set, reset or restored.
         scope.launch {
             config.version.map { config[Keys.FEEDS_WIFI] }.distinctUntilChanged().drop(1).collect {

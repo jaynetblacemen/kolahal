@@ -174,6 +174,7 @@ Script names use lowercase letters, digits, `-` and `_` (up to 40), and can't be
 | `help [<command>]` | `?` | show the command list; with a command, just its usage and what it does |
 | `history` | | recent commands (tap to reuse) |
 | `clear [history\|all]` | `cls` | clear the screen, the ↑ history, or both |
+| `backup [now\|every daily\|weekly\|off\|dir]` | | write the [backup file](/guides/backup/#automatic-backups) to your backup folder now, set automatic backups, or pick the folder |
 | `log only <name\|kind>` / `log all` | | only one script's, feed's or app's lines, or one kind's (`commands`, `scripts`, `feeds`, `notifications`, `apps`, `calls`, `reminders`), until `log all`, ✕, back or another command |
 | `fresh` | | a clean screen now, like `log.fresh`: nothing is deleted, "▴ N earlier lines" brings it back. Not logged |
 | `restart [scripts]` | `reboot` | restart the launcher, or stop running scripts |

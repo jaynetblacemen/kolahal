@@ -36,6 +36,8 @@ interface TerminalUi {
     fun filterLog(filter: LogFilter?) {}
     /** The log's width on screen (px), for output laid out to fit it; null before home has shown. */
     fun logWidthPx(): Int? = null
+    /** `backup dir`: a folder for backups; [thenBackUp] writes one once it is picked (`backup` with none yet). */
+    fun askBackupFolder(thenBackUp: Boolean) {}
 }
 
 data class CommandSpec(val name: String, val usage: String, val help: String)
