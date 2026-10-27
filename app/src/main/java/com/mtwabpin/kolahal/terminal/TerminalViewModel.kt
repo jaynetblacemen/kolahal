@@ -834,6 +834,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             val failure = withContext(serialIo) {
                 runCatching {
                     scripts.saveCode(script.id, code, byUser = true)
+                    // Whether its timer waits for a network follows the code.
+                    scripts.byId(script.id)?.let { ScriptScheduler.sync(context, it) }
                     refreshScriptCaches()
                 }.exceptionOrNull()
             }

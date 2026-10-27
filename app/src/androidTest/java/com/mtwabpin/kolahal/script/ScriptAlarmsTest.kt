@@ -35,6 +35,20 @@ class ScriptAlarmsTest {
         logs.recent(limit = 200).filter { it.source == name }.forEach { logs.delete(it.id) }
     }
 
+    /** A timer waits for a network only when the script goes online: a battery log runs offline too. */
+    @Test fun onlyAScriptThatGoesOnlineWaitsForANetwork() {
+        val wm = androidx.work.WorkManager.getInstance(context)
+        fun network(id: Long) = wm.getWorkInfosForUniqueWork("script-$id").get().single().constraints.requiredNetworkType
+        val script = scripts.create(name, ScriptLang.LUA, "log(device.battery())")
+        scripts.setInterval(script.id, 60)
+        ScriptScheduler.sync(context, scripts.byId(script.id)!!)
+        assertEquals(androidx.work.NetworkType.NOT_REQUIRED, network(script.id))
+
+        scripts.saveCode(script.id, "log(http.get(\"https://example.com\").status)")
+        ScriptScheduler.sync(context, scripts.byId(script.id)!!)
+        assertEquals(androidx.work.NetworkType.CONNECTED, network(script.id))
+    }
+
     @Test fun anAlarmRunsTheScriptAndSetsTheNextOne() {
         val script = scripts.create(name, ScriptLang.LUA, "-- @at 23:00, 07:00\nlog(\"ran at \" .. event.name .. \" \" .. event.time)")
         scripts.setAtTimes(script.id, listOf("23:00", "07:00"))

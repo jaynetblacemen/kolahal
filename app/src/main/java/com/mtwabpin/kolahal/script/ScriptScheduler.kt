@@ -43,7 +43,8 @@ object ScriptScheduler {
         }
         val minutes = script.intervalMin.coerceAtLeast(MIN_INTERVAL_MIN).toLong()
         val request = PeriodicWorkRequestBuilder<ScriptWorker>(minutes, TimeUnit.MINUTES)
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            // Only a script that goes online waits for a network: a battery log runs offline too.
+            .apply { if (ScriptMeta.goesOnline(script.code)) setConstraints(online()) }
             .setInputData(remoteData(context) {
                 putLong(ScriptWorker.KEY_SCRIPT_ID, script.id)
                 putBoolean(ScriptWorker.KEY_SCHEDULED, true)
@@ -85,9 +86,7 @@ object ScriptScheduler {
         WorkManager.getInstance(context).enqueue(
             OneTimeWorkRequestBuilder<ScriptWorker>()
                 .apply {
-                    if (ScriptMeta.goesOnline(script.code)) {
-                        setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-                    }
+                    if (ScriptMeta.goesOnline(script.code)) setConstraints(online())
                 }
                 .setInputData(remoteData(context) {
                     putLong(ScriptWorker.KEY_SCRIPT_ID, script.id)
@@ -98,6 +97,8 @@ object ScriptScheduler {
                 .build()
         )
     }
+
+    private fun online() = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
     private fun dailyTag(id: Long) = "script-$id-daily"
 

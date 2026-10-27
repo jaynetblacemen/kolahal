@@ -51,6 +51,7 @@ A script runs:
 
 Intervals have Android's 15-minute minimum. An interval and daily times can be combined. Setting a
 timer turns a disabled script back on; `script off <name>` disables it without losing the timers.
+A run on an interval waits for a network only if the script goes online (`http`, `rss`).
 
 Daily times are alarms. With **Alarms & reminders** allowed for Kolahal (Android's setting; `remind
 exact` asks for it), a script runs on the minute, even while the phone sleeps, and in the
