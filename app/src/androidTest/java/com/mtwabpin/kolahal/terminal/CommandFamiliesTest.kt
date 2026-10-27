@@ -156,6 +156,21 @@ class CommandFamiliesTest {
         }
     }
 
+    /** `script set` lists a script's options, changes one, and puts its default back. */
+    @Test fun scriptSetChangesAnOption() {
+        val repo = com.mtwabpin.kolahal.data.ScriptRepository.get(context)
+        val s = repo.create("cptestopt", com.mtwabpin.kolahal.data.ScriptLang.LUA, "-- @option city London The city\nreturn 1")
+        try {
+            assertTrue(run("script set cptestopt").toString(), run("script set cptestopt").any { it.startsWith("city") && it.endsWith("London (default)") })
+            assertEquals(listOf("cptestopt: city = New York"), run("script set cptestopt city New York"))
+            assertTrue(run("script set cptestopt").any { it.startsWith("city") && it.endsWith("New York") })
+            assertEquals(listOf("cptestopt: city back to its default, London"), run("script set cptestopt city --reset"))
+            assertTrue(run("script set cptestopt town x").single().startsWith("cptestopt has no @option town"))
+        } finally {
+            repo.delete(s.id)
+        }
+    }
+
     @Test fun crashesListAndClear() {
         assertTrue(run("crashes").single().startsWith("No crash reports"))
         crashDir.mkdirs()

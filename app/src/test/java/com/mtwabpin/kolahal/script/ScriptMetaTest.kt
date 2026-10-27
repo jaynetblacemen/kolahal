@@ -55,6 +55,29 @@ class ScriptMetaTest {
         assertEquals("doesn't run into the next line", "ip", ScriptMeta.usage("-- @usage\n-- @desc public IP", "ip"))
     }
 
+    @Test fun optionsDirective() {
+        val code = """
+            -- @option city London The city to show
+            -- @option units metric|imperial Units for temperatures
+            -- @option greeting "good morning" How it says hello
+            -- @option empty "" Left blank
+            -- @option bare
+            -- @option city Paris A second line of a name is ignored
+            -- @option 9lives x Not a name
+        """.trimIndent()
+        assertEquals(
+            listOf(
+                ScriptMeta.Option("city", "London", emptyList(), "The city to show"),
+                ScriptMeta.Option("units", "metric", listOf("metric", "imperial"), "Units for temperatures"),
+                ScriptMeta.Option("greeting", "good morning", emptyList(), "How it says hello"),
+                ScriptMeta.Option("empty", "", emptyList(), "Left blank"),
+                ScriptMeta.Option("bare", "", emptyList(), ""),
+            ),
+            ScriptMeta.options(code),
+        )
+        assertEquals(listOf("x"), ScriptMeta.options("// @option x 1").map { it.name })
+    }
+
     @Test fun usesDirective() {
         assertEquals(setOf("notifications", "clipboard"), ScriptMeta.uses("-- @uses notifications, clipboard\nlog(1)"))
         assertEquals(setOf("lan"), ScriptMeta.uses("// @uses LAN camera\n"))

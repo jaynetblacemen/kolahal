@@ -44,7 +44,7 @@ class JsEngine : ScriptEngine {
             js.function("__kolahal_done") { args -> result = args.getOrNull(0) }
             js.evaluate<Any?>(
                 "globalThis.args = ${Json.stringify(args)}; globalThis.argline = ${Json.stringify(args.joinToString(" "))};" +
-                    " globalThis.event = ${Json.stringify(event)};",
+                    " globalThis.event = ${Json.stringify(event)}; globalThis.options = ${Json.stringify(host.options)};",
                 filename = "args.js",
             )
             js.evaluate<Any?>(GUARD, filename = "guard.js")

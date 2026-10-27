@@ -43,6 +43,7 @@ means a table with those keys in Lua and an object with those properties in JS.
 | [`sleep(ms)`](#sleepms) | nothing |
 | [`args`, `argline`](#args-and-argline) | arguments of a command run |
 | [`event`](#event) | what triggered an event run |
+| [`options`](#options) | its `@option` settings |
 
 ## Output
 
@@ -583,6 +584,16 @@ JS; quotes group words) and `argline` the same words joined by spaces. Both are 
 // @command
 // @desc Greet: greet <name>
 return `hello, ${argline || "world"} (${args.length} args)`;
+```
+
+### options
+
+The script's [`@option`](/scripting/overview/#options) settings by name, as text: the value you set
+in its sheet or with `script set`, or the default its line gives. Empty in code typed at the prompt.
+
+```lua
+-- @option city London The city to show
+log("Weather for " .. options.city)
 ```
 
 ### event

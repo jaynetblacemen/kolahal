@@ -193,6 +193,8 @@ class ScriptRepository private constructor(private val context: Context) {
             update("scripts", ContentValues().apply { put("name", to) }, "id = ?", arrayOf(id.toString()))
             delete("kv", "scope = ?", arrayOf(SecretStore.scope(to)))
             update("kv", ContentValues().apply { put("scope", SecretStore.scope(to)) }, "scope = ?", arrayOf(SecretStore.scope(s.name)))
+            delete("kv", "scope = ?", arrayOf(com.mtwabpin.kolahal.script.ScriptOptions.scope(to)))
+            update("kv", ContentValues().apply { put("scope", com.mtwabpin.kolahal.script.ScriptOptions.scope(to)) }, "scope = ?", arrayOf(com.mtwabpin.kolahal.script.ScriptOptions.scope(s.name)))
             delete("kv", "scope = ? AND k = ?", arrayOf(HostApi.STATUS_SCOPE, to))
             update("kv", ContentValues().apply { put("k", to) }, "scope = ? AND k = ?", arrayOf(HostApi.STATUS_SCOPE, s.name))
         }
@@ -207,9 +209,10 @@ class ScriptRepository private constructor(private val context: Context) {
     }
 
     fun delete(id: Long) {
-        // Its secrets go with it.
+        // Its secrets and options go with it.
         byId(id)?.let {
             SecretStore(context).clear(it.name)
+            db.writableDatabase.delete("kv", "scope = ?", arrayOf(com.mtwabpin.kolahal.script.ScriptOptions.scope(it.name)))
             forgetOrigin(it.name)
         }
         db.writableDatabase.delete("scripts", "id = ?", arrayOf(id.toString()))

@@ -18,6 +18,7 @@ import com.mtwabpin.kolahal.script.ScriptFolder
 import com.mtwabpin.kolahal.script.ScriptLibrary
 import com.mtwabpin.kolahal.script.ScriptMeta
 import com.mtwabpin.kolahal.script.ScriptNames
+import com.mtwabpin.kolahal.script.ScriptOptions
 import com.mtwabpin.kolahal.script.ScriptScheduler
 import com.mtwabpin.kolahal.script.SecretStore
 import com.mtwabpin.kolahal.script.ScriptTemplates
@@ -194,6 +195,7 @@ class ScriptCommands(
             // Network: off the serial command queue.
             "get" -> background("script get") { getShared(args.drop(1)) }
             "secret", "secrets" -> withScript(target) { s -> secret(s, args.drop(2)) }
+            "set", "option", "options" -> withScript(target) { s -> option(s, args.drop(2)) }
             "access" -> withScript(target) { listAccess(it) }
             "allow", "deny" -> withScript(target) { s ->
                 val items = args.drop(2).map { it.lowercase() }
@@ -328,6 +330,46 @@ class ScriptCommands(
             else -> {
                 store.set(s.name, d.name, rest.joinToString(" "), d.hosts)
                 info("${s.name}: ${d.name} set (that line isn't logged; next time 'script secret ${s.name} ${d.name}' opens a box the keyboard doesn't learn from)", scriptCtx(s))
+            }
+        }
+    }
+
+    /** `script set <name> [<option> [<value…>|--reset]]`: its `@option`s and their values, or one of them changed. */
+    private fun option(s: Script, args: List<String>) {
+        val declared = ScriptMeta.options(s.code)
+        val store = ScriptOptions(context)
+        fun shown(value: String) = value.ifEmpty { "\"\"" }
+        val name = args.firstOrNull()
+        if (name == null) {
+            if (declared.isEmpty()) return info("${s.name} has no @option", scriptCtx(s))
+            info("${s.name} — 'script set ${s.name} <option> <value>' changes one", scriptCtx(s))
+            val values = store.values(s.name, declared)
+            val changed = store.changed(s.name, declared)
+            declared.forEach { o ->
+                out(
+                    o.name.padEnd(16) + shown(values.getValue(o.name)) + if (o.name in changed) "" else " (default)",
+                    LogContext.of(
+                        LogContext.DESC to listOf(o.desc, o.choices.joinToString("|")).filter { it.isNotBlank() }.joinToString(" · "),
+                        LogContext.COMMAND to "script set ${s.name} ${o.name} ",
+                    ) + LogContext.ALIGNED,
+                )
+            }
+            return
+        }
+        val o = declared.firstOrNull { it.name == name }
+            ?: return error("${s.name} has no @option $name" + if (declared.isEmpty()) "" else " — it has: ${declared.joinToString(" ") { it.name }}")
+        val rest = args.drop(1)
+        when {
+            rest.isEmpty() -> info("${s.name}: ${o.name} = ${shown(store.values(s.name, listOf(o)).getValue(o.name))}", scriptCtx(s))
+            rest == listOf("--reset") -> {
+                store.set(s.name, o.name, null)
+                info("${s.name}: ${o.name} back to its default, ${shown(o.default)}", scriptCtx(s))
+            }
+            else -> {
+                val value = rest.joinToString(" ")
+                if (o.choices.isNotEmpty() && value !in o.choices) return error("${o.name}: one of ${o.choices.joinToString(", ")}")
+                store.set(s.name, o.name, value)
+                info("${s.name}: ${o.name} = $value", scriptCtx(s))
             }
         }
     }
@@ -512,6 +554,6 @@ class ScriptCommands(
         }
 
         /** What follows `script`, for completion. */
-        val SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "get", "access", "allow", "deny", "secret", "triggers", "mv", "rm", "cat", "diff", "dir", "export", "import")
+        val SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "get", "access", "allow", "deny", "secret", "set", "triggers", "mv", "rm", "cat", "diff", "dir", "export", "import")
     }
 }

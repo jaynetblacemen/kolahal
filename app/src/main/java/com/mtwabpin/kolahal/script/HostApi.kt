@@ -49,6 +49,8 @@ class HostApi(
     private val secrets: Secrets? = null,
     /** The typed command's line that started this run: its lines are that command's output. */
     private val from: Long? = null,
+    /** Its `@option`s with your values or their defaults ([ScriptOptions]), the `options` table. */
+    val options: Map<String, String> = emptyMap(),
 ) {
     class Secrets(val declared: List<ScriptMeta.Secret>, val values: Map<String, String>)
 

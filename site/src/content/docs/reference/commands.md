@@ -158,6 +158,7 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `script access <name>` | each [access switch](/scripting/overview/#switching-access-off), on or off; tap one to put the command that changes it in the prompt |
 | `script allow\|deny <name> <what…>` | switch access on or off: `internet`, `header`, an `@uses` item, an `@on` event, or `notify` |
 | `script secret <name> [<NAME> [--clear]]` | its [secrets](/scripting/overview/#api-keys-and-other-secrets), set or not; with a name, a box to set it (`--clear` forgets it) |
+| `script set <name> [<option> [<value>\|--reset]]` | its [options](/scripting/overview/#options) and their values; with an option and a value, sets it (`--reset` puts its default back) |
 | `script mv <name> <new-name>` | [rename it](/scripting/overview/#renaming-a-script) (alias `rename`) |
 | `script rm <name>` | delete it with its timers, data and status line (alias `delete`) |
 | `script dir` | pick a sync folder |

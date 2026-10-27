@@ -275,6 +275,13 @@ class Completer(private val context: Context, private val data: Data) {
                         words(INTERVALS)
                     } else if (parts.size == 4 && sub == "notify") {
                         words(listOf("on", "off"))
+                    } else if (parts.size == 4 && sub == "set") {
+                        // Its @option names, then a choice's values.
+                        val s = scriptList.firstOrNull { it.name == parts[2] }
+                        words((s?.let { ScriptMeta.options(it.code).map { o -> o.name } }).orEmpty()).map { it.copy(replacement = it.replacement + " ") }
+                    } else if (parts.size == 5 && sub == "set") {
+                        val o = scriptList.firstOrNull { it.name == parts[2] }?.let { ScriptMeta.options(it.code) }?.firstOrNull { it.name == parts[3] }
+                        words(o?.choices.orEmpty() + listOf("--reset"))
                     } else if (parts.size == 4 && (sub == "secret" || sub == "secrets")) {
                         // Its @secret names.
                         val s = scriptList.firstOrNull { it.name == parts[2] }

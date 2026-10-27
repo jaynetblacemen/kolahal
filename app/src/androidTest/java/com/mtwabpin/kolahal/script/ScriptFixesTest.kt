@@ -55,6 +55,41 @@ class ScriptFixesTest {
         assertEquals(listOf("a", "b"), lines.map { it.text })
     }
 
+    /** `options` holds each @option: yours where you set one (a choice it offers), else the default; it follows a rename. */
+    @Test fun optionsReachTheScript() {
+        val name = "sfopt${System.nanoTime() % 1_000_000}"
+        val code = "-- @option city London The city\n-- @option units metric|imperial Units\nlog(options.city .. ' ' .. options.units)"
+        val s = scripts.create(name, ScriptLang.LUA, code)
+        val store = ScriptOptions(app)
+        val declared = ScriptMeta.options(code)
+        try {
+            assertEquals(mapOf("city" to "London", "units" to "metric"), store.values(name, declared))
+            store.set(name, "city", "New York")
+            store.set(name, "units", "kelvin") // not one of its choices: the default
+            assertEquals(mapOf("city" to "New York", "units" to "metric"), store.values(name, declared))
+            assertEquals(setOf("city"), store.changed(name, declared))
+
+            for (lang in listOf(ScriptLang.LUA, ScriptLang.JS)) {
+                val run = "$name-${lang.ext}"
+                val host = HostApi(app, run, scriptId = 900_000_000L + System.nanoTime() % 1_000_000, notifyEnabled = false, options = store.values(name, declared))
+                val src = if (lang == ScriptLang.LUA) "log(options.city .. ' ' .. options.units)" else "log(options.city + ' ' + options.units)"
+                kotlinx.coroutines.runBlocking { ScriptEngine.forLang(lang).run(src, run, host, 5_000, false) }
+                host.flush()
+                val lines = com.mtwabpin.kolahal.data.LogRepository.get(app).recent(limit = 50).filter { it.source == run }
+                lines.forEach { com.mtwabpin.kolahal.data.LogRepository.get(app).delete(it.id) }
+                assertEquals(lang.ext, listOf("New York metric"), lines.map { it.text })
+            }
+
+            scripts.rename(s.id, "$name-2")
+            assertEquals("New York", store.values("$name-2", declared)["city"])
+            assertEquals("London", store.values(name, declared)["city"])
+        } finally {
+            scripts.byName("$name-2")?.let { scripts.delete(it.id) }
+            scripts.byName(name)?.let { scripts.delete(it.id) }
+        }
+        assertTrue(KvStore(app, ScriptOptions.scope("$name-2")).all().isEmpty())
+    }
+
     @Test fun dailyTimesSwitchAScriptOn() {
         val s = scripts.create("sftimes", ScriptLang.LUA, "return 1", enabled = false)
         lateinit var vm: TerminalViewModel

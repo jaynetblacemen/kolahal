@@ -57,6 +57,7 @@ object ApiDocs {
         ApiDoc("args", "args", "Arguments when run as a command (list of strings)", kind = VALUE),
         ApiDoc("argline", "argline", "Arguments joined by spaces", kind = VALUE),
         ApiDoc("event", "event", "Trigger payload for @on runs (event.name, app, title, text, level…); nil/null otherwise", kind = VALUE),
+        ApiDoc("options", "options", "Its @option settings by name, as text: yours where you set them, else their defaults (options.city)", kind = VALUE),
 
         ApiDoc("http", "http", "HTTP client: get, cached, request", kind = NS),
         ApiDoc("http.get", "http.get(url, headers?) -> { status, ok, body, headers }", "HTTP GET", LUA),

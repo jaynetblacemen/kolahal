@@ -309,6 +309,29 @@ on a script whose keys aren't set leaves a line to tap to set them.
 - A script never holds the value, so it can't send it anywhere else. It can still use the key at its
   site the way the site allows, so give keys to scripts you trust.
 
+## Options
+
+Settings a script reads as it runs (a city, a feed's address, units) are `@option` lines, so you
+change them without editing its code. An edited library script stops taking the library's updates;
+one whose options you changed keeps taking them.
+
+```lua
+-- @option city London The city to show
+-- @option units metric|imperial Units for temperatures
+local r = http.get("https://wttr.in/" .. options.city .. "?format=3&" .. (options.units == "metric" and "m" or "u"))
+```
+
+The line gives the option's name (letters, digits and `_`), its default, and a few words for you. A
+default is one word, `"several words"` in quotes, or `""` for none; `metric|imperial` makes a
+choice, the first being the default. The script reads `options.city`, always as text (`tonumber` or
+`Number()` it). Change one in the script's sheet (Scripts → tap the script → **Options**), or with
+`script set <name> <option> <value>`; `script set <name>` lists them, and `--reset` puts the
+default back.
+
+- Your values are kept apart from the code, by script name: they stay through updates and a
+  rename, go into the [backup file](/guides/backup/), and go when you delete the script.
+- A value that isn't one of the choices (an update dropped it) reads as the default.
+
 ## Getting scripts from others
 
 **Scripts → Add script → Get more scripts** lists the scripts people share in

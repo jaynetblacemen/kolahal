@@ -79,6 +79,7 @@ internal object ScriptRun {
             from = from,
             grants = script?.grants,
             secrets = script?.let { s -> ScriptMeta.secrets(s.code).let { d -> HostApi.Secrets(d, SecretStore(ctx).usable(s.name, d)) } },
+            options = script?.let { s -> ScriptOptions(ctx).values(s.name, ScriptMeta.options(s.code)) }.orEmpty(),
         )
         val engine = ScriptEngine.forLang(lang)
         val started = System.currentTimeMillis()

@@ -56,6 +56,8 @@ class LuaEngine : ScriptEngine {
             lua.setGlobal("argline")
             lua.pushValue(event)
             lua.setGlobal("event")
+            lua.pushValue(host.options)
+            lua.setGlobal("options")
             lua.run(PRELUDE)
 
             lua.getGlobal("__kolahal_main")

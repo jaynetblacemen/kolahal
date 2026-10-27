@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -894,6 +895,12 @@ private fun ScriptSheet(
     val secretsVersion by vm.secretsVersion.collectAsStateWithLifecycle()
     val secretsSet by produceState(emptySet<String>(), s.code, s.name, secretsVersion) { value = withContext(Dispatchers.IO) { vm.secretsSet(s) } }
     var editingSecret by remember(s.id) { mutableStateOf<ScriptMeta.Secret?>(null) }
+    val options = remember(s.code) { ScriptMeta.options(s.code) }
+    val optionsVersion by vm.optionsVersion.collectAsStateWithLifecycle()
+    val optionValues by produceState(emptyMap<String, String>() to emptySet<String>(), s.code, s.name, optionsVersion) {
+        value = withContext(Dispatchers.IO) { vm.optionValues(s) }
+    }
+    var editingOption by remember(s.id) { mutableStateOf<ScriptMeta.Option?>(null) }
     val grants = remember(s.code, s.access) { s.grants }
     var renaming by remember(s.id) { mutableStateOf(false) }
 
@@ -991,6 +998,21 @@ private fun ScriptSheet(
                 secrets.forEach { d -> SecretRow(d, isSet = d.name in secretsSet) { editingSecret = d } }
             }
 
+            // Settings it declares with @option: changed here, not in its code, so its updates keep them.
+            if (options.isNotEmpty()) {
+                Spacer(Modifier.height(16.dp))
+                Text("Options", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    "Settings it reads as it runs. Changed here, not in its code, they stay through its updates.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
+                )
+                options.forEach { o ->
+                    OptionRow(o, optionValues.first[o.name] ?: o.default, changed = o.name in optionValues.second) { editingOption = o }
+                }
+            }
+
             Spacer(Modifier.height(16.dp))
             Text("Runs every", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(8.dp))
@@ -1078,6 +1100,13 @@ private fun ScriptSheet(
         SecretDialog(s.name, d, d.name in secretsSet, onDismiss = { editingSecret = null }) { value ->
             editingSecret = null
             vm.setSecret(s.name, d, value)
+        }
+    }
+
+    editingOption?.let { o ->
+        OptionDialog(s.name, o, optionValues.first[o.name] ?: o.default, changed = o.name in optionValues.second, onDismiss = { editingOption = null }) { value ->
+            editingOption = null
+            vm.setOption(s.name, o.name, value)
         }
     }
 
@@ -1199,6 +1228,75 @@ internal fun SecretDialog(script: String, secret: ScriptMeta.Secret, isSet: Bool
             }
         },
     )
+}
+
+/**
+ * Changes one of a script's options: one of its choices, or a box with the value in it. Default
+ * puts its default back.
+ */
+@Composable
+internal fun OptionDialog(script: String, option: ScriptMeta.Option, current: String, changed: Boolean, onDismiss: () -> Unit, onSave: (String?) -> Unit) {
+    var value by remember { mutableStateOf(TextFieldValue(current, TextRange(current.length))) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("${option.name} for $script") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (option.desc.isNotBlank()) Text(option.desc, style = MaterialTheme.typography.bodyMedium)
+                if (option.choices.isNotEmpty()) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        option.choices.forEach { c ->
+                            FilterChip(selected = value.text == c, onClick = { value = TextFieldValue(c) }, label = { Text(c) })
+                        }
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = value,
+                        onValueChange = { value = it },
+                        singleLine = true,
+                        placeholder = { if (option.default.isNotEmpty()) Text(option.default) },
+                        modifier = Modifier.fillMaxWidth().testTag("option-value"),
+                    )
+                }
+                Text(
+                    "Default: " + option.default.ifEmpty { "nothing" },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { onSave(value.text.trim()) }) { Text("Save") } },
+        dismissButton = {
+            Row {
+                if (changed) TextButton(onClick = { onSave(null) }) { Text("Default") }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        },
+    )
+}
+
+/** One option in a script's sheet: its name, what it is for, and its value (muted while it is the default). */
+@Composable
+private fun OptionRow(option: ScriptMeta.Option, value: String, changed: Boolean, onClick: () -> Unit) {
+    Surface(onClick = onClick, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text(option.name, style = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace))
+                if (option.desc.isNotBlank()) {
+                    Text(option.desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Spacer(Modifier.width(16.dp))
+            Text(
+                value.ifEmpty { "—" },
+                style = MaterialTheme.typography.labelLarge,
+                color = if (changed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 160.dp),
+            )
+        }
+    }
 }
 
 /** One secret in a script's sheet: its name, what it is for, where it goes, and whether it is set. */

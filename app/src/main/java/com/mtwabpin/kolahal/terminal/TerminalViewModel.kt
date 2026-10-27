@@ -1278,6 +1278,26 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         logs.add(LogKind.INFO, "$script: ${secret.name} " + if (value.isNullOrBlank()) "cleared" else "set", ctx = LogContext.of(LogContext.SCRIPT to script))
     }
 
+    // ---- script options ------------------------------------------------------------------
+
+    /** Bumped when an option is changed, so sheets showing its value read again. */
+    private val _optionsVersion = MutableStateFlow(0)
+    val optionsVersion: StateFlow<Int> = _optionsVersion.asStateFlow()
+
+    /** [s]'s `@option` values (yours or the defaults), and which ones you set. */
+    fun optionValues(s: Script): Pair<Map<String, String>, Set<String>> {
+        val declared = ScriptMeta.options(s.code)
+        val store = com.mtwabpin.kolahal.script.ScriptOptions(context)
+        return store.values(s.name, declared) to store.changed(s.name, declared)
+    }
+
+    /** Sets [option] for [script]; null goes back to its default. */
+    fun setOption(script: String, option: String, value: String?) = io {
+        com.mtwabpin.kolahal.script.ScriptOptions(context).set(script, option, value)
+        _optionsVersion.value++
+        logs.add(LogKind.INFO, "$script: $option " + if (value == null) "back to its default" else "= $value", ctx = LogContext.of(LogContext.SCRIPT to script))
+    }
+
     /** A secret to ask for from the terminal (`script secret`), shown over home. */
     data class SecretPrompt(val script: String, val name: String)
 

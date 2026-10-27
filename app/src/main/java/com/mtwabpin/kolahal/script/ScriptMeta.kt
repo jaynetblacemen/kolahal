@@ -10,6 +10,7 @@ package com.mtwabpin.kolahal.script
  *   -- @on <event>[, ...]  — run when a device event happens (see [EVENTS]); the payload is `event`
  *   -- @uses <what>[, ...] — private data or reach it needs (see [USES]); without it those calls fail
  *   -- @secret <NAME> <site> <description> — a key you set, read with secrets.get, sent only to <site> ([Secret])
+ *   -- @option <name> <default> <description> — a setting you change without editing it, read as options.<name> ([Option])
  *
  * And what describes it, so a script file is complete on its own (the library reads these too):
  *
@@ -100,6 +101,27 @@ object ScriptMeta {
         val rest = secretRest.find(parts.getOrNull(1).orEmpty()) ?: return@mapNotNull null
         val hosts = rest.groupValues[1].split(',').map { it.trim().lowercase() }.filter { it.isNotEmpty() }
         Secret(name, hosts, rest.groupValues[2].trim())
+    }.distinctBy { it.name }.toList()
+
+    /**
+     * `@option city London The city to show`: a setting you change in the script's sheet or with
+     * `script set`, without editing its code, read as `options.city`. The default is one word,
+     * `"quoted words"` or `""`; `metric|imperial` makes a choice, its first the default.
+     */
+    data class Option(val name: String, val default: String, val choices: List<String>, val desc: String)
+
+    private val optionLine = Regex("""^\s*(--|//)\s*@option\b[ \t]*(.*)$""", RegexOption.MULTILINE)
+    private val optionName = Regex("^[A-Za-z][A-Za-z0-9_]{0,31}$")
+    private val optionRest = Regex("^(\"[^\"]*\"|\\S+)\\s*(.*)$")
+
+    /** Every well-formed `@option` line; the first one of a name wins. */
+    fun options(code: String): List<Option> = optionLine.findAll(code).mapNotNull { m ->
+        val parts = m.groupValues[2].trim().split(Regex("\\s+"), limit = 2)
+        val name = parts.getOrNull(0)?.takeIf(optionName::matches) ?: return@mapNotNull null
+        val rest = optionRest.find(parts.getOrNull(1).orEmpty().trim()) ?: return@mapNotNull Option(name, "", emptyList(), "")
+        val raw = rest.groupValues[1]
+        val choices = if (!raw.startsWith('"') && '|' in raw) raw.split('|').filter { it.isNotEmpty() }.distinct() else emptyList()
+        Option(name, choices.firstOrNull() ?: raw.removeSurrounding("\""), choices, rest.groupValues[2].trim())
     }.distinctBy { it.name }.toList()
 
     fun title(code: String): String? = value(code, "title")

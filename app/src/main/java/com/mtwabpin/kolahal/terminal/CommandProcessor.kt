@@ -610,7 +610,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("private", "private [on|off|status]", "Lock / unlock private space"),
             CommandSpec("unlocks", "unlocks [<days>]", "Unlock counts"),
             CommandSpec("fetch", "fetch", "This phone and Kolahal at a glance, fastfetch style"),
-            CommandSpec("script", "script <sub> <name>", "Subcommands: ls lib install get new edit run every at notify on off access allow deny secret triggers mv rm cat diff dir export import"),
+            CommandSpec("script", "script <sub> <name>", "Subcommands: ls lib install get new edit run every at notify on off access allow deny secret set triggers mv rm cat diff dir export import"),
             CommandSpec("=", "= <expr>", "Calculator · = 15% of 80 · = 5 km in mi · = 100 usd in eur"),
             CommandSpec("lua", "lua <code>", "Evaluate Lua 5.4"),
             CommandSpec("js", "js <code>", "Evaluate JavaScript (QuickJS)"),
