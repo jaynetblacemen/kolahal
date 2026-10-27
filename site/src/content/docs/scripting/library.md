@@ -23,7 +23,7 @@ until you allow it, with a line in the log), and the log says which scripts it u
 edited stays yours, marked **(edited)** in `script lib` and "edited" in the script manager, whose
 **Differs from the library** chip lists them all. **Compare**, in its card's details or its sheet,
 shows how it differs: lines only in the library version in red, lines only in yours in the theme's
-colour. It is only replaced when you ask: `script install weather --replace`, or **Reset to library
+colour; `script diff weather` prints the same in the log. It is only replaced when you ask: `script install weather --replace`, or **Reset to library
 version** beside Compare (or at the bottom of Compare). Export it first to keep your version.
 
 None of the network scripts need an API key.

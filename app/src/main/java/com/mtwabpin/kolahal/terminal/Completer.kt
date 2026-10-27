@@ -201,6 +201,8 @@ class Completer(private val context: Context, private val data: Data) {
                         // to switch on or off, any script otherwise; some take no name at all.
                         val names = when (sub) {
                             "install" -> data.libraryNames
+                            // Only a library script has a library version to compare with.
+                            "diff" -> scriptList.map { it.name }.filter { it in data.libraryNames }
                             "get" -> data.sharedNames
                             "on" -> scriptList.filter { !it.enabled }.map { it.name }
                             "off" -> scriptList.filter { it.enabled }.map { it.name }

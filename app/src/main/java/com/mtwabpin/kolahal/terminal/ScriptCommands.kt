@@ -3,6 +3,7 @@ package com.mtwabpin.kolahal.terminal
 import android.content.Context
 import com.mtwabpin.kolahal.data.KvStore
 import com.mtwabpin.kolahal.data.LogContext
+import com.mtwabpin.kolahal.data.StyledText
 import com.mtwabpin.kolahal.data.LogKind
 import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.data.Script
@@ -10,6 +11,7 @@ import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.data.ScriptRepository
 import com.mtwabpin.kolahal.notify.Notifier
 import com.mtwabpin.kolahal.script.HostApi
+import com.mtwabpin.kolahal.script.LineDiff
 import com.mtwabpin.kolahal.script.ScriptAccess
 import com.mtwabpin.kolahal.script.ScriptCatalog
 import com.mtwabpin.kolahal.script.ScriptFolder
@@ -227,7 +229,8 @@ class ScriptCommands(
                     LogRepository.Pending(LogKind.OUTPUT, "${(i + 1).toString().padStart(3)}  $l", null, ctx, at)
                 })
             }
-            else -> error("Usage: script [ls|new|edit|run|every|at|notify|on|off|get|access|allow|deny|secret|triggers|mv|rm|cat] <name>")
+            "diff" -> withScript(target) { s -> diff(s) }
+            else -> error("Usage: script [ls|new|edit|run|every|at|notify|on|off|get|access|allow|deny|secret|triggers|mv|rm|cat|diff] <name>")
         }
     }
 
@@ -443,6 +446,56 @@ class ScriptCommands(
 
     private fun scriptCtx(s: Script) = LogContext.of(LogContext.SCRIPT to s.name)
 
+    /**
+     * `script diff <name>`: a library script against the library version, as Compare shows it in the
+     * script manager: the changed lines with three unchanged ones around each, those only in the
+     * library version red (-) and those only in yours in the accent (+), the rest counted. Copy text
+     * on its first line copies it as a plain diff; the last line says how to take the library version.
+     */
+    private fun diff(s: Script) {
+        val library = ScriptLibrary(context)
+        val file = "${s.name}.${s.lang.ext}"
+        val entry = library.entries.firstOrNull { it.name == s.name && it.lang == s.lang }
+            ?: return info("$file isn't from the library, so there is nothing to compare it with", scriptCtx(s))
+        val hunks = LineDiff.hunks(LineDiff.lines(library.code(entry), s.code))
+        if (hunks.isEmpty()) return info("$file is the library version", scriptCtx(s))
+        val changed = hunks.flatMap { it.lines }
+        fun lines(n: Int) = if (n == 1) "1 line" else "$n lines"
+        val removed = lines(changed.count { it.kind == LineDiff.Kind.REMOVED })
+        val added = lines(changed.count { it.kind == LineDiff.Kind.ADDED })
+        val sign = mapOf(LineDiff.Kind.REMOVED to "-", LineDiff.Kind.ADDED to "+", LineDiff.Kind.SAME to " ")
+        val plain = buildString {
+            append("--- library/$file\n+++ $file\n")
+            hunks.forEach { h -> h.lines.forEach { append(sign.getValue(it.kind)).append(' ').append(it.text).append('\n') } }
+        }
+        val at = System.currentTimeMillis()
+        val out = ArrayList<LogRepository.Pending>()
+        fun add(text: String, ctx: LogContext = LogContext(LogContext.ALIGNED)) { out += LogRepository.Pending(LogKind.OUTPUT, text, null, ctx, at) }
+        add(
+            "$file against the library version: " + StyledText.colour(StyledText.Colour.BAD, "- $removed only there") +
+                ", " + StyledText.colour(StyledText.Colour.ACCENT, "+ $added only in yours"),
+            LogContext.of(LogContext.COPY to plain) + scriptCtx(s).values,
+        )
+        for (h in hunks) {
+            if (h.skipped > 0) add(StyledText.colour(StyledText.Colour.MUTED, "⋯ ${lines(h.skipped)} the same"))
+            for (line in h.lines) {
+                val text = "${sign.getValue(line.kind)} ${line.text.replace("\t", "    ")}"
+                add(when (line.kind) {
+                    LineDiff.Kind.REMOVED -> StyledText.colour(StyledText.Colour.BAD, text)
+                    LineDiff.Kind.ADDED -> StyledText.colour(StyledText.Colour.ACCENT, text)
+                    LineDiff.Kind.SAME -> StyledText.colour(StyledText.Colour.MUTED, text)
+                })
+            }
+        }
+        logs.addAll(out)
+        // Back to the library version: an edited copy only when asked, as Reset in the script manager.
+        if (library.state(entry, scripts.all()) == ScriptLibrary.State.MODIFIED) {
+            info("'script install ${s.name} --replace' takes the library version (export yours first to keep it)", scriptCtx(s))
+        } else {
+            info("'script install ${s.name}' updates it to the library version", scriptCtx(s))
+        }
+    }
+
     private fun parseName(raw: String): Pair<String, ScriptLang?> {
         val ext = raw.substringAfterLast('.', "")
         val lang = ScriptLang.of(ext)
@@ -459,6 +512,6 @@ class ScriptCommands(
         }
 
         /** What follows `script`, for completion. */
-        val SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "get", "access", "allow", "deny", "secret", "triggers", "mv", "rm", "cat", "dir", "export", "import")
+        val SUBCOMMANDS = listOf("ls", "lib", "install", "new", "edit", "run", "every", "at", "notify", "on", "off", "get", "access", "allow", "deny", "secret", "triggers", "mv", "rm", "cat", "diff", "dir", "export", "import")
     }
 }

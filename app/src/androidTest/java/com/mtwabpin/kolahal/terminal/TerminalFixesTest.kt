@@ -190,6 +190,33 @@ class TerminalFixesTest {
         assertEquals(listOf(code, null, null), lines.map { it.ctx.copy })
     }
 
+    /**
+     * `script diff`: a library copy you edited against the library version, the line only in yours
+     * marked +, and how to go back; an unedited copy is the library version; your own script has
+     * nothing to compare with.
+     */
+    @Test fun scriptDiffShowsWhatYouChanged() {
+        val library = com.mtwabpin.kolahal.script.ScriptLibrary(app)
+        val entry = library.entries.single { it.name == "countdown" }
+        val s = library.install(entry)
+        fun plain(line: String) = run(line).map { com.mtwabpin.kolahal.data.StyledText.plain(it.text) }
+        try {
+            scripts.saveCode(s.id, library.code(entry) + "-- mine\n", byUser = true)
+            val lines = plain("script diff countdown")
+            assertTrue(lines.first(), lines.first().startsWith("countdown.lua against the library version"))
+            assertTrue(lines.first(), "+ 1 line only in yours" in lines.first())
+            assertTrue(lines.toString(), "+ -- mine" in lines)
+            assertTrue(lines.last(), "script install countdown --replace" in lines.last())
+            library.install(entry)
+            assertEquals(listOf("countdown.lua is the library version"), plain("script diff countdown"))
+            scripts.create("tfcat", ScriptLang.LUA, "return 1")
+            assertTrue(plain("script diff tfcat").single().contains("isn't from the library"))
+        } finally {
+            scripts.byName("countdown")?.let { scripts.delete(it.id) }
+            library.forget("countdown")
+        }
+    }
+
     @Test fun aFreshScreenHideNeverBringsBackWhatFreshHid() {
         val first = logs.add(LogKind.INFO, "tf one")
         val second = logs.add(LogKind.INFO, "tf two")

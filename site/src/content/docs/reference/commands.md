@@ -149,6 +149,7 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `script edit <name>` | open the editor |
 | `script run <name>` | run now |
 | `script cat <name>` | print the code with line numbers (alias `show`) |
+| `script diff <name>` | a library script against the library version: lines only in it `-` (red), only in yours `+`, three unchanged around each; Copy text on its first line copies it as a plain diff |
 | `script every <name> <15m\|30m\|2h\|1d\|off>` | interval timer |
 | `script at <name> <HH:mm[,HH:mm…]\|off>` | daily times |
 | `script notify <name> on\|off` | allow `notify()` for this script |
