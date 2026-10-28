@@ -3,6 +3,7 @@
 // @desc Wikipedia summary: wikipedia <topic> (no topic: a random article)
 // @usage [<topic>]
 // @title Wikipedia
+// @option lang en The language edition: en, de, hi, simple…
 //
 // Usage:
 //   wikipedia Alan Turing
@@ -11,11 +12,13 @@
 // Tries the exact title first, then falls back to a search for the best match.
 // The article's picture shows under its title; tap the title to open the full article.
 
-const LANG = "en"; // change for another language edition, e.g. "de", "hi"
+const LANG = (options.lang || "").trim().toLowerCase() || "en";
 const MAX_CHARS = 600;
 const base = `https://${LANG}.wikipedia.org`;
 // A failure: what didn't work, in the theme's bad colour, and why under it.
 const fail = (what, why) => log(fmt.color("bad", what), why);
+
+if (!/^[a-z][a-z0-9-]*$/.test(LANG)) return fail("No article", `'${LANG}' isn't a Wikipedia language, such as en or de`);
 
 const topic = (argline || "").trim();
 

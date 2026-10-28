@@ -1,13 +1,14 @@
 -- charge-reminder.lua — reacts to the charger instead of a timer. No network.
 -- @on charger, unplug
--- @desc Charging session summary; warns when unplugged below 30%
+-- @desc Charging session summary; warns when unplugged below 30% (its low option)
 -- @title Charge reminder
 -- @notify
+-- @option low 30 Warn when unplugged below this battery %
 --
 -- `event` is the trigger payload: event.name ("charger" / "unplug"), event.level (battery %),
 -- event.plug ("ac", "usb", "wireless"). Run by hand (event is nil) it shows the last session.
 
-local LOW = 30
+local LOW = tonumber(options.low) or 30
 
 local function pct(n) return n and (math.floor(n) .. "%") or "?%" end
 

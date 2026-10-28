@@ -1,12 +1,14 @@
 // reddit.js — today's top posts of a subreddit (public JSON/RSS, no API key).
 // @command
-// @desc Top posts today: reddit [subreddit] (default: android)
+// @desc Top posts today: reddit [subreddit] (without one: its subreddit option, android)
 // @usage [<subreddit>]
 // @title Reddit top posts
+// @option subreddit android The subreddit when you type none
+// @option posts 5 How many posts it shows, up to 25
 //
 // Usage:
-//   reddit             top 5 posts of r/android today
-//   reddit linux       top 5 posts of r/linux today
+//   reddit             today's top posts of its subreddit option (r/android to start with)
+//   reddit linux       today's top posts of r/linux
 //
 // Uses the JSON listing (with scores and comment counts) and falls back to
 // the subreddit's RSS feed when Reddit blocks anonymous JSON requests.
@@ -15,9 +17,9 @@
 // A failure: what didn't work, in the theme's bad colour, and why under it.
 const fail = (what, why) => log(fmt.color("bad", what), why);
 
-const LIMIT = 5;
+const LIMIT = Math.min(25, Math.max(1, parseInt(options.posts, 10) || 5));
 const UA = { "User-Agent": "android:kolahal-launcher:0.1 (by /u/kolahal)" }; // Reddit rejects generic agents
-const sub = (argline || "").trim().replace(/^\/?r\//i, "") || "android";
+const sub = ((argline || "").trim() || (options.subreddit || "").trim() || "android").replace(/^\/?r\//i, "");
 
 if (!/^[A-Za-z0-9_]{2,21}$/.test(sub)) {
   return fail("No posts", `'${sub}' isn't a subreddit name`);

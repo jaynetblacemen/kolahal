@@ -28,10 +28,12 @@ class LibraryScriptsTest {
     private val store = KvStore(context, ScriptRepository.scopeOf(id))
     private val status = KvStore(context, HostApi.STATUS_SCOPE)
 
-    private fun run(file: String, argline: String = "", event: Map<String, Any?>? = null) {
+    /** [options]: the ones you set; the rest are the script's defaults. */
+    private fun run(file: String, argline: String = "", event: Map<String, Any?>? = null, options: Map<String, String> = emptyMap()) {
         lines().forEach { logs.delete(it.id) }
         val entry = library.entries.single { it.file == file }
-        val host = HostApi(context, name, scriptId = id, notifyEnabled = false)
+        val declared = ScriptMeta.options(library.code(entry)).associate { it.name to it.default }
+        val host = HostApi(context, name, scriptId = id, notifyEnabled = false, options = declared + options)
         val args = argline.split(' ').filter(String::isNotEmpty)
         runBlocking { ScriptEngine.forLang(entry.lang).run(library.code(entry), name, host, 10_000, false, args, event) }
         host.flush()
@@ -133,6 +135,11 @@ class LibraryScriptsTest {
         val (title, body) = only()
         assertEquals("Last charge", title)
         assertEquals(true, body?.endsWith(" · Unplugged at 90% (+70% in 0m)"))
+
+        // Its low option: 20% is fine above 10%.
+        run("charge-reminder.lua", event = mapOf("name" to "charger", "level" to 15, "plug" to "usb"), options = mapOf("low" to "10"))
+        run("charge-reminder.lua", event = mapOf("name" to "unplug", "level" to 20, "plug" to "usb"), options = mapOf("low" to "10"))
+        assertEquals(Triple("Unplugged at 20%", "+5% in 0m", StyledText.Colour.GOOD), only())
     }
 
     private val nm = context.getSystemService(android.app.NotificationManager::class.java)

@@ -3,12 +3,15 @@
 // @desc Convert currency: exchange [amount] <from> [to…] (e.g. exchange 100 usd inr eur)
 // @usage [<amount>] <from> [<to…>]
 // @title Currency converter
+// @option from USD The currency converted from when you type none
+// @option to "EUR GBP INR JPY" The currencies it converts to then
 //
 // Usage:
 //   exchange 100 usd inr       100 US dollars in Indian rupees
 //   exchange usd inr eur       1 USD in INR and EUR
 //   exchange 50 eur            50 EUR in USD
-//   exchange                   USD -> EUR, GBP, INR, JPY (good on a timer as a status line)
+//   exchange                   its from and to options: USD -> EUR, GBP, INR, JPY to start with
+//                              (good on a timer as a status line)
 //
 // Rates update once a day, so a timer more often than every few hours is wasted.
 
@@ -22,13 +25,15 @@ if (words.length > 0 && /^[\d.,]+$/.test(words[0])) amount = parseFloat(words.sh
 if (!isFinite(amount)) return fail("No conversion", "That amount isn't a number");
 
 const codes = words.map((w) => w.toUpperCase());
+const optionCodes = (s) => (s || "").trim().split(/[\s,]+/).filter(Boolean).map((w) => w.toUpperCase());
 if (codes.some((c) => !/^[A-Z]{3}$/.test(c))) {
   return log(fmt.color("muted", "Usage: exchange [amount] <from> [to…], e.g. exchange 100 usd inr"));
 }
 const background = codes.length === 0;
-const from = codes[0] || "USD";
+const from = codes[0] || optionCodes(options.from)[0] || "USD";
 let targets = codes.slice(1);
-if (targets.length === 0) targets = background ? ["EUR", "GBP", "INR", "JPY"] : [from === "USD" ? "EUR" : "USD"];
+if (targets.length === 0 && background) targets = optionCodes(options.to).filter((c) => c !== from);
+if (targets.length === 0) targets = [from === "USD" ? "EUR" : "USD"];
 
 let r;
 try {

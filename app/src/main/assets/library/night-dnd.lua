@@ -3,6 +3,7 @@
 -- @title Night Do Not Disturb
 -- @at 23:00, 07:00
 -- @uses dnd
+-- @option mode priority|alarms|none How quiet: your priority people and apps, alarms only, or nothing
 --
 -- At ON it turns Do Not Disturb on, unless it's on already: then it's yours, and it leaves it be,
 -- at OFF too. At OFF it turns off only what it turned on. (Since Android 15 that's Kolahal's own
@@ -12,7 +13,7 @@
 -- what it will do.
 
 local ON, OFF = "23:00", "07:00"
-local MODE = "priority" -- or "alarms", "none"
+local MODE = options.mode or "priority"
 
 -- The mode it set tonight, if it set one.
 local mine = store.get("on")

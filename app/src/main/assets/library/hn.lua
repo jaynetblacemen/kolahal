@@ -3,13 +3,16 @@
 -- @title Hacker News
 -- @every 1h
 -- @notify
+-- @option points 50 Only stories with at least this many points; 0: every story
+-- @option lines 10 The most stories it logs in one run
 --
 -- Runs well on a timer (every 30-60 min). Each run logs the new front-page
 -- stories (tap a line to open it), notifies about the top new one and pins
 -- a short "HN: N new" status line in the header.
 
-local FEED = "https://hnrss.org/frontpage?points=50" -- drop ?points=50 for every story
-local MAX_LINES = 10
+local POINTS = math.floor(tonumber(options.points) or 50)
+local FEED = "https://hnrss.org/frontpage" .. (POINTS > 0 and ("?points=" .. POINTS) or "")
+local MAX_LINES = math.max(1, math.floor(tonumber(options.lines) or 10))
 
 -- rss.fresh raises an error on HTTP failure; catch it so a flaky network
 -- produces one short line instead of a stack trace.

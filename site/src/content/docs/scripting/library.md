@@ -17,6 +17,11 @@ More scripts, shared by people who use Kolahal, are in **Scripts → Add script 
 Installing sets the script's suggested timers and notification flag. They are only suggestions:
 change them with `script every`, `script at` and `script notify`, or in the script manager.
 
+Some have [options](/scripting/overview/#options): weather's city, the coins crypto shows, how
+many stories hn logs. Change them in the script's sheet (**Options**) or with
+`script set weather city Pune`; `script set weather` lists them. A copy whose options you changed
+is still the library's, and keeps following Kolahal.
+
 A copy you haven't edited follows Kolahal: when an update brings a newer one, it replaces yours by
 itself (its timers and switches stay, and anything new it asks for with `@uses` or `@on` stays off
 until you allow it, with a line in the log), and the log says which scripts it updated. A copy you
@@ -50,8 +55,8 @@ None of the network scripts need an API key.
 ## hn
 
 **Hacker News**: new front-page stories with 50+ points since the last run (via hnrss.org), up
-to 10 lines. Notifies about the top new story and pins `HN: N new` in the header. Edit the `FEED`
-line to drop the points filter.
+to 10 lines. Notifies about the top new story and pins `HN: N new` in the header. Options:
+`points` (`0` for every story) and `lines`.
 
 ## releases
 
@@ -69,23 +74,23 @@ releases list                # the watched repos; tap one for its releases
 ## reddit
 
 **Reddit top posts**: today's top 5 posts of a subreddit with scores and comment counts, falling
-back to the subreddit's RSS feed when Reddit blocks anonymous JSON requests. `reddit` (r/android)
-or `reddit linux`.
+back to the subreddit's RSS feed when Reddit blocks anonymous JSON requests. `reddit` (its
+`subreddit` option, r/android to start with) or `reddit linux`. The `posts` option shows up to 25.
 
 ## weather
 
 **Weather**: current weather in one line from wttr.in. On a timer it pins the result in the header.
 
 ```sh
-weather                      # saved default city (or your IP's location)
+weather                      # its city option (or your IP's location)
 weather Paris
-weather --default Pune       # save a default
+script set weather city Pune # the city when you type none
 ```
 
 ## forecast
 
 **3-day forecast** from Open-Meteo: conditions, min/max temperature and rain chance. On a timer it
-pins today's summary. `forecast`, `forecast Tokyo`, `forecast --default Pune`.
+pins today's summary. `forecast` (its `city` option, London if it's empty) or `forecast Tokyo`.
 
 ## sun
 
@@ -103,10 +108,14 @@ crypto solana dogecoin       # CoinGecko ids
 crypto bitcoin --vs eur
 ```
 
+Its `coins` and `currency` options are what `crypto` shows on its own, and on its timer.
+
 ## exchange
 
-**Currency converter** with daily rates from open.er-api.com. On a timer it pins USD rates. The
-built-in [`= 100 usd in eur`](/guides/web-and-calculator/#currency) covers simple cases.
+**Currency converter** with daily rates from open.er-api.com. On a timer, or typed on its own, it
+converts its `from` option to its `to` options (USD to EUR, GBP, INR and JPY to start with) and pins
+the rates. The built-in [`= 100 usd in eur`](/guides/web-and-calculator/#currency) covers simple
+cases.
 
 ```sh
 exchange 100 usd inr eur
@@ -122,8 +131,8 @@ IP changes (handy for noticing a dropped VPN) and pins it as a status line.
 ## wikipedia
 
 **Wikipedia summary** with the article's picture and a link to the full article: `wikipedia Alan Turing`. It tries the exact
-title, then the best search match. With no topic it shows a random article. Change `LANG` at the
-top for another language edition.
+title, then the best search match. With no topic it shows a random article. Its `lang` option picks
+another language edition: `script set wikipedia lang de`.
 
 ## xkcd
 
@@ -149,16 +158,17 @@ countdown rm 2
 ## charge-reminder
 
 **Charge reminder**: runs when you plug the charger in and when you unplug it, with no timer and
-no network: logs how much a session added, and notifies when you unplug below 30%. Run by hand, it
-shows the last session.
+no network: logs how much a session added, and notifies when you unplug below 30% (its `low`
+option). Run by hand, it shows the last session.
 
 ## night-dnd
 
 **Night Do Not Disturb**: turns Do Not Disturb on at 11 PM and off at 7 AM. If it's on already at
 11 PM, you turned it on, so the script leaves it alone, then and at 7 AM: it only turns off what it
 turned on. Since Android 15, what it turns on is Kolahal's own Do Not Disturb mode, so one you turn on
-yourself stays on in the morning. Kolahal needs Do Not Disturb access: run `dnd access` once. Edit
-`MODE` for alarms only or total silence. To change the times, change `ON` and `OFF` at its top and
+yourself stays on in the morning. Kolahal needs Do Not Disturb access: run `dnd access` once. Its
+`mode` option is `alarms` for alarms only or `none` for total silence. To change the times, change
+`ON` and `OFF` at its top and
 its daily times to match (`script at night-dnd 22:30, 06:30`). Run by hand, it says what it will do.
 Uses `@uses dnd`; no network.
 

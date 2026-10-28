@@ -1,25 +1,28 @@
 // crypto.js — cryptocurrency prices from CoinGecko (free public API, no key).
 // @command
-// @desc Coin prices: crypto [ids…] [--vs eur] (default: bitcoin ethereum, usd)
+// @desc Coin prices: crypto [ids…] [--vs eur] (without them: its coins and currency options)
 // @usage [<ids…>] [--vs <currency>]
 // @title Crypto prices
 // @every 30m
+// @option coins "bitcoin ethereum" CoinGecko ids shown when you type none
+// @option currency usd The currency prices are in, unless --vs says another
 //
 // Usage:
-//   crypto                       bitcoin and ethereum in USD
+//   crypto                       its coins in its currency: bitcoin and ethereum in USD to start with
 //   crypto solana dogecoin       other coins (CoinGecko ids)
 //   crypto bitcoin --vs eur      in another currency
 //
 // On a timer (no arguments) it pins a compact price line, e.g. "BTC 67.1k ▲ 1.2% · ETH 3.1k ▼ 0.4%".
 
-const DEFAULT_IDS = ["bitcoin", "ethereum"];
+const list = (s) => (s || "").trim().split(/[\s,]+/).filter(Boolean).map((w) => w.toLowerCase());
+const DEFAULT_IDS = list(options.coins).length > 0 ? list(options.coins) : ["bitcoin", "ethereum"];
 const SYMBOLS = { bitcoin: "BTC", ethereum: "ETH", solana: "SOL", dogecoin: "DOGE", litecoin: "LTC", monero: "XMR", cardano: "ADA", ripple: "XRP" };
 
 // A failure: what didn't work, in the theme's bad colour, and why under it.
 const fail = (what, why) => log(fmt.color("bad", what), why);
 
 const words = (argline || "").trim().split(/[\s,]+/).filter(Boolean);
-let vs = "usd";
+let vs = list(options.currency)[0] || "usd";
 const ids = [];
 for (let i = 0; i < words.length; i++) {
   if (words[i] === "--vs" && words[i + 1]) vs = words[++i].toLowerCase();

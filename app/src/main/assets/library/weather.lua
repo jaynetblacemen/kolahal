@@ -1,14 +1,14 @@
 -- weather.lua — current weather in one line from wttr.in (no API key).
 -- @command
--- @desc Current weather: weather [city] | weather --default <city>
--- @usage [<city>|--default <city>]
+-- @desc Current weather: weather [city] (without one: its city option, or where you are)
+-- @usage [<city>]
 -- @title Weather
 -- @every 1h
+-- @option city "" The city when you type none; empty: where your IP address is
 --
 -- Usage:
---   weather                 weather for the saved default city (or your IP location)
+--   weather                 weather for its city option (or your IP location)
 --   weather Paris           weather for Paris
---   weather --default Pune  save Pune as the default city
 --
 -- On a timer (no arguments) it pins the result as a status line.
 
@@ -27,15 +27,16 @@ local function fail(what, why) log(fmt.color("bad", what), why) end
 
 local line = trim(argline or "")
 
--- Save a default city.
+-- The default city was saved with --default before it was an option.
 local saved = line:match("^%-%-default%s+(.+)$")
 if saved then
-  store.set("city", trim(saved))
-  log("Default city: " .. fmt.bold(trim(saved)))
-  return
+  return log(fmt.color("muted", "The default city is an option now: script set weather city " .. trim(saved)))
 end
 
-local city = line ~= "" and line or (store.get("city") or "")
+local city = line
+if city == "" then city = trim(options.city or "") end
+-- A city saved with --default still counts until the option is set.
+if city == "" then city = store.get("city") or "" end
 -- An empty path makes wttr.in guess the location from your IP address.
 local url = "https://wttr.in/" .. urlencode(city) .. "?format=3"
 

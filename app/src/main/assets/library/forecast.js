@@ -1,14 +1,14 @@
 // forecast.js — 3-day forecast from Open-Meteo (free, no API key).
 // @command
-// @desc 3-day forecast: forecast [city] | forecast --default <city>
-// @usage [<city>|--default <city>]
+// @desc 3-day forecast: forecast [city] (without one: its city option)
+// @usage [<city>]
 // @title 3-day forecast
 // @at 07:00
+// @option city "" The city when you type none; empty: London
 //
 // Usage:
-//   forecast                  forecast for the saved default city (London if none)
+//   forecast                  forecast for its city option (London if it's empty)
 //   forecast Tokyo            forecast for Tokyo
-//   forecast --default Pune   save Pune as the default city
 //
 // On a timer (no arguments) it pins today's summary as a status line.
 
@@ -17,13 +17,14 @@ const fail = (what, why) => log(fmt.color("bad", what), why);
 
 const line = (argline || "").trim();
 
+// The default city was saved with --default before it was an option.
 const setDefault = line.match(/^--default\s+(.+)$/);
 if (setDefault) {
-  store.set("city", setDefault[1].trim());
-  return log(`Default city: ${fmt.bold(setDefault[1].trim())}`);
+  return log(fmt.color("muted", `The default city is an option now: script set forecast city ${setDefault[1].trim()}`));
 }
 
-const city = line || store.get("city") || "London";
+// A city saved with --default still counts until the option is set.
+const city = line || (options.city || "").trim() || store.get("city") || "London";
 
 // WMO weather codes -> short text.
 function describe(code) {
