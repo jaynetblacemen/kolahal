@@ -214,10 +214,12 @@ They must show the Play build: nothing about the screen lock or the call log.
 
 * Each release on Play
 
-Once the upload from the workflow is set up (below), the Release run puts the bundle on Play as a
-draft on the testing track, with =docs/release/notes/X.Y.Z-play.txt= as its notes: open Play
-Console → Test and release → the track, check the draft and roll it out. The run's summary says
-which version code and track. Without it, or when the upload fails (the run fails at its last
+Once the upload from the workflow is set up (below), the Release run puts the bundle on Play on the
+testing track, with =docs/release/notes/X.Y.Z-play.txt= as its notes. With =PLAY_SEND_FOR_REVIEW=
+=true= it rolls it out at once, which sends it for Google's review, and testers get it once it's
+approved (with managed publishing on, once it's also published: Play Console → Publishing
+overview). Otherwise it's a draft: open Play Console → Test and release → the track, check it and
+roll it out. The run's summary says which version code and track, and which of the two. Without it, or when the upload fails (the run fails at its last
 step, after the GitHub release is out):
 
 1. The Release workflow keeps =kolahal-X.Y.Z-play.aab= with its run:
@@ -235,7 +237,7 @@ step, after the GitHub release is out):
 * Uploads from the workflow
 
 =tools/play-upload.sh= (the Release workflow's last step) uploads the bundle through the Google Play
-Developer API: one edit with the bundle and a draft release on the track, committed together. The
+Developer API: one edit with the bundle and the release on the track, committed together. The
 bundle carries its R8 mapping and native symbols, so nothing else goes up. It costs nothing: the
 API, the Google Cloud project and its service account are free, with no billing account.
 
@@ -268,8 +270,10 @@ Set up once:
 6. Repository variables (not secrets; they are only names): =PLAY_WIF_PROVIDER=, the provider's
    full name (=projects/<number>/locations/global/workloadIdentityPools/github/providers/<id>=), and
    =PLAY_SERVICE_ACCOUNT=, its email. =PLAY_TRACK= only when the track isn't =alpha=, Play's first
-   closed testing track. Without the first two the step doesn't run.
+   closed testing track. =PLAY_SEND_FOR_REVIEW= =true= to send each release for review instead of
+   leaving a draft. Without the first two the step doesn't run.
 
 When it fails, the run's log has Google's answer: no track by that name (it lists the ones there
-are), a version code Play already has, or a permission Play Console hasn't given yet (it can take a
-while after the invitation).
+are), a version code Play already has, a permission Play Console hasn't given yet (it can take a
+while after the invitation), or, sending for review, other changes waiting in Play Console (a
+rejected update, say) that Play won't send on its own: upload that release by hand.

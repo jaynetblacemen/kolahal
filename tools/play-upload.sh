@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Uploads the Play bundle to Google Play as a draft release on a testing track, with the version's
-# Play notes as its "What's new". Play Console then shows it under that track; rolling it out
-# stays a person's job. The Release workflow runs it after publishing the GitHub release.
+# Uploads the Play bundle to Google Play as a release on a testing track, with the version's Play
+# notes as its "What's new": a draft to roll out in Play Console, or, with PLAY_SEND_FOR_REVIEW,
+# rolled out at once, which sends it for Google's review; testers get it once approved (with
+# managed publishing on, once it is also published in Play Console). The Release workflow runs it
+# after publishing the GitHub release.
 #
 #   tools/play-upload.sh <bundle.aab> <notes.txt> <version>
 #
@@ -12,11 +14,14 @@
 #   PLAY_WIF_PROVIDER   projects/<number>/locations/global/workloadIdentityPools/<pool>/providers/<id>
 #   PLAY_SERVICE_ACCOUNT  the service account's email
 #   PLAY_TRACK          the track (default: alpha, Play's first closed testing track)
+#   PLAY_SEND_FOR_REVIEW  true: roll it out and send it for review; otherwise a draft
 set -euo pipefail
 
 bundle=$1 notes=$2 version=$3
 package=com.mtwabpin.kolahal
 track=${PLAY_TRACK:-alpha}
+# "completed" is Play's name for rolled out to the whole track; committing it sends it for review.
+if [ "${PLAY_SEND_FOR_REVIEW:-}" = true ]; then status=completed; else status=draft; fi
 api=https://androidpublisher.googleapis.com/androidpublisher/v3/applications/$package
 : "${PLAY_WIF_PROVIDER:?}" "${PLAY_SERVICE_ACCOUNT:?}" "${ACTIONS_ID_TOKEN_REQUEST_URL:?needs id-token: write}"
 
@@ -58,15 +63,22 @@ code=$(play -H 'Content-Type: application/octet-stream' --data-binary "@$bundle"
   "https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/$package/edits/$edit/bundles?uploadType=media" |
   jq -r .versionCode)
 
-jq -n --arg track "$track" --arg name "$version" --arg code "$code" --arg language "$language" --rawfile text "$notes" '{
+jq -n --arg track "$track" --arg name "$version" --arg code "$code" --arg status "$status" --arg language "$language" --rawfile text "$notes" '{
   track: $track,
-  releases: [{name: $name, versionCodes: [$code], status: "draft",
+  releases: [{name: $name, versionCodes: [$code], status: $status,
               releaseNotes: [{language: $language, text: ($text | rtrimstr("\n"))}]}]}' |
   play -X PUT -H 'Content-Type: application/json' -d @- "$api/edits/$edit/tracks/$track" > /dev/null
+# Play refuses to send changes for review on its own while something else waits in Play Console
+# (a rejected update, say): its answer says so, and the release goes up by hand that time.
 play -X POST "$api/edits/$edit:commit" > /dev/null
 
-echo "Kolahal $version ($code) is a draft on Google Play's $track track, notes in $language."
+if [ "$status" = completed ]; then
+  result="sent for review on Google Play's $track track: testers get it once Google approves it"
+else
+  result="a draft on Google Play's $track track: Play Console → Test and release → the track → roll it out"
+fi
+echo "Kolahal $version ($code) is $result. Notes in $language."
 {
   echo "### Google Play"
-  echo "- $version ($code), a draft on the \`$track\` track: Play Console → Test and release → the track → roll it out."
+  echo "- $version ($code) is $result."
 } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"

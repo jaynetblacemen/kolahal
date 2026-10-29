@@ -84,10 +84,10 @@ version bump + notes/X.Y.Z.md ── commit, push master ── push tag vX.Y.Z
    =master=.
 5. =git tag vX.Y.Z && git push origin vX.Y.Z=, then watch the run: =gh run watch=. It publishes
    the GitHub release by itself.
-6. Google Play: the run leaves the bundle as a draft on the testing track, with
-   =notes/X.Y.Z-play.txt= as its notes; check it in Play Console and roll it out. By hand, when
-   the upload isn't set up or failed: download the bundle (=gh run download <run id> -n
-   kolahal-X.Y.Z-play=), upload it in Play Console, and paste the notes.
+6. Google Play: the run puts the bundle on the testing track, with =notes/X.Y.Z-play.txt= as its
+   notes, sent for review (=PLAY_SEND_FOR_REVIEW=) or as a draft to roll out in Play Console.
+   By hand, when the upload isn't set up or failed: download the bundle (=gh run download <run
+   id> -n kolahal-X.Y.Z-play=), upload it in Play Console, and paste the notes.
 7. Check the website deployed (the Website workflow) and its download button works.
 
 * History
