@@ -1,5 +1,7 @@
-#+TITLE: Kolahal
-<img src="site/public/favicon.svg" width="64" alt="logo">
+#+TITLE: Kolahal 
+#+CAPTION: Kolahal logo
+[[file:site/public/favicon.svg]]
+#+END_EXPORT
 #+SUBTITLE: A keyboard-first terminal launcher for Android
 
 Kolahal (=com.mtwabpin.kolahal=) is a terminal-style home screen for Android 9 and newer. Type a few
