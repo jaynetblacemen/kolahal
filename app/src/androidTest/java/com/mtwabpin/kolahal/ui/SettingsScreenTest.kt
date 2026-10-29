@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -20,9 +22,11 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToKey
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
@@ -239,6 +243,22 @@ class SettingsScreenTest {
         compose.onNodeWithText(Keys.CLOCK_24H.key, useUnmergedTree = true).assertExists()
         compose.onNodeWithText(Keys.HEADER_DATE.key, useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithText(Keys.HEADER_AUTOHIDE.key, useUnmergedTree = true).assertDoesNotExist()
+    }
+
+    /** Your name, on the Home screen page: a name with a space turns the field red and isn't saved. */
+    @Test fun yourNameIsSetInItsField() {
+        show("home")
+        scrollTo(Keys.USER_NAME)
+        val field = hasSetTextAction() and hasText(Keys.USER_NAME.default)
+        compose.onNode(field).performTextReplacement("ravi k")
+        val typed = compose.onNode(hasSetTextAction() and hasText("ravi k"))
+        typed.assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Error))
+        compose.onNodeWithContentDescription("Apply").assertDoesNotExist()
+        typed.performImeAction()
+        compose.runOnIdle { assertEquals("kolahal", config[Keys.USER_NAME]) }
+        typed.performTextReplacement("ravi")
+        compose.onNodeWithContentDescription("Apply").performClick()
+        compose.runOnIdle { assertEquals("ravi", config[Keys.USER_NAME]) }
     }
 
     @Test fun searchSkipsSettingsThatDontApply() {

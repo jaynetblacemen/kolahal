@@ -35,14 +35,23 @@ sealed class ConfigKey<T>(val key: String, val default: T, val help: String) {
         override fun parse(raw: String) = raw.lowercase().takeIf { it in choices }
     }
 
-    class Text(key: String, default: String, help: String) : ConfigKey<String>(key, default, help) {
-        override fun parse(raw: String) = raw
+    /** Free text; [accept] makes what was typed the value, or null when it can't be one. */
+    class Text(
+        key: String, default: String, help: String,
+        private val accept: (String) -> String? = { it },
+    ) : ConfigKey<String>(key, default, help) {
+        override fun parse(raw: String) = accept(raw)
     }
 }
 
 object Keys {
     val HEADER_SHOW = ConfigKey.Bool("header.show", true, "Show the header: clock, header items and script status lines (off: the log takes the whole screen; open settings with the settings command)")
-    val HEADER_DEVICE = ConfigKey.Bool("header.device", false, "Show kolahal@device in the header")
+    val HEADER_DEVICE = ConfigKey.Bool("header.device", false, "Show name@device in the header (the name is user.name)")
+    // A name in name@device: no @ of its own, and no spaces, as user names go.
+    val USER_NAME = ConfigKey.Text(
+        "user.name", "kolahal",
+        "Your name in name@device, in the header and in fetch (up to 32 characters, no spaces or @)",
+    ) { raw -> raw.trim().takeIf { n -> n.length in 1..32 && n.none { it.isWhitespace() || it == '@' } } }
     val HEADER_DATE = ConfigKey.Bool("header.date", true, "Show the date next to the clock")
     val HEADER_UNLOCKS = ConfigKey.Bool("header.unlocks", true, "Show today's unlock count")
     val HEADER_BATTERY = ConfigKey.Bool("header.battery", true, "Show battery level")
@@ -152,7 +161,7 @@ object Keys {
     val GESTURE_SWIPE_UP = ConfigKey.Text("gesture.swipe-up", "none", "Swipe up on the prompt: a command, lock, shade, quick or none (none by default: it fires by accident easily; apps opens the app grid)")
 
     val ALL: List<ConfigKey<*>> = listOf(
-        HEADER_SHOW, HEADER_DEVICE, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
+        HEADER_SHOW, HEADER_DEVICE, USER_NAME, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
         HEADER_PROFILES, HEADER_STATUS, HEADER_MEDIA, HEADER_AUTOHIDE, HEADER_ICONS, CLOCK_24H, KEYBAR_SHOW, KEYBAR_AUTO, KEYBAR_HEIGHT, PROMPT_HEIGHT_TYPING, KEYBAR, KEYBAR2, THEME, THEME_ALWAYS_DARK, STATUS_BAR, FONT, FONT_SANS, FONT_SIZE, SUGGESTIONS, SUGGEST_IDLE, SUGGEST_ICONS, SUGGESTIONS_WRAP, SUGGESTIONS_AUTO, SUGGESTION_ROWS, SUGGESTIONS_STYLE, SELECTOR_RAIL, SELECTOR_BROWSE, SELECTOR_FILTER, SELECTOR_SIDE, SELECTOR_POSITION, SELECTOR_HANDLE, SELECTOR_LETTERS, SELECTOR_HEIGHT, SELECTOR_ACTIONS, SELECTOR_ICONS, SELECTOR_ROW_HEIGHT, SELECTOR_SYSTEM_FONT, SELECTOR_AIM, SELECTOR_AIM_SPEED, AUTO_LAUNCH, LAUNCH_TOP, LAUNCH_INSTANT, LAUNCH_INSTANT_MIN,
         SHOW_TIMESTAMPS, LOG_DIM, LOG_SPACING, LOG_GUTTER, LOG_LINE_HEIGHT, LOG_TALLER_TAPS, LOG_WALLPAPER, CHIP_HEIGHT, LOG_KEEP_DAYS, LOG_KEEP_LINES, LOG_FRESH, LOG_TIPS, SEARCH_ENGINE, SEARCH_URL, FOCUS_ON_HOME, IME_SUGGESTIONS, BACKUP_AUTO, BACKUP_KEEP,
         GESTURE_DOUBLE_TAP, GESTURE_SWIPE_DOWN, GESTURE_SWIPE_UP,

@@ -205,7 +205,7 @@ See [Widgets](/guides/widgets/).
 | `setup [text]` | | setup checklist page (`text`: print it in the log) |
 | `tour` | | how Kolahal works, a page at a time, with a few first settings |
 | `unlocks [<days>]` | | unlock counts (1–30 days) |
-| `fetch` | `neofetch`, `fastfetch` | this phone and Kolahal at a glance, fastfetch style: Kolahal's icon beside the Android version, device, kernel, uptime, Kolahal's version, apps, scripts, feeds, theme, font, display, CPU, memory, storage, battery, network and today's unlocks, then the theme's colours |
+| `fetch` | `neofetch`, `fastfetch` | this phone and Kolahal at a glance, fastfetch style, under `name@device` (`user.name`): Kolahal's icon beside the Android version, device, kernel, uptime, Kolahal's version, apps, scripts, feeds, theme, font, display, CPU, memory, storage, battery, network and today's unlocks, then the theme's colours |
 | `notifications [settings]` | | allow script notifications |
 | `usage-access` | | grant usage access (unlock count) |
 | `local-network [--settings]` | | let scripts (`@uses lan`) and feeds reach your local network (Android 17+); `--settings` opens app settings after a denial |

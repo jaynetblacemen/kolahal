@@ -35,6 +35,13 @@ class FetchTest {
         assertTrue(lines.all { it.length <= 30 })
     }
 
+    /** Your name (user.name) instead of kolahal, its rule as long as the title. */
+    @Test fun theTitleHasYourName() {
+        val lines = plain(Fetch.layout("Pixel 9", rows, cols = 30, user = "ravi"))
+        assertEquals("ravi@Pixel 9", lines[4])
+        assertEquals("─".repeat("ravi@Pixel 9".length), lines[5])
+    }
+
     /** A few columns (a huge text size on a narrow screen): cut short, never an error. */
     @Test fun aTinyWidthStillLaysOut() {
         for (cols in listOf(0, 3, 5, 9)) {

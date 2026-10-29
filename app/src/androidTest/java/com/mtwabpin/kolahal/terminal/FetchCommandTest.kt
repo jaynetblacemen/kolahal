@@ -3,6 +3,8 @@ package com.mtwabpin.kolahal.terminal
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mtwabpin.kolahal.BuildConfig
+import com.mtwabpin.kolahal.data.Config
+import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogEntry
 import com.mtwabpin.kolahal.data.LogKind
@@ -52,6 +54,16 @@ class FetchCommandTest {
         assertTrue(lines.all { LogContext.MONO in it.ctx.values })
         val cols = Fetch.columns(context)
         assertTrue(text.joinToString("\n"), text.all { it.length <= cols })
+    }
+
+    @Test fun fetchHasYourName() {
+        val conf = Config.get(context)
+        try {
+            conf.set(Keys.USER_NAME, "ravi")
+            assertTrue(run("fetch").any { StyledText.plain(it.text).contains("ravi@") })
+        } finally {
+            conf.reset(Keys.USER_NAME)
+        }
     }
 
     @Test fun neofetchAndFastfetchAreFetch() {

@@ -606,10 +606,13 @@ internal fun SettingItem(
                         Column {
                             supporting()
                             Spacer(Modifier.height(8.dp))
+                            // Red while it can't be a value (a name with a space), and no Apply then.
+                            val valid = key.parse(text) != null
                             OutlinedTextField(
                                 value = text,
                                 onValueChange = { text = it },
                                 singleLine = true,
+                                isError = !valid,
                                 textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
                                 keyboardOptions = KeyboardOptions(
                                     autoCorrectEnabled = false,
@@ -617,7 +620,7 @@ internal fun SettingItem(
                                     imeAction = ImeAction.Done,
                                 ),
                                 keyboardActions = KeyboardActions(onDone = { vm.setConfig(key, text) }),
-                                trailingIcon = if (text != value) {
+                                trailingIcon = if (text != value && valid) {
                                     { IconButton(onClick = { vm.setConfig(key, text) }) { Icon(painterResource(R.drawable.ic_check), "Apply") } }
                                 } else null,
                                 modifier = Modifier.fillMaxWidth(),

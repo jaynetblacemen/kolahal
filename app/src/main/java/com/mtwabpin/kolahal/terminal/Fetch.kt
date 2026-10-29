@@ -76,12 +76,12 @@ object Fetch {
 
     /**
      * The lines `fetch` prints, styled ([StyledText]), for a log [cols] characters wide: a
-     * `kolahal@`[device] title, a rule, a row per fact and the colours, beside the icon when they fit.
+     * [user]`@`[device] title, a rule, a row per fact and the colours, beside the icon when they fit.
      */
-    fun layout(device: String, rows: List<Row>, cols: Int): List<String> {
+    fun layout(device: String, rows: List<Row>, cols: Int, user: String = Keys.USER_NAME.default): List<String> {
         val beside = cols - LOGO_WIDTH - GAP >= MIN_BESIDE
         val width = if (beside) cols - LOGO_WIDTH - GAP else cols
-        val title = ellipsize("kolahal@$device", width)
+        val title = ellipsize("$user@$device", width)
         val info = buildList {
             // Cut short of its @ (a few columns, at a huge text size): the name alone, in one piece.
             val accent = { s: String -> StyledText.wrap(Style.BOLD, StyledText.colour(Colour.ACCENT, s)) }

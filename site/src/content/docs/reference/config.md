@@ -38,7 +38,8 @@ The `theme` and `font` commands are unchanged.
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
 | `header.show` | bool | `on` | show the header; off: the log takes the whole screen (open settings with `settings`) |
-| `header.device` | bool | `off` | show `kolahal@device` in the header |
+| `header.device` | bool | `off` | show `name@device` in the header (`kolahal@device` until you set `user.name`) |
+| `user.name` | text | `kolahal` | your name in `name@device`, in the header and in `fetch`: up to 32 characters, no spaces or `@` |
 | `header.date` | bool | `on` | show the date next to the clock |
 | `header.unlocks` | bool | `on` | show today's unlock count |
 | `header.battery` | bool | `on` | show battery level |

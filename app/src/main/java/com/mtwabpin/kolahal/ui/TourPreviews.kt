@@ -257,7 +257,7 @@ internal fun TypingPreview(vm: TerminalViewModel) {
             type("fetch")
             typed = ""
             lines += "fetch" to true
-            lines += "kolahal@${android.os.Build.DEVICE}" to false
+            lines += "${vm.config[Keys.USER_NAME]}@${android.os.Build.DEVICE}" to false
             lines += "OS  Android ${android.os.Build.VERSION.RELEASE} · API ${android.os.Build.VERSION.SDK_INT}" to false
             delay(2200)
             lines.clear()

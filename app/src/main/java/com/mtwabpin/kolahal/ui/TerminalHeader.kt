@@ -322,7 +322,7 @@ internal fun Header(
             if (config[Keys.HEADER_DEVICE]) {
                 Text(
                     buildAnnotatedString {
-                        withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("kolahal") }
+                        withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append(config[Keys.USER_NAME]) }
                         withStyle(SpanStyle(color = Term.dim)) { append("@" + Build.MODEL.lowercase().replace(' ', '-')) }
                     },
                     style = small,

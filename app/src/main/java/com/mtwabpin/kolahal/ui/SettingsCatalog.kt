@@ -18,6 +18,7 @@ internal val TITLES = mapOf(
     "header.date" to "Date",
     "clock.24h" to "24-hour clock",
     "header.device" to "Device name",
+    "user.name" to "Your name",
     "header.icons" to "Icons instead of labels",
     "header.unlocks" to "Unlock count",
     "header.battery" to "Battery",
@@ -178,7 +179,7 @@ private val CATEGORIES = listOf(
         "home", "Home screen", "Clock, header items, widgets", R.drawable.ic_home,
         listOf(
             "Header" to listOf(Keys.HEADER_SHOW),
-            "Clock" to listOf(Keys.HEADER_DATE, Keys.CLOCK_24H, Keys.HEADER_DEVICE),
+            "Clock" to listOf(Keys.HEADER_DATE, Keys.CLOCK_24H, Keys.HEADER_DEVICE, Keys.USER_NAME),
             "Header items" to listOf(
                 Keys.HEADER_ICONS, Keys.HEADER_UNLOCKS, Keys.HEADER_BATTERY, Keys.HEADER_NETWORK, Keys.HEADER_ALARM,
                 Keys.HEADER_PROFILES, Keys.HEADER_MEDIA, Keys.HEADER_TODO, Keys.HEADER_STATUS,
