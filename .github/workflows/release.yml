@@ -4,19 +4,24 @@ name: Release
 # - kolahal-X.Y.Z.apk (the full build) and kolahal-X.Y.Z-play.apk (the Play build, for phones where
 #   Play Protect blocks the full one), both signed with the release key, and the mapping zip, on a
 #   GitHub release whose notes are docs/release/notes/X.Y.Z.md;
-# - kolahal-X.Y.Z-play.aab, signed with the upload key, kept with this run for Play Console.
+# - kolahal-X.Y.Z-play.aab, signed with the upload key, kept with this run for Play Console, and,
+#   once the PLAY_ variables are set, uploaded to Google Play as a draft on a testing track.
 #
 # Secrets (tools/make-keys.sh --secrets stores them): RELEASE_KEYSTORE_BASE64,
 # RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD, and the same four for UPLOAD_.
 # How it all fits together: docs/release/README.org.
 # Variable, optional but recommended: RELEASE_CERT_SHA256, the release key's certificate digest;
 # when set, both APKs must carry it, so a release can never go out under another key.
+# Variables for the Play upload, without a key (docs/release/google-play.org → Uploads from the
+# workflow): PLAY_WIF_PROVIDER and PLAY_SERVICE_ACCOUNT; PLAY_TRACK when it isn't alpha.
 on:
   push:
     tags: ['v*']
 
 permissions:
   contents: write
+  # GitHub's identity token for this run, which Google trusts for the Play upload alone.
+  id-token: write
 
 concurrency:
   group: release
@@ -46,6 +51,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
 
       - name: Check the tag, the version and the notes
+        env:
+          PLAY_UPLOAD: ${{ vars.PLAY_WIF_PROVIDER }}
         run: |
           version=$(sed -n 's/^ *versionName = "\(.*\)"$/\1/p' app/build.gradle.kts)
           if [ "$GITHUB_REF_NAME" != "v$version" ]; then
@@ -54,6 +61,11 @@ jobs:
           fi
           if [ ! -s "docs/release/notes/$version.md" ]; then
             echo "::error::docs/release/notes/$version.md is missing; it becomes the release notes."
+            exit 1
+          fi
+          # Missing at the Play upload, the GitHub release would already be out.
+          if [ -n "$PLAY_UPLOAD" ] && [ ! -s "docs/release/notes/$version-play.txt" ]; then
+            echo "::error::docs/release/notes/$version-play.txt is missing; it becomes the notes on Google Play."
             exit 1
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
@@ -145,3 +157,13 @@ jobs:
             out/kolahal-${{ env.VERSION }}-play.aab
             app/build/outputs/mapping/play/mapping.txt
           retention-days: 90
+
+      # Last, so a failed upload leaves the bundle above to upload by hand. A draft: rolling it out
+      # stays a person's job, in Play Console.
+      - name: Upload to Google Play
+        if: vars.PLAY_WIF_PROVIDER != '' && vars.PLAY_SERVICE_ACCOUNT != ''
+        env:
+          PLAY_WIF_PROVIDER: ${{ vars.PLAY_WIF_PROVIDER }}
+          PLAY_SERVICE_ACCOUNT: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          PLAY_TRACK: ${{ vars.PLAY_TRACK }}
+        run: tools/play-upload.sh "out/kolahal-$VERSION-play.aab" "docs/release/notes/$VERSION-play.txt" "$VERSION"

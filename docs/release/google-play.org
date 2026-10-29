@@ -214,6 +214,12 @@ They must show the Play build: nothing about the screen lock or the call log.
 
 * Each release on Play
 
+Once the upload from the workflow is set up (below), the Release run puts the bundle on Play as a
+draft on the testing track, with =docs/release/notes/X.Y.Z-play.txt= as its notes: open Play
+Console → Test and release → the track, check the draft and roll it out. The run's summary says
+which version code and track. Without it, or when the upload fails (the run fails at its last
+step, after the GitHub release is out):
+
 1. The Release workflow keeps =kolahal-X.Y.Z-play.aab= with its run:
    =gh run download <run id> -n kolahal-X.Y.Z-play=.
 2. Play Console → the track → Create new release → upload the bundle, and the =mapping.txt= beside
@@ -225,3 +231,45 @@ They must show the Play build: nothing about the screen lock or the call log.
    0.4.4 is the first release on Play (internal testing), so its text introduces Kolahal and how
    to start instead of listing changes; later ones list what changed since the last one on Play.
 4. Roll out.
+
+* Uploads from the workflow
+
+=tools/play-upload.sh= (the Release workflow's last step) uploads the bundle through the Google Play
+Developer API: one edit with the bundle and a draft release on the track, committed together. The
+bundle carries its R8 mapping and native symbols, so nothing else goes up. It costs nothing: the
+API, the Google Cloud project and its service account are free, with no billing account.
+
+There is no key to keep or leak. GitHub gives each run an identity token; Google's Workload
+Identity Federation trusts it only from =release.yml= run by a =v…= tag in this repository
+(checked by the repository's and its owner's numeric IDs, so a repository given the same name later
+gets nothing), and swaps it for half an hour as a service account. Play Console lets that account
+release Kolahal to testing tracks, and nothing else.
+
+Set up once:
+
+1. A Google Cloud project with the Google Play Android Developer API, the IAM Service Account
+   Credentials API and the Security Token Service API on.
+2. A service account in it, with no roles in Cloud and no key.
+3. Play Console → Users and permissions → Invite new users: the service account's email, no
+   account permissions, and for Kolahal only *Release apps to testing tracks* (and *View app
+   information*).
+4. A workload identity pool (=github=) with an OIDC provider for
+   =https://token.actions.githubusercontent.com=, mapping =google.subject=assertion.sub=,
+   =attribute.repository_id=assertion.repository_id= (and the repository, ref and workflow_ref), with
+   the condition
+   #+begin_example
+   assertion.repository_id == '<repository id>' && assertion.repository_owner_id == '<owner id>'
+     && assertion.ref.startsWith('refs/tags/v')
+     && assertion.workflow_ref.startsWith('mtwabpin/kolahal/.github/workflows/release.yml@refs/tags/v')
+   #+end_example
+   (=gh api repos/mtwabpin/kolahal= gives both IDs).
+5. On the service account, =roles/iam.workloadIdentityUser= for
+   =principalSet://iam.googleapis.com/projects/<project number>/locations/global/workloadIdentityPools/github/attribute.repository_id/<repository id>=.
+6. Repository variables (not secrets; they are only names): =PLAY_WIF_PROVIDER=, the provider's
+   full name (=projects/<number>/locations/global/workloadIdentityPools/github/providers/<id>=), and
+   =PLAY_SERVICE_ACCOUNT=, its email. =PLAY_TRACK= only when the track isn't =alpha=, Play's first
+   closed testing track. Without the first two the step doesn't run.
+
+When it fails, the run's log has Google's answer: no track by that name (it lists the ones there
+are), a version code Play already has, or a permission Play Console hasn't given yet (it can take a
+while after the invitation).

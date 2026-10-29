@@ -42,6 +42,9 @@ looking at (the run's *Artifacts*), not for installing over a release.
    APKs and the bundle are built from.
 7. *Publishes the GitHub release* with both APKs and the mapping zip, marked as the latest.
 8. *Keeps the Play bundle* and its =mapping.txt= with the run, for 90 days.
+9. *Uploads to Google Play*, when =PLAY_WIF_PROVIDER= and =PLAY_SERVICE_ACCOUNT= are set: the
+   bundle as a draft on the testing track, to roll out in Play Console ([[file:google-play.org][google-play.org]] → Uploads from
+   the workflow). With them set, step 1 also wants =docs/release/notes/X.Y.Z-play.txt=.
 
 * Secrets and variables
 
@@ -58,6 +61,9 @@ Repository → Settings → Secrets and variables → Actions.
 | =UPLOAD_KEY_ALIAS=        | secret   | =upload=                                             |
 | =UPLOAD_KEY_PASSWORD=     | secret   | the key's password                                   |
 | =RELEASE_CERT_SHA256=     | variable | the release key's fingerprint; optional, recommended |
+| =PLAY_WIF_PROVIDER=       | variable | the Google workload identity provider, for Play      |
+| =PLAY_SERVICE_ACCOUNT=    | variable | the service account Play Console lets release        |
+| =PLAY_TRACK=              | variable | the Play track, when it isn't =alpha=; optional      |
 
 =tools/make-keys.sh --secrets= sets the eight secrets from =keystore.properties=; run it again
 after changing a key. Secrets can be replaced but never read back.
