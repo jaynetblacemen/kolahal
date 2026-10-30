@@ -110,6 +110,7 @@ export default defineConfig({
 						{ slug: 'reference/config' },
 						{ slug: 'reference/privacy' },
 						{ slug: 'reference/security' },
+						{ slug: 'reference/faq' },
 					],
 				},
 			],
