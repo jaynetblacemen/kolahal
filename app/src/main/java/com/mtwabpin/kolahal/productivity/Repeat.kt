@@ -37,6 +37,12 @@ object Repeat {
         throw IllegalArgumentException("no date for $rule")
     }
 
+    /** Whether [next] and [label] can work with [rule]: a backup can hold anything, a newer version's rules too. */
+    fun isValid(rule: String): Boolean = runCatching {
+        label(rule)
+        next(rule, LocalTime.NOON, LocalDateTime.of(2028, 1, 1, 0, 0))
+    }.isSuccess
+
     /** `every day`, `every Mon and Thu`, `on the 15th of every month`, `every year on 3 Dec`. */
     fun label(rule: String): String = when {
         rule == "day" -> "every day"
@@ -52,7 +58,7 @@ object Repeat {
     }
 
     private fun days(rule: String): List<DayOfWeek> =
-        rule.split(',').mapNotNull { name -> DayOfWeek.entries.firstOrNull { it.name.lowercase().startsWith(name) } }
+        rule.split(',').filter { it.isNotBlank() }.mapNotNull { name -> DayOfWeek.entries.firstOrNull { it.name.lowercase().startsWith(name) } }
 
     private fun ordinal(n: Int): String = n.toString() + when {
         n % 100 in 11..13 -> "th"

@@ -44,7 +44,8 @@ class PeopleCommands(private val context: Context, private val ui: TerminalUi) {
         val n = args.firstOrNull()?.toIntOrNull()?.coerceIn(1, 200) ?: 20
         val list = CallEvents.recent(context, n)
         if (list.isEmpty()) return info("No calls in the call log")
-        list.reversed().forEach { out(CallEvents.line(it, conf, withDay = true), CallEvents.ctx(it)) }
+        // Call lines, as the ones logged by themselves are: they stay out of backups, and copy as sensitive.
+        list.reversed().forEach { logs.add(LogKind.OUTPUT, CallEvents.line(it, conf, withDay = true), CallEvents.SOURCE, CallEvents.ctx(it)) }
     }
 
     /** Finds [query]'s contact and runs [then] with it; when several match, they're listed instead. */

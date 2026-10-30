@@ -62,12 +62,33 @@ object AutoBackup {
         val tree = folder(context) ?: throw IllegalStateException("no backup folder: run 'backup dir'")
         val dir = DocumentFile.fromTreeUri(context, tree)
         if (dir == null || !dir.canWrite()) throw IllegalStateException("the backup folder can't be written: run 'backup dir'")
-        val name = "kolahal-backup-${LocalDate.now()}.json"
-        val file = dir.findFile(name) ?: dir.createFile("application/json", name) ?: throw IllegalStateException("can't create $name")
-        Backup(context).export(file.uri)
+        // Before any file exists: a backup too big to save leaves nothing behind.
+        val text = Backup(context).text()
+        val saved = saveTo(dir, "kolahal-backup-${LocalDate.now()}.json", Config.get(context)[Keys.BACKUP_KEEP]) { uri ->
+            com.mtwabpin.kolahal.script.Files.writeText(context, uri, text)
+        }
         prefs(context).edit { putLong(KEY_LAST, System.currentTimeMillis()) }
-        val old = expired(dir.listFiles().mapNotNull { it.name }, Config.get(context)[Keys.BACKUP_KEEP]).toSet()
-        dir.listFiles().filter { it.name in old }.forEach { runCatching { it.delete() } }
+        return saved
+    }
+
+    /**
+     * Writes [name] in [dir] with [write], then drops the oldest past [keep]. A file that fails
+     * goes again, and an empty one left by an earlier failure doesn't count as a backup: it
+     * would push a real one out.
+     */
+    internal fun saveTo(dir: DocumentFile, name: String, keep: Int, write: (Uri) -> Unit): String {
+        val existing = dir.findFile(name)
+        val file = existing ?: dir.createFile("application/json", name) ?: throw IllegalStateException("can't create $name")
+        try {
+            write(file.uri)
+        } catch (e: Exception) {
+            if (existing == null) runCatching { file.delete() }
+            throw e
+        }
+        val (empty, real) = dir.listFiles().filter { NAME.matches(it.name.orEmpty()) }.partition { it.length() == 0L }
+        empty.forEach { runCatching { it.delete() } }
+        val old = expired(real.mapNotNull { it.name }, keep).toSet()
+        real.filter { it.name in old }.forEach { runCatching { it.delete() } }
         return file.name ?: name
     }
 

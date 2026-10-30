@@ -57,9 +57,10 @@ where those match.
 
 Not included, because they can't move between phones: the folder picked with `script dir` (a
 storage permission you grant again) and home-screen widgets' live ids (widgets are listed so
-they can be added again). Notification and call lines, the copy of recent notifications kept
-for scripts, and what this phone has seen of its calls and apps stay on the phone (a restore
-keeps the new phone's, so it doesn't log every app as installed). The file can still contain private things
+they can be added again). Notification and call lines, lines with someone's number, lines from a
+private space, the copy of recent notifications kept for scripts, and what this phone has seen of
+its calls and apps stay on the phone (a restore keeps the new phone's, so it doesn't log every app
+as installed). The file can still contain private things
 (notes, the rest of the log), so keep it somewhere safe.
 
 ## Automatic backups

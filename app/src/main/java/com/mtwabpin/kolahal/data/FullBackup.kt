@@ -55,9 +55,10 @@ object FullBackup {
         val scriptNames = ScriptRepository.get(context).all().associate { ScriptRepository.scopeOf(it.id) to it.name }
         val tables = LinkedHashMap<String, Any?>()
         val scriptKv = LinkedHashMap<String, MutableMap<String, String?>>()
+        val serials = privateSerials(context)
         for (t in TABLES) {
             val rows = query(t.db(context), t.name)
-            tables[t.name] = if (t.name == "logs") rows.filterNot(::private) else if (t.name != "kv") rows else rows.filter { row ->
+            tables[t.name] = if (t.name == "logs") rows.filterNot { private(it, serials) } else if (t.name != "kv") rows else rows.filter { row ->
                 val scope = row["scope"] as? String ?: return@filter false
                 // The copy of recent notifications kept for scripts stays on the device.
                 if (scope == KolahalNotificationListener.MIRROR_SCOPE || scope in DEVICE_SCOPES) return@filter false
@@ -108,7 +109,11 @@ object FullBackup {
                 for (row in list) {
                     // A backup from 0.4.1 or before has run headers, which are no longer written.
                     if (t.name == "logs" && LogContext.RUN_HEADER in LogContext.fromJson(row["ctx"] as? String).values) continue
-                    val clean = if (t.name == "logs") withSafeCtx(row) else row
+                    val clean = when (t.name) {
+                        "logs" -> withSafeCtx(row)
+                        "reminders" -> withReadableRepeat(row)
+                        else -> row
+                    }
                     if (db.insertWithOnConflict(t.name, null, values(clean, columns), SQLiteDatabase.CONFLICT_REPLACE) != -1L) rows++
                 }
             }
@@ -183,19 +188,41 @@ object FullBackup {
         }
 
     /**
-     * Notification and call lines hold other people's messages and numbers: they stay on the
-     * device, as do lines from a private space.
+     * Lines with other people's messages and numbers stay on the device: notifications, calls and
+     * anything that carries a number. So do lines from a private space, known by the profile's
+     * serial or, as the space may be locked or gone by now, by the [S] after the app's name.
      */
-    private fun private(row: Map<String, Any?>): Boolean {
+    internal fun private(row: Map<String, Any?>, privateSerials: Set<Long>): Boolean {
         if (row["source"] == com.mtwabpin.kolahal.calls.CallEvents.SOURCE) return true
         val ctx = LogContext.fromJson(row["ctx"] as? String)
-        return ctx.values.containsKey(KolahalNotificationListener.CTX_KEY)
+        if (ctx.values.containsKey(KolahalNotificationListener.CTX_KEY) || ctx.values.containsKey(LogContext.PHONE)) return true
+        if (ctx.userSerial?.let { it in privateSerials } == true) return true
+        return PRIVATE_TAG.containsMatchIn(row["text"] as? String ?: "")
     }
+
+    private val PRIVATE_TAG = Regex(" \\[${com.mtwabpin.kolahal.apps.ProfileKind.PRIVATE.tag}](?= \\S*$|$)", RegexOption.MULTILINE)
+
+    /** The private space's serials, when this phone has one and Kolahal may see it. */
+    private fun privateSerials(context: Context): Set<Long> = runCatching {
+        val launcher = context.getSystemService(android.content.pm.LauncherApps::class.java)
+        val users = context.getSystemService(android.os.UserManager::class.java)
+        val me = android.os.Process.myUserHandle()
+        launcher.profiles
+            .filter { com.mtwabpin.kolahal.apps.AppRepository.kindOf(launcher, it, me) == com.mtwabpin.kolahal.apps.ProfileKind.PRIVATE }
+            .map { users.getSerialNumberForUser(it) }
+            .toSet()
+    }.getOrDefault(emptySet())
 
     /**
      * A restored line must not do more on a tap than the line it claims to be: no commands that
      * run at once, no app shortcuts, and links only to the web, maps or the store.
      */
+    /** A repeat this version can't read: the reminder still fires, once. */
+    private fun withReadableRepeat(row: Map<*, *>): Map<*, *> {
+        val rule = row["repeat_rule"] as? String ?: return row
+        return if (com.mtwabpin.kolahal.productivity.Repeat.isValid(rule)) row else row.toMutableMap().apply { put("repeat_rule", null) }
+    }
+
     private fun withSafeCtx(row: Map<*, *>): Map<*, *> {
         val ctx = LogContext.fromJson(row["ctx"] as? String)
         if (ctx.isEmpty) return row

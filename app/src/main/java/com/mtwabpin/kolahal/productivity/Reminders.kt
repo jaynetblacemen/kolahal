@@ -72,13 +72,17 @@ class ReminderReceiver : BroadcastReceiver() {
                 val store = ReminderStore.get(context)
                 val r = store.byId(id) ?: return@Thread // cancelled meanwhile
                 val rule = r.repeat
-                if (rule == null) {
-                    store.remove(id)
-                } else {
-                    // The same wall-clock time on its next day; a phone off for days skips to the next one ahead.
+                // The same wall-clock time on its next day; a phone off for days skips to the next one ahead.
+                val next = rule?.let {
                     val zone = ZoneId.systemDefault()
                     val fired = Instant.ofEpochMilli(r.at).atZone(zone).toLocalDateTime()
-                    val next = Repeat.next(rule, fired.toLocalTime(), maxOf(fired, LocalDateTime.now(zone))).atZone(zone).toInstant().toEpochMilli()
+                    // A rule it can't read fires this once: thrown from here, it would stop the app at every start.
+                    runCatching { Repeat.next(it, fired.toLocalTime(), maxOf(fired, LocalDateTime.now(zone))).atZone(zone).toInstant().toEpochMilli() }.getOrNull()
+                }
+                if (next == null) {
+                    store.remove(id)
+                    if (rule != null) LogRepository.get(context).add(LogKind.ERROR, "Reminder '${r.text}' had a repeat Kolahal can't read, so it won't come again")
+                } else {
                     store.setAt(id, next)
                     ReminderScheduler.schedule(context, r.copy(at = next))
                 }

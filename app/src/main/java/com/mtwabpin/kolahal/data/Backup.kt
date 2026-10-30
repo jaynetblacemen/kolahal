@@ -29,6 +29,12 @@ class Backup(private val context: Context) {
     private val scripts = ScriptRepository.get(context)
 
     fun export(uri: Uri): Int {
+        Files.writeText(context, uri, text())
+        return scripts.all().size
+    }
+
+    /** The whole backup as a file holds it; throws when it's too big to import again. */
+    internal fun text(): String {
         val all = scripts.all()
         val data = mapOf(
             "kolahal" to VERSION,
@@ -60,8 +66,7 @@ class Backup(private val context: Context) {
             "the backup would be $mb MB, more than the ${Files.MAX_BACKUP_BYTES / (1024 * 1024)} MB a backup can be imported at: " +
                 "lower log.keep-lines or clear the log (clear all), then export again"
         }
-        Files.writeText(context, uri, text)
-        return all.size
+        return text
     }
 
     data class Result(

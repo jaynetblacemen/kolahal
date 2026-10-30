@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.dokar.quickjs.QuickJs
+import com.mtwabpin.kolahal.calls.CallEvents
 import com.mtwabpin.kolahal.apps.AppPrefs
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.script.ScriptLibrary
@@ -247,6 +248,58 @@ class BackupAndLibraryTest {
     }
 
     /** What this phone knows of its own calls and apps stays out of a backup, and a restore keeps it. */
+    /** Other people's messages and numbers, and a private space's apps, stay on the phone. */
+    @Test fun privateLinesStayOutOfBackups() {
+        val logs = LogRepository.get(context)
+        val before = logs.maxId()
+        val file = File(context.cacheDir, "kolahal-backup-private.json")
+        val kept = listOf("Launched bkline-plain", "Launched bkline-work [W]", "bkline-word [Sunday] plans", "bkline-brackets [S]a")
+        kept.forEach { logs.add(LogKind.INFO, it) }
+        logs.add(LogKind.INFO, "Launched bkline-launched [S]")
+        logs.add(LogKind.INFO, "Updated bkline-updated [S] ↻\ncom.example\n1.0", "apps")
+        logs.add(LogKind.INFO, "Uninstalled bkline-gone [S] −", "apps")
+        logs.add(LogKind.OUTPUT, "Call from bkline-call", CallEvents.SOURCE)
+        logs.add(LogKind.INFO, "Dialing bkline-number", ctx = LogContext.of(LogContext.PHONE to "5550100"))
+        try {
+            Backup(context).export(Uri.fromFile(file))
+            val text = file.readText()
+            for (line in kept) assertTrue(line, text.contains(line))
+            for (word in listOf("launched", "updated", "gone", "call", "number")) assertFalse(word, text.contains("bkline-$word"))
+        } finally {
+            logs.recent(50).filter { it.id > before }.forEach { logs.delete(it.id) }
+            file.delete()
+        }
+    }
+
+    /** A private space's line that names no [S]: its profile's serial says so. */
+    @Test fun aPrivateProfilesSerialCountsToo() {
+        val ctx = LogContext.of(LogContext.USER to "11").toJson()
+        val row = mapOf("text" to "Opened something", "source" to null, "ctx" to ctx)
+        assertTrue(FullBackup.private(row, setOf(11L)))
+        assertFalse(FullBackup.private(row, setOf(12L)))
+        assertFalse(FullBackup.private(row, emptySet()))
+    }
+
+    /** A repeat this version can't read must not come back to crash the app when it's due. */
+    @Test fun aReminderRepeatItCantReadComesBackWithoutIt() {
+        val store = com.mtwabpin.kolahal.productivity.ReminderStore.get(context)
+        val good = store.add(System.currentTimeMillis() + 3_600_000, "bkrem-good", "day")
+        val bad = store.add(System.currentTimeMillis() + 3_600_000, "bkrem-bad", "day")
+        try {
+            @Suppress("UNCHECKED_CAST") val data = FullBackup.export(context).toMutableMap()
+            @Suppress("UNCHECKED_CAST") val tables = (data["tables"] as Map<String, Any?>).toMutableMap()
+            @Suppress("UNCHECKED_CAST") val rows = tables["reminders"] as List<Map<String, Any?>>
+            tables["reminders"] = rows.map { if (it["text"] == "bkrem-bad") it + ("repeat_rule" to "biweekly") else it }
+            data["tables"] = tables
+            FullBackup.importRaw(context, data)
+            val back = store.all()
+            assertEquals("day", back.single { it.text == "bkrem-good" }.repeat)
+            assertNull(back.single { it.text == "bkrem-bad" }.repeat)
+        } finally {
+            store.all().filter { it.text.startsWith("bkrem-") }.forEach { store.remove(it.id) }
+        }
+    }
+
     @Test fun thisPhonesRecordsStayOutOfBackups() {
         val packages = KvStore(context, "packages")
         packages.set("bk-device", "this phone")

@@ -1,0 +1,75 @@
+package com.mtwabpin.kolahal.data
+
+import androidx.documentfile.provider.DocumentFile
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.io.File
+import java.io.IOException
+
+/** A failed automatic backup must not cost a real one. */
+@RunWith(AndroidJUnit4::class)
+class AutoBackupFilesTest {
+    private val context = InstrumentationRegistry.getInstrumentation().targetContext
+    private lateinit var folder: File
+    private lateinit var dir: DocumentFile
+
+    @Before fun setUp() {
+        folder = File(context.cacheDir, "autobackup-test").apply { deleteRecursively(); mkdirs() }
+        dir = DocumentFile.fromFile(folder)
+    }
+
+    @After fun tearDown() {
+        folder.deleteRecursively()
+    }
+
+    private fun backup(day: Int, text: String = "backup") =
+        File(folder, "kolahal-backup-2026-10-%02d.json".format(day)).apply { writeText(text) }
+
+    private fun names() = folder.list().orEmpty().sorted()
+
+    /** Six empty files from failed days, then one good day: the real backups all stay. */
+    @Test fun emptyFilesDontPushRealBackupsOut() {
+        val real = (1..3).map { backup(it) }
+        (10..15).forEach { backup(it, "") }
+        val today = backup(20, "")
+        val saved = AutoBackup.saveTo(dir, today.name, keep = 7) { today.writeText("today") }
+        assertEquals(today.name, saved)
+        assertEquals((real + today).map { it.name }, names())
+    }
+
+    @Test fun onlyRealBackupsCountTowardsKeep() {
+        (1..5).forEach { backup(it) }
+        val today = backup(20)
+        AutoBackup.saveTo(dir, today.name, keep = 3) { today.writeText("today") }
+        assertEquals(listOf(backup(4).name, backup(5).name, today.name), names())
+    }
+
+    /** The write fails: no file left behind, whatever was there stays, and the failure still shows. */
+    @Test fun aFailedWriteLeavesNothingNew() {
+        val old = backup(1)
+        try {
+            AutoBackup.saveTo(dir, "kolahal-backup-2026-10-20.json", keep = 7) { throw IOException("disk full") }
+            fail("the failure must reach the caller, to be logged")
+        } catch (e: IOException) {
+            assertEquals("disk full", e.message)
+        }
+        assertEquals(listOf(old.name), names())
+    }
+
+    /** Today's backup, already written, stays when writing it again fails. */
+    @Test fun aFailedWriteKeepsTodaysExistingFile() {
+        val today = backup(20, "earlier today")
+        runCatching { AutoBackup.saveTo(dir, today.name, keep = 7) { throw IOException("disk full") } }
+        assertTrue(today.exists())
+        assertEquals("earlier today", today.readText())
+        assertFalse(names().isEmpty())
+    }
+}
