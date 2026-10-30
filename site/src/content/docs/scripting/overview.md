@@ -75,8 +75,8 @@ Tap a card for **Run**, **Edit**, **Export**, access, notifications, timers and 
 **Add script** writes a new one, or takes one from the library, from
 [the scripts people share](#getting-scripts-from-others) or from a file.
 
-The script's **return value** is printed into the log (tables and objects as JSON). Each line it
-logs ends with the script's name. When a script fails, the error line is
+The script's **return value** is printed into the log (tables and objects as JSON). The first line
+of a run ends with the script's name, unless it's right under the command that ran it. When a script fails, the error line is
 tappable and opens the editor at the failing line.
 
 ### One-liners
@@ -195,7 +195,7 @@ shows them, and the [library](/scripting/library/) scripts carry them too.
 Scripts run in a separate `:script` process, so a crashing engine can't take down the home screen.
 
 - **60 seconds** per run, and a **64 MB** memory cap. In Lua, `string.rep`
-  refuses results over 16 MB, and a run whose memory grows past 256 MB between checks is stopped
+  refuses results over 16 MB, and a run whose memory grows past 128 MB between checks is stopped
   (the script process is restarted).
 - At most **500 log lines** and **256K characters** per run, error lines and each line's link and
   other details included; past either, one line says the rest weren't logged.

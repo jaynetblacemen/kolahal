@@ -24,7 +24,7 @@ more or less of it.
 
 ## Add a widget
 
-Tap **+ add** on the widgets page, open **Settings → Widgets** (or `widgets`) and tap **Add
+Tap **+ Add** on the widgets page, open **Settings → Widgets** (or `widgets`) and tap **Add
 widget**, or go straight to the picker from the prompt with `widget add`.
 
 The picker lists every installed widget, grouped by app, with its preview and default size

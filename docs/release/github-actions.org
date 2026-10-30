@@ -37,7 +37,7 @@ looking at (the run's *Artifacts*), not for installing over a release.
 5. *Checks the signatures*: both APKs must be signed, with the release key when the
    =RELEASE_CERT_SHA256= variable is set ([[file:signing.org][signing.org]]); the bundle must be signed, and not with
    a debug key. The run's summary lists each file's certificate.
-6. *Packages*: =kolahal-X.Y.Z.apk=, =kolahal-X.Y.Z-mapping.zip= (R8's names for both builds, for
+6. *Packages*: =kolahal-X.Y.Z.apk=, =kolahal-X.Y.Z-play.apk=, =kolahal-X.Y.Z-mapping.zip= (R8's names for both builds, for
    reading crash traces with =retrace=) and the notes, with a last line naming the commit both
    APKs and the bundle are built from.
 7. *Publishes the GitHub release* with both APKs and the mapping zip, marked as the latest.

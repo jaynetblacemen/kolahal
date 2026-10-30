@@ -176,7 +176,7 @@ So the ViewModel /asks/ and the Activity /does/:
 3. The dialog's result comes back to =MainActivity=, which calls =vm.onContactsPermission(granted)=.
 
 Look at the block of =registerForActivityResult= declarations at the top of [[src:MainActivity.kt::class MainActivity][MainActivity]]:
-every one of them ends in a =vm.something(...)= call. That's this pattern, eleven times over.
+every one of them ends in a =vm.something(...)= call. That's this pattern, thirteen times over.
 
 ** Why a ViewModel at all, if Kolahal handles rotation itself?
 
@@ -320,7 +320,7 @@ is Kolahal's replacement for a dependency-injection framework.
 | =SharedPreferences= "config" | every user setting                                                 | [[src:data/Config.kt::class Config private constructor][data/Config.kt]]                                 |
 | other =SharedPreferences=    | aliases, hidden/renamed apps, launch history, widgets, log markers | =AppPrefs=, =WidgetHost=, =LogRepository=, ... |
 | =kv= table                   | per-script key/value store, script status lines in the header      | [[src:data/KvStore.kt::class KvStore][data/KvStore.kt]]                                |
-| memory only                  | recent notifications                                               | [[src:notifications/NotificationStore.kt::object NotificationStore][notifications/NotificationStore.kt]]             |
+| memory only                  | recent notifications (with a copy in =kv= for scripts)             | [[src:notifications/NotificationStore.kt::object NotificationStore][notifications/NotificationStore.kt]]             |
 
 *** Settings, a small complete example
 
@@ -332,7 +332,7 @@ prompt, its suggestions, and backups all work from that one list (=Keys.ALL=).
 
 ** ViewModel layer: =TerminalViewModel=
 
-[[src:terminal/TerminalViewModel.kt::class TerminalViewModel][terminal/TerminalViewModel.kt]] (about 1100 lines) is the only ViewModel. =MainActivity=
+[[src:terminal/TerminalViewModel.kt::class TerminalViewModel][terminal/TerminalViewModel.kt]] (about 1800 lines) is the only ViewModel. =MainActivity=
 creates it with =private val vm: TerminalViewModel by viewModels()= and passes it to every
 screen.
 
@@ -386,7 +386,7 @@ cancelling any reload still in progress.
 
 *** Helpers with narrow interfaces
 
-A 1100-line class stays manageable because the heavy logic lives in helpers, and each helper
+An 1800-line class stays manageable because the heavy logic lives in helpers, and each helper
 declares exactly what it needs from the ViewModel as a small interface:
 
 | Helper           | Job                                                      | What it asks of the ViewModel                     |
@@ -647,8 +647,8 @@ Outside =main=:
 
 | Path                               | What                                                                                                  |
 |------------------------------------+-------------------------------------------------------------------------------------------------------|
-| =app/src/test/=                    | about 340 JVM unit tests: fast, no phone needed                                                       |
-| =app/src/androidTest/=             | about 330 on-device tests (commands, script engines, backup, the screens)                             |
+| =app/src/test/=                    | about 360 JVM unit tests: fast, no phone needed                                                       |
+| =app/src/androidTest/=             | about 380 on-device tests (commands, script engines, backup, the screens)                             |
 | =app/src/play/AndroidManifest.xml= | removes the accessibility service, =READ_CALL_LOG= and =READ_CONTACTS= for the =play= build           |
 | =app/src/release/generated/=       | baseline profiles (pre-compiled start-up code)                                                        |
 | =baselineprofile/=                 | the module that generates those profiles                                                              |
@@ -664,7 +664,7 @@ from "fixing" deliberate choices, and from copying shortcuts where they don't fi
 1. *One ViewModel for every screen.* The textbook gives each screen its own. Here, the
    terminal, Settings, Scripts and Feeds pages share =TerminalViewModel=. The upside is that
    shared state (config, scripts, the notice line, the back stack) needs no plumbing; the cost
-   is a 1100-line file. The helpers with narrow interfaces (Part 3) are how it stays readable.
+   is an 1800-line file. The helpers with narrow interfaces (Part 3) are how it stays readable.
 
 2. *Some screens reach the Model directly.* [[src:ui/FeedsScreen.kt::val repo = remember { FeedRepository.get(context) }][FeedsScreen]] uses =FeedRepository= itself and
    loads its lists with =produceState=; =TerminalScreen= calls =config.set(...)= directly for
@@ -695,8 +695,8 @@ From the repository root:
 #+begin_src sh
 ./gradlew assembleDebug                 # debug APK (package com.mtwabpin.kolahal.debug)
 ./gradlew installDebug                  # build and install on the connected device
-./gradlew assembleRelease               # R8-minified release, signed with the debug key
-./gradlew bundlePlay                    # Google Play: release without accessibility service, notification listener, call log
+./gradlew assembleRelease               # R8-minified release, signed with the release key (the debug key without one)
+./gradlew bundlePlay                    # Google Play: release without accessibility service, call log, reading contacts
 ./gradlew :app:testDebugUnitTest        # the JVM unit tests (fast)
 ANDROID_SERIAL=emulator-5554 ./gradlew connectedDebugAndroidTest   # on-device tests
 ./gradlew :app:lintRelease              # Android lint
@@ -806,4 +806,4 @@ functions is the quickest way to learn what they promise.
 | =@on=, =@uses= | script directives: run on a device event; declare access to private data or the local network            |
 | fresh screen   | =log.fresh=: home hides old output after a while away (hidden, not deleted)                              |
 | instant run    | =launch.instant=: run without Enter once the input can only mean one thing                               |
-| Play build     | the build for Google Play, without the accessibility service and the call log                            |
+| Play build     | the build for Google Play, without the accessibility service, the call log and reading contacts                            |

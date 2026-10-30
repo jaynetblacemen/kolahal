@@ -69,7 +69,7 @@ and `3(4+5)` multiply. Anything else after `=` is evaluated as a **Lua expressio
 
 | Kind | Units |
 | --- | --- |
-| length | `mm` `cm` `m` `km` `in` `ft` `yd` `mi` `nmi` |
+| length | `mm` `cm` `m` `km` `inch` `ft` `yd` `mi` `nmi` |
 | mass | `mg` `g` `kg` `t` `oz` `lb` `st` |
 | volume | `ml` `l` `tsp` `tbsp` `cup` `floz` `pt` `gal` |
 | speed | `m/s` `km/h` (`kmh`, `kph`) `mph` `kn` |

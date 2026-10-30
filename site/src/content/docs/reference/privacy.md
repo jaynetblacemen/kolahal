@@ -12,12 +12,13 @@ settings, scripts, feeds and notifications are stored in the app's private stora
 
 Kolahal itself makes network requests in exactly four cases:
 
-1. **Scripts** you write or install, through `http.*` and `rss.*`. They talk only to the URLs in
+1. **Scripts** you write or install, through `http.*` and `rss.*`, and the picture a line of theirs
+   names (`image`), which home fetches when the line shows. They talk only to the URLs in
    their code. The [library scripts](/scripting/library/) use wttr.in, Open-Meteo,
    CoinGecko, open.er-api.com, api.ipify.org, Wikipedia, xkcd.com, ZenQuotes, Reddit, GitHub
-   and hnrss.org. Requests carry a `User-Agent` of `Kolahal-Launcher/0.1` unless the
-   script sets its own. A script has the internet only if its code makes requests or puts links
-   on its lines, and you can switch it off
+   and hnrss.org. Requests carry a `User-Agent` of `Kolahal-Launcher/0.1 (+https://github.com/mtwabpin)` unless the
+   script sets its own. A script has the internet only if its code makes requests, puts links
+   on its lines or runs commands, and you can switch it off
    ([switching access off](/scripting/overview/#switching-access-off)).
 2. **Feeds** you subscribe to: one request per feed when it is due.
 3. **Currency conversion** with `= 100 usd in eur`: a request to open.er-api.com for the base
@@ -69,6 +70,7 @@ Declared in the manifest:
 | `ACCESS_LOCAL_NETWORK` | Android 17 and newer: scripts with `@uses lan` and feeds on your own network (a home server, a router page). Asked for with `local-network`; optional |
 | `ACCESS_NETWORK_STATE` | the `net` item in the header and `device.network()` |
 | `READ_CONTACTS` | `call`, `sms` and `contacts` name matching. Asked for on first use; optional. Not in the Play build |
+| `READ_CALL_LOG` | calls in the log, and `calls`. Asked for on first use; optional. Not in the Play build |
 | `READ_CALENDAR` | `agenda` lists upcoming events. Asked for on first use; optional; nothing leaves the device |
 | `SET_ALARM` | `timer` and `alarm` hand the timer or alarm to your clock app |
 | `SCHEDULE_EXACT_ALARM` | `remind` and scripts' daily times fire on time (Android 12+ lets you turn it off; they may then be up to an hour late) |
@@ -83,11 +85,14 @@ Declared in the manifest:
 | `ACCESS_NOTIFICATION_POLICY` | lists Kolahal on the Do Not Disturb access page, for `dnd`, `ring silent` and scripts with `@uses dnd` (you still grant it) |
 | `WRITE_SETTINGS` | "Modify system settings", which you grant in Settings: `brightness`, `rotate`, `screen-timeout` |
 | `ACCESS_WIFI_STATE` | whether Wi-Fi is on, for `toggles` |
+| `WAKE_LOCK` | keeps the phone awake for a script's daily time while it runs (Android's work scheduler uses it too) |
+| `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` | added by AndroidX, private to Kolahal: keeps its own broadcasts from other apps |
 
 `torch` needs no camera permission: it only switches the flash.
 
 Kolahal also asks Android for the list of launchable apps (a `<queries>` entry for launcher
-activities). That's needed to show your apps at all.
+activities), which it needs to show your apps at all, and for the apps with widgets, for the widget
+picker.
 
 ## Special access you can grant
 

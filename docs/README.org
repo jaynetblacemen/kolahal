@@ -20,5 +20,6 @@ Reports from users:
   (=site/src/content/docs/reference/security.md=) tells reporters how, and what counts.
 - Bugs and ideas come through the issue forms in =.github/ISSUE_TEMPLATE/= (=bug_report.yml=,
   =feature_request.yml=); questions go to the
-  Discord server, whose invite is in =ui/About.kt= (=DISCORD_URL=), =site/astro.config.mjs=,
-  =README.org= and =.github/ISSUE_TEMPLATE/config.yml=: change all four together.
+  Discord server, whose invite is in =ui/About.kt= (=DISCORD_URL=), =site/astro.config.mjs=, the
+  website's =index.mdx= and =getting-started/play-testing.md=, =README.org=, and
+  =.github/ISSUE_TEMPLATE/config.yml= and =feature_request.yml=: change all seven together.

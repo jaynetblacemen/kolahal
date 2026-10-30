@@ -50,8 +50,8 @@ means a table with those keys in Lua and an object with those properties in JS.
 ### log(title, body?, ctx?)
 
 Appends a line to the log. `title` shows in bold, in
-the script's colour (the link colour with a `url`), with the script's name at the end, muted
-(`… · weather`). `body`, if given, shows muted under it, over as many lines as it holds. Every
+the script's colour (the link colour with a `url`). A run's first line ends with the script's name,
+muted (`… · weather`), unless it's right under the command that ran it. `body`, if given, shows muted under it, over as many lines as it holds. Every
 line a script logs is a title: to log several, call `log` for each, or use [`logs`](#logstitles).
 `log(title, ctx)` works too, without a body.
 `ctx` is an optional table / object of strings that decides what tapping and long-pressing do:
@@ -231,8 +231,8 @@ status(null);
 Whether this script may use `what`: `"internet"`, `"header"`, `"notifications"`, `"apps"`,
 `"clipboard"`, `"lan"`, `"commands"`, `"dnd"`, `"work"` or an `@on` event such as `"unlock"`. You switch these per script
 ([switching access off](/scripting/overview/#switching-access-off)); with one off, a script can do
-something else instead. A script has `"internet"` only if its code uses `http`, `rss`, `url` or
-`image`, and `"header"` only if it calls `status`. Code typed at the prompt gets `true` for everything.
+something else instead. A script has `"internet"` only if its code uses `http`, `rss`, `url`,
+`image` or `launcher.run`, and `"header"` only if it calls `status`. Code typed at the prompt gets `true` for everything.
 
 <Tabs syncKey="lang">
 <TabItem label="Lua">
@@ -256,11 +256,11 @@ copies it). A one-liner run with `lua` / `js` that produces nothing prints `nil`
 
 Responses are `{ status, ok, body, headers }`: the numeric status, `ok` for 2xx, the body as a string
 (read up to 4 MB) and response headers with lowercase names. A `User-Agent` of
-`Kolahal-Launcher/0.1` is sent unless you set your own. Network errors raise an error (Lua) or
+`Kolahal-Launcher/0.1 (+https://github.com/mtwabpin)` is sent unless you set your own. Network errors raise an error (Lua) or
 reject the promise (JS). An HTTP error status does **not**, so check `ok`. Plain `http://` URLs are
 allowed. Requests to this phone or your local network (a router, a home
 server, a VPN address like Tailscale's 100.x) need `@uses lan`; without it they fail, even after a
-redirect. A JavaScript run makes at most 4 requests at a time; more wait their turn.
+redirect. A JavaScript run makes at most 4 requests at a time; more wait their turn, and with 64 requests and sleeps waiting at once, another call fails.
 
 ### http.get(url, headers?)
 
@@ -389,8 +389,8 @@ Persistent strings, private to each script. `store.get` returns `nil` / `null` f
 `store.set(key, nil)` deletes it. Store anything structured as JSON. Deleting a script deletes its
 store; one-liners typed at the prompt share one scratch store. A value holds up to 1 MB and a key
 up to 512 characters, and a script's store up to 1,000 keys and 16 MB, keys included, counted as
-stored (an accented letter or a CJK character takes more than one byte); past that `store.set`
-raises "store full". It refuses a secret: a store goes into backups.
+stored (an accented letter or a CJK character takes more than one byte); past those `store.set`
+raises an error ("value too large", "key too long" or "store full"). It refuses a secret: a store goes into backups.
 
 <Tabs syncKey="lang">
 <TabItem label="Lua">

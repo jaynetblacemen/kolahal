@@ -3,7 +3,7 @@ title: Commands
 description: Every built-in Kolahal command with its usage, aliases and subcommands.
 ---
 
-This is the full list from `help`, in the same groups. Anything that isn't a command, an
+This is the full list, in about the same groups as `help`. Anything that isn't a command, an
 [alias](/guides/apps/#aliases) or a [script command](/scripting/overview/#command-scripts)
 is matched against app names. Arguments in `<angle brackets>` are required, `[square brackets]`
 optional, and `a|b` means one of.
@@ -63,7 +63,7 @@ optional, and `a|b` means one of.
 | `feed rm <id>` | unsubscribe and delete its items |
 | `feed fetch [id]` | refresh now (alias `refresh`) |
 | `feed read [id]` | show unread items, then mark them read |
-| `feed all [id]` | show all stored items |
+| `feed all [id]` | show the 40 newest stored items, read or not |
 | `feed open [id]` | open up to 5 unread items in the browser and mark them read |
 | `feed notify <id> on\|off` | notifications for new items |
 | `feed every <id> <30m\|2h\|…>` | check interval (minimum 15m) |

@@ -44,7 +44,7 @@ Every row is optional. Kolahal works without any of them, with the limits listed
 | **Usage access** | `usage-access` | Accurate unlock counts (from `KEYGUARD_HIDDEN` usage events), including unlocks while the launcher wasn't running, and `usage` screen time. Without it, unlocks are counted with an `ACTION_USER_PRESENT` receiver, which misses unlocks while the launcher isn't running. |
 | **Notifications** | `notifications` | Lets scripts and feeds post notifications (Android 13+ asks at runtime). |
 | **Notification access** | `notifs enable` | Shows your notifications in the terminal (`notifs`) and gives scripts `notifications.recent()`. |
-| **Double-tap to lock** | `accessibility` | An optional accessibility service whose only job is locking the screen, for the double-tap gesture and the `lock` command. It subscribes to no events and reads no window content. |
+| **Double-tap to lock** | `accessibility` | An optional accessibility service whose only job is locking the screen, for the double-tap gesture and the `lock` command. It receives no events and reads no window content. |
 | **Do Not Disturb access** | `dnd access` | Optional. Lets `dnd`, `ring silent` and scripts with `@uses dnd` (such as [night-dnd](/scripting/library/#night-dnd)) change Do Not Disturb. See [Media and device controls](/guides/media-and-controls/). |
 | **Modify system settings** | `brightness access` | Optional. Lets `brightness`, `rotate` and `screen-timeout` change system settings. |
 | **Contacts** | `contacts --allow` | Optional. `call`, `sms` and `contacts` find people by name, with your contacts as suggestions. The full build only: the Play build uses Android's contact picker and asks for nothing. See [People](/guides/people/). |

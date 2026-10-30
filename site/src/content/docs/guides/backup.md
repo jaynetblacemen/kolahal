@@ -20,7 +20,7 @@ the system file picker. It contains:
   with their items and read state, each script's `store` values, the whole log and ↑ history,
   app launch history (frecency), unlock history, notification and trigger settings.
 
-It's plain JSON, so you can edit it on a computer. **Import from file** loads it on any phone.
+It's plain JSON, so you can edit it on a computer. **Import a backup** loads it on any phone.
 
 ```json
 { "kolahal": 2,
@@ -44,7 +44,7 @@ On import:
 - **New scripts arrive switched off**, so you can review them before they run on a timer. Scripts
   that already exist (same name and language) keep their `enabled` flag only if their code is
   unchanged: new code arrives switched off too. Scripts named like a built-in
-  command or one of your apps are skipped.
+  command are skipped.
 - Restored log lines keep their text but can't run commands or app shortcuts
   when tapped, and keep only web, map and store links.
 - The result names the settings worth a look: a custom search address and
