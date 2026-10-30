@@ -1047,9 +1047,9 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         _editLine.value = null
         _editing.value = null
         if (script != null && unsaved != null) io {
-            scripts.saveCode(script.id, unsaved, byUser = true)
+            val changed = saveCode(script, unsaved)
             refreshScriptCaches()
-            notice("Saved ${script.name}.${script.lang.ext}")
+            notice(listOfNotNull("Saved ${script.name}.${script.lang.ext}", changed).joinToString(" · "))
         }
     }
 

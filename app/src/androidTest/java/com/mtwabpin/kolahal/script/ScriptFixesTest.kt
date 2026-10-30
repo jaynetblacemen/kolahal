@@ -114,6 +114,28 @@ class ScriptFixesTest {
         }
     }
 
+    /** Closing the editor with unsaved text saves it as Save does, timers and all. */
+    @Test fun closingTheEditorAppliesItsTimers() {
+        val name = "sfclose${System.nanoTime() % 1_000_000}"
+        val s = scripts.create(name, ScriptLang.LUA, "log(1)")
+        lateinit var vm: TerminalViewModel
+        instrumentation.runOnMainSync { vm = TerminalViewModel(app, SavedStateHandle()) }
+        fun close(code: String) = instrumentation.runOnMainSync {
+            vm.openEditorAt(scripts.byId(s.id)!!, null)
+            vm.closeEditor(code)
+        }
+        try {
+            close("-- @every 1h\n-- @at 7:00\nlog(1)")
+            waitUntil("timers set") { scripts.byId(s.id)!!.intervalMin == 60 && scripts.byId(s.id)!!.atTimes == listOf("07:00") }
+            waitUntil("says so") { vm.notice.value?.text == "Saved $name.lua · runs every 1h · daily at 07:00" }
+            close("log(3)")
+            waitUntil("timers off") { scripts.byId(s.id)!!.intervalMin == 0 && scripts.byId(s.id)!!.atTimes.isEmpty() }
+        } finally {
+            ScriptScheduler.cancel(app, s.id)
+            scripts.delete(s.id)
+        }
+    }
+
     @Test fun dailyTimesSwitchAScriptOn() {
         val s = scripts.create("sftimes", ScriptLang.LUA, "return 1", enabled = false)
         lateinit var vm: TerminalViewModel

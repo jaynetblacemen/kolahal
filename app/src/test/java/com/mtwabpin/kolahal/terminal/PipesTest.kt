@@ -4,8 +4,10 @@ import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
 import com.mtwabpin.kolahal.data.LogRepository.Pending
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
 
 class PipesTest {
     private fun lines(vararg t: String) = t.mapIndexed { i, s -> Pending(LogKind.OUTPUT, s, null, LogContext.EMPTY, i.toLong()) }
@@ -23,11 +25,45 @@ class PipesTest {
         assertEquals("bad regex falls back to a literal", listOf("a(b"), run("grep a(", "a(b", "ab"))
     }
 
-    @Test fun aRunawayGrepPatternGivesUp() {
-        val started = System.currentTimeMillis()
-        val result = Pipes.apply(lines("a".repeat(28) + "!"), Pipes.split("x | grep (.*a){12}x").drop(1))
-        assertTrue("fails instead of hanging", result.isFailure)
-        assertTrue("within a few seconds", System.currentTimeMillis() - started < 5_000)
+    /** A quick match gives its result; one that fails says why. */
+    @Test fun aMatchWithinTheLimit() {
+        val limit = MatchLimit(ms = 5_000, maxThreads = 2)
+        assertEquals(2, limit.run { 1 + 1 })
+        val failure = assertThrows(IllegalStateException::class.java) { limit.run<Int> { error("broken") } }
+        assertEquals("broken", failure.message)
+    }
+
+    /** The real regex engine is native, so `GrepOnDeviceTest` runs a real pattern: this one just takes too long. */
+    @Test fun aSlowMatchStopsBeingWaitedFor() {
+        val release = CountDownLatch(1)
+        val limit = MatchLimit(ms = 50, maxThreads = 2)
+        try {
+            val started = System.currentTimeMillis()
+            val failure = assertThrows(IllegalArgumentException::class.java) { limit.run { release.await() } }
+            assertTrue(failure.message!!, "too slow" in failure.message!!)
+            assertTrue("not left waiting", System.currentTimeMillis() - started < 5_000)
+        } finally {
+            release.countDown()
+        }
+    }
+
+    /** A native match can't be stopped, so slow ones can't pile up; as they end, there's room again. */
+    @Test fun slowMatchesCantPileUp() {
+        val release = CountDownLatch(1)
+        val limit = MatchLimit(ms = 50, maxThreads = 2)
+        try {
+            repeat(2) { assertThrows(IllegalArgumentException::class.java) { limit.run { release.await() } } }
+            val refused = assertThrows(IllegalArgumentException::class.java) { limit.run { 1 } }
+            assertTrue(refused.message!!, "still running" in refused.message!!)
+        } finally {
+            release.countDown()
+        }
+        var result: Result<Int>
+        val until = System.currentTimeMillis() + 5_000
+        do {
+            result = runCatching { limit.run { 1 } }
+        } while (result.isFailure && System.currentTimeMillis() < until)
+        assertEquals(1, result.getOrThrow())
     }
 
     @Test fun headTailCountSortUniq() {
