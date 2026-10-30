@@ -64,6 +64,26 @@ class AboutTest {
         assertEquals("https://mtwabpin.github.io/kolahal/", view.dataString)
     }
 
+    @Test fun sourceOpensGitHub() {
+        val phone = Catching(context)
+        assertTrue(openLink(phone, SOURCE_URL))
+        val view = phone.started.single()
+        assertEquals(Intent.ACTION_VIEW, view.action)
+        assertEquals("https://github.com/mtwabpin/kolahal", view.dataString)
+    }
+
+    /** The share sheet with all of the report, to no one in particular. */
+    @Test fun aCrashReportGoesToTheShareSheet() {
+        val chooser = crashReportShare("the report")
+        assertEquals(Intent.ACTION_CHOOSER, chooser.action)
+        @Suppress("DEPRECATION") val send = chooser.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
+        assertEquals(Intent.ACTION_SEND, send.action)
+        assertEquals("text/plain", send.type)
+        assertEquals("the report", send.getStringExtra(Intent.EXTRA_TEXT))
+        assertEquals("Kolahal crash report", send.getStringExtra(Intent.EXTRA_SUBJECT))
+        assertFalse(send.hasExtra(Intent.EXTRA_EMAIL))
+    }
+
     /** Under the message someone writes: what the developer needs to know about the phone. */
     @Test fun phoneDetailsFollowTheMessage() {
         val details = aboutThisPhone()

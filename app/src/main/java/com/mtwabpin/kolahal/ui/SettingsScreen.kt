@@ -368,6 +368,9 @@ fun SettingsScreen(
                             Action(R.drawable.ic_forum, "Discord", "Questions, ideas and help from other people using Kolahal") {
                                 if (!openLink(context, DISCORD_URL)) tapScope.launch { snackbar.showSnackbar("No app to open $DISCORD_URL") }
                             },
+                            Action(R.drawable.ic_code, "Source code", "Kolahal on GitHub") {
+                                if (!openLink(context, SOURCE_URL)) tapScope.launch { snackbar.showSnackbar("No browser to open $SOURCE_URL") }
+                            },
                             Action(R.drawable.ic_bug, "Crash reports", kept, chevron = true) { openId = CRASHES_PAGE },
                             Action(R.drawable.ic_mail, "Email the developer", DEVELOPER_EMAIL) {
                                 if (!emailDeveloper(context, VERSION_TEXT, aboutThisPhone())) {
@@ -394,6 +397,11 @@ fun SettingsScreen(
                 onEmail = {
                     if (!emailDeveloper(context, "$VERSION_TEXT: ${c.title}", c.report.text())) {
                         tapScope.launch { snackbar.showSnackbar("No app on this phone can send email") }
+                    }
+                },
+                onShare = {
+                    if (runCatching { context.startActivity(crashReportShare(c.report.text())) }.isFailure) {
+                        tapScope.launch { snackbar.showSnackbar("No app on this phone can share it") }
                     }
                 },
                 onDelete = {

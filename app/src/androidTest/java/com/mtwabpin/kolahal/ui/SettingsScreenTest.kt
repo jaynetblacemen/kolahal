@@ -1,6 +1,8 @@
 package com.mtwabpin.kolahal.ui
 
 import android.app.Application
+import android.app.Instrumentation
+import android.content.Intent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -301,6 +303,59 @@ class SettingsScreenTest {
         compose.waitUntil(5_000) { compose.onAllNodesWithText("second sttest", substring = true).fetchSemanticsNodes().isEmpty() }
         assertEquals(listOf("IllegalStateException: first sttest"), CrashReports.list(app).map { it.text().lines()[6] })
         compose.onNodeWithText("first sttest", substring = true).assertExists()
+    }
+
+    /** Catches the activities [action] would start, instead of opening them. */
+    private class Catch(private val action: String) : Instrumentation.ActivityMonitor() {
+        val intents = java.util.concurrent.CopyOnWriteArrayList<Intent>()
+        override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult? {
+            if (intent.action != action) return null
+            intents += intent
+            return Instrumentation.ActivityResult(0, null)
+        }
+    }
+
+    private fun catching(action: String, block: (Catch) -> Unit) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val catch = Catch(action)
+        instrumentation.addMonitor(catch)
+        try { block(catch) } finally { instrumentation.removeMonitor(catch) }
+    }
+
+    /** About: Source code opens Kolahal's page on GitHub. */
+    @Test fun aboutOpensTheSourceCode() = catching(Intent.ACTION_VIEW) { browser ->
+        show(null)
+        compose.onNode(hasScrollToKeyAction()).performScrollToKey("about")
+        compose.onNodeWithText("Source code").performClick()
+        compose.waitUntil(5_000) { browser.intents.isNotEmpty() }
+        assertEquals(SOURCE_URL, browser.intents.single().dataString)
+    }
+
+    /** A report's sheet: Share comes after Email and hands over the whole report, which stays kept. */
+    @Test fun aCrashReportCanBeShared() = catching(Intent.ACTION_CHOOSER) { sheet ->
+        CrashReports.clear(app)
+        crashReport("20261022-090000", "IllegalStateException: shared sttest")
+        show(null)
+        compose.onNode(hasScrollToKeyAction()).performScrollToKey("about")
+        waitForText("1 report kept on this phone")
+        compose.onNode(hasText("Crash reports") and hasText("1 report kept on this phone")).performClick()
+        waitForText("shared sttest", substring = true)
+        compose.onNodeWithText("shared sttest", substring = true).performClick()
+
+        val email = compose.onNodeWithText("Email the developer").getUnclippedBoundsInRoot()
+        val share = compose.onNodeWithText("Share").assertIsDisplayed().getUnclippedBoundsInRoot()
+        val delete = compose.onNodeWithText("Delete").getUnclippedBoundsInRoot()
+        assertTrue("$email, $share", share.left > email.left || share.top > email.top)
+        assertTrue("$share, $delete", delete.left > share.left || delete.top > share.top)
+
+        compose.onNodeWithText("Share").performClick()
+        compose.waitUntil(5_000) { sheet.intents.isNotEmpty() }
+        @Suppress("DEPRECATION") val send = sheet.intents.single().getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
+        val report = send.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
+        assertTrue(report, "IllegalStateException: shared sttest" in report && "at a.b(c:1)" in report)
+        assertEquals(1, CrashReports.list(app).size)
+        // The sheet stays, so the report can be deleted once sent.
+        compose.onNodeWithText("Delete").assertExists()
     }
 
     /** Your themes: made themes join the theme strip and the list, and open in the builder. */

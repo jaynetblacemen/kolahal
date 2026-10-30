@@ -39,6 +39,8 @@ import com.mtwabpin.kolahal.R
 internal const val GUIDE_URL = "https://mtwabpin.github.io/kolahal/"
 /** The community's Discord server: questions, ideas and help from other people using Kolahal. */
 internal const val DISCORD_URL = "https://discord.gg/3D25w6gXR5"
+/** Kolahal's source code on GitHub, where bugs and ideas are reported too. */
+internal const val SOURCE_URL = "https://github.com/mtwabpin/kolahal"
 internal const val DEVELOPER_EMAIL = "mtwabpin@gmail.com"
 
 /** The page id (in [com.mtwabpin.kolahal.terminal.TerminalViewModel.settingsCategory]) of the crash list. */
@@ -83,14 +85,23 @@ internal fun emailDeveloper(context: Context, subject: String, body: String): Bo
     }
 }
 
+/** The share sheet with a crash report in it: email, a chat, or anywhere that takes text. */
+internal fun crashReportShare(report: String): Intent =
+    Intent.createChooser(
+        Intent(Intent.ACTION_SEND).setType("text/plain")
+            .putExtra(Intent.EXTRA_SUBJECT, "Kolahal crash report")
+            .putExtra(Intent.EXTRA_TEXT, report),
+        "Share the crash report",
+    )
+
 /** What the developer needs to know about the phone, under a message the user writes. */
 internal fun aboutThisPhone(): String =
     "\n\n--\n$VERSION_TEXT · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.MANUFACTURER} ${Build.MODEL}"
 
-/** A tapped crash report: email it to the developer, or delete it. */
+/** A tapped crash report: email it to the developer, share it, or delete it. */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-internal fun CrashSheet(crash: CrashRow, onDismiss: () -> Unit, onEmail: () -> Unit, onDelete: () -> Unit) {
+internal fun CrashSheet(crash: CrashRow, onDismiss: () -> Unit, onEmail: () -> Unit, onShare: () -> Unit, onDelete: () -> Unit) {
     val state = rememberBottomSheetState(SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -108,8 +119,8 @@ internal fun CrashSheet(crash: CrashRow, onDismiss: () -> Unit, onEmail: () -> U
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "The email holds the whole report: the app and Android versions, the phone model and the error. " +
-                    "Your mail app opens with it, and nothing is sent until you send it.",
+                "Email and Share hold the whole report: the app and Android versions, the phone model and the error. " +
+                    "The other app opens with it, and nothing is sent until you send it.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
             )
@@ -119,6 +130,11 @@ internal fun CrashSheet(crash: CrashRow, onDismiss: () -> Unit, onEmail: () -> U
                     Icon(painterResource(R.drawable.ic_mail), null, Modifier.size(ButtonDefaults.IconSize))
                     Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                     Text("Email the developer")
+                }
+                OutlinedButton(onClick = onShare) {
+                    Icon(painterResource(R.drawable.ic_share), null, Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text("Share")
                 }
                 OutlinedButton(onClick = onDelete) {
                     Icon(painterResource(R.drawable.ic_delete), null, Modifier.size(ButtonDefaults.IconSize))
@@ -138,8 +154,8 @@ internal fun LazyListScope.crashReportsPage(
 ) {
     item(key = "crashes:about") {
         Text(
-            "Kolahal keeps its last 10 crash reports on this phone. Tap one to email it to the developer " +
-                "or delete it.",
+            "Kolahal keeps its last 10 crash reports on this phone. Tap one to email it to the developer, " +
+                "share it or delete it.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),

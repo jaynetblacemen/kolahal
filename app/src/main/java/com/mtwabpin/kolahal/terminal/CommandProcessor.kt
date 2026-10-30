@@ -129,6 +129,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "widget" -> widgets(args)
                 "notifs", "notifications-feed" -> feedCommands.notifs(args)
                 "url", "web" -> openUrl(rest)
+                "source" -> openUrl(com.mtwabpin.kolahal.ui.SOURCE_URL)
                 "search", "g" -> search(rest)
                 "yt", "youtube" -> search(rest, "youtube")
                 "wiki" -> search(rest, "wikipedia")
@@ -463,10 +464,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                     which.toIntOrNull() != null -> reports.getOrNull(which.toInt() - 1)
                     else -> reports.firstOrNull { it.id == which }
                 } ?: return error(if (reports.isEmpty()) "No crash reports" else "No crash report $which (crashes lists them)")
-                val send = Intent(Intent.ACTION_SEND).setType("text/plain")
-                    .putExtra(Intent.EXTRA_SUBJECT, "Kolahal crash report")
-                    .putExtra(Intent.EXTRA_TEXT, r.text())
-                startActivity(Intent.createChooser(send, "Share the crash report"))
+                startActivity(com.mtwabpin.kolahal.ui.crashReportShare(r.text()))
             }
             "clear" -> com.mtwabpin.kolahal.CrashReports.clear(context).let { n ->
                 info(if (n == 1) "Deleted 1 crash report" else "Deleted $n crash reports")
@@ -639,6 +637,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("private", "private [on|off|status]", "Lock / unlock private space"),
             CommandSpec("unlocks", "unlocks [<days>]", "Unlock counts"),
             CommandSpec("fetch", "fetch", "This phone and Kolahal at a glance, fastfetch style"),
+            CommandSpec("source", "source", "Open Kolahal's source code on GitHub"),
             CommandSpec("script", "script <sub> <name>", "Subcommands: ls lib install get new edit run every at notify on off access allow deny secret set triggers mv rm cat diff dir export import"),
             CommandSpec("=", "= <expr>", "Calculator · = 15% of 80 · = 5 km in mi · = 100 usd in eur"),
             CommandSpec("lua", "lua <code>", "Evaluate Lua 5.4"),
@@ -748,7 +747,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
             "terminal" to listOf("help", "history", "clear", "fresh", "restart", "alias", "unalias", "config", "theme", "font", "backup", "echo", "date", "cal"),
             "widgets" to listOf("widgets", "widget"),
-            "device" to listOf("settings", "setup", "tour", "unlocks", "notifications", "usage-access", "local-network", "crashes", "battery", "home", "lock", "shade", "accessibility", "system"),
+            "device" to listOf("settings", "setup", "tour", "source", "unlocks", "notifications", "usage-access", "local-network", "crashes", "battery", "home", "lock", "shade", "accessibility", "system"),
         )
     }
 }

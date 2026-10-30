@@ -157,6 +157,8 @@ class InstantRunTest {
     @Test fun feedFetchesAndCrashReportsAreSensitive() {
         assertTrue(InstantRun.isSensitive("rss https://example.com/feed"))
         assertTrue(InstantRun.isSensitive("crashes clear"))
+        // Opens the browser: typing `so` on the way to something else mustn't.
+        assertTrue(InstantRun.isSensitive("source"))
     }
 
     @Test fun scriptsAndStatusAreSensitive() {

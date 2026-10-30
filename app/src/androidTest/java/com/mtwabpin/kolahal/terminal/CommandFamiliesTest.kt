@@ -1,5 +1,6 @@
 package com.mtwabpin.kolahal.terminal
 
+import android.content.Intent
 import android.os.Build
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -189,6 +190,26 @@ class CommandFamiliesTest {
         } finally {
             config.reset(Keys.BACKUP_AUTO)
         }
+    }
+
+    @Test fun sourceOpensGitHub() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val opened = mutableListOf<Intent>()
+        val browser = object : android.app.Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): android.app.Instrumentation.ActivityResult? {
+                if (intent.action != Intent.ACTION_VIEW) return null
+                opened += intent
+                return android.app.Instrumentation.ActivityResult(0, null)
+            }
+        }
+        instrumentation.addMonitor(browser)
+        try {
+            assertEquals(listOf("Opened https://github.com/mtwabpin/kolahal"), run("source"))
+            assertEquals("https://github.com/mtwabpin/kolahal", opened.single().dataString)
+        } finally {
+            instrumentation.removeMonitor(browser)
+        }
+        assertTrue(run("help").any { it.contains("source") })
     }
 
     @Test fun crashesListAndClear() {

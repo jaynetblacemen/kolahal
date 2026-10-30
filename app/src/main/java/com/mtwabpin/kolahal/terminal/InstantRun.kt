@@ -20,7 +20,7 @@ object InstantRun {
         "rss", "crashes",
         // These leave the launcher or change the phone: typing `sy` on the way to something else
         // mustn't open Android's settings.
-        "battery", "home", "system", "accessibility", "usage-access", "shade", "local-network", "notifications",
+        "battery", "home", "system", "accessibility", "usage-access", "shade", "local-network", "notifications", "source",
         // `scripts rm|off|import …` reaches the same handler as `script`; `status clear` wipes lines.
         "scripts", "status",
         // Change how the launcher looks or what it puts first.
