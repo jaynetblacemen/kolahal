@@ -294,6 +294,7 @@ class MainActivity : ComponentActivity() {
 
     private fun applyTheme() {
         Term.palette = Palettes.named(vm.config[Keys.THEME], darkTheme())
+        com.mtwabpin.kolahal.ui.WallpaperMatch.follow(this, com.mtwabpin.kolahal.ui.WallpaperMatch.themeColour())
         Term.fontSize = vm.config[Keys.FONT_SIZE]
         val font = vm.config[Keys.FONT]
         val family = TermFonts.family(this, font)

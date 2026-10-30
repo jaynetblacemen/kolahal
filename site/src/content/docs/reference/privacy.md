@@ -77,7 +77,7 @@ Declared in the manifest:
 | `POST_NOTIFICATIONS` | notifications from scripts and feeds (Android 13+ asks at runtime) |
 | `REQUEST_DELETE_PACKAGES` | `uninstall` and the Uninstall action open Android's uninstall dialog |
 | `EXPAND_STATUS_BAR` | swipe down on the header (or `shade`) pulls down the notification shade |
-| `SET_WALLPAPER` | `wallpaper match`, only when you ask for it, sets the home screen's wallpaper |
+| `SET_WALLPAPER` | `wallpaper match`, once you ask for it, sets the home screen's wallpaper, and again when the theme changes while it's still that one |
 | `ACCESS_HIDDEN_PROFILES` | lets the default launcher see the Android 15+ private space |
 | `PACKAGE_USAGE_STATS` | Usage Access, which you grant in Settings: accurate unlock counts and `usage` screen time |
 | `ACCESS_NOTIFICATION_POLICY` | lists Kolahal on the Do Not Disturb access page, for `dnd`, `ring silent` and scripts with `@uses dnd` (you still grant it) |

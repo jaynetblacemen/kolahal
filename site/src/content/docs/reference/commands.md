@@ -205,7 +205,7 @@ See [Widgets](/guides/widgets/).
 | `setup [text]` | | setup checklist page (`text`: print it in the log) |
 | `tour` | | how Kolahal works, a page at a time, with a few first settings |
 | `source` | | Kolahal's source code on GitHub |
-| `wallpaper match` | | the home screen's wallpaper in this theme's colour, so it doesn't flash on the way home by gesture. It asks first: the old wallpaper can't be brought back. The lock screen keeps its own |
+| `wallpaper [match]` | | whose the home screen's wallpaper is; `match` puts it in this theme's colour, so it doesn't flash on the way home by gesture, and it follows the theme until you set another wallpaper. It asks first: the old wallpaper can't be brought back. The lock screen keeps its own |
 | `unlocks [<days>]` | | unlock counts (1–30 days) |
 | `fetch` | `neofetch`, `fastfetch` | this phone and Kolahal at a glance, fastfetch style, under `name@device` (`user.name`): Kolahal's icon beside the Android version, device, kernel, uptime, Kolahal's version, apps, scripts, feeds, theme, font, display, CPU, memory, storage, battery, network and today's unlocks, then the theme's colours |
 | `notifications [settings]` | | allow script notifications |

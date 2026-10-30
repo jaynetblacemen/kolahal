@@ -68,6 +68,7 @@ These are fixed:
 With gesture navigation, going home from an app passes through your phone's own launcher, which
 shows the wallpaper for an instant: Android keeps those gestures for it, whichever home app you use.
 Three-button navigation doesn't have the flash. To keep the gestures, `wallpaper match` sets the home
-screen's wallpaper to the theme's colour, so nothing stands out. It asks first, as the old wallpaper
-can't be brought back; the lock screen keeps its own. `log.wallpaper` and `widgets.wallpaper` then
-show only that colour.
+screen's wallpaper to the theme's colour, so nothing stands out, and changes it with the theme, in
+dark mode too. Set another wallpaper and Kolahal leaves it alone from then on; `wallpaper` says which
+it is. It asks first, as the old wallpaper can't be brought back; the lock screen keeps its own.
+`log.wallpaper` and `widgets.wallpaper` then show only that colour.

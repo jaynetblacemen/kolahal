@@ -28,6 +28,8 @@
         <!-- The Play build's picked contacts: names and numbers stay on the phone. -->
         <exclude domain="sharedpref" path="picked_contacts.xml" />
         <!-- Crash reports belong to this phone. -->
+        <!-- wallpaper match's wallpaper id: another phone's same number is someone's own wallpaper. -->
+        <exclude domain="sharedpref" path="wallpaper_match.xml" />
         <exclude domain="file" path="crash/" />
         <exclude domain="sharedpref" path="crash.xml" />
     </cloud-backup>
@@ -37,6 +39,8 @@
         <exclude domain="database" path="androidx.work.workdb-journal" />
         <exclude domain="database" path="androidx.work.workdb-wal" />
         <exclude domain="database" path="androidx.work.workdb-shm" />
+        <!-- wallpaper match's wallpaper id: another phone's same number is someone's own wallpaper. -->
+        <exclude domain="sharedpref" path="wallpaper_match.xml" />
         <exclude domain="file" path="crash/" />
         <exclude domain="sharedpref" path="crash.xml" />
     </device-transfer>
