@@ -46,9 +46,22 @@ looking at (the run's *Artifacts*), not for installing over a release.
    bundle on the testing track: a draft to roll out in Play Console, or sent for review with
    =PLAY_SEND_FOR_REVIEW= =true= ([[file:google-play.org][google-play.org]] → Uploads from the workflow). With them set, step 1 also wants =docs/release/notes/X.Y.Z-play.txt=.
 
+* Who can release
+
+Only the repository's owner.
+
+- A ruleset, /Only the owner makes tags/ (Settings → Rules → Rulesets), stops anyone else creating,
+  moving or deleting a tag, however they try: a push, or a new release on GitHub. Repository admin
+  is the one role that bypasses it.
+- The signing keys are secrets of the =release= environment (Settings → Environments), which only a
+  run on a =v*= tag can use. A workflow pushed on a branch can't read them.
+- Google lets only =release.yml= on a =v*= tag upload to Play ([[file:google-play.org][google-play.org]] → Uploads from the
+  workflow).
+
 * Secrets and variables
 
-Repository → Settings → Secrets and variables → Actions.
+The secrets are in Settings → Environments → =release=. The variables are the repository's: Settings
+→ Secrets and variables → Actions.
 
 | Name                      | Kind     | Holds                                                |
 |---------------------------+----------+------------------------------------------------------|
