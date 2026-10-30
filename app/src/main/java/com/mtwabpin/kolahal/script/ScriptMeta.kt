@@ -58,7 +58,7 @@ object ScriptMeta {
         "unplug" -> mapOf("name" to name, "level" to 64)
         "notification" -> mapOf(
             "name" to name, "app" to "Messages", "pkg" to "com.google.android.apps.messaging",
-            "title" to "Asha", "text" to "Running late, there in 10", "time" to System.currentTimeMillis(),
+            "title" to "Alice", "text" to "Running late, there in 10", "time" to System.currentTimeMillis(),
         )
         "headset" -> mapOf("name" to name, "type" to "wired", "device" to "Headset", "mic" to true)
         "wifi" -> mapOf("name" to name, "network" to "wifi")

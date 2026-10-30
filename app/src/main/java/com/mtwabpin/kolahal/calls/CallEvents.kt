@@ -19,8 +19,8 @@ import java.util.concurrent.Executors
 
 /**
  * Calls in the log, once the call-log permission is granted (that is the switch): one line per
- * call as Android adds it to the call log, `Call from Sandhya ↙`, `Call to Sandhya ↗`,
- * `Missed call from Sandhya ✕`, with the number, then the time and length, on dimmed lines below.
+ * call as Android adds it to the call log, `Call from Sarah ↙`, `Call to Sarah ↗`,
+ * `Missed call from Sarah ✕`, with the number, then the time and length, on dimmed lines below.
  * Tapping one dials back. The newest call seen persists, so calls made while the launcher wasn't
  * running show up on the next start, and none from before the permission was granted are logged.
  */
@@ -127,7 +127,7 @@ class CallEvents private constructor(private val context: Context) {
             }.getOrNull().orEmpty()
         }
 
-        /** `Call from Sandhya ↙`, then the number and `10:42 · 4m 12s` on detail lines; [withDay] adds `Tue 20 Oct, `. */
+        /** `Call from Sarah ↙`, then the number and `10:42 · 4m 12s` on detail lines; [withDay] adds `Tue 20 Oct, `. */
         fun line(c: Call, config: Config, withDay: Boolean = false): String {
             val who = c.name ?: when (c.presentation) {
                 CallLog.Calls.PRESENTATION_RESTRICTED -> "a private number"

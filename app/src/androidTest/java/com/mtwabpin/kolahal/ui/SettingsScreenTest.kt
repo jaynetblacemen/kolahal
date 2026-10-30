@@ -252,15 +252,15 @@ class SettingsScreenTest {
         show("home")
         scrollTo(Keys.USER_NAME)
         val field = hasSetTextAction() and hasText(Keys.USER_NAME.default)
-        compose.onNode(field).performTextReplacement("ravi k")
-        val typed = compose.onNode(hasSetTextAction() and hasText("ravi k"))
+        compose.onNode(field).performTextReplacement("alex k")
+        val typed = compose.onNode(hasSetTextAction() and hasText("alex k"))
         typed.assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Error))
         compose.onNodeWithContentDescription("Apply").assertDoesNotExist()
         typed.performImeAction()
         compose.runOnIdle { assertEquals("kolahal", config[Keys.USER_NAME]) }
-        typed.performTextReplacement("ravi")
+        typed.performTextReplacement("alex")
         compose.onNodeWithContentDescription("Apply").performClick()
-        compose.runOnIdle { assertEquals("ravi", config[Keys.USER_NAME]) }
+        compose.runOnIdle { assertEquals("alex", config[Keys.USER_NAME]) }
     }
 
     @Test fun searchSkipsSettingsThatDontApply() {

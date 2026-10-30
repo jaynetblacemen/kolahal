@@ -119,13 +119,6 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `agenda [<days>]` | | upcoming calendar events (3 days by default, up to 31); tap opens one |
 | `agenda --allow` / `agenda --settings` | | ask for calendar access / open Kolahal's app settings |
 
-## Profiles
-
-| Usage | Description |
-| --- | --- |
-| `work [on\|off\|status]` | pause / resume the work profile |
-| `private [on\|off\|status]` | lock / unlock private space |
-
 ## Scripts
 
 | Usage | Description |
@@ -218,6 +211,13 @@ See [Widgets](/guides/widgets/).
 | `shade` | | pull down the notification shade |
 | `accessibility` | | enable the screen-lock service for double-tap |
 | `system` | | Android system settings |
+
+## Profiles
+
+| Usage | Description |
+| --- | --- |
+| `work [on\|off\|status]` | pause / resume the work profile |
+| `private [on\|off\|status]` | lock / unlock private space |
 
 ## Profile flags
 

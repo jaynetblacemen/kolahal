@@ -13,7 +13,7 @@ each part of it.
   **[run]** (or `Ctrl+Shift+R`) is **Run with**: words to run it with, its [`args`](/scripting/api/#args-and-argline)
   as when it runs as a command, and for a script with [`@on`](/scripting/overview/#event-triggers)
   or `@at` lines, an event to run it as, with made-up values (a charger at 64%, a message from
-  Asha).
+  Alice).
 - A message line above the symbol bar says what a button did: **Saved** (or
   **No changes to save**), **Saved · running…** and then the run's result (`Ran in 812ms · 3
   lines below`), how many **[all]** replaced. A failed run stays there, red, as

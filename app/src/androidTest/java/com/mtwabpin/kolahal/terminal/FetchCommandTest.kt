@@ -59,8 +59,8 @@ class FetchCommandTest {
     @Test fun fetchHasYourName() {
         val conf = Config.get(context)
         try {
-            conf.set(Keys.USER_NAME, "ravi")
-            assertTrue(run("fetch").any { StyledText.plain(it.text).contains("ravi@") })
+            conf.set(Keys.USER_NAME, "alex")
+            assertTrue(run("fetch").any { StyledText.plain(it.text).contains("alex@") })
         } finally {
             conf.reset(Keys.USER_NAME)
         }

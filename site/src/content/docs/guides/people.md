@@ -33,15 +33,15 @@ from the people you pick:
 
 ```sh
 call                      # pick someone, then dial them
-sms asha running late     # Asha picked before: straight to the message
+sms alice running late    # Alice picked before: straight to the message
 contacts                  # pick someone and show them in the log
-contacts --forget asha    # Kolahal forgets Asha
+contacts --forget alice   # Kolahal forgets Alice
 ```
 
 - With no name, or a name Kolahal doesn't know yet, Android's contact picker opens. Pick someone
   and Kolahal carries on: dials them, starts the message (with your text) or shows them in the log.
 - Kolahal sees only the person you pick, and keeps only their name and numbers, on the phone, so
-  the name works by itself next time: `call asha`. They are your suggestions after `call `, `sms `
+  the name works by itself next time: `call alice`. They are your suggestions after `call `, `sms `
   and `contacts `, with **Pick a contact** at the end to add someone.
 - `contacts --forget <name>` forgets someone. Uninstalling Kolahal or clearing its data forgets
   everyone.
@@ -53,10 +53,10 @@ With **call log** access, every call gets a line in the log as it ends, the way 
 call log):
 
 ```text
-Call from Sandhya ↙
+Call from Sarah ↙
   +91 98765 43210
   10:42 AM · 4m 12s
-Call to Sandhya ↗
+Call to Sarah ↗
 Missed call from +91 98765 43210 ✕
 ```
 

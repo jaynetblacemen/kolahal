@@ -64,11 +64,12 @@ remind every weekday 9:30 standup     # Monday to Friday
 remind every weekend 10:00 long run
 remind every mon,thu 19:00 bins       # days with commas, no spaces
 remind every month 1st rent           # the last day in shorter months for the 29th to 31st
-remind every year mar 14 Asha's birthday
+remind every year mar 14 Alice's birthday
 ```
 
 A repeating reminder fires at the same time on each of its days, 9:00 when you give no time, and
-stays in `reminders` with how it repeats. `remind rm` ends it.
+stays in `reminders` with how it repeats. `every year feb 29` is the 28th in other years. `remind rm`
+ends it.
 
 - A reminder posts a notification on the **Reminders** channel and adds a line to the log. The
   notification's **Snooze 10 min** and **Snooze 1 hour** set it again once (a repeating one keeps its

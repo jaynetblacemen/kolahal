@@ -80,13 +80,13 @@ Declared in the manifest:
 | `REQUEST_DELETE_PACKAGES` | `uninstall` and the Uninstall action open Android's uninstall dialog |
 | `EXPAND_STATUS_BAR` | swipe down on the header (or `shade`) pulls down the notification shade |
 | `SET_WALLPAPER` | `wallpaper match`, once you ask for it, sets the home screen's wallpaper, and again when the theme changes while it's still that one |
-| `ACCESS_HIDDEN_PROFILES` | lets the default launcher see the Android 15+ private space |
 | `PACKAGE_USAGE_STATS` | Usage Access, which you grant in Settings: accurate unlock counts and `usage` screen time |
 | `ACCESS_NOTIFICATION_POLICY` | lists Kolahal on the Do Not Disturb access page, for `dnd`, `ring silent` and scripts with `@uses dnd` (you still grant it) |
 | `WRITE_SETTINGS` | "Modify system settings", which you grant in Settings: `brightness`, `rotate`, `screen-timeout` |
 | `ACCESS_WIFI_STATE` | whether Wi-Fi is on, for `toggles` |
 | `WAKE_LOCK` | keeps the phone awake for a script's daily time while it runs (Android's work scheduler uses it too) |
 | `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` | added by AndroidX, private to Kolahal: keeps its own broadcasts from other apps |
+| `ACCESS_HIDDEN_PROFILES` | lets the default launcher see the Android 15+ private space |
 
 `torch` needs no camera permission: it only switches the flash.
 
@@ -100,7 +100,7 @@ These are off until you enable them, usually from the [setup checklist](/getting
 
 | Access | Why | Without it |
 | --- | --- | --- |
-| Default home app | opens on Home; pausing/resuming profiles, app shortcuts, private space | works as a normal app |
+| Default home app | opens on Home; app shortcuts, pausing/resuming profiles, private space | works as a normal app |
 | Usage access | accurate unlocks, `usage` | unlocks counted while the launcher runs; no `usage` |
 | Notification access | notifications in the log, `notifs`, `notifications.recent()`, `media` and the header's now-playing line (reading media sessions) | none of these |
 | Do Not Disturb access | `dnd`, `ring silent`, scripts with `@uses dnd` | those commands print a tappable line to grant it; scripts can't change Do Not Disturb |
