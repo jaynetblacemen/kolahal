@@ -105,7 +105,7 @@ object Notifier {
     /**
      * Posts a script notification. Tapping opens [url] if given, otherwise the launcher. Pass [id]
      * to replace an earlier notification with the same tag/id (e.g. one per feed); by default each
-     * distinct title/body gets its own. Never throws: a malformed [url] falls back to the launcher.
+     * distinct title/body gets its own. Never throws. A [url] no app can open leaves the tap doing nothing, so callers pass checked links.
      */
     fun post(context: Context, tag: String, title: String, body: String, url: String?, id: Int? = null): Boolean =
         runCatching {

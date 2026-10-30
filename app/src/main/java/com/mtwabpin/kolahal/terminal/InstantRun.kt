@@ -4,14 +4,15 @@ package com.mtwabpin.kolahal.terminal
  * `launch.instant`: run what the user is typing as soon as it can only mean one thing, without
  * Enter. `apps` limits this to app names; `all` also covers commands, aliases, and whole lines
  * whose arguments leave nothing to choose (`torch on`). Sensitive commands (calls, messages,
- * uninstall, profile switches, clearing, …) never run this way.
+ * uninstall, profile switches, clearing, …) never run this way, with one exception: device and media
+ * state runs as such a whole line ([wholeLine]).
  */
 object InstantRun {
     const val OFF = "off"
     const val APPS = "apps"
     const val ALL = "all"
 
-    /** Never run without Enter: they cost money, change state, or are hard to undo. */
+    /** Never run without Enter, but for [WHOLE_LINE_OK]: they cost money, change state, or are hard to undo. */
     val SENSITIVE = setOf(
         "call", "sms", "uninstall", "work", "private", "clear", "restart", "lock", "script", "alias", "unalias",
         "config", "hide", "unhide", "rename", "feed", "feeds", "notifs", "lua", "js", "=", "url", "echo",
@@ -84,7 +85,7 @@ object InstantRun {
      * What [text] uniquely refers to, or null. [rankedApps] is the app search (tier 0 exact,
      * 1 prefix, 2 word prefix, 3+ looser); only prefix tiers count, so "grov" picks Grove even
      * though looser matches exist. A command and an app with the same name resolve to the command
-     * in `all` mode (`system` opens Android settings). [isOn]: the app's profile is on (personal
+     * in `all` mode (`settings` opens Kolahal's, not an app called Settings). [isOn]: the app's profile is on (personal
      * always is; a paused work profile or private space isn't).
      */
     fun <A> target(

@@ -12,9 +12,9 @@ import com.mtwabpin.kolahal.notifications.KolahalNotificationListener
 import com.mtwabpin.kolahal.script.SecretStore
 
 /**
- * The raw half of a backup: every app preference file and database table, so a restore brings
- * back everything (todos, notes, reminders, feeds and their read state, script stores, the log,
- * launch history, unlock history, notification and trigger settings…).
+ * The raw half of a backup: the preference files and database tables that hold user data ([PREFS],
+ * [TABLES]), so a restore brings back everything (todos, notes, reminders, feeds and their read
+ * state, script stores, the log, launch history, unlock history, notification settings…).
  *
  * The readable sections of [Backup] (config, aliases, apps, scripts) are applied after this, so
  * hand edits to them win. Things that can't move between devices are left out: the picked script

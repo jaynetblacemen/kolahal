@@ -14,8 +14,9 @@ import javax.crypto.spec.GCMParameterSpec
 /**
  * Values for the names a script declares with `@secret` (API keys and the like), so they never sit in
  * its code. Encrypted with AES-GCM under a key kept in the Android Keystore, which never leaves it;
- * stored in kolahal.db (scope [scope] per script name), which Android's cloud backup and device
- * transfer leave out, as do Kolahal's own backups ([com.mtwabpin.kolahal.data.FullBackup]). Both the
+ * stored in kolahal.db (scope [scope] per script name), which Android's cloud backup leaves out, as
+ * do Kolahal's own backups ([com.mtwabpin.kolahal.data.FullBackup]). A transfer to a new phone carries
+ * the sealed values but not the Keystore key, so they can't be read there. Both the
  * launcher and the `:script` process read them: the Keystore key belongs to the app, not a process.
  *
  * Each value remembers the sites its `@secret` line named when you set it ([Stored.hosts]): code

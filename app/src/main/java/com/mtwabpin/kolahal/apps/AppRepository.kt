@@ -180,7 +180,6 @@ class AppRepository private constructor(private val context: Context) {
     fun search(query: String, kind: ProfileKind? = null, includeHidden: Boolean = false): List<AppEntry> =
         searchRanked(query, kind, includeHidden).map { it.first }
 
-    /** Matches with their tier: 0 exact, 1 prefix, 2 word prefix, 3 substring, 4 subsequence, 5 a slip. */
     /** The last search: instant run and the suggestions ask the same question on every keystroke. */
     private class Memo(
         val q: String, val kind: ProfileKind?, val hidden: Boolean, val apps: List<AppEntry>, val version: Int,
@@ -188,6 +187,7 @@ class AppRepository private constructor(private val context: Context) {
     )
     @Volatile private var memo: Memo? = null
 
+    /** Matches with their tier: 0 exact, 1 prefix, 2 word prefix, 3 substring, 4 subsequence, 5 a slip. */
     fun searchRanked(query: String, kind: ProfileKind? = null, includeHidden: Boolean = false): List<Pair<AppEntry, Int>> {
         val q = Fuzzy.fold(query.trim())
         if (q.isEmpty()) return emptyList()

@@ -577,11 +577,6 @@ class HostApi(
         return if (runCatching { um.isQuietModeEnabled(user) }.getOrDefault(false)) "paused" else "on"
     }
 
-    /**
-     * Resumes ([on]) or pauses the work profile. False when Android won't let Kolahal: it must be
-     * the default launcher and in front (a daily time runs in the foreground, which counts), on
-     * Android 10 or newer; or resuming needs your work PIN; or there's no work profile.
-     */
     /** setWork's argument: true or false, or "on" or "off", the same in Lua and JavaScript. */
     fun onOff(value: Any?, call: String): Boolean = when (value) {
         is Boolean -> value
@@ -590,6 +585,11 @@ class HostApi(
         else -> throw IllegalArgumentException("$call takes true or false (or \"on\" or \"off\")")
     }
 
+    /**
+     * Resumes ([on]) or pauses the work profile. False when Android won't let Kolahal: it must be
+     * the default launcher and in front (a daily time runs in the foreground, which counts), on
+     * Android 10 or newer; or resuming needs your work PIN; or there's no work profile.
+     */
     fun setWork(on: Boolean): Boolean {
         live()
         if (!may("work", "device.setWork")) return false

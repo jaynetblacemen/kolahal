@@ -12,8 +12,8 @@ import androidx.work.workDataOf
 import java.util.concurrent.TimeUnit
 
 /**
- * One periodic job ("feeds", every [PERIOD_MIN] minutes) checks which feeds are due by their own
- * interval. Runs in the main process as a plain CoroutineWorker.
+ * One periodic job ("feeds", as often as the most frequent feed) checks which feeds are due by
+ * their own interval. Runs in the main process as a plain CoroutineWorker.
  */
 object FeedScheduler {
     const val UNIQUE_NAME = "feeds"

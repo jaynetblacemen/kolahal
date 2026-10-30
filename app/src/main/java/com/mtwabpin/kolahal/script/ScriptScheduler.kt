@@ -117,8 +117,8 @@ object ScriptScheduler {
     }
 
     /**
-     * [syncAll] if the last was over [RECHECK_MS] ago: a launcher that runs for days would
-     * otherwise leave daily times drifting, and an hour off after a daylight-saving change.
+     * [syncAll] if the last was over [RECHECK_MS] ago: sets each script's timers again, in case any
+     * went while the launcher ran for days.
      */
     fun syncAllIfDue(context: Context) {
         val last = context.getSharedPreferences("daily_schedule", Context.MODE_PRIVATE).getLong(KEY_SYNCED_AT, 0L)

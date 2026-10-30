@@ -35,7 +35,7 @@ import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 
 /**
- * Setup checklist (`setup`, first run, or Settings → Setup checklist). Each unchecked item opens
+ * Setup checklist (`setup`, or Settings → Setup checklist). Each unchecked item opens
  * the right system page; the list refreshes when the user comes back.
  */
 @Composable

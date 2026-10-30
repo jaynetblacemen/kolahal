@@ -100,7 +100,6 @@ import java.util.Locale
 /** How a line shows its time, from `log.time`: `groups` on a group's first line and when the minute changes. */
 enum class TimeMode { OFF, COMMANDS, GROUPS, ALL }
 
-/** What the long-press sheet shows: the line (for context) and its actions. */
 /**
  * A long-press menu. Its actions are in the system's font, as a menu; its [title] (the line pressed)
  * in the terminal's, as in the log, unless [systemFont] (quick actions, whose title is a heading).
@@ -416,10 +415,6 @@ private fun androidx.compose.ui.text.AnnotatedString.Builder.appendTagged(text: 
     withStyle(SpanStyle(color = color, fontWeight = weight)) { append(text.substring(tag.range.last + 1)) }
 }
 
-/**
- * Styles one log line. Wrapped continuation lines are indented past the prefix (`$ `, `• `) so
- * each item reads as one block; the widths are measured ([LineIndents]), so this holds in any font.
- */
 private const val NOTIF_ICON = "notif-icon"
 
 /** The status-bar icon at the end of a notification line, tinted like the muted name it replaces. */
@@ -451,7 +446,12 @@ private fun LogEntry.style() = if (ctx.values.containsKey(LogContext.MONO)) Term
 @androidx.compose.runtime.Immutable
 data class LineIndents(val text: TextUnit, val code: TextUnit, val bullet: TextUnit)
 
-/** [icon]: end a script line with its notification icon instead of `· app`; [source]: name it at all (the first line of a run). */
+/**
+ * Styles one log line. Wrapped continuation lines are indented past the prefix (`$ `, `• `) so
+ * each item reads as one block; the widths are measured ([LineIndents]), so this holds in any font.
+ * [icon]: end a script line with its notification icon instead of `· app`; [source]: name it at all
+ * (the first line of a run).
+ */
 private fun renderLine(entry: LogEntry, indents: LineIndents, unread: Boolean, icon: Boolean = false, source: Boolean = true) = buildAnnotatedString {
     val indent = when (entry.kind) {
         LogKind.SCRIPT -> if (unread) indents.bullet else 0.sp

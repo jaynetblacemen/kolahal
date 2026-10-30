@@ -44,7 +44,7 @@ object Fetch {
     private const val GAP = 2
     private const val LABEL_WIDTH = 8
 
-    /** Info this narrow or narrower goes under the icon instead of beside it. */
+    /** Info narrower than this goes under the icon instead of beside it. */
     private const val MIN_BESIDE = 24
 
     /** The theme's colours, a block each, as fastfetch ends with the terminal's. */

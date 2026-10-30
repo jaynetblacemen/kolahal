@@ -656,7 +656,7 @@ fun AppSelector(
     onLongPress: (AppEntry) -> Unit,
     modifier: Modifier = Modifier,
     heightDp: Int = 350,
-    /** selector.handle: draw the A–Z handle when idle (it still shows under the finger). */
+    /** selector.handle: draw the A–Z handle when idle. */
     showHandle: Boolean = true,
     /** selector.letters: each letter along the strip, where its apps are, so you can see where to touch. */
     letters: Boolean = false,

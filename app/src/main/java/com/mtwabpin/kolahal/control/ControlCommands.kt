@@ -417,7 +417,7 @@ class ControlCommands(private val context: Context) {
         /** Names this class handles (including aliases not listed in help). */
         val NAMES = SPECS.map { it.name }.toSet() + setOf("vol", "bluetooth")
 
-        /** Change device or media state: never run without Enter (InstantRun). */
+        /** Change device or media state: never run by a prefix, only as a whole line such as `torch on` (InstantRun). */
         val SENSITIVE = setOf("media", "mp", "next", "prev", "torch", "volume", "vol", "ring", "dnd", "brightness", "rotate", "screen-timeout")
 
         private val ARGS = mapOf(

@@ -88,7 +88,6 @@ internal val TITLES = mapOf(
     "feeds.wifi" to "Refresh on Wi-Fi only",
 )
 
-/** A settings page: grouped keys (a null group title means no sub-header). */
 /**
  * Sliders that show home through Settings while dragged, like the brightness slider in quick
  * settings; the value is whether home is shown as if typing (key bar, prompt, suggestions).
@@ -140,7 +139,7 @@ private val SHOWN_WHEN: Map<ConfigKey<*>, (Config) -> Boolean> = run {
         Keys.SELECTOR_SYSTEM_FONT to on(Keys.SELECTOR_RAIL),
         Keys.FEEDS_LOG_LINES to on(Keys.FEEDS_LOG),
         Keys.FEEDS_READ_SHOWN to on(Keys.FEEDS_LOG),
-        // Without the header, only the clock's 24-hour setting still counts: the log uses it too.
+        // Without the header, only the clock's 24-hour setting and your name still count: the log and fetch use them.
         *listOf(
             Keys.HEADER_DATE, Keys.HEADER_DEVICE, Keys.HEADER_ICONS, Keys.HEADER_UNLOCKS, Keys.HEADER_BATTERY,
             Keys.HEADER_NETWORK, Keys.HEADER_ALARM, Keys.HEADER_PROFILES, Keys.HEADER_MEDIA, Keys.HEADER_TODO,
@@ -155,6 +154,7 @@ internal fun applies(key: ConfigKey<*>, config: Config): Boolean = SHOWN_WHEN[ke
 /** Pages with an eye button that shows home while held (the same typing flag as above). */
 internal val PEEK_PAGES: Map<String, Boolean> = mapOf("look" to false, "home" to false, "selector" to false, "log" to false, "typing" to true)
 
+/** A settings page: grouped keys (a null group title means no sub-header). */
 internal class Category(
     val id: String,
     val title: String,

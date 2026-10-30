@@ -13,13 +13,16 @@ import com.mtwabpin.kolahal.script.ScriptScheduler
  * be kept on a computer, edited there, and imported again.
  *
  * ```
- * { "kolahal": 1,
+ * { "kolahal": 2,
  *   "config":  { "theme.name": "gruvbox", ... },          // only changed settings
  *   "aliases": { "m": "open maps" },
- *   "apps":    { "hidden": ["<component>#<user>"], "labels": { "<component>#<user>": "Name" } },
+ *   "apps":    { "hidden": ["<component>#<user>"], "labels": { "<component>#<user>": "Name" }, "pinned": [...] },
  *   "scripts": [ { "name": "hn", "lang": "lua", "code": "...", "every": 30,
  *                  "at": ["08:00"], "notify": true, "enabled": true,
  *                  "access": { "header": false } } ],                     // only "false" is restored
+ *   "data":    { ... },                                     // everything else: [FullBackup]
+ *   "font":    { "name": "...", "base64": "..." },          // an imported terminal font
+ *   "widgets": [ ... ],                                     // to offer adding them again
  *   "themes":  { "mine": { "background": "#0B0D0B", ... } } }   // made in the theme builder
  * ```
  */

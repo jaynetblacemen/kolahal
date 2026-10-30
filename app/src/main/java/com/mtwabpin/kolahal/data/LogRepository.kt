@@ -510,7 +510,7 @@ class LogRepository private constructor(private val context: Context) {
 
     /**
      * Keeps the newest [keep] lines and, counted apart, the newest [keep] typed commands, so a script
-     * that logs a lot can't push out ↑ history. Drops anything older than [maxAgeDays], which only
+     * that logs a lot can't push out ↑ history. Drops output older than [maxAgeDays], which only
      * the UI process passes (the :script process has a stale settings copy).
      */
     fun trim(keep: Int = keepLines, maxAgeDays: Int? = null) {

@@ -257,14 +257,14 @@ class MainActivity : ComponentActivity() {
         if (intent.hasCategory(Intent.CATEGORY_HOME) && alreadyHome) vm.onHomePressed()
     }
 
-    /** `statusbar`: show, hide (status bar only) or immersive (status and navigation bars). */
+    /** `screen.bars`: show, hide (status bar only) or immersive (status and navigation bars). */
     private fun applyBars() {
         val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
         val status = androidx.core.view.WindowInsetsCompat.Type.statusBars()
         val nav = androidx.core.view.WindowInsetsCompat.Type.navigationBars()
         // A swipe from the edge shows hidden bars for a moment, then they hide again.
         controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        // Dark icons on a light theme (one people made: the built-in ones are dark).
+        // Dark icons on a light theme.
         val light = Term.bg.luminance() > 0.5f
         controller.isAppearanceLightStatusBars = light
         controller.isAppearanceLightNavigationBars = light

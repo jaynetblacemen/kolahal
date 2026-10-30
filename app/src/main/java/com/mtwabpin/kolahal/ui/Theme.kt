@@ -287,7 +287,7 @@ fun KolahalTheme(content: @Composable () -> Unit) {
 
 /**
  * Top / side padding that clears both the status bar and any camera cutout. With the status bar
- * hidden (`statusbar hide`) its inset is 0, but the cutout's is not, so nothing ends up behind
+ * hidden (`screen.bars hide`) its inset is 0, but the cutout's is not, so nothing ends up behind
  * the camera hole.
  */
 @androidx.compose.runtime.Composable

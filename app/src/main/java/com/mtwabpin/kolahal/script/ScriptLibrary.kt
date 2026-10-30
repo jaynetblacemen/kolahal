@@ -65,7 +65,7 @@ class ScriptLibrary(private val context: Context) {
     }
 
     /**
-     * Installs (or updates) [entry] with its suggested timers. Remembers the installed text so a
+     * Installs [entry] with its suggested timers, or updates it keeping its own. Remembers the installed text so a
      * later app update can tell "update available" from "you edited it".
      */
     fun install(entry: Entry): Script {

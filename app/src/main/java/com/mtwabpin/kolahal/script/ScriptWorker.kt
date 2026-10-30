@@ -32,7 +32,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         const val KEY_INTERACTIVE = "interactive"
         /** Started by a command another script sent with launcher.run. */
         const val KEY_BY_SCRIPT = "by_script"
-        /** JSON object for the script's `event` global (event-triggered runs only). */
+        /** JSON object for the script's `event` global (event and daily-time runs only). */
         const val KEY_EVENT = "event"
         /** The typed command's line that started this run ([LogContext.FROM]). */
         const val KEY_FROM = "from"

@@ -163,7 +163,7 @@ class ContactsRepository private constructor(private val context: Context) {
         prefs.edit { putString(KEY_PICKED, a.toString()) }
     }
 
-    /** Name or number matches, favourites first. */
+    /** Name or number matches, the best match first and favourites first among equals. */
     fun search(query: String, limit: Int = 12): List<Contact> {
         val q = query.trim().lowercase()
         if (q.isEmpty()) return emptyList()

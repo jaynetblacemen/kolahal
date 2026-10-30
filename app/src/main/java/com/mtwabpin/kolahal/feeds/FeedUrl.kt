@@ -5,7 +5,7 @@ import java.net.URI
 /** Pure URL helpers for feeds (no Android APIs, unit-tested on the JVM). */
 object FeedUrl {
     /**
-     * Normalises a user-typed feed address: trims, defaults to https, maps `feed://` to http,
+     * Normalises a user-typed feed address: trims, defaults to https, maps `feed://` to https,
      * lowercases scheme and host, drops the fragment and a default port. Returns null when the
      * result isn't an http(s) URL with a host.
      */

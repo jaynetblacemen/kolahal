@@ -4,7 +4,7 @@ import android.content.Context
 import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.terminal.CommandProcessor
 
-/** Names a script from outside (a file, a folder, a backup) may not take. */
+/** Names a script from a file or the shared catalog may not take. */
 object ScriptNames {
     private val PUNCTUATION = Regex("[^a-z0-9]")
 

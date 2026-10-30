@@ -87,7 +87,6 @@ class ScriptCommands(
                 folder.uri?.let { info("Script folder: ${it.lastPathSegment}") }
                 ui.pickScriptFolder()
             }
-            // Folder sync can be slow on SAF providers; run it off the serial command queue.
             "lib", "library" -> {
                 val lib = ScriptLibrary(context)
                 val installed = scripts.all()
@@ -119,6 +118,7 @@ class ScriptCommands(
                 info("Installed ${s.name}.${s.lang.ext}" + (if (entry.command) " — run it as '${s.name}'" else "") +
                     (if (s.intervalMin > 0) " · every ${CommandParsing.formatInterval(s.intervalMin)}" else ""), scriptCtx(s))
             }
+            // Folder sync can be slow on SAF providers; run it off the serial command queue.
             "export" -> background("export") { info("Exported ${folder.export()} scripts + kolahal.json") }
             "import" -> background("import") {
                 val r = folder.import()

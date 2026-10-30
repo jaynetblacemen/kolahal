@@ -226,7 +226,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     val status: StateFlow<Status> = DeviceStatus.get(app).status
     val config: Config = Config.get(app)
     private val mediaRepo = com.mtwabpin.kolahal.control.MediaRepository.get(app)
-    /** Active media session for the header (null without notification access or when idle). */
+    /** The media session for the header (null without notification access or a session; [com.mtwabpin.kolahal.control.NowPlaying.showInHeader] hides an idle one). */
     val nowPlaying: StateFlow<com.mtwabpin.kolahal.control.NowPlaying?> = mediaRepo.nowPlaying
 
     /** Header now-playing line: tap toggles play/pause, long-press (or ⏭) skips. */
@@ -576,8 +576,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     private var focusOnWindowFocus = false
 
     /**
-     * `log.tips`: on the first look at home each day, from the second day after installing to the
-     * fourteenth, a line about something not used yet ([Tips]); tapping it puts the example in the prompt.
+     * `log.tips`: on the first look at home each day, from one to fourteen days after installing, a
+     * line about something not used yet ([Tips]); tapping it puts the example in the prompt.
      */
     private fun tipOfTheDay() {
         if (!config[Keys.LOG_TIPS]) return
@@ -637,7 +637,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         }
     }
 
-    /** In `launch.instant all` mode a tapped history line runs at once (unless it is sensitive). */
+    /** In `launch.instant all` mode a tapped history line runs at once, unless it is sensitive and not a whole line such as `torch on`. */
     private fun runsOnTap(line: String) = config[Keys.LAUNCH_INSTANT] == InstantRun.ALL &&
         // A trailing space marks a prefill ("apps " from help): it is waiting for an argument.
         !line.endsWith(' ') &&
@@ -936,7 +936,6 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         }
     }
 
-    /** Resuming is harmless, pausing asks for a second tap (the logged line). */
     /**
      * Quick actions (tap `$` on the prompt, or the `quick` gesture): everything the header
      * offers, in thumb reach at the bottom of the screen.
@@ -980,6 +979,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         }
     }
 
+    /** Resuming is harmless, pausing asks for a second tap (the logged line). */
     fun onProfileTap(profile: Profile) {
         val cmd = if (profile.kind == ProfileKind.PRIVATE) "private" else "work"
         if (profile.quiet) {
@@ -1714,7 +1714,6 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         }
     }
 
-    /** Pressing Home while already home: reset the prompt. */
     private val _homePresses = MutableStateFlow(0)
     /** Bumps on every Home press while already home; the widgets pager returns to the terminal. */
     val homePresses: StateFlow<Int> = _homePresses.asStateFlow()
@@ -1744,6 +1743,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         openScreen(Screen.THEME_BUILDER)
     }
 
+    /** Pressing Home while already home: reset the prompt. */
     fun onHomePressed() {
         settingsCategory.value = null
         _homePresses.value++

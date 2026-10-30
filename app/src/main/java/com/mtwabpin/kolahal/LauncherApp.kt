@@ -61,7 +61,7 @@ class LauncherApp : Application(), Configuration.Provider {
         com.mtwabpin.kolahal.apps.PackageEvents.get(this).start()
         com.mtwabpin.kolahal.calls.CallEvents.get(this).start()
 
-        // Re-anchor daily script times (periodic work drifts), restore schedules after updates, trim old log.
+        // Set daily script times again, restore schedules after updates, trim old log.
         Thread {
             // First: the first log line with a notification icon would otherwise list the saved icons on the main thread.
             runCatching { com.mtwabpin.kolahal.notifications.NotifIcons.preload(this) }
