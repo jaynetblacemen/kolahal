@@ -159,8 +159,9 @@ class ScriptCommands(
                 )
             }
             "at" -> withScript(target) { s ->
-                val spec = args.getOrNull(2) ?: return error("Usage: script at <name> <HH:mm[,HH:mm…]|off>")
-                val times = if (spec == "off") emptyList() else spec.split(',').map { CommandParsing.parseClock(it) ?: return error("Bad time '$it' — use HH:mm") }
+                val specs = CommandParsing.clockWords(args.drop(2))
+                if (specs.isEmpty()) return error("Usage: script at <name> <HH:mm[,HH:mm…]|off>")
+                val times = if (specs[0] == "off") emptyList() else specs.map { CommandParsing.parseClock(it) ?: return error("Bad time '$it' — use HH:mm") }
                 scripts.setAtTimes(s.id, times.distinct().sorted())
                 if (times.isNotEmpty() && !s.enabled) {
                     scripts.setEnabled(s.id, true)

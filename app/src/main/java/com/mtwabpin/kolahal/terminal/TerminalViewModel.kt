@@ -897,23 +897,15 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         val before = scripts.byId(script.id) ?: return null
         scripts.saveCode(script.id, code, byUser = true)
         val notes = ArrayList<String>()
-        val oldEvery = ScriptMeta.every(before.code)?.coerceAtLeast(ScriptScheduler.MIN_INTERVAL_MIN)
-        val newEvery = ScriptMeta.every(code)?.coerceAtLeast(ScriptScheduler.MIN_INTERVAL_MIN)
-        if (newEvery != oldEvery) {
-            val minutes = newEvery ?: if (before.intervalMin == oldEvery) 0 else before.intervalMin
-            if (minutes != before.intervalMin) {
-                scripts.setInterval(script.id, minutes)
-                notes += if (minutes == 0) "timer off" else "runs every ${CommandParsing.formatInterval(minutes)}"
-            }
+        val minutes = ScriptMeta.intervalAfter(before.code, code, before.intervalMin)
+        if (minutes != before.intervalMin) {
+            scripts.setInterval(script.id, minutes)
+            notes += if (minutes == 0) "timer off" else "runs every ${CommandParsing.formatInterval(minutes)}"
         }
-        val oldAt = ScriptMeta.at(before.code)
-        val newAt = ScriptMeta.at(code)
-        if (newAt != oldAt) {
-            val times = newAt.ifEmpty { if (before.atTimes.sorted() == oldAt) emptyList() else before.atTimes }
-            if (times != before.atTimes) {
-                scripts.setAtTimes(script.id, times)
-                notes += if (times.isEmpty()) "no daily times" else "daily at ${times.joinToString(", ")}"
-            }
+        val times = ScriptMeta.timesAfter(before.code, code, before.atTimes)
+        if (times != before.atTimes) {
+            scripts.setAtTimes(script.id, times)
+            notes += if (times.isEmpty()) "no daily times" else "daily at ${times.joinToString(", ")}"
         }
         scripts.byId(script.id)?.let { ScriptScheduler.sync(context, it) }
         if (notes.isNotEmpty() && !before.enabled) notes += "once it's switched on"

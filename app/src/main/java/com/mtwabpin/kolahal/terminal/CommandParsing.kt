@@ -54,6 +54,13 @@ object CommandParsing {
         return String.format(java.util.Locale.ROOT, "%02d:%s", m.groupValues[1].toInt(), m.groupValues[2])
     }
 
+    /**
+     * The daily times in [args], the words after `script at <name>`: commas, spaces or both between
+     * them, as on an `@at` line, so "8:00,18:30", "8:00, 18:30" and "8:00 18:30" each hold two.
+     */
+    fun clockWords(args: List<String>): List<String> =
+        args.flatMap { it.split(',', ' ') }.filter { it.isNotBlank() }
+
     /** Levenshtein distance, for "did you mean". */
     fun editDistance(a: String, b: String): Int {
         var prev = IntArray(b.length + 1) { it }

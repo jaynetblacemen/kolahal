@@ -56,4 +56,31 @@ class ScheduleTest {
         assertNull(CommandParsing.parseClock("24:00"))
         assertNull(CommandParsing.parseClock("7pm"))
     }
+
+    /** What follows `script at <name>`, split as the command splits it: commas, spaces or both between the times. */
+    private fun typed(words: String) = CommandParsing.clockWords(CommandParsing.tokenize(words))
+
+    @Test fun scriptAtTakesCommasSpacesOrBoth() {
+        val both = listOf("22:30", "06:30")
+        assertEquals(both, typed("22:30, 06:30"))
+        assertEquals(both, typed("22:30,06:30"))
+        assertEquals(both, typed("22:30 06:30"))
+        assertEquals(both, typed("22:30 , 06:30"))
+        assertEquals(both, typed("\"22:30, 06:30\""))
+        assertEquals(listOf("22:30"), typed("22:30"))
+        assertEquals(listOf("off"), typed("off"))
+    }
+
+    /** A comma alone says no times, for a usage line: it must not clear them as `off` does. */
+    @Test fun scriptAtWithoutTimes() {
+        assertEquals(emptyList<String>(), typed(""))
+        assertEquals(emptyList<String>(), typed(","))
+    }
+
+    /** An `@at` line and `script at` read a list of times alike. */
+    @Test fun scriptAtAgreesWithAnAtLine() {
+        for (form in listOf("7:05", "22:30,06:30", "22:30, 06:30", "22:30 06:30", "22:30 , 06:30", "22:30,", ",22:30", "22:30,,06:30", "18:30, 7:05, 18:30")) {
+            assertEquals(form, ScriptMeta.at("-- @at $form"), typed(form).mapNotNull(CommandParsing::parseClock).distinct().sorted())
+        }
+    }
 }

@@ -157,6 +157,33 @@ object ScriptMeta {
         value(code, "at")?.split(',', ' ')?.filter { it.isNotBlank() }?.mapNotNull(ScriptScheduler::normalizeTime)
             ?.distinct()?.sorted().orEmpty()
 
+    /**
+     * A script's interval, [current] now, once its code goes from [old] to [new]: a new or changed
+     * `@every` line sets it, one taken out takes back what it had set (a timer set in the sheet stays).
+     */
+    fun intervalAfter(old: String, new: String, current: Int): Int {
+        val was = every(old)?.coerceAtLeast(ScriptScheduler.MIN_INTERVAL_MIN)
+        val now = every(new)?.coerceAtLeast(ScriptScheduler.MIN_INTERVAL_MIN)
+        return when {
+            now == was -> current
+            now != null -> now
+            current == was -> 0
+            else -> current
+        }
+    }
+
+    /** A script's daily times, [current] now, once its code goes from [old] to [new]: [intervalAfter]'s rule, for `@at` lines. */
+    fun timesAfter(old: String, new: String, current: List<String>): List<String> {
+        val was = at(old)
+        val now = at(new)
+        return when {
+            now == was -> current
+            now.isNotEmpty() -> now
+            current.sorted() == was -> emptyList()
+            else -> current
+        }
+    }
+
     /** `@notify`: it suggests letting it post notifications. */
     fun notifies(code: String): Boolean = Regex("""^\s*(--|//)\s*@notify\b""", RegexOption.MULTILINE).containsMatchIn(code)
 
