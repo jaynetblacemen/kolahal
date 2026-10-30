@@ -56,6 +56,134 @@ class CalcTest {
         assertEquals("0.15", a("15%"))
         assertEquals("1", a("10 % 3"))
         assertEquals("1", a("10 mod 3"))
+        assertEquals("12", a("15 % of 80"))
+        assertEquals("92", a("80 + 15 %"))
+        assertEquals("68", a("80 - 15 %"))
+        assertEquals("0.15", a("15 %"))
+    }
+
+    /** `%` before a number or parenthesis is the remainder, however it is spaced. */
+    @Test fun remainders() {
+        assertEquals("1", a("10%3"))
+        assertEquals("1", a("10 %3"))
+        assertEquals("1", a("10% 3"))
+        assertEquals("1", a("10 % (3)"))
+        assertEquals("1", a("10%(3)"))
+        assertEquals("2", a("-10 % 3"))
+        assertEquals("-2", a("10 % (-3)"))
+        assertEquals("-2", a("10%(-3)"))
+    }
+
+    /** Apart from the number before it, and before a sign stuck to what it signs, `%` is `mod`, sign rule and all. */
+    @Test fun remainderBySignedNumber() {
+        assertEquals("-2", a("10 mod -3"))
+        assertEquals("-2", a("10 % -3"))
+        assertEquals("-2", a("10 %-3"))
+        assertEquals("-2", a("10  %  -3"))
+        assertEquals("-2", a("10 % −3"))
+        assertEquals("-2", a("10 % -(3)"))
+        assertEquals("1", a("10 % +3"))
+        assertEquals("-1", a("-10 % -3"))
+        assertEquals("-0.25", a("10.25 % -.5"))
+        assertEquals("-1", a("10 % -3 + 1"))
+        assertEquals("-1", a("2 * 10 % -3"))
+        assertEquals("-4", a("10 % -3x2"))
+        assertEquals("1", a("5 % -3 % 2"))
+        assertEquals("can't divide by zero", assertThrows(ArithmeticException::class.java) { a("10 % -0") }.message)
+    }
+
+    /** Stuck to the number before it, or before a sign that stands alone, `%` is a percent and the sign adds or subtracts. */
+    @Test fun percentThenSign() {
+        assertEquals("-2.9", a("10% - 3"))
+        assertEquals("-2.9", a("10%-3"))
+        assertEquals("-2.9", a("10% -3"))
+        assertEquals("-2.9", a("10%- 3"))
+        assertEquals("-2.9", a("10 % - 3"))
+        assertEquals("-2.9", a("10 %- 3"))
+        assertEquals("-2.9", a("10%-(3)"))
+        assertEquals("3.1", a("10% + 3"))
+        assertEquals("3.1", a("10%+3"))
+        assertEquals("3.1", a("10% +3"))
+        assertEquals("3.1", a("10 % + 3"))
+        assertEquals("-9.5", a("50% - 10"))
+        assertEquals("-9.5", a("50%-10"))
+        assertEquals("65", a("80 - 15% - 3"))
+        assertEquals("65", a("80 - 15%-3"))
+        assertEquals("65", a("80 - 15% -3"))
+        // A word after the sign isn't a number: as with `10 % pi`, it stays a percent.
+        assertEquals("-3.04159265359", a("10 % -pi"))
+    }
+
+    /** The same numbers as in a conversion: [Units.number]. */
+    @Test fun commasInNumbers() {
+        assertEquals("1500", a("1,500"))
+        assertEquals("1000000", a("1,000,000"))
+        assertEquals("100000", a("1,00,000"))
+        assertEquals("1234567", a("12,34,567"))
+        assertEquals("0.5", a("0,500"))
+        assertEquals("1.5", a("1,5"))
+        assertEquals("2.5", a("2,50"))
+        assertEquals("1000.5", a("1,000.5"))
+        listOf("1,500", "1,000,000", "1,00,000", "12,34,567", "0,500", "1,5", "2,50", "1,000.5", "1234,500", "1,23,45,678").forEach {
+            assertEquals(it, Units.number(it), Calc.eval(it))
+        }
+        assertEquals("3000", a("1,500 * 2"))
+        assertEquals("4", a("1,5 + 2,5"))
+        assertEquals("-1500", a("-1,500"))
+        assertEquals("4506", a("(1,500 + 2) * 3"))
+        assertEquals("1500", a("(1,500)"))
+        assertEquals("150", a("10% of 1,500"))
+        assertEquals("-2", a("1,000 % -3"))
+        assertEquals("38.7298334621", a("sqrt 1,500"))
+        assertEquals("6.25", a("2,5^2"))
+    }
+
+    @Test fun commasInNumbersBesideATimesSign() {
+        assertEquals("4500", a("3x1,500"))
+        assertEquals("4500", a("1,500x3"))
+        assertEquals("10", a("2,5x4"))
+        assertEquals("4500", a("3 x (1,500)"))
+        assertEquals("4500", a("3x(1,500)"))
+        assertNull(a("0x10,5"))
+    }
+
+    /** In a function's parentheses a comma separates values, whatever the digits around it. */
+    @Test fun commasBetweenAFunctionsValues() {
+        assertEquals("2", a("max(1,2)"))
+        assertEquals("500", a("max(1,500)"))
+        assertEquals("500", a("max(1, 500)"))
+        assertEquals("1", a("min(1,500,2)"))
+        assertEquals("2", a("max(1,000,2)"))
+        assertEquals("500", a("MAX (1,500)"))
+        assertEquals("500", a("max((1),500)"))
+        assertEquals("1000", a("2max(1,500)"))
+        assertEquals("22.360679775", a("sqrt(max(1,500))"))
+        // Parentheses closed, a comma is in a number again.
+        assertEquals("2000", a("max(1,500) + 1,500"))
+        assertEquals("2000", a("(max(1,500) + 1,500)"))
+        // Functions of one value don't take two, nor one with a comma.
+        assertNull(a("sqrt(1,500)"))
+        assertNull(a("log(8,2)"))
+        assertNull(a("atan(1,2)"))
+        assertNull(a("max((1,500),2)"))
+    }
+
+    /** A comma this can't read as part of a number stays with Lua, code or not. */
+    @Test fun otherCommasAreLeftAlone() {
+        assertNull(a("1,5,3"))
+        assertNull(a("1,000,00"))
+        assertNull(a("0,500,000"))
+        assertNull(a("1,5.5"))
+        assertNull(a("1,"))
+        assertNull(a(",5"))
+        assertNull(a("1,,5"))
+        assertNull(a("1, 500"))
+        assertNull(a("1 ,500"))
+        assertNull(a("1,5 2,5"))
+        assertNull(a("1,500e3"))
+        assertNull(a("math.max(1,500)"))
+        assertNull(a("tostring(1,500)"))
+        assertNull(a("{1,500}"))
     }
 
     @Test fun formatting() {
@@ -69,6 +197,10 @@ class CalcTest {
         assertNull(a("math.sqrt(2)"))
         assertNull(a("os.date(\"%A\")"))
         assertNull(a("5 km in mi"))
+        assertNull(a("5 in to cm"))
+        assertNull(a("5 in"))
+        assertNull(a("% -3"))
+        assertNull(a(" % -3"))
         assertNull(a("2 +"))
         assertNull(a("hello"))
         assertNull(a(""))

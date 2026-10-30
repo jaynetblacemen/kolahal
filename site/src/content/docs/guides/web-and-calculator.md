@@ -48,7 +48,19 @@ while you type; tap it to put it in the prompt and go on from it. Enter writes i
 It knows `+ - * /` (also `×`, `x`, as in `3x4`, `÷`), `^`, `mod`, `n!`, parentheses, `pi` (`π`) and `e`, and
 `sqrt`, `cbrt`, `abs`, `round`, `floor`, `ceil`, `ln`, `log` (base 10), `log2`, `exp`, `sin`,
 `cos`, `tan` and their `a…` inverses (radians; `sin 30°` takes degrees), `min` and `max`. `2pi`
-and `3(4+5)` multiply. Anything else after `=` is evaluated as a **Lua expression**:
+and `3(4+5)` multiply.
+
+`%` before a number is the remainder: `10 % 3` is 1. Before a minus or plus it is a percent, as on
+a phone's calculator, so `10% - 3`, `10%-3` and `10 % - 3` are all -2.9. The exception is a negative
+number written as one, with the `%` apart from the number before it: `10 % -3` is the remainder,
+-2, as `10 mod -3` is.
+
+Commas group a number's digits, in Western or Indian style: `1,500`, `1,000,000`, `1,00,000`,
+`12,34,567`. Any other single comma is a decimal comma: `0,500` is 0.5 and `1,5` is 1.5. Amounts in
+a conversion read the same. In a function's parentheses a comma separates values, so `max(1,500)`
+is 500.
+
+Anything else after `=` is evaluated as a **Lua expression**:
 
 ```sh
 = math.random(6)
@@ -69,7 +81,7 @@ and `3(4+5)` multiply. Anything else after `=` is evaluated as a **Lua expressio
 
 | Kind | Units |
 | --- | --- |
-| length | `mm` `cm` `m` `km` `inch` `ft` `yd` `mi` `nmi` |
+| length | `mm` `cm` `m` `km` `in` `ft` `yd` `mi` `nmi` |
 | mass | `mg` `g` `kg` `t` `oz` `lb` `st` |
 | volume | `ml` `l` `tsp` `tbsp` `cup` `floz` `pt` `gal` |
 | speed | `m/s` `km/h` (`kmh`, `kph`) `mph` `kn` |
@@ -78,8 +90,8 @@ and `3(4+5)` multiply. Anything else after `=` is evaluated as a **Lua expressio
 | area | `m2` `km2` `ft2` `acre` `ha` |
 | temperature | `c` `f` `k` |
 
-Long names and plurals work too (`kilometers`, `pounds`, `celsius`, …). Long-press a result to
-copy the number.
+Long names and plurals work too (`kilometers`, `pounds`, `celsius`, …). `in` is both a unit and a
+connecting word: `= 5 in to cm`, `= 12 cm in in`. Long-press a result to copy the number.
 
 ## Currency
 
