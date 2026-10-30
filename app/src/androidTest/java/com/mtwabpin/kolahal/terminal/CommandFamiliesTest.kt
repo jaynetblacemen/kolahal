@@ -1,7 +1,11 @@
 package com.mtwabpin.kolahal.terminal
 
+import android.app.WallpaperManager
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Color
 import android.os.Build
+import androidx.compose.ui.graphics.toArgb
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mtwabpin.kolahal.apps.AppPrefs
@@ -9,17 +13,21 @@ import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.apps.ProfileKind
 import com.mtwabpin.kolahal.data.Config
 import com.mtwabpin.kolahal.data.Keys
+import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
 import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.data.Script
 import java.io.File
+import com.mtwabpin.kolahal.ui.Term
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlin.math.abs
 
 /** One test per command family: what each prints and what it changes. */
 @RunWith(AndroidJUnit4::class)
@@ -210,6 +218,45 @@ class CommandFamiliesTest {
             instrumentation.removeMonitor(browser)
         }
         assertTrue(run("help").any { it.contains("source") })
+    }
+
+    @Test fun wallpaperWantsMatch() {
+        assertEquals(listOf("Usage: wallpaper match"), run("wallpaper"))
+        assertEquals(listOf("Usage: wallpaper match"), run("wallpaper bogus"))
+    }
+
+    /** It asks first, as the old wallpaper can't be brought back; then only the home screen's changes. */
+    @Test fun wallpaperMatchAsksThenSetsTheHomeScreenOnly() {
+        val wallpapers = WallpaperManager.getInstance(context)
+        val system = WallpaperManager.FLAG_SYSTEM
+        val lock = WallpaperManager.FLAG_LOCK
+        fun close(a: Int, b: Int) = abs(Color.red(a) - Color.red(b)) <= 24 && abs(Color.green(a) - Color.green(b)) <= 24 && abs(Color.blue(a) - Color.blue(b)) <= 24
+        fun colour(which: Int) = wallpapers.getWallpaperColors(which)?.primaryColor?.toArgb()
+        fun waitFor(what: String, check: () -> Boolean) {
+            val until = System.currentTimeMillis() + 5_000
+            while (!check() && System.currentTimeMillis() < until) Thread.sleep(50)
+            assertTrue(what, check())
+        }
+        try {
+            val magenta = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.MAGENTA) }
+            wallpapers.setBitmap(magenta, null, true, system or lock)
+            waitFor("magenta first") { colour(system)?.let { close(it, Color.MAGENTA) } == true }
+            val before = wallpapers.getWallpaperId(system)
+
+            val asked = run("wallpaper match")
+            assertTrue(asked.toString(), asked.first().contains("can't bring the old one back"))
+            assertEquals("Tap to replace it", asked.last())
+            assertEquals("wallpaper match --yes", logs.recent(1).last().ctx.values[LogContext.RUN])
+            assertEquals("only asked so far", before, wallpapers.getWallpaperId(system))
+
+            assertTrue(run("wallpaper match --yes").single().startsWith("Home screen wallpaper set"))
+            assertNotEquals(before, wallpapers.getWallpaperId(system))
+            val theme = Term.bg.copy(alpha = 1f).toArgb()
+            waitFor("the theme's colour, was ${colour(system)}") { colour(system)?.let { close(it, theme) } == true }
+            waitFor("the lock screen keeps its own, was ${colour(lock)}") { colour(lock)?.let { close(it, Color.MAGENTA) } == true }
+        } finally {
+            wallpapers.clear(system or lock)
+        }
     }
 
     @Test fun crashesListAndClear() {

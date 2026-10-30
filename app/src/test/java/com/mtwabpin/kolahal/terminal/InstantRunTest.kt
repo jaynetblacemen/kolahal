@@ -159,6 +159,7 @@ class InstantRunTest {
         assertTrue(InstantRun.isSensitive("crashes clear"))
         // Opens the browser: typing `so` on the way to something else mustn't.
         assertTrue(InstantRun.isSensitive("source"))
+        assertTrue(InstantRun.isSensitive("wallpaper match --yes"))
     }
 
     @Test fun scriptsAndStatusAreSensitive() {

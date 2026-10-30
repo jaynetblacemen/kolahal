@@ -28,6 +28,8 @@
     <!-- Device controls: dnd / ring silent (user grants DND access), wi-fi state for 'toggles'. -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- `wallpaper match`: only when asked, and only the home screen's. -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <!-- brightness / rotate / screen-timeout (user allows "Modify system settings"). -->
     <uses-permission
         android:name="android.permission.WRITE_SETTINGS"

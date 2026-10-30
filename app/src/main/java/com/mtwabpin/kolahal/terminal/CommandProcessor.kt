@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.net.toUri
 import com.mtwabpin.kolahal.apps.AppEntry
 import com.mtwabpin.kolahal.apps.AppPrefs
@@ -130,6 +131,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "notifs", "notifications-feed" -> feedCommands.notifs(args)
                 "url", "web" -> openUrl(rest)
                 "source" -> openUrl(com.mtwabpin.kolahal.ui.SOURCE_URL)
+                "wallpaper" -> wallpaper(args)
                 "search", "g" -> search(rest)
                 "yt", "youtube" -> search(rest, "youtube")
                 "wiki" -> search(rest, "wikipedia")
@@ -443,6 +445,27 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         }
     }
 
+    /**
+     * `wallpaper match`: the home screen's wallpaper in the theme's colour. Going home by gesture
+     * passes through the stock launcher's screen, which shows the wallpaper; in this colour it doesn't
+     * stand out. It asks first: Android doesn't let an app read the wallpaper it replaces, so the old
+     * one can't be brought back. The lock screen keeps its own.
+     */
+    private fun wallpaper(args: List<String>) {
+        if (args.firstOrNull()?.lowercase() != "match") return error("Usage: wallpaper match")
+        if (args.getOrNull(1) != "--yes") {
+            info("This replaces your home screen wallpaper with this theme's colour, so it doesn't flash on the way home by gesture. Kolahal can't bring the old one back, and log.wallpaper and widgets.wallpaper will show only this colour.")
+            return info("Tap to replace it", LogContext.of(LogContext.RUN to "wallpaper match --yes"))
+        }
+        val wallpapers = android.app.WallpaperManager.getInstance(context)
+        if (!wallpapers.isWallpaperSupported || !wallpapers.isSetWallpaperAllowed) return error("This phone doesn't let apps change the wallpaper")
+        val solid = android.graphics.Bitmap.createBitmap(64, 64, android.graphics.Bitmap.Config.ARGB_8888)
+            .apply { eraseColor(com.mtwabpin.kolahal.ui.Term.bg.copy(alpha = 1f).toArgb()) }
+        runCatching { wallpapers.setBitmap(solid, null, true, android.app.WallpaperManager.FLAG_SYSTEM) }
+            .onSuccess { info("Home screen wallpaper set to this theme's colour; the lock screen keeps its own. Run this again after changing theme") }
+            .onFailure { error("Couldn't set the wallpaper: ${it.message}") }
+    }
+
     /** `crashes [share|clear] [n]`: the crash reports kept on this phone ([CrashReports]). */
     private fun crashes(args: List<String>) {
         val reports = com.mtwabpin.kolahal.CrashReports.list(context)
@@ -638,6 +661,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("unlocks", "unlocks [<days>]", "Unlock counts"),
             CommandSpec("fetch", "fetch", "This phone and Kolahal at a glance, fastfetch style"),
             CommandSpec("source", "source", "Open Kolahal's source code on GitHub"),
+            CommandSpec("wallpaper", "wallpaper [match]", "match: the home screen's wallpaper in this theme's colour, so it doesn't flash on the way home by gesture"),
             CommandSpec("script", "script <sub> <name>", "Subcommands: ls lib install get new edit run every at notify on off access allow deny secret set triggers mv rm cat diff dir export import"),
             CommandSpec("=", "= <expr>", "Calculator · = 15% of 80 · = 5 km in mi · = 100 usd in eur"),
             CommandSpec("lua", "lua <code>", "Evaluate Lua 5.4"),
@@ -747,7 +771,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
             "terminal" to listOf("help", "history", "clear", "fresh", "restart", "alias", "unalias", "config", "theme", "font", "backup", "echo", "date", "cal"),
             "widgets" to listOf("widgets", "widget"),
-            "device" to listOf("settings", "setup", "tour", "source", "unlocks", "notifications", "usage-access", "local-network", "crashes", "battery", "home", "lock", "shade", "accessibility", "system"),
+            "device" to listOf("settings", "setup", "tour", "source", "wallpaper", "unlocks", "notifications", "usage-access", "local-network", "crashes", "battery", "home", "lock", "shade", "accessibility", "system"),
         )
     }
 }
