@@ -25,7 +25,9 @@ Kolahal follows the session that is playing; when nothing plays, the most recent
 ### In the header
 
 With `header.media` on (the default), the header shows `♪ Title — Artist` under the clock while
-something plays, and `‖ Title — Artist` while it is paused.
+something plays, and `‖ Title — Artist` while it is paused. A thin bar under the line fills as the
+track plays, and follows you when you seek or start another track; for a stream with no length it
+stays empty.
 
 - **Tap** the line to play or pause.
 - **Long-press** it, or tap **⏭**, to skip to the next track.

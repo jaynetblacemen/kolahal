@@ -47,7 +47,7 @@ The `theme` and `font` commands are unchanged.
 | `header.alarm` | bool | `on` | show the next alarm |
 | `header.profiles` | bool | `on` | show work/private profile state |
 | `header.status` | bool | `on` | show status lines pinned by scripts |
-| `header.media` | bool | `on` | show what's playing under the clock: tap plays / pauses, long-press skips (needs notification access; see [Media](/guides/media-and-controls/#in-the-header)) |
+| `header.media` | bool | `on` | show what's playing under the clock, with a bar for how far along it is: tap plays / pauses, long-press skips (needs notification access; see [Media](/guides/media-and-controls/#in-the-header)) |
 | `header.todo` | bool | `on` | show the open todo count (tap runs `todo`) |
 | `header.autohide` | bool | `on` | scrolling back through older output hides the header; scrolling toward the newest shows it as one line (also after a command); Home or a tap brings the full header back |
 | `header.icons` | bool | `on` | icons for battery, network, unlocks, alarm and profiles in the header (off: text labels) |

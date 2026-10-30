@@ -29,11 +29,17 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.control.NowPlaying
 import kotlinx.coroutines.delay
 
-/** Header media line with a live playback progress indicator. */
+/**
+ * Header line "♪ Title — Artist  ⏭" (drawn icons) over a bar for how far along the track is: tap
+ * toggles play/pause, long-press or ⏭ skips to the next track.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun NowPlayingLine(
@@ -42,18 +48,23 @@ internal fun NowPlayingLine(
     onNext: () -> Unit
 ) {
     val small = Term.text.copy(fontSize = (Term.fontSize - 1).sp)
-    
-    var position by remember(np.pkg, np.title, np.artist) {
+
+    var position by remember(np) {
         mutableLongStateOf(np.positionNow())
     }
 
-    // Update position locally without requiring MediaRepository events.
-    LaunchedEffect(np.pkg, np.title, np.artist, np.playing) {
-        while (np.playing) {
+    // Update position locally without requiring MediaRepository events. Keyed on all of np: a seek,
+    // a repeat or buffering ending leave the title and `playing` as they were. Only while on screen:
+    // a delay doesn't stop with the activity, and music often plays with the screen off.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(np, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (np.playing) {
+                position = np.positionNow()
+                delay(250)
+            }
             position = np.positionNow()
-            delay(250)
         }
-        position = np.positionNow()
     }
 
     val progress = if (np.duration > 0 && position >= 0) {

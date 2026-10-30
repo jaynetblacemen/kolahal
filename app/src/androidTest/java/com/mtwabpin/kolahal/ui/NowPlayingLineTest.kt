@@ -1,8 +1,14 @@
 package com.mtwabpin.kolahal.ui
 
+import android.media.MediaMetadata
+import android.media.session.MediaSession
 import android.media.session.PlaybackState
+import android.os.ParcelFileDescriptor
+import android.os.SystemClock
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -19,25 +25,25 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.mtwabpin.kolahal.control.MediaRepository
 import com.mtwabpin.kolahal.control.NowPlaying
 import com.mtwabpin.kolahal.data.Config
+import com.mtwabpin.kolahal.notifications.KolahalNotificationListener
+import com.mtwabpin.kolahal.notifications.NotificationActions
 import com.mtwabpin.kolahal.status.Status
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 private const val DURATION = 10_000L
-
-/**
- * These fail on the line as it is: its effect goes on with the NowPlaying it started with, until the
- * title or `playing` changes. Take the @Ignore off with the fix.
- */
-private const val STALE = "The bar keeps an old position while the title and `playing` stay the same"
 
 /** The header's media line: what it says, what its taps do, and how far along its bar is. */
 @RunWith(AndroidJUnit4::class)
@@ -202,7 +208,6 @@ class NowPlayingLineTest {
      * A track starting: buffering, then playing, the same title throughout. Both count as `playing`,
      * so the bar must still notice the change, or it stays at the start for the whole track.
      */
-    @Ignore(STALE)
     @Test fun theBarMovesOnceBufferingEnds() {
         var np by mutableStateOf(track(PlaybackState.STATE_BUFFERING))
         show { np }
@@ -212,7 +217,6 @@ class NowPlayingLineTest {
         assertTrue("${filled()}", filled() >= 0.05f)
     }
 
-    @Ignore(STALE)
     @Test fun theBarFollowsASeekWhilePlaying() {
         var np by mutableStateOf(track())
         show { np }
@@ -221,7 +225,6 @@ class NowPlayingLineTest {
         assertTrue("${filled()}", filled() >= 0.74f)
     }
 
-    @Ignore(STALE)
     @Test fun theBarFollowsASeekWhilePaused() {
         var np by mutableStateOf(paused())
         show { np }
@@ -231,7 +234,6 @@ class NowPlayingLineTest {
     }
 
     /** Repeat one: the same title again, from the start, after reaching the end. */
-    @Ignore(STALE)
     @Test fun theBarStartsOverWhenATrackRepeats() {
         var np by mutableStateOf(track(position = DURATION - 100))
         show { np }
@@ -246,7 +248,6 @@ class NowPlayingLineTest {
      * A player's next track often arrives in two callbacks, each published on its own: the new title
      * still with the old track's position, then the new position.
      */
-    @Ignore(STALE)
     @Test fun aNewTitleThenItsPositionStartsOver() {
         var np by mutableStateOf(track(position = DURATION * 3 / 4))
         show { np }
@@ -255,6 +256,91 @@ class NowPlayingLineTest {
         compose.runOnIdle { np = track(position = 0, title = "Other") }
         play(100)
         assertTrue("${filled()}", filled() < 0.2f)
+    }
+
+    /**
+     * Off screen the line stops looking at the clock: music often plays with the screen off, and a
+     * launcher is always around. Back on screen, it's where it should be at once.
+     */
+    @Test fun theBarOnlyMovesOnScreen() {
+        val owner = object : LifecycleOwner {
+            val registry = LifecycleRegistry.createUnsafe(this).apply { currentState = Lifecycle.State.RESUMED }
+            override val lifecycle: Lifecycle get() = registry
+        }
+        compose.setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides owner) {
+                KolahalTheme { Box(Modifier.width(360.dp)) { NowPlayingLine(track(), {}, {}) } }
+            }
+        }
+        compose.waitForIdle()
+        compose.runOnUiThread { owner.registry.currentState = Lifecycle.State.CREATED }
+        compose.waitForIdle()
+        val stopped = filled()
+        play(1_000)
+        assertEquals(stopped, filled(), 0f)
+
+        compose.runOnUiThread { owner.registry.currentState = Lifecycle.State.RESUMED }
+        play(100)
+        assertTrue("${filled()}", filled() >= stopped + 0.05f)
+    }
+
+    private fun shell(command: String) {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command)).use { it.readBytes() }
+    }
+
+    /**
+     * The whole way, from a real media session through [MediaRepository]: a track that buffers, plays,
+     * is sought in and pauses, each a separate update, as players send them.
+     */
+    @Test fun aRealSessionMovesTheBar() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val listener = "${context.packageName}/${KolahalNotificationListener::class.java.name}"
+        val had = NotificationActions.isEnabled(context)
+        shell("cmd notification allow_listener $listener")
+        val session = MediaSession(context, "NowPlayingLineTest")
+        fun state(state: Int, position: Long) = session.setPlaybackState(
+            PlaybackState.Builder().setState(state, position, if (state == PlaybackState.STATE_PLAYING) 1f else 0f, SystemClock.elapsedRealtime()).build(),
+        )
+        try {
+            compose.waitUntil(5_000) { NotificationActions.isEnabled(context) }
+            session.setMetadata(
+                MediaMetadata.Builder()
+                    .putString(MediaMetadata.METADATA_KEY_TITLE, "Song")
+                    .putString(MediaMetadata.METADATA_KEY_ARTIST, "Band")
+                    .putLong(MediaMetadata.METADATA_KEY_DURATION, DURATION)
+                    .build(),
+            )
+            state(PlaybackState.STATE_BUFFERING, 0)
+            session.isActive = true
+            val repository = MediaRepository.get(context)
+            repository.start()
+            compose.setContent {
+                val np by repository.nowPlaying.collectAsState()
+                KolahalTheme { Box(Modifier.width(360.dp)) { np?.let { NowPlayingLine(it, {}, {}) } } }
+            }
+            compose.waitUntil(5_000) { repository.nowPlaying.value?.state == PlaybackState.STATE_BUFFERING }
+            compose.onNodeWithText("Song — Band").assertExists()
+            assertTrue("${filled()}", filled() < 0.01f)
+
+            state(PlaybackState.STATE_PLAYING, 0)
+            compose.waitUntil(5_000) { repository.nowPlaying.value?.state == PlaybackState.STATE_PLAYING }
+            play(1_000)
+            assertTrue("after buffering: ${filled()}", filled() >= 0.05f)
+
+            state(PlaybackState.STATE_PLAYING, DURATION / 2)
+            compose.waitUntil(5_000) { (repository.nowPlaying.value?.position ?: 0) >= DURATION / 2 }
+            play(100)
+            assertTrue("after a seek: ${filled()}", filled() >= 0.49f)
+
+            state(PlaybackState.STATE_PAUSED, DURATION * 3 / 4)
+            compose.waitUntil(5_000) { repository.nowPlaying.value?.state == PlaybackState.STATE_PAUSED }
+            compose.waitForIdle()
+            assertEquals("paused", 0.75f, filled(), 0.02f)
+        } finally {
+            session.release()
+            if (!had) shell("cmd notification disallow_listener $listener")
+        }
     }
 
     private fun header(np: NowPlaying) = compose.setContent {
