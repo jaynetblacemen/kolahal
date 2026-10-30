@@ -64,6 +64,24 @@ data class NowPlaying(
 }
 
 /**
+ * Wall-clock time each session (by package) was last seen playing. A player can stay silent for the
+ * whole of a long track, so the update that finds it stopped counts too: otherwise a pause would
+ * date from the track's start, and the line would leave the header at once.
+ */
+internal class LastPlaying {
+    private val times = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private var playing = emptySet<String>()
+
+    /** Main thread. [playingNow]: the packages playing at [now]. */
+    fun update(playingNow: Set<String>, now: Long) {
+        (playingNow + playing).forEach { times[it] = now }
+        playing = playingNow
+    }
+
+    operator fun get(pkg: String): Long? = times[pkg]
+}
+
+/**
  * Follows the most relevant media session (a playing one first, else the most recent) through
  * [MediaSessionManager]. Needs notification access, since our listener's component is the key
  * to [MediaSessionManager.getActiveSessions]. UI process only; [start] is idempotent and cheap
@@ -81,8 +99,7 @@ class MediaRepository private constructor(private val context: Context) {
     private var controllers: List<MediaController> = emptyList()
     @Volatile private var current: MediaController? = null
 
-    /** Wall-clock time each session (by package) was last seen playing. */
-    private val lastPlaying = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private val lastPlaying = LastPlaying()
 
     private val sessionsListener = MediaSessionManager.OnActiveSessionsChangedListener { list -> onSessions(list.orEmpty()) }
 
@@ -128,7 +145,7 @@ class MediaRepository private constructor(private val context: Context) {
     /** Main thread. Picks the session to show and publishes it. */
     private fun recompute() {
         val now = System.currentTimeMillis()
-        controllers.forEach { c -> if (c.playbackState.isActive()) lastPlaying[c.packageName] = now }
+        lastPlaying.update(controllers.filter { it.playbackState.isActive() }.map { it.packageName }.toSet(), now)
         val chosen = controllers.firstOrNull { it.playbackState.isActive() }
             ?: controllers.maxByOrNull { lastPlaying[it.packageName] ?: 0L }
         current = chosen

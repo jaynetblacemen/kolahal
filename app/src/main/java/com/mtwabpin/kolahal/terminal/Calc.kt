@@ -11,7 +11,7 @@ import kotlin.math.floor
  * sqrt, cbrt, abs, round, floor, ceil, ln, log (base 10), log2, exp, sin, cos, tan, asin, acos,
  * atan (radians; `30°` is degrees), min and max. A percent works as on a phone's calculator:
  * `15%` is 0.15, `80 + 15%` adds 15% of 80, and `15% of 80` is 12; `%` before a number is the
- * remainder (`10 % 3`). `2pi` and `3(4+5)` multiply. Anything else (Lua code) is left to Lua.
+ * remainder (`10 % 3`). `2pi`, `3(4+5)` and `3x4` multiply. Anything else (Lua code) is left to Lua.
  */
 object Calc {
     /** The answer to [text], or null when it isn't arithmetic this reads. Throws [ArithmeticException] for one with no answer. */
@@ -41,6 +41,19 @@ object Calc {
     private data class Word(val w: String) : Token
     private data class Op(val c: String) : Token
 
+    /**
+     * `3x4`: [word] starts with a times sign stuck to the number after it, when a value comes before
+     * it (`2x3x4` reads as one word). But `0x10`, written together, is hexadecimal, for Lua.
+     */
+    private fun timesThenDigits(word: String, before: List<Token>, text: String, at: Int): Boolean {
+        if (!TIMES_THEN_DIGITS.matches(word)) return false
+        val last = before.lastOrNull()
+        if (last is Num && last.v == 0.0 && text.getOrNull(at - 1) == '0') return false
+        return last is Num || last in ENDS_A_VALUE
+    }
+    private val TIMES_THEN_DIGITS = Regex("(x\\d+)+")
+    private val ENDS_A_VALUE = setOf(Op(")"), Op("!"), Op("%"), Op("°"), Word("pi"), Word("e"))
+
     private fun tokenize(text: String): List<Token>? {
         val out = ArrayList<Token>()
         var i = 0
@@ -65,8 +78,14 @@ object Calc {
                 c.isLetter() && c != 'π' -> {
                     var j = i
                     while (j < text.length && text[j].isLetterOrDigit() && text[j] != 'π') j++
-                    out += Word(text.substring(i, j).lowercase())
-                    i = j
+                    val word = text.substring(i, j).lowercase()
+                    if (timesThenDigits(word, out, text, i)) {
+                        out += Word("x")
+                        i++
+                    } else {
+                        out += Word(word)
+                        i = j
+                    }
                 }
                 c == 'π' -> { out += Word("pi"); i++ }
                 c == '*' && text.getOrNull(i + 1) == '*' -> { out += Op("^"); i += 2 }

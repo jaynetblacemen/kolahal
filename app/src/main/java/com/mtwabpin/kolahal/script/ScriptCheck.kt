@@ -14,7 +14,7 @@ object ScriptCheck {
     data class Issue(val line: Int, val text: String)
 
     /** Every `@` line the header may have ([ScriptMeta]). */
-    private val DIRECTIVES = setOf(
+    internal val DIRECTIVES = setOf(
         "command", "desc", "usage", "on", "uses", "secret", "option",
         "title", "author", "version", "tags", "every", "at", "notify", "requires",
     )

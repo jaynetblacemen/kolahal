@@ -55,6 +55,28 @@ class TimeSpecTest {
         assertNull(every("every day at nonsense"))
         assertNull(every("daily x"))
     }
+    /** 29 February is a yearly date, the 28th in other years. */
+    @Test fun aYearlyReminderOnTheTwentyNinth() {
+        assertEquals(TimeSpec.Repeating("year:02-29", LocalDateTime.of(2027, 2, 28, 9, 0), 4), every("every year feb 29 leap day"))
+        assertEquals(TimeSpec.Repeating("year:02-29", LocalDateTime.of(2027, 2, 28, 9, 0), 4), every("every year 29 feb leap day"))
+    }
+
+    /** Meant as a date but not one: not today's date, with the date as the reminder's words. */
+    @Test fun aYearlyDateThatCantBeIsRefused() {
+        for (line in listOf("every year feb 30 x", "every year 31 apr x", "every year mar 40 x", "every year mar 14 2027 x", "every year 2027-03-14 x")) {
+            assertNull(line, every(line))
+        }
+    }
+
+    /** No date at all still means today's, every year. */
+    @Test fun aYearlyReminderWithoutADateIsToday() {
+        for (line in listOf("every year march madness", "every year may 5k run")) {
+            val r = every(line)!!
+            assertEquals(line, "year:%02d-%02d".format(now.monthValue, now.dayOfMonth), r.rule)
+            assertEquals(line, 2, r.consumed)
+        }
+    }
+
     @Test fun todayPassedIsRejected() = assertNull(parse("today 9:00 x"))
     @Test fun bareNumberIsNotATime() = assertNull(parse("2 tickets"))
     @Test fun wordsAreNotATime() = assertNull(parse("buy milk"))

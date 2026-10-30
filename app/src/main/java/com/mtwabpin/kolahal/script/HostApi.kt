@@ -282,8 +282,9 @@ class HostApi(
      * short with "…", or its link. Otherwise a line could show one address and copy another.
      */
     private fun honestCopy(copy: String, text: String, url: String?): Boolean {
-        // The link as given, or as it was normalised (a trailing / added).
-        if (copy == url || Net.webUrl(copy) == url) return true
+        // The link as given, or as it was normalised (a trailing / added). webUrl is null for
+        // anything but a link, so on a line with no link it must not count as a match.
+        if (url != null && (copy == url || Net.webUrl(copy) == url)) return true
         // As they read: styles and list marks aside.
         fun bare(s: String) = StyledText.plain(s).filterNot { it.isWhitespace() || it == ',' }
         val c = bare(copy)

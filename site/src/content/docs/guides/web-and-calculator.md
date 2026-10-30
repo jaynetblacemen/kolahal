@@ -45,7 +45,7 @@ while you type; tap it to put it in the prompt and go on from it. Enter writes i
 = 10 mod 3        # 1 (10 % 3 too)
 ```
 
-It knows `+ - * /` (also `×`, `x`, `÷`), `^`, `mod`, `n!`, parentheses, `pi` (`π`) and `e`, and
+It knows `+ - * /` (also `×`, `x`, as in `3x4`, `÷`), `^`, `mod`, `n!`, parentheses, `pi` (`π`) and `e`, and
 `sqrt`, `cbrt`, `abs`, `round`, `floor`, `ceil`, `ln`, `log` (base 10), `log2`, `exp`, `sin`,
 `cos`, `tan` and their `a…` inverses (radians; `sin 30°` takes degrees), `min` and `max`. `2pi`
 and `3(4+5)` multiply. Anything else after `=` is evaluated as a **Lua expression**:

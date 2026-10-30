@@ -147,9 +147,10 @@ object ApiDocs {
     val directives: List<Directive> = listOf(
         Directive("command", "", "Run it by its name from the prompt"),
         Directive("desc", "<text>", "One line about it, in help, suggestions and Scripts"),
-        Directive("usage", "[<args>]", "Its arguments, like a usage line in help: [<city>|--default <city>]"),
+        Directive("usage", "[<args>]", "Its arguments, like a usage line in help: [<city>]"),
         Directive("on", "<event>, …", "Run when it happens: " + ScriptMeta.EVENTS.joinToString(" ")),
         Directive("uses", "<what>, …", "What it may use, if you allow it: " + ScriptMeta.USES.joinToString(" ")),
+        Directive("option", "<name> <default> <description>", "A setting you change without editing the code, read as options.<name>; a default of a|b|c offers a choice"),
         Directive("secret", "<NAME> <site> <description>", "A key you set in its sheet, never in the code; read with secrets.get, sent only to that site"),
         Directive("every", "<15m|1h|1d>", "The timer it suggests, set when it is added"),
         Directive("at", "<HH:mm>, …", "The daily times it suggests"),
