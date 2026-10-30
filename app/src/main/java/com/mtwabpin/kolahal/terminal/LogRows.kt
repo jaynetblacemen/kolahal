@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogEntry
 import com.mtwabpin.kolahal.data.LogKind
+import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -116,6 +117,9 @@ fun buildRows(
     }
     return rows
 }
+
+/** The time beside a line. A format keeps the time zone it was made in: another is made when the phone's changes. */
+fun lineTimeFormat(clock24: Boolean, locale: Locale = Locale.getDefault()) = SimpleDateFormat(if (clock24) "HH:mm" else "h:mm", locale)
 
 /**
  * Where a line came from and when, to the second, for its long-press sheet (`countdown · today

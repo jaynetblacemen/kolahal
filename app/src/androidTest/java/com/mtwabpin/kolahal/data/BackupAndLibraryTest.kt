@@ -247,6 +247,101 @@ class BackupAndLibraryTest {
         }
     }
 
+    /** Exports and imports as on a phone whose log is new: its ids go on from the newest line restored. */
+    private fun restoreOnANewPhone() {
+        val file = File(context.cacheDir, "kolahal-backup-new-phone.json")
+        try {
+            Backup(context).export(Uri.fromFile(file))
+            Db.get(context).writableDatabase.delete("sqlite_sequence", "name = 'logs'", null)
+            Backup(context).import(Uri.fromFile(file))
+        } finally {
+            file.delete()
+        }
+    }
+
+    /** A line that stays out of backups, as notification lines do. */
+    private fun LogRepository.addPrivate() =
+        add(LogKind.SCRIPT, "bk notification", "bk", LogContext.of(com.mtwabpin.kolahal.notifications.KolahalNotificationListener.CTX_KEY to "1"))
+
+    /** Hidden up to a line that stays behind: what was hidden stays hidden, and the next line shows. */
+    @Test fun aHidePastTheRestoredLinesKeepsNewLinesInView() {
+        val logs = LogRepository.get(context)
+        try {
+            val old = logs.add(LogKind.OUTPUT, "bk old")
+            logs.hideScreen(logs.addPrivate())
+            restoreOnANewPhone()
+            assertTrue(logs.isHidden(old))
+            val new = logs.add(LogKind.OUTPUT, "bk new")
+            assertFalse(logs.isHidden(new))
+            assertTrue(logs.recent(limit = 50).any { it.id == new })
+        } finally {
+            logs.clearAll()
+        }
+    }
+
+    /** A hide within the restored lines comes back as it was: the lines up to it hidden, the rest in view. */
+    @Test fun aHideWithinTheRestoredLinesStaysWhereItWas() {
+        val logs = LogRepository.get(context)
+        try {
+            val hidden = logs.add(LogKind.OUTPUT, "bk hidden")
+            val shown = logs.add(LogKind.OUTPUT, "bk shown")
+            logs.hideScreen(hidden)
+            restoreOnANewPhone()
+            assertTrue(logs.isHidden(hidden))
+            assertFalse(logs.isHidden(shown))
+            assertEquals(listOf(shown), logs.recent(limit = 50).map { it.id }.filter { it == hidden || it == shown })
+        } finally {
+            logs.clearAll()
+        }
+    }
+
+    /** A cleared screen leaves only its commands: they stay out of view and in ↑ history, and the next line shows. */
+    @Test fun aClearPastTheRestoredLinesKeepsNewLinesInView() {
+        val logs = LogRepository.get(context)
+        try {
+            val command = logs.add(LogKind.COMMAND, "bk command")
+            logs.add(LogKind.OUTPUT, "bk output")
+            logs.purgeCleared(logs.clearScreen().upTo)
+            restoreOnANewPhone()
+            assertTrue(logs.recent(limit = 50).none { it.id == command })
+            assertTrue("bk command" in logs.commandHistory())
+            val new = logs.add(LogKind.OUTPUT, "bk new")
+            assertTrue(logs.recent(limit = 50).any { it.id == new })
+        } finally {
+            logs.clearAll()
+        }
+    }
+
+    /** ↑ history emptied at a line that stays behind: it stays empty of the old commands, and new ones are recalled. */
+    @Test fun historyEmptiedPastTheRestoredLinesRecallsNewCommands() {
+        val logs = LogRepository.get(context)
+        try {
+            logs.add(LogKind.COMMAND, "bk old command")
+            logs.addPrivate()
+            logs.clearHistory()
+            restoreOnANewPhone()
+            assertFalse("bk old command" in logs.commandHistory())
+            logs.add(LogKind.COMMAND, "bk new command")
+            assertTrue("bk new command" in logs.commandHistory())
+        } finally {
+            logs.clearAll()
+        }
+    }
+
+    /** Seen up to a line that stays behind: the seen mark, which `log.fresh` hides up to, comes down with it. */
+    @Test fun whatWasSeenStaysWithinTheRestoredLines() {
+        val logs = LogRepository.get(context)
+        try {
+            logs.add(LogKind.OUTPUT, "bk old")
+            val notification = logs.addPrivate()
+            logs.seenUpTo = notification
+            restoreOnANewPhone()
+            assertTrue(logs.seenUpTo < notification)
+        } finally {
+            logs.clearAll()
+        }
+    }
+
     /** What this phone knows of its own calls and apps stays out of a backup, and a restore keeps it. */
     /** Other people's messages and numbers, and a private space's apps, stay on the phone. */
     @Test fun privateLinesStayOutOfBackups() {

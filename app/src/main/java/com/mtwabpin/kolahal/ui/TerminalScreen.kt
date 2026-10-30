@@ -68,8 +68,6 @@ import com.mtwabpin.kolahal.terminal.LogAction
 import com.mtwabpin.kolahal.terminal.LogRow
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import com.mtwabpin.kolahal.terminal.UiEvent
-import java.text.SimpleDateFormat
-import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
@@ -238,9 +236,12 @@ fun TerminalScreen(vm: TerminalViewModel, onPickFolder: () -> Unit, preview: Ter
         }
         LineIndents(text = width("$ ", Term.text), code = width("$ ", Term.code), bullet = width("• ", Term.text))
     }
-    val lineTimeFormat = remember(configVersion) {
-        SimpleDateFormat(if (config[Keys.CLOCK_24H]) "HH:mm" else "h:mm", Locale.getDefault())
+    val zone = rememberZoneChanges()
+    val lineTimeFormat = remember(configVersion, zone) {
+        com.mtwabpin.kolahal.terminal.lineTimeFormat(config[Keys.CLOCK_24H])
     }
+    // The day dividers depend on the zone too: the rows are built again.
+    if (preview == null && zone > 0) LaunchedEffect(zone) { vm.onZoneChanged() }
     val fontSizeToast = rememberFontSizeToast()
     val doubleTapOn = remember(configVersion) {
         config[Keys.GESTURE_DOUBLE_TAP].trim().let { it.isNotEmpty() && it != com.mtwabpin.kolahal.gesture.Gestures.NONE }

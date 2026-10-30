@@ -625,6 +625,10 @@ class LogRepository private constructor(private val context: Context) {
         private const val KEY_SEEN_UP_TO = "seen_up_to"
         private const val KEY_HISTORY_FROM = "history_from"
         private const val KEY_FILTER = "filter"
+
+        /** The preferences that hold a line's id, which a backup carries along with the lines ([FullBackup]). */
+        internal val ID_KEYS = setOf(KEY_CLEARED_UP_TO, KEY_HIDDEN_UP_TO, KEY_PURGE_UP_TO, KEY_SEEN_UP_TO, KEY_HISTORY_FROM)
+
         const val ACTION_LOGS_CHANGED = "com.mtwabpin.kolahal.LOGS_CHANGED"
         const val EXTRA_RESTRUCTURE = "restructure"
         const val EXTRA_TRIMMED_UP_TO = "trimmed_up_to"

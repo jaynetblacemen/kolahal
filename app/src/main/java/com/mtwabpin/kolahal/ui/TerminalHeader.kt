@@ -53,21 +53,38 @@ import androidx.compose.ui.semantics.semantics
 /** What a tap on a header item does. */
 enum class HeaderTarget { CLOCK, UNLOCKS, BATTERY, NETWORK, ALARM, SETTINGS, TODO }
 
+/** Counts the phone's time-zone changes, for formatters to be made again in the new zone. */
+@Composable
+internal fun rememberZoneChanges(): Int {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var zone by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    androidx.compose.runtime.DisposableEffect(context) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: android.content.Context, intent: android.content.Intent) {
+                zone++
+            }
+        }
+        val filter = android.content.IntentFilter(android.content.Intent.ACTION_TIMEZONE_CHANGED)
+        androidx.core.content.ContextCompat.registerReceiver(context, receiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
+        onDispose { context.unregisterReceiver(receiver) }
+    }
+    return zone
+}
+
 /**
  * The time, a minute at a time, as the system ticks it (on waking too, where a delay that slept
  * with the phone wouldn't), and at once when the clock or the time zone is set. The second value
- * counts time-zone changes, for formatters to be made again in the new zone.
+ * counts time-zone changes ([rememberZoneChanges]).
  */
 @Composable
 private fun rememberNow(): Pair<Date, Int> {
     val context = androidx.compose.ui.platform.LocalContext.current
     var now by remember { androidx.compose.runtime.mutableStateOf(Date()) }
-    var zone by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val zone = rememberZoneChanges()
     androidx.compose.runtime.DisposableEffect(context) {
         val receiver = object : android.content.BroadcastReceiver() {
             override fun onReceive(c: android.content.Context, intent: android.content.Intent) {
                 now = Date()
-                if (intent.action == android.content.Intent.ACTION_TIMEZONE_CHANGED) zone++
             }
         }
         val filter = android.content.IntentFilter().apply {

@@ -79,17 +79,11 @@ object FullBackup {
 
     /** Replaces preferences and tables with the backup's. Returns how many rows were restored. */
     fun importRaw(context: Context, data: Map<*, *>): Int {
-        (data["prefs"] as? Map<*, *>)?.forEach { (file, entries) ->
-            if (file !is String || file !in PREFS || entries !is Map<*, *>) return@forEach
-            // Same rule as `alias`: an alias never shadows a built-in command.
-            val safe = if (file != "aliases") entries else entries.filterKeys { it?.toString()?.lowercase() !in BUILT_INS }
-            importPrefs(context, file, safe)
-        }
         var rows = 0
-        val tables = data["tables"] as? Map<*, *> ?: return 0
+        val tables = data["tables"] as? Map<*, *>
         for (t in TABLES) {
             // A backup never brings secrets: only this phone's are kept.
-            val list = (tables[t.name] as? List<*>)?.filterIsInstance<Map<*, *>>()
+            val list = (tables?.get(t.name) as? List<*>)?.filterIsInstance<Map<*, *>>()
                 ?.filterNot { t.name == "kv" && it["scope"]?.toString().orEmpty().let { s -> s.startsWith(SecretStore.SCOPE_PREFIX) || s in DEVICE_SCOPES } } ?: continue
             val db = t.db(context)
             db.transaction {
@@ -118,7 +112,29 @@ object FullBackup {
                 }
             }
         }
+        // After the tables: the ids the log saved are measured against the lines now in it.
+        (data["prefs"] as? Map<*, *>)?.forEach { (file, entries) ->
+            if (file !is String || file !in PREFS || entries !is Map<*, *>) return@forEach
+            val safe = when (file) {
+                // Same rule as `alias`: an alias never shadows a built-in command.
+                "aliases" -> entries.filterKeys { it?.toString()?.lowercase() !in BUILT_INS }
+                "logs" -> logIdsWithin(entries, LogRepository.get(context).maxId())
+                else -> entries
+            }
+            importPrefs(context, file, safe)
+        }
         return rows
+    }
+
+    /**
+     * A backup's "logs" preferences with no line's id past [newest], the newest line now in the log.
+     * They can be past it: the lines up to them stayed behind (notification and call lines) or are
+     * gone (cleared, trimmed, swiped), and new lines, numbered on from [newest], would stay out of
+     * view until their ids got there. Restored lines stay hidden or shown just as they were.
+     */
+    internal fun logIdsWithin(entries: Map<*, *>, newest: Long): Map<*, *> = entries.mapValues { (key, tagged) ->
+        val id = (tagged as? Map<*, *>)?.get("l") as? Number
+        if (key in LogRepository.ID_KEYS && id != null && id.toLong() > newest) mapOf("l" to newest) else tagged
     }
 
     /** After scripts exist (by name), puts each script's store back under its new id. */
