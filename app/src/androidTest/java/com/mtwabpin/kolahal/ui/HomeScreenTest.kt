@@ -65,7 +65,7 @@ class HomeScreenTest {
             // focused prompt) and the system bars are taken out of the window, not of the frame.
             KolahalTheme {
                 Box(Modifier.size(width, height).testTag("frame").consumeWindowInsets(WindowInsets.safeDrawing)) {
-                    TerminalScreen(vm, onRequestNotifications = {}, onPickFolder = {})
+                    TerminalScreen(vm, onPickFolder = {})
                 }
             }
         }
@@ -165,7 +165,7 @@ class HomeScreenTest {
         compose.setContent {
             KolahalTheme {
                 Box(Modifier.size(360.dp, 700.dp)) {
-                    TerminalScreen(vm, onRequestNotifications = {}, onPickFolder = {}, preview = TerminalViewModel.Peek(null, typing = false))
+                    TerminalScreen(vm, onPickFolder = {}, preview = TerminalViewModel.Peek(null, typing = false))
                 }
             }
         }

@@ -8,7 +8,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -62,7 +61,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
@@ -245,14 +243,14 @@ internal object SelectorMath {
 
     /**
      * `selector.browse letters`: the letter at [pos] along the edge (in letters: letter `i` spans
-     * `[i, i + 1)`, as [alongLetters] gives it), staying on [current] until [pos] is [stick] past
+     * `[i, i + 1)`, as [alongLetters] gives it), staying on [current] until [pos] is [STICK] past
      * either end of its stretch.
      */
-    fun letterAt(pos: Float, current: Int, count: Int, stick: Float = STICK): Int {
+    fun letterAt(pos: Float, current: Int, count: Int): Int {
         if (count <= 0) return -1
         val raw = floor(pos).toInt().coerceIn(0, count - 1)
         if (current !in 0 until count) return raw
-        return if (pos >= current - stick && pos < current + 1 + stick) current else raw
+        return if (pos >= current - STICK && pos < current + 1 + STICK) current else raw
     }
 
     /**
@@ -562,8 +560,6 @@ private class SelectorState {
     var contact by mutableFloatStateOf(Float.NaN)
     /** Where the fisheye was last centred (rows, as [contact]): it shrinks back there once the finger leaves the list. */
     var lensAt by mutableFloatStateOf(Float.NaN)
-    /** Finger Y in the selector's coordinates (moves the handle). */
-    var fingerY by mutableFloatStateOf(0f)
     /** Scroll offset (px) set by scrubbing. */
     var scrollPx = 0f
     /**
@@ -1086,7 +1082,6 @@ fun AppSelector(
 
                         fun update(now: Long) {
                             val cy = stripTopPx + y
-                            state.fingerY = cy
                             // A new letter's apps glide in from where the list is drawn; off the edge the
                             // list is where the letter put it, a glide still under way ended there at once.
                             var newLetter = false

@@ -3,7 +3,6 @@ package com.mtwabpin.kolahal.terminal
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.provider.AlarmClock
 import android.provider.CalendarContract
 import android.provider.Settings
@@ -125,7 +124,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
         val id = todos.add(text)
         val open = todos.open()
         val pos = open.indexOfFirst { it.id == id } + 1
-        todoLine(Todo(id, text, false, System.currentTimeMillis(), null), pos, info = true)
+        todoLine(Todo(id, text, false), pos, info = true)
         info("${open.size} open")
     }
 
@@ -222,7 +221,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
                 return info("Cancelled reminder: ${r.text}")
             }
             "exact" -> {
-                if (Build.VERSION.SDK_INT < 31 || ReminderScheduler.canBeExact(context)) return info("Reminders already fire on time")
+                if (ReminderScheduler.canBeExact(context)) return info("Reminders already fire on time")
                 return startActivity(
                     Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.fromParts("package", context.packageName, null))
                 )

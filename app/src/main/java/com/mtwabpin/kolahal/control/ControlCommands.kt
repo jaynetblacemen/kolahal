@@ -209,7 +209,7 @@ class ControlCommands(private val context: Context) {
         out(volumeLine(), LogContext.of(LogContext.COMMAND to "volume "))
     }
 
-    private fun ringLabel(mode: Int = audio.ringerMode) = when (mode) {
+    private fun ringLabel() = when (audio.ringerMode) {
         AudioManager.RINGER_MODE_SILENT -> "silent"
         AudioManager.RINGER_MODE_VIBRATE -> "vibrate"
         else -> "normal"

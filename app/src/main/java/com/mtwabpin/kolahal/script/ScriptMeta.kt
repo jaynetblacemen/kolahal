@@ -148,9 +148,6 @@ object ScriptMeta {
 
     fun version(code: String): String? = value(code, "version")
 
-    fun tags(code: String): List<String> =
-        value(code, "tags")?.split(',')?.map { it.trim().lowercase() }?.filter { it.isNotEmpty() }?.distinct().orEmpty()
-
     /** `@every 1h`: the interval it suggests, in minutes; null without one (or `off`). */
     fun every(code: String): Int? =
         value(code, "every")?.let { com.mtwabpin.kolahal.terminal.CommandParsing.parseInterval(it) }?.takeIf { it > 0 }

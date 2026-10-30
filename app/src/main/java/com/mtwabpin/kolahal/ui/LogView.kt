@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.em
 import com.mtwabpin.kolahal.notifications.NotifIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -403,16 +402,16 @@ private fun AppGrid(apps: List<AppEntry>, onTap: (AppEntry) -> Unit, onLongPress
 private val profileTag = Regex(" \\[([PWSC])](?= \\S*$|$)")
 
 /** Appends [text] in [color], with a trailing profile tag in its profile colour. */
-private fun androidx.compose.ui.text.AnnotatedString.Builder.appendTagged(text: String, color: Color, weight: FontWeight? = null) {
+private fun androidx.compose.ui.text.AnnotatedString.Builder.appendTagged(text: String, color: Color) {
     val tag = profileTag.find(text)
     if (tag == null) {
-        withStyle(SpanStyle(color = color, fontWeight = weight)) { append(text) }
+        withStyle(SpanStyle(color = color)) { append(text) }
         return
     }
     val kind = ProfileKind.entries.first { it.tag == tag.groupValues[1] }
-    withStyle(SpanStyle(color = color, fontWeight = weight)) { append(text.substring(0, tag.range.first)) }
+    withStyle(SpanStyle(color = color)) { append(text.substring(0, tag.range.first)) }
     withStyle(SpanStyle(color = Term.profileColor(kind), fontWeight = FontWeight.Bold)) { append(tag.value) }
-    withStyle(SpanStyle(color = color, fontWeight = weight)) { append(text.substring(tag.range.last + 1)) }
+    withStyle(SpanStyle(color = color)) { append(text.substring(tag.range.last + 1)) }
 }
 
 private const val NOTIF_ICON = "notif-icon"
@@ -467,7 +466,7 @@ private fun renderLine(entry: LogEntry, indents: LineIndents, unread: Boolean, i
             LogKind.INFO -> {
                 // Lines after the first are details (e.g. a package name under an app event): dimmed.
                 val first = entry.text.substringBefore('\n')
-                appendTagged(first, Term.info, null)
+                appendTagged(first, Term.info)
             }
             LogKind.SCRIPT -> {
                 if (unread) withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("• ") }

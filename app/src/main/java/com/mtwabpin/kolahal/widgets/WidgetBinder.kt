@@ -79,13 +79,12 @@ class WidgetBinder(private val activity: ComponentActivity, private val onAdded:
         }.onFailure { cancel(req, "Couldn't open the widget's setup: ${it.message ?: it.javaClass.simpleName}") }
     }
 
-    /** Returns true when the result belonged to the configure step. */
-    fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
-        if (requestCode != REQUEST_CONFIGURE) return false
-        val req = pending ?: return true
+    /** The configure step's result; any other request's is left alone. */
+    fun onActivityResult(requestCode: Int, resultCode: Int) {
+        if (requestCode != REQUEST_CONFIGURE) return
+        val req = pending ?: return
         // Some configure activities return a different id in the result; ours is the one we bound.
         if (resultCode == Activity.RESULT_OK) finish(req) else cancel(req, "Widget setup cancelled")
-        return true
     }
 
     private fun finish(req: Request) {

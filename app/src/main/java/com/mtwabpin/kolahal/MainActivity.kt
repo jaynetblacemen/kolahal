@@ -113,7 +113,7 @@ class MainActivity : ComponentActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
-        widgetBinder.onActivityResult(requestCode, resultCode, data)
+        widgetBinder.onActivityResult(requestCode, resultCode)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -186,7 +186,6 @@ class MainActivity : ComponentActivity() {
                     if (screen == Screen.TERMINAL) HomePager(vm) {
                         TerminalScreen(
                             vm,
-                            onRequestNotifications = ::requestNotifications,
                             onPickFolder = { pickFolder.launch(null) },
                         )
                     } else saved.SaveableStateProvider(screen.name) { androidx.compose.foundation.layout.Box(

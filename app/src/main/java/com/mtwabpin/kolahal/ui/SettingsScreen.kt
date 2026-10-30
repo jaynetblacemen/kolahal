@@ -10,7 +10,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -120,7 +119,7 @@ fun SettingsOverHome(
                 Box(Modifier.fillMaxSize()) {
                     // widgets.wallpaper is about the widgets page: that page shows, not the terminal.
                     if (p.key == Keys.WIDGETS_WALLPAPER.key) WidgetPanel(vm)
-                    else TerminalScreen(vm, onRequestNotifications = {}, onPickFolder = {}, preview = p)
+                    else TerminalScreen(vm, onPickFolder = {}, preview = p)
                     Box(
                         Modifier.fillMaxSize().pointerInput(Unit) {
                             awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }

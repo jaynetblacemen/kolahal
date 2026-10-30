@@ -146,12 +146,12 @@ object ScriptScheduler {
         prefs.edit { remove("script:$scriptId") }
     }
 
-    fun runNow(context: Context, script: Script, args: List<String> = emptyList(), interactive: Boolean = true, event: Map<String, Any?>? = null) {
+    fun runNow(context: Context, script: Script, args: List<String> = emptyList(), event: Map<String, Any?>? = null) {
         WorkManager.getInstance(context).enqueue(
             OneTimeWorkRequestBuilder<ScriptWorker>()
                 .setInputData(remoteData(context) {
                     putLong(ScriptWorker.KEY_SCRIPT_ID, script.id)
-                    putBoolean(ScriptWorker.KEY_INTERACTIVE, interactive)
+                    putBoolean(ScriptWorker.KEY_INTERACTIVE, true)
                     if (args.isNotEmpty()) putStringArray(ScriptWorker.KEY_ARGS, args.toTypedArray())
                     // A sample event, run from the editor.
                     if (event != null) putString(ScriptWorker.KEY_EVENT, Json.stringify(event))

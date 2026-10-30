@@ -74,8 +74,6 @@ class UnlockCounter private constructor(private val context: Context) {
     fun usageAccessIntent(): Intent =
         Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-    val source: String get() = if (hasUsageAccess()) "usage-stats" else "receiver"
-
     /** Finished days don't change: counted once. */
     private val pastDays = java.util.concurrent.ConcurrentHashMap<LocalDate, Int>()
 

@@ -147,7 +147,6 @@ class KolahalNotificationListener : NotificationListenerService() {
             text = (extras.getCharSequence(Notification.EXTRA_BIG_TEXT)
                 ?: extras.getCharSequence(Notification.EXTRA_TEXT))?.toString(),
             postTime = sbn.postTime,
-            hasIntent = sbn.notification.contentIntent != null,
             icon = NotifIcons.key(this, sbn.packageName, sbn.notification.smallIcon),
         )
     }

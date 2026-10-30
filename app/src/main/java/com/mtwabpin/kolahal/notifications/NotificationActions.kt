@@ -17,9 +17,6 @@ object NotificationActions {
     fun isEnabled(context: Context): Boolean =
         context.packageName in NotificationManagerCompat.getEnabledListenerPackages(context)
 
-    /** True when access is granted and the system has bound the listener (open/dismiss will work). */
-    fun isConnected(): Boolean = KolahalNotificationListener.connected != null
-
     /** Opens the access screen; the per-app detail page on API 30+, falling back to the list. */
     fun settingsIntent(context: Context): Intent {
         if (Build.VERSION.SDK_INT >= 30) {

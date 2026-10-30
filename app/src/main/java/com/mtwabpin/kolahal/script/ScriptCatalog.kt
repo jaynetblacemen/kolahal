@@ -33,9 +33,7 @@ class ScriptCatalog(private val context: Context) {
         val command: Boolean,
         val every: Int?,
         val at: List<String>,
-        val notify: Boolean,
         val requires: String?,
-        val size: Int,
         val sha256: String,
     )
 
@@ -94,9 +92,7 @@ class ScriptCatalog(private val context: Context) {
                 command = m["command"] == true,
                 every = (m["every"] as? Number)?.toInt()?.takeIf { it > 0 },
                 at = m.list("at"),
-                notify = m["notify"] == true,
                 requires = m.str("requires"),
-                size = (m["size"] as? Number)?.toInt() ?: 0,
                 sha256 = sha,
             )
         }.distinctBy { it.name }

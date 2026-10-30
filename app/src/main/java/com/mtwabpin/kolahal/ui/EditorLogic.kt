@@ -111,12 +111,12 @@ object EditorLogic {
      * globals, namespaces and keywords once at least 2 characters are typed. Ranked: case-sensitive
      * prefix before case-insensitive, API before keywords, then shorter names, then alphabetical.
      */
-    fun completions(text: String, cursor: Int, lang: ScriptLang, limit: Int = 30): List<ApiDoc> {
+    fun completions(text: String, cursor: Int, lang: ScriptLang): List<ApiDoc> {
         val p = prefixAt(text, cursor) ?: return emptyList()
         if (p.qualifier == null && p.partial.length < 2) return emptyList()
         if (p.qualifier != null && !ApiDocs.isNamespace(p.qualifier, lang)) return emptyList()
         if (inCommentOrString(text, cursor, lang)) return emptyList()
-        return rank(ApiDocs.forLang(lang), p, limit)
+        return rank(ApiDocs.forLang(lang), p)
     }
 
     fun rank(docs: List<ApiDoc>, p: Prefix, limit: Int = 30): List<ApiDoc> {

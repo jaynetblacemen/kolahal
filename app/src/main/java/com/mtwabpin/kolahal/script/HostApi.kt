@@ -1,6 +1,5 @@
 package com.mtwabpin.kolahal.script
 
-import com.mtwabpin.kolahal.data.shortTime
 import android.content.Context
 import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.apps.ProfileKind
@@ -14,7 +13,6 @@ import com.mtwabpin.kolahal.notify.Notifier
 import okhttp3.Headers.Companion.toHeaders
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit

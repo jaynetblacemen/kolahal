@@ -453,8 +453,9 @@ private fun schedule(s: Script, isCommand: Boolean, events: List<String>): Strin
 private fun Script.failed() = lastStatus?.let { it.startsWith("error") || it.startsWith("stopped") || it == "timeout" } == true
 
 /** When a switched-on script runs next on its own: its next daily time, or about one interval after its last run. */
-private fun nextRun(s: Script, now: Long = System.currentTimeMillis()): Pair<Long, Boolean>? {
+private fun nextRun(s: Script): Pair<Long, Boolean>? {
     if (!s.enabled) return null
+    val now = System.currentTimeMillis()
     // To the minute: the daily time itself, not a few seconds before it.
     val daily = s.atTimes.map { Math.round((now + ScriptScheduler.millisUntil(it)) / 60_000.0) * 60_000 }.minOrNull()
     val every = if (s.intervalMin > 0) maxOf(now, (s.lastRun ?: now) + s.intervalMin * 60_000L) else null

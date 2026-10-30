@@ -9,7 +9,6 @@ import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
 import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.notify.Notifier
-import java.util.Date
 
 /**
  * Fetches due feeds (or the requested one when forced) and reports new items to the terminal log

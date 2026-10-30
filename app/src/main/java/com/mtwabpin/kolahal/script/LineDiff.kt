@@ -57,8 +57,9 @@ object LineDiff {
         return out
     }
 
-    /** The changed [lines] with [context] unchanged ones around each; none when nothing changed. */
-    fun hunks(lines: List<Line>, context: Int = 3): List<Hunk> {
+    /** The changed [lines] with three unchanged ones around each; none when nothing changed. */
+    fun hunks(lines: List<Line>): List<Hunk> {
+        val context = 3
         val near = BooleanArray(lines.size)
         for ((i, line) in lines.withIndex()) {
             if (line.kind != Kind.SAME) for (k in maxOf(0, i - context)..minOf(lines.lastIndex, i + context)) near[k] = true

@@ -80,8 +80,8 @@ object ControlArgs {
     }
 
     /** A 10-cell bar for a percentage: "████░░░░░░". */
-    fun bar(pct: Int, cells: Int = 10): String {
-        val filled = ((pct.coerceIn(0, 100) * cells + 50) / 100)
-        return "█".repeat(filled) + "░".repeat(cells - filled)
+    fun bar(pct: Int): String {
+        val filled = ((pct.coerceIn(0, 100) * 10 + 50) / 100)
+        return "█".repeat(filled) + "░".repeat(10 - filled)
     }
 }
