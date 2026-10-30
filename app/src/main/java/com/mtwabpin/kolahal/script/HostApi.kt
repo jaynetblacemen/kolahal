@@ -441,12 +441,13 @@ class HostApi(
         val key = urlKey("rss.seen:", url)
         // JavaScript runs host calls side by side: two rss.fresh finishing together must not lose ids.
         val fresh = synchronized(pendingSeen) {
-            val seen = pendingSeen[key] ?: readSeen(key)
+            // Ids are stored, and a store goes into backups: a key in an item's link is masked, the same each run.
+            val seen = (pendingSeen[key] ?: readSeen(key)).map(::redact)
             val seenSet = seen.toHashSet()
-            feed.items.filter { it.id !in seenSet }.also { fresh ->
+            feed.items.filter { redact(it.id) !in seenSet }.also { fresh ->
                 // Never forget an id the feed still lists: a feed longer than MAX_SEEN would otherwise
                 // push its own old items out and report them as new on the next run.
-                pendingSeen[key] = (fresh.map { it.id } + seen).take(maxOf(MAX_SEEN, feed.items.size + 100))
+                pendingSeen[key] = (fresh.map { redact(it.id) } + seen).take(maxOf(MAX_SEEN, feed.items.size + 100))
             }
         }
         return feed.copy(items = fresh).toMap()
@@ -692,7 +693,8 @@ class HostApi(
         val resp = httpGet(url)
         // A body near the store's value cap isn't cached; it would be refused anyway.
         val body = resp["body"] as? String
-        if (resp["ok"] == true && (body?.length ?: 0) < KvStore.MAX_VALUE / 2) {
+        // A site can send a key back, and a store goes into backups: a body holding one isn't kept.
+        if (resp["ok"] == true && (body?.length ?: 0) < KvStore.MAX_VALUE / 2 && (body == null || redact(body) == body)) {
             val entry = Json.stringify(mapOf("at" to System.currentTimeMillis(), "body" to body))
             // Cached responses count toward the store's limits. Full, the other ones make room: they
             // are only a cache, and a store left full would refuse the script's own values.
