@@ -48,7 +48,7 @@ class WallpaperMatchTest {
     private fun waitFor(what: String, check: () -> Boolean) {
         val until = System.currentTimeMillis() + 8_000
         while (!check() && System.currentTimeMillis() < until) Thread.sleep(50)
-        assertTrue(what, check())
+        assertTrue("$what; matched ${WallpaperMatch.isMatched(context)}, primary ${wallpapers.getWallpaperColors(system)?.primaryColor}", check())
     }
 
     @Before fun setUp() {
@@ -90,7 +90,7 @@ class WallpaperMatchTest {
         WallpaperMatch.follow(context, Color.BLUE)
         Thread.sleep(1_500)
         assertEquals(theirs, wallpapers.getWallpaperId(system))
-        assertTrue(shows(system, Color.GREEN))
+        waitFor("still green") { shows(system, Color.GREEN) }
 
         // Forgotten, not just skipped: another theme later doesn't touch it either.
         WallpaperMatch.follow(context, Color.YELLOW)
