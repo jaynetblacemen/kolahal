@@ -106,10 +106,12 @@ class ScriptAlarmReceiver : BroadcastReceiver() {
 class ScriptRunService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var runs = 0
+    private var lastStart = 0
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        lastStart = startId
         // At once: Android stops an app that starts a foreground service and doesn't go in front.
         goForeground(intent?.getStringExtra(EXTRA_NAME).orEmpty())
         val id = intent?.getLongExtra(EXTRA_ID, -1L) ?: -1L
@@ -156,9 +158,12 @@ class ScriptRunService : Service() {
         }
     }
 
+    /**
+     * Stops unless another start is on its way, which a plain stopSelf() would take with it: that
+     * start then never goes in front, and Android stops the app for it (scripts sharing a daily time).
+     */
     private fun stop() {
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        stopSelf(lastStart)
     }
 
     // A short service gets about three minutes; a run never takes that long, but if one does it goes.
