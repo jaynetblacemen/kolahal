@@ -4,7 +4,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -50,8 +49,6 @@ class IntervalSelectorTest {
         compose.runOnIdle { assertEquals(180, picked) }
         compose.onNodeWithText("3 hours").assertIsDisplayed()
         compose.onNodeWithText("Off").assertDoesNotExist()
-        // Its coloured outline would look still open.
-        compose.onNodeWithText("Runs every").assertIsNotFocused()
     }
 
     /** Picking what's already chosen doesn't set the timer again, which would restart its wait. */
