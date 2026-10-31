@@ -9,8 +9,6 @@ import android.provider.Settings
 import com.mtwabpin.kolahal.data.Config
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.data.LogContext
-import com.mtwabpin.kolahal.data.LogKind
-import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.notify.Notifier
 import com.mtwabpin.kolahal.productivity.Agenda
 import com.mtwabpin.kolahal.productivity.NoteStore
@@ -33,8 +31,7 @@ import java.util.Locale
  * todo, note / notes, remind / reminders, timer, alarm / alarms, stopwatch and agenda.
  * Kept out of [CommandProcessor] so the dispatcher only needs one line per command.
  */
-class ProductivityCommands(private val context: Context, private val ui: TerminalUi) {
-    private val logs = LogRepository.get(context)
+class ProductivityCommands(context: Context, private val ui: TerminalUi) : CommandGroup(context) {
     private val conf = Config.get(context)
     private val todos = TodoStore.get(context)
     private val notes = NoteStore.get(context)
@@ -62,13 +59,6 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
         return true
     }
 
-    private fun out(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.OUTPUT, text, ctx = ctx) }
-    private fun info(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.INFO, text, ctx = ctx) }
-    private fun error(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.ERROR, text, ctx = ctx) }
-
-    private fun startActivity(intent: Intent) {
-        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
 
     private fun words(s: String) = s.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
 

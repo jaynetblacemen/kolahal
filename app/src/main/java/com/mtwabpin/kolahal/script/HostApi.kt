@@ -350,7 +350,7 @@ class HostApi(
         val realUrl = fillSecrets(url, target)
         val realBody = body?.let { fillSecrets(it, target) }
         val h = Json.toStringMap(headers).mapValues { fillSecrets(it.value, target) }.toMutableMap()
-        if (h.keys.none { it.equals("User-Agent", ignoreCase = true) }) h["User-Agent"] = USER_AGENT
+        if (h.keys.none { it.equals("User-Agent", ignoreCase = true) }) h["User-Agent"] = Net.USER_AGENT
         val m = method.uppercase()
         // The body's type: `contentType`, else a Content-Type header (OkHttp replaces that header
         // with the body's type, so it must become the body's), else JSON for a table, else text.
@@ -725,7 +725,6 @@ class HostApi(
             "alarms" to android.app.NotificationManager.INTERRUPTION_FILTER_ALARMS,
             "none" to android.app.NotificationManager.INTERRUPTION_FILTER_NONE,
         )
-        private const val USER_AGENT = "Kolahal-Launcher/0.1 (+https://github.com/mtwabpin)"
         private const val MAX_BODY = 4L * 1024 * 1024
         private const val MAX_SEEN = 500
         private const val STATUS_MAX = 80

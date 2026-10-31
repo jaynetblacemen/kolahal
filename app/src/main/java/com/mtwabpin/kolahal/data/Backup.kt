@@ -134,7 +134,7 @@ class Backup(private val context: Context) {
             val lang = m["lang"]?.toString()?.let(ScriptLang::of)
             val code = m["code"]?.toString()
             // Your own scripts: a name an app also has stays (it arrives switched off, as all do).
-            if (name == null || lang == null || code == null || !NAME.matches(name) || name in BUILT_INS) {
+            if (name == null || lang == null || code == null || !com.mtwabpin.kolahal.script.ScriptNames.NAME.matches(name) || name in BUILT_INS) {
                 skipped += "script ${m["name"]}"
                 return@forEach
             }
@@ -203,7 +203,6 @@ class Backup(private val context: Context) {
     companion object {
         const val VERSION = 2
         const val FILE_NAME = "kolahal-backup.json"
-        val NAME = Regex("^[a-z0-9_-]{1,40}$")
         private val BUILT_INS get() = com.mtwabpin.kolahal.terminal.CommandProcessor.RESERVED_NAMES
     }
 }

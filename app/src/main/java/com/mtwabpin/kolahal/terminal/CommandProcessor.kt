@@ -36,8 +36,7 @@ import java.util.Date
  * Parses and runs commands typed at the prompt. Everything it prints goes into the
  * persistent log with a [LogContext] so lines stay actionable later (tap / long-press).
  */
-class CommandProcessor(private val context: Context, private val ui: TerminalUi) {
-    private val logs = LogRepository.get(context)
+class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGroup(context) {
     private val apps = AppRepository.get(context)
     private val scripts = ScriptRepository.get(context)
     private val unlocks = UnlockCounter.get(context)
@@ -219,9 +218,6 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
 
     // ---- output helpers -------------------------------------------------------------------
 
-    private fun out(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.OUTPUT, text, ctx = ctx) }
-    private fun info(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.INFO, text, ctx = ctx) }
-    private fun error(text: String) { logs.add(LogKind.ERROR, text) }
 
     /** `cal [dec [2027]]`: the month as a calendar, today in bold, weeks starting on the locale's day. */
     private fun cal(rest: String) {
@@ -597,10 +593,6 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
     }
 
     private fun startSettings(action: String) = startActivity(Intent(action))
-
-    private fun startActivity(intent: Intent) {
-        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
 
     private fun help() {
         val offered = COMMANDS.filter { it.name !in UNAVAILABLE }

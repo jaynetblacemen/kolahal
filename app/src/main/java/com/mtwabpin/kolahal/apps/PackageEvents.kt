@@ -98,7 +98,7 @@ class PackageEvents private constructor(private val context: Context) {
                 continue
             }
             val serial = userManager.getSerialNumberForUser(user)
-            val profile = if (user == me) "" else profileTag(user)
+            val profile = if (user == me) "" else AppRepository.kindOf(launcherApps, user, me).tag
             val activities = runCatching { launcherApps.getActivityList(null, user) }.getOrDefault(emptyList())
             for (a in activities) {
                 val key = "${a.componentName.packageName}#$serial"
@@ -127,17 +127,6 @@ class PackageEvents private constructor(private val context: Context) {
     private fun installedWithoutIcon(key: String): Boolean {
         val user = key.substringAfter('#').toLongOrNull()?.let(userManager::getUserForSerialNumber) ?: return false
         return runCatching { launcherApps.getApplicationInfo(key.substringBefore('#'), 0, user) != null }.getOrDefault(false)
-    }
-
-    private fun profileTag(user: UserHandle): String {
-        val type = if (android.os.Build.VERSION.SDK_INT >= 35) {
-            runCatching { launcherApps.getLauncherUserInfo(user)?.userType }.getOrNull()
-        } else null
-        return when (type) {
-            UserManager.USER_TYPE_PROFILE_PRIVATE -> "S"
-            "android.os.usertype.profile.CLONE" -> "C"
-            else -> "W"
-        }
     }
 
     @Synchronized

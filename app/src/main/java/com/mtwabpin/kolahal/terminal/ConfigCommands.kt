@@ -6,17 +6,12 @@ import com.mtwabpin.kolahal.data.ConfigKey
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
-import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.ui.TermFonts
 
 /** `config` / `set`, `theme` and `font`. Kept out of [CommandProcessor] like the other command groups. */
-class ConfigCommands(private val context: Context, private val ui: TerminalUi) {
-    private val logs = LogRepository.get(context)
+class ConfigCommands(context: Context, private val ui: TerminalUi) : CommandGroup(context) {
     private val conf = Config.get(context)
 
-    private fun out(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.OUTPUT, text, ctx = ctx) }
-    private fun info(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.INFO, text, ctx = ctx) }
-    private fun error(text: String) { logs.add(LogKind.ERROR, text) }
 
     /** [raw] is the untokenized argument text, so free-text values (e.g. a key bar with quotes) survive. */
     fun config(args: List<String>, raw: String = "") {

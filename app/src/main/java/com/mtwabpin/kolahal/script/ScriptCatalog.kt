@@ -73,7 +73,7 @@ class ScriptCatalog(private val context: Context) {
         fun Map<*, *>.list(key: String) = (this[key] as? List<*>).orEmpty().map { it.toString() }
         // One entry per name: the list is keyed by it on screen.
         return (root["scripts"] as? List<*>).orEmpty().filterIsInstance<Map<*, *>>().mapNotNull { m ->
-            val name = m.str("name")?.takeIf(NAME::matches) ?: return@mapNotNull null
+            val name = m.str("name")?.takeIf(ScriptNames.NAME::matches) ?: return@mapNotNull null
             val lang = m.str("lang")?.let(ScriptLang::of) ?: return@mapNotNull null
             // Only a file of its own folder: never a path that leaves scripts/.
             val path = m.str("path")?.takeIf { it == "scripts/$name/$name.${lang.ext}" } ?: return@mapNotNull null
@@ -186,7 +186,6 @@ class ScriptCatalog(private val context: Context) {
         private const val MAX_INDEX = 2L * 1024 * 1024
         /** The repository's check allows 64 KB per script. */
         private const val MAX_SCRIPT = 64L * 1024
-        private val NAME = Regex("^[a-z0-9_-]{1,40}$")
         private val SHA = Regex("^[0-9a-f]{64}$")
     }
 }

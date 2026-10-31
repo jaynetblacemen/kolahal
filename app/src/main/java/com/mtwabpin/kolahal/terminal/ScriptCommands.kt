@@ -30,18 +30,14 @@ import java.util.Date
  * the dispatcher only needs one line per command.
  */
 class ScriptCommands(
-    private val context: Context,
+    context: Context,
     private val ui: TerminalUi,
     /** Runs slow work (folder sync) off the serial command queue; failures are logged. */
     private val background: (label: String, block: () -> Unit) -> Unit,
-) {
-    private val logs = LogRepository.get(context)
+) : CommandGroup(context) {
     private val scripts = ScriptRepository.get(context)
     private val folder = ScriptFolder(context)
 
-    private fun out(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.OUTPUT, text, ctx = ctx) }
-    private fun info(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.INFO, text, ctx = ctx) }
-    private fun error(text: String) { logs.add(LogKind.ERROR, text) }
 
     /** Runs a `@command` script named [name]; returns null if there is none. */
     fun runCommand(name: String, args: List<String>): Unit? {
@@ -126,7 +122,7 @@ class ScriptCommands(
             }
             "new" -> {
                 val (name, lang) = parseName(target ?: return error("Usage: script new <name>[.lua|.js] [lua|js] [--cmd]"))
-                if (!Regex("^[a-z0-9_-]{1,40}$").matches(name)) return error("Script names: lowercase letters, digits, - and _ only")
+                if (!com.mtwabpin.kolahal.script.ScriptNames.NAME.matches(name)) return error("Script names: lowercase letters, digits, - and _ only")
                 if (name in CommandProcessor.RESERVED_NAMES) return error("'$name' is a built-in command, pick another name")
                 val asCommand = "--cmd" in args || "cmd" in args
                 val chosen = args.drop(2).firstNotNullOfOrNull(ScriptLang::of) ?: lang ?: ScriptLang.LUA
@@ -161,7 +157,7 @@ class ScriptCommands(
             "at" -> withScript(target) { s ->
                 val specs = CommandParsing.clockWords(args.drop(2))
                 if (specs.isEmpty()) return error("Usage: script at <name> <HH:mm[,HH:mm…]|off>")
-                val times = if (specs[0] == "off") emptyList() else specs.map { CommandParsing.parseClock(it) ?: return error("Bad time '$it' — use HH:mm") }
+                val times = if (specs[0] == "off") emptyList() else specs.map { ScriptScheduler.normalizeTime(it) ?: return error("Bad time '$it' — use HH:mm") }
                 scripts.setAtTimes(s.id, times.distinct().sorted())
                 if (times.isNotEmpty() && !s.enabled) {
                     scripts.setEnabled(s.id, true)

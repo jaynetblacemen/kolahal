@@ -142,6 +142,13 @@ class TimeSpecTest {
         assertEquals("45s", TimeSpec.formatDuration(45))
         assertEquals("1d 1h", TimeSpec.formatDuration(90_000))
         assertEquals("5m", TimeSpec.formatDuration(300))
+        assertEquals("30s", TimeSpec.formatDuration(30))
+        assertEquals("2m", TimeSpec.formatDuration(120))
+        assertEquals("1m 30s", TimeSpec.formatDuration(90))
+        assertEquals("1h 30m", TimeSpec.formatDuration(5_400))
+        assertEquals("2h", TimeSpec.formatDuration(7_200))
+        // Past ten minutes the seconds don't matter, and past a day the minutes don't.
+        assertEquals("12m", TimeSpec.formatDuration(750))
     }
 
     @Test fun refs() {

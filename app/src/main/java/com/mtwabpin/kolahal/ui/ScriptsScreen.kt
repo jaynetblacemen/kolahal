@@ -795,8 +795,9 @@ private fun PillGroup(label: String, pills: @Composable FlowRowScope.() -> Unit)
     }
 }
 
+/** A label and its value on a script's sheet, whether the script is yours or from the shared list. */
 @Composable
-private fun Fact(label: String, value: String) {
+internal fun Fact(label: String, value: String) {
     Text("$label: $value", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
@@ -1366,7 +1367,7 @@ private fun NewScriptDialog(existing: Set<String>, onDismiss: () -> Unit, onCrea
     // The same checks as `script new`, shown while typing.
     val problem = when {
         clean.isEmpty() -> null
-        !Regex("^[a-z0-9_-]{1,40}$").matches(clean) -> "Lowercase letters, digits, - and _"
+        !com.mtwabpin.kolahal.script.ScriptNames.NAME.matches(clean) -> "Lowercase letters, digits, - and _"
         clean in builtIns -> "'$clean' is a built-in command"
         clean in existing -> "You already have a script named $clean"
         else -> null

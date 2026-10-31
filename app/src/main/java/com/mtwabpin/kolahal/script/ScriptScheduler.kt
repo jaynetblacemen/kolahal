@@ -102,10 +102,10 @@ object ScriptScheduler {
 
     private fun dailyTag(id: Long) = "script-$id-daily"
 
-    /** "8:00" / "08:00" -> "08:00"; null for anything that isn't a valid clock time. */
+    /** "8:00" / "08:00" -> "08:00", for an `@at` line and `script at` alike; null for anything that isn't a valid clock time. */
     fun normalizeTime(raw: String): String? = runCatching {
-        val (h, m) = raw.trim().split(':').map { it.toInt() }
-        LocalTime.of(h, m).toString()
+        val parts = raw.trim().split(':').map { it.toInt() }
+        if (parts.size == 2) LocalTime.of(parts[0], parts[1]).toString() else null
     }.getOrNull()
 
     /** Milliseconds from now until the next local [hhmm] ("HH:mm"), DST-aware. */

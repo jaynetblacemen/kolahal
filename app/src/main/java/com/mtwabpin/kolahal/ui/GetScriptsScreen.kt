@@ -335,12 +335,3 @@ private fun SharedSheet(vm: TerminalViewModel, e: ScriptCatalog.Entry, state: Sc
     }
 }
 
-@Composable
-private fun Fact(label: String, value: String) {
-    Text(
-        "$label: $value",
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(vertical = 2.dp),
-    )
-}

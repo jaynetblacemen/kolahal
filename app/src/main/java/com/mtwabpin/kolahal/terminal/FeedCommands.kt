@@ -6,27 +6,18 @@ import android.net.Uri
 import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
-import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.script.ScriptScheduler
 
 /** `feed` / `feeds`, `rss` and `notifs`. Kept out of [CommandProcessor] like the other command groups. */
 class FeedCommands(
-    private val context: Context,
+    context: Context,
     /** Finds the app `notifs mute <app>` names. */
     private val appCommands: AppCommands,
     private val ui: TerminalUi,
-) {
-    private val logs = LogRepository.get(context)
+) : CommandGroup(context) {
     private val apps = AppRepository.get(context)
 
-    private fun out(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.OUTPUT, text, ctx = ctx) }
-    private fun info(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.INFO, text, ctx = ctx) }
-    private fun error(text: String) { logs.add(LogKind.ERROR, text) }
-
-    private fun startActivity(intent: Intent) {
-        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
 
     fun rss(url: String) {
         if (url.isBlank()) {

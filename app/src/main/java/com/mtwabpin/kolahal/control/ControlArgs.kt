@@ -52,16 +52,6 @@ object ControlArgs {
         return seconds * 1000
     }
 
-    /** 30000 -> "30s", 120000 -> "2m", 5400000 -> "1h 30m". */
-    fun formatDuration(ms: Long): String {
-        val s = ms / 1000
-        return when {
-            s < 60 -> "${s}s"
-            s < 3600 -> if (s % 60 == 0L) "${s / 60}m" else "${s / 60}m ${s % 60}s"
-            else -> if (s % 3600 / 60 == 0L) "${s / 3600}h" else "${s / 3600}h ${s % 3600 / 60}m"
-        }
-    }
-
     /** on/off/toggle words; null for anything else (the caller toggles on null input). */
     fun onOff(arg: String?): Boolean? = when (arg?.lowercase()) {
         "on", "1", "true", "yes" -> true

@@ -8,7 +8,6 @@ import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.apps.ProfileKind
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
-import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.script.Json
 import com.mtwabpin.kolahal.unlock.UnlockCounter
 import java.util.Date
@@ -20,18 +19,14 @@ import kotlinx.coroutines.launch
  * launches through here when typed text names an app.
  */
 class AppCommands(
-    private val context: Context,
+    context: Context,
     /** Runs slow work (waiting for a profile to resume) off the serial command queue. */
     private val background: (label: String, block: () -> Unit) -> Unit,
-) {
-    private val logs = LogRepository.get(context)
+) : CommandGroup(context) {
     private val apps = AppRepository.get(context)
     private val prefs = AppPrefs.get(context)
     private val unlocks = UnlockCounter.get(context)
 
-    private fun out(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.OUTPUT, text, ctx = ctx) }
-    private fun info(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.INFO, text, ctx = ctx) }
-    private fun error(text: String) { logs.add(LogKind.ERROR, text) }
 
     /** Where a pinned app shows, with the settings as they are. */
     private fun pinnedWhere(): String {

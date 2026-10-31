@@ -404,7 +404,8 @@ all. That is the payoff of depending on an interface rather than on the ViewMode
 
 =CommandProcessor= delegates further, one class per command family: =AppCommands=,
 =ScriptCommands=, =FeedCommands=, =ConfigCommands=, =PeopleCommands=, =ProductivityCommands=
-(all in =terminal/=), and =ControlCommands= (in =control/=).
+(all in =terminal/=), and =ControlCommands= (in =control/=). Each is a =CommandGroup=, which holds
+what they share: printing to the log and starting other screens.
 
 ** View layer: Compose screens
 
