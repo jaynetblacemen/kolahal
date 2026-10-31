@@ -354,7 +354,8 @@ class HostApi(
         val m = method.uppercase()
         // The body's type: `contentType`, else a Content-Type header (OkHttp replaces that header
         // with the body's type, so it must become the body's), else JSON for a table, else text.
-        val typeHeader = h.keys.firstOrNull { it.equals("Content-Type", ignoreCase = true) }
+        // With no body, nothing replaces the header: it's sent as it is.
+        val typeHeader = h.keys.firstOrNull { it.equals("Content-Type", ignoreCase = true) }?.takeIf { realBody != null }
         val type = contentType ?: typeHeader?.let { h.remove(it) } ?: if (bodyIsJson) "application/json; charset=utf-8" else "text/plain; charset=utf-8"
         val reqBody = realBody?.toRequestBody(type.toMediaTypeOrNull())
             ?: if (m in METHODS_REQUIRING_BODY) ByteArray(0).toRequestBody() else null
@@ -669,8 +670,10 @@ class HostApi(
             return false
         }
         // A search or a place hands its words to a site through another app: only with the internet.
-        val verb = com.mtwabpin.kolahal.terminal.InstantRun.canonical(command.substringBefore(' '))
-        if (verb in WEB_COMMANDS && command.contains(' ') && grants != null && !grants.allows(ScriptAccess.INTERNET)) {
+        // Through an alias too, and the words can be the alias's own.
+        val verb = com.mtwabpin.kolahal.terminal.InstantRun.expansions(command, aliases).orEmpty().filter { it.contains(' ') }
+            .map { com.mtwabpin.kolahal.terminal.InstantRun.canonical(it.substringBefore(' ')) }.firstOrNull { it in WEB_COMMANDS }
+        if (verb != null && grants != null && !grants.allows(ScriptAccess.INTERNET)) {
             logError("launcher.run refused '$verb': it sends words to a website, and this script has no internet")
             return false
         }

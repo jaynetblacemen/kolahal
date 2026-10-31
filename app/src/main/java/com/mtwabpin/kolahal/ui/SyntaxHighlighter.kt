@@ -21,6 +21,8 @@ internal class SyntaxHighlighter(
     private val matches: MatchHighlights?,
 ) : VisualTransformation {
     private val keywords = ApiDocs.keywords(lang).toSet()
+    // The theme it was made for: a text field colours again only for a highlighter that isn't equal to the last.
+    private val palette = Term.palette
     private val js = lang == ScriptLang.JS
     // Every token here stays on one line; JS template strings (`…`), which may span lines, are found separately.
     private val token = Regex(
@@ -105,7 +107,7 @@ internal class SyntaxHighlighter(
     }
 
     override fun equals(other: Any?) = other is SyntaxHighlighter && other.flashLine == flashLine &&
-        other.keywords == keywords && other.matches === matches
+        other.keywords == keywords && other.matches === matches && other.palette == palette
 
-    override fun hashCode() = 31 * (31 * keywords.hashCode() + (flashLine ?: 0)) + System.identityHashCode(matches)
+    override fun hashCode() = 31 * (31 * (31 * keywords.hashCode() + (flashLine ?: 0)) + System.identityHashCode(matches)) + palette.hashCode()
 }

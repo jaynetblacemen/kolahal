@@ -87,6 +87,25 @@ class ScriptBoundsTest {
         assertTrue(LogRepository.get(context).recent(50).any { "sends words to a website" in it.text })
     }
 
+    /** Nor through an alias, whose words can be the ones given or its own. */
+    @Test fun anAliasDoesntCarryAWebCommandPastTheInternet() {
+        val prefs = com.mtwabpin.kolahal.apps.AppPrefs.get(context)
+        val off = HostApi(
+            context, "bounds", scriptId = null, notifyEnabled = false, interactive = true,
+            grants = ScriptAccess.Grants(setOf("commands"), mapOf("commands" to true, ScriptAccess.INTERNET to false)),
+        )
+        prefs.setAlias("bsearch", "search")
+        prefs.setAlias("bwords", "g fixed words")
+        prefs.setAlias("bdeep", "bsearch")
+        try {
+            for (cmd in listOf("bsearch words", "bwords", "bdeep words")) assertTrue(cmd, !off.runCommand(cmd))
+            off.flush()
+            assertTrue(LogRepository.get(context).recent(50).any { "refused 'search': it sends words to a website" in it.text })
+        } finally {
+            listOf("bsearch", "bwords", "bdeep").forEach { prefs.setAlias(it, null) }
+        }
+    }
+
     /** setWork takes true or false, or "on" or "off", alike in Lua and JavaScript. */
     @Test fun setWorkReadsItsArgumentOneWay() {
         val host = HostApi(context, "bounds", scriptId = null, notifyEnabled = false)

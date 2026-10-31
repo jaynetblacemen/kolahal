@@ -8,7 +8,8 @@ package com.mtwabpin.kolahal.feeds
 object Opml {
     data class Entry(val title: String?, val url: String)
 
-    private val OUTLINE = Regex("<outline\\b([^>]*?)/?>", RegexOption.IGNORE_CASE)
+    // Quoted values whole, as a `>` needn't be escaped in one. Possessive: it can't go back over a long value.
+    private val OUTLINE = Regex("<outline\\b((?:[^>\"']++|\"[^\"]*+\"|'[^']*+')*+)>", RegexOption.IGNORE_CASE)
     private val ATTR = Regex("([A-Za-z_:][-A-Za-z0-9_:.]*)\\s*=\\s*(\"([^\"]*)\"|'([^']*)')")
     private val COMMENT = Regex("<!--.*?-->", RegexOption.DOT_MATCHES_ALL)
 

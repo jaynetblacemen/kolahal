@@ -22,6 +22,21 @@ class FuzzyTest {
         assertTrue(Fuzzy.slip("whtasapp", listOf("whatsapp")))
     }
 
+    /** Two slips from eight letters on, whichever way they go. */
+    @Test fun twoSlipsFromEightLetters() {
+        assertTrue("two missing", Fuzzy.slip("calcltor", listOf("calculator")))
+        assertTrue("two extra", Fuzzy.slip("caalculattor", listOf("calculator")))
+        assertTrue("two wrong", Fuzzy.slip("cakculatoe", listOf("calculator")))
+        assertTrue("one of each", Fuzzy.slip("calcxlatr", listOf("calculator")))
+        // Of a word's start, as typing goes.
+        assertTrue(Fuzzy.slip("settngs up", listOf("settings up")))
+        // Below eight letters, still one.
+        assertFalse(Fuzzy.slip("calcltr", listOf("calculator")))
+        assertFalse(Fuzzy.slip("telgrm", listOf("telegram")))
+        // Three is too many.
+        assertFalse(Fuzzy.slip("clclatoor", listOf("calculator")))
+    }
+
     @Test fun notEverythingIsASlip() {
         assertFalse(Fuzzy.slip("map", listOf("mop")))
         assertFalse(Fuzzy.slip("maps", listOf("mail")))

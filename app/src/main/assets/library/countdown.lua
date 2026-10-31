@@ -71,9 +71,9 @@ local function save(list)
   store.set("items", json.encode(list))
 end
 
--- Saved items sorted by date (stable order for "rm N").
+-- Saved items sorted by date (stable order for "rm N"): by the day, as 2026-11-5 sorts after 2026-11-20 as text.
 local function sorted(list)
-  table.sort(list, function(a, b) return a.date < b.date end)
+  table.sort(list, function(a, b) return (parseDate(a.date) or 0) < (parseDate(b.date) or 0) end)
   return list
 end
 

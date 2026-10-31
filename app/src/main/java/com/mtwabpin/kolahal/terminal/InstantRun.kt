@@ -65,15 +65,20 @@ object InstantRun {
      * Like [isSensitive], but follows [aliases] the way the dispatcher expands them (up to 5
      * levels), so an alias such as `c = clear` can't carry a sensitive command past the check.
      */
-    fun isSensitive(line: String, aliases: Map<String, String>): Boolean {
+    fun isSensitive(line: String, aliases: Map<String, String>): Boolean =
+        expansions(line, aliases)?.any { isSensitive(it) } ?: true // deeper than the dispatcher expands: refuse rather than guess
+
+    /** [line], then what [aliases] make of it at each level, the way the dispatcher expands them; null past its 5 levels. */
+    fun expansions(line: String, aliases: Map<String, String>): List<String>? {
+        val out = ArrayList<String>()
         var current = CommandParsing.spaces(line).trim()
         repeat(6) {
-            if (isSensitive(current)) return true
+            out += current
             val head = current.substringBefore(' ')
-            val body = aliases[head] ?: aliases[head.lowercase()] ?: return false
+            val body = aliases[head] ?: aliases[head.lowercase()] ?: return out
             current = (body + " " + current.substringAfter(' ', "")).trim()
         }
-        return true // deeper than the dispatcher expands: refuse rather than guess
+        return null
     }
 
     sealed interface Target<out A> {

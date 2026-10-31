@@ -61,7 +61,9 @@ try {
   const rise = hhmm(d.sunrise[0]);
   const set = hhmm(d.sunset[0]);
   const secs = d.daylight_duration ? d.daylight_duration[0] : null;
-  const length = secs != null ? ` · ${Math.floor(secs / 3600)}h ${Math.round((secs % 3600) / 60)}m of daylight` : "";
+  // Rounded as a whole: the minutes alone could round up to "60m".
+  const minutes = secs != null ? Math.round(secs / 60) : null;
+  const length = minutes != null ? ` · ${Math.floor(minutes / 60)}h ${minutes % 60}m of daylight` : "";
 
   log(store.get("place") || `${lat}, ${lng}`, `Sunrise ${fmt.bold(rise)} · sunset ${fmt.bold(set)}${length}`);
   status(`Sun ${rise}–${set}`);
