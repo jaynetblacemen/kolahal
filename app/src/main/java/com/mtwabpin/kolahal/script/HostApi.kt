@@ -389,7 +389,7 @@ class HostApi(
             if (grants != null && "lan" in grants.declared && !grants.allows("lan")) {
                 deny("lan", "${e.host} is on your local network, switched off for this script")
             }
-            if (!allowsLan) throw java.io.IOException("${e.host} is this phone or the local network: not allowed here")
+            if (!allowsLan) throw java.io.IOException("${e.host} points to this phone or the local network: not allowed here")
             lanBlocked = true
             throw e
         }

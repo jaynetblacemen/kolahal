@@ -44,23 +44,33 @@ object Net {
     /**
      * The networks this phone is on (its addresses and each link's prefix length): on an IPv6 home
      * network, or one on public IPv4, the router and the other devices have public addresses that
-     * are just as local. Kept by [watchLinks], in each process.
+     * are just as local. A VPN isn't one of them: its routes are what it carries, often the internet
+     * itself in parts (`0.0.0.0/1`), and the networks under it stay local. Kept by [watchLinks], in
+     * each process.
      */
-    @Volatile private var links: List<Pair<ByteArray, Int>> = emptyList()
+    @Volatile internal var links: List<Pair<ByteArray, Int>> = emptyList()
 
-    /** Follows the default network's links ([links]), from now on. */
+    /** Follows the links of every network but a VPN ([links]), from now on. */
     fun watchLinks(context: android.content.Context) {
         val cm = context.getSystemService(android.net.ConnectivityManager::class.java) ?: return
+        val request = android.net.NetworkRequest.Builder()
+            .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+            .build()
+        // Callbacks come one at a time.
+        val byNetwork = HashMap<android.net.Network, List<Pair<ByteArray, Int>>>()
         runCatching {
-            cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
+            cm.registerNetworkCallback(request, object : android.net.ConnectivityManager.NetworkCallback() {
                 override fun onLinkPropertiesChanged(network: android.net.Network, lp: android.net.LinkProperties) {
                     // Its own addresses' prefixes, and routes it reaches without a gateway (directly connected).
-                    links = lp.linkAddresses.map { it.address.address to it.prefixLength } +
+                    byNetwork[network] = lp.linkAddresses.map { it.address.address to it.prefixLength } +
                         lp.routes.filter { it.gateway?.isAnyLocalAddress != false && it.destination.prefixLength > 0 }.map { it.destination.address.address to it.destination.prefixLength }
+                    links = byNetwork.values.flatten()
                 }
 
                 override fun onLost(network: android.net.Network) {
-                    links = emptyList()
+                    byNetwork.remove(network)
+                    links = byNetwork.values.flatten()
                 }
             })
         }
@@ -100,7 +110,7 @@ object Net {
         override fun connect(endpoint: SocketAddress?, timeout: Int) {
             val target = endpoint as? InetSocketAddress
             val address = target?.address
-            if (publicOnly && address != null && isLocal(address)) throw IOException("${target.hostString} is this phone or the local network: not allowed here")
+            if (publicOnly && address != null && isLocal(address)) throw IOException("${target.hostString} points to this phone or the local network: not allowed here")
             if (address != null && needsPermission(address) && !localNetworkAllowed()) throw LocalNetworkBlocked(target.hostString)
             super.connect(endpoint, timeout)
         }
@@ -155,7 +165,7 @@ object Net {
             val local = isLocal(address)
             val first = tag.firstLocal ?: local.also { tag.firstLocal = it }
             if (local && (tag.reach == Reach.PUBLIC || !first)) {
-                throw IOException("${chain.request().url.host} is this phone or the local network: not allowed here")
+                throw IOException("${chain.request().url.host} points to this phone or the local network: not allowed here")
             }
         }
         chain.proceed(chain.request())
