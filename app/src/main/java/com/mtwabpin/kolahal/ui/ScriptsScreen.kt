@@ -1012,7 +1012,6 @@ private fun ScriptSheet(
 
             Spacer(Modifier.height(16.dp))
             Text("Runs every", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(8.dp))
             IntervalGroup(s.intervalMin, { vm.setScriptInterval(s, it) }, INTERVALS)
             if (s.intervalMin > 0 && INTERVALS.none { it.first == s.intervalMin }) {
                 Text(

@@ -475,7 +475,6 @@ private fun FeedSheet(
 
             Spacer(Modifier.height(12.dp))
             Text("Refresh every", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(8.dp))
             IntervalGroup(feed.intervalMin, onInterval, FEED_INTERVALS)
             if (FEED_INTERVALS.none { it.first == feed.intervalMin }) {
                 Text(
