@@ -18,8 +18,9 @@ name: Release
 # PLAY_SEND_FOR_REVIEW true to send it for review instead of leaving a draft.
 on:
   push:
-    tags: ['v*']
-
+    tags:
+      - 'v*'
+  workflow_dispatch:
 permissions:
   contents: write
   # GitHub's identity token for this run, which Google trusts for the Play upload alone.
