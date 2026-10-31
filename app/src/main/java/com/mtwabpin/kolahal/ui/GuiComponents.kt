@@ -169,7 +169,6 @@ internal fun IntervalSelector(label: String, selected: Int, onPick: (Int) -> Uni
                         val colors = MenuDefaults.selectableItemColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primary,
                             selectedTextColor = MaterialTheme.colorScheme.onPrimary,
-                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
                         )
                         choices.forEachIndexed { i, (minutes, name) ->
                             SelectableDropdownMenuItem(
@@ -181,9 +180,6 @@ internal fun IntervalSelector(label: String, selected: Int, onPick: (Int) -> Uni
                                 text = { Text(name) },
                                 shapes = MenuDefaults.itemShape(i, choices.size),
                                 colors = colors,
-                                selectedLeadingIcon = {
-                                    Icon(painterResource(R.drawable.ic_check), "Chosen", Modifier.size(MenuDefaults.LeadingIconSize))
-                                },
                             )
                         }
                     }

@@ -3,9 +3,11 @@ package com.mtwabpin.kolahal.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -39,7 +41,7 @@ class IntervalSelectorTest {
         compose.onNodeWithText("3 hours").assertDoesNotExist()
         open()
         for (name in listOf("Off", "15 minutes", "3 hours")) compose.onNodeWithText(name).assertIsDisplayed()
-        compose.onNodeWithContentDescription("Chosen").assertIsDisplayed()
+        compose.onNode(hasText("1 hour") and isSelected()).assertIsDisplayed()
     }
 
     @Test fun pickingOneSetsItAndCloses() {
@@ -55,7 +57,7 @@ class IntervalSelectorTest {
     @Test fun pickingTheChosenOneDoesNothing() {
         show(0)
         open()
-        compose.onNodeWithContentDescription("Chosen").performClick()
+        compose.onNode(hasText("Off") and isSelected()).performClick()
         compose.runOnIdle { assertEquals(0, picks) }
     }
 
@@ -64,6 +66,6 @@ class IntervalSelectorTest {
         show(120)
         compose.onNodeWithText("2h").assertIsDisplayed()
         open()
-        compose.onNodeWithContentDescription("Chosen").assertDoesNotExist()
+        compose.onAllNodes(isSelected()).assertCountEquals(0)
     }
 }
