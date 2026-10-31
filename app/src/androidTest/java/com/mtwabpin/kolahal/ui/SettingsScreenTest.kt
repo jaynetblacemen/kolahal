@@ -298,8 +298,8 @@ class SettingsScreenTest {
         waitForText("second sttest", substring = true)
 
         compose.onNodeWithText("second sttest", substring = true).performClick()
-        compose.onNodeWithText("Email the developer").assertIsDisplayed()
-        compose.onNodeWithText("Delete").performClick()
+        compose.onNodeWithText("Email to Us").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Delete").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("second sttest", substring = true).fetchSemanticsNodes().isEmpty() }
         assertEquals(listOf("IllegalStateException: first sttest"), CrashReports.list(app).map { it.text().lines()[6] })
         compose.onNodeWithText("first sttest", substring = true).assertExists()
@@ -342,20 +342,23 @@ class SettingsScreenTest {
         waitForText("shared sttest", substring = true)
         compose.onNodeWithText("shared sttest", substring = true).performClick()
 
-        val email = compose.onNodeWithText("Email the developer").getUnclippedBoundsInRoot()
-        val share = compose.onNodeWithText("Share").assertIsDisplayed().getUnclippedBoundsInRoot()
-        val delete = compose.onNodeWithText("Delete").getUnclippedBoundsInRoot()
+        val email = compose.onNodeWithText("Email to Us").getUnclippedBoundsInRoot()
+        val share = compose.onNodeWithContentDescription("Share").assertIsDisplayed().getUnclippedBoundsInRoot()
+        val delete = compose.onNodeWithContentDescription("Delete").getUnclippedBoundsInRoot()
+        // Icons alone: the names are for screen readers.
+        compose.onNodeWithText("Share").assertDoesNotExist()
+        compose.onNodeWithText("Delete").assertDoesNotExist()
         assertTrue("$email, $share", share.left > email.left || share.top > email.top)
         assertTrue("$share, $delete", delete.left > share.left || delete.top > share.top)
 
-        compose.onNodeWithText("Share").performClick()
+        compose.onNodeWithContentDescription("Share").performClick()
         compose.waitUntil(5_000) { sheet.intents.isNotEmpty() }
         @Suppress("DEPRECATION") val send = sheet.intents.single().getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
         val report = send.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
         assertTrue(report, "IllegalStateException: shared sttest" in report && "at a.b(c:1)" in report)
         assertEquals(1, CrashReports.list(app).size)
         // The sheet stays, so the report can be deleted once sent.
-        compose.onNodeWithText("Delete").assertExists()
+        compose.onNodeWithContentDescription("Delete").assertExists()
     }
 
     /** Your themes: made themes join the theme strip and the list, and open in the builder. */

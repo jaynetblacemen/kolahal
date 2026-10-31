@@ -1037,7 +1037,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             "quick" -> _events.tryEmit(UiEvent.ShowQuick)
             // Locking needs no log line; only report when the accessibility service is off.
             // Without the service, explain once per session instead of on every stray double-tap.
-            g.LOCK -> if (!com.mtwabpin.kolahal.gesture.LockService.lock() && !lockHintShown) {
+            // Behind the build's switch, so the Play build drops the service's code too.
+            g.LOCK -> if (!(com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE && com.mtwabpin.kolahal.gesture.LockService.lock()) && !lockHintShown) {
                 lockHintShown = true
                 runCommand("lock")
             }

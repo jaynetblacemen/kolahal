@@ -20,7 +20,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
@@ -120,7 +120,7 @@ internal fun CrashSheet(crash: CrashRow, onDismiss: () -> Unit, onEmail: () -> U
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "Email and Share hold the whole report: the app and Android versions, the phone model and the error. " +
+                "Emailing or sharing it hands over the whole report: the app and Android versions, the phone model and the error. " +
                     "The other app opens with it, and nothing is sent until you send it.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
@@ -130,17 +130,13 @@ internal fun CrashSheet(crash: CrashRow, onDismiss: () -> Unit, onEmail: () -> U
                 Button(onClick = onEmail) {
                     Icon(painterResource(R.drawable.ic_mail), null, Modifier.size(ButtonDefaults.IconSize))
                     Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Email the developer")
+                    Text("Email to Us")
                 }
-                OutlinedButton(onClick = onShare) {
-                    Icon(painterResource(R.drawable.ic_share), null, Modifier.size(ButtonDefaults.IconSize))
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Share")
+                OutlinedIconButton(onClick = onShare) {
+                    Icon(painterResource(R.drawable.ic_share), "Share", Modifier.size(ButtonDefaults.IconSize))
                 }
-                OutlinedButton(onClick = onDelete) {
-                    Icon(painterResource(R.drawable.ic_delete), null, Modifier.size(ButtonDefaults.IconSize))
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Delete")
+                OutlinedIconButton(onClick = onDelete) {
+                    Icon(painterResource(R.drawable.ic_delete), "Delete", Modifier.size(ButtonDefaults.IconSize))
                 }
             }
         }

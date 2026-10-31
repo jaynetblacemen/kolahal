@@ -314,7 +314,7 @@ class Completer(private val context: Context, private val data: Data) {
                             key is ConfigKey.Bool -> listOf("on", "off")
                             key is ConfigKey.Choice -> key.choices
                             // A gesture's action: one of the words, or any command.
-                            key.key.startsWith("gesture.") -> listOf("lock", "shade", "quick", "none")
+                            key.key.startsWith("gesture.") -> listOf("lock", "shade", "quick", "none") - CommandProcessor.UNAVAILABLE
                             else -> emptyList()
                         }
                         values.filter { it.starts(last) }.map { Suggestion.Completion(it, "$prefix $it") }
