@@ -92,6 +92,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Settings, with home drawn underneath while a look setting is being changed (a slider dragged,
@@ -172,7 +173,7 @@ fun SettingsScreen(
     // Showing home through Settings (a slider dragged, the eye held): all but that slider fades away.
     val peek by vm.peek.collectAsStateWithLifecycle()
     val shown by androidx.compose.animation.core.animateFloatAsState(
-        if (peek == null) 1f else 0f, androidx.compose.animation.core.tween(PEEK_FADE_MS), label = "peek",
+        if (peek == null) 1f else 0f, tween(PEEK_FADE_MS), label = "peek",
     )
     val tapScope = rememberCoroutineScope()
     val importTheme = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument(), vm::importTheme)
@@ -419,12 +420,12 @@ fun SettingsScreen(
 @Composable
 private fun PeekFade(
     peek: TerminalViewModel.Peek?,
-    keep: Boolean = false,
     modifier: Modifier = Modifier,
+    keep: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val alpha by androidx.compose.animation.core.animateFloatAsState(
-        if (peek == null || keep) 1f else 0f, androidx.compose.animation.core.tween(PEEK_FADE_MS), label = "fade",
+        if (peek == null || keep) 1f else 0f, tween(PEEK_FADE_MS), label = "fade",
     )
     Box(modifier.graphicsLayer { this.alpha = alpha }) { content() }
 }
@@ -448,7 +449,7 @@ private fun PeekButton(onHold: (Boolean) -> Unit, onTap: () -> Unit) {
             .pointerInput(Unit) {
                 detectTapGestures(onPress = {
                     val hold = scope.launch {
-                        kotlinx.coroutines.delay(PEEK_HOLD_MS)
+                        kotlinx.coroutines.delay(PEEK_HOLD_MS.milliseconds)
                         onHold(true)
                     }
                     val released = tryAwaitRelease()
@@ -641,7 +642,6 @@ internal fun SettingItem(
 }
 
 /** Many options: wrapping single-select filter chips. */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun ChipChoices(choices: List<String>, selected: String, onPick: (String) -> Unit) {
     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

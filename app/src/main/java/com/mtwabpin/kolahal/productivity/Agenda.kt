@@ -77,7 +77,7 @@ object Agenda {
             }
         }
         return byDay.map { (day, list) ->
-            day to list.sortedWith(compareBy<AgendaEvent>({ !it.allDay }, { it.begin }, { it.title }))
+            day to list.sortedWith(compareBy({ !it.allDay }, { it.begin }, { it.title }))
         }
     }
 

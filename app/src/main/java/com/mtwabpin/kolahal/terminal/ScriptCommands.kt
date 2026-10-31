@@ -122,7 +122,7 @@ class ScriptCommands(
             }
             "new" -> {
                 val (name, lang) = parseName(target ?: return error("Usage: script new <name>[.lua|.js] [lua|js] [--cmd]"))
-                if (!com.mtwabpin.kolahal.script.ScriptNames.NAME.matches(name)) return error("Script names: lowercase letters, digits, - and _ only")
+                if (!ScriptNames.NAME.matches(name)) return error("Script names: lowercase letters, digits, - and _ only")
                 if (name in CommandProcessor.RESERVED_NAMES) return error("'$name' is a built-in command, pick another name")
                 val asCommand = "--cmd" in args || "cmd" in args
                 val chosen = args.drop(2).firstNotNullOfOrNull(ScriptLang::of) ?: lang ?: ScriptLang.LUA
@@ -516,11 +516,11 @@ class ScriptCommands(
                 ", " + StyledText.colour(StyledText.Colour.ACCENT, "+ $added only in yours"),
             LogContext.of(LogContext.COPY to plain) + scriptCtx(s).values,
         )
-        for (h in hunks) {
-            if (h.skipped > 0) add(StyledText.colour(StyledText.Colour.MUTED, "⋯ ${lines(h.skipped)} the same"))
-            for (line in h.lines) {
-                val text = "${sign.getValue(line.kind)} ${line.text.replace("\t", "    ")}"
-                add(when (line.kind) {
+        for ((skipped, hunkLines) in hunks) {
+            if (skipped > 0) add(StyledText.colour(StyledText.Colour.MUTED, "⋯ ${lines(skipped)} the same"))
+            for ((kind, line) in hunkLines) {
+                val text = "${sign.getValue(kind)} ${line.replace("\t", "    ")}"
+                add(when (kind) {
                     LineDiff.Kind.REMOVED -> StyledText.colour(StyledText.Colour.BAD, text)
                     LineDiff.Kind.ADDED -> StyledText.colour(StyledText.Colour.ACCENT, text)
                     LineDiff.Kind.SAME -> StyledText.colour(StyledText.Colour.MUTED, text)

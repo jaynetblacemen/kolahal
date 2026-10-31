@@ -101,7 +101,7 @@ object TermFonts {
         if (named != null && named != "ttf" && named != "otf") throw IllegalArgumentException("pick a .ttf or .otf file (got $name)")
         if (size > MAX_BYTES) throw IllegalArgumentException("font is larger than 10 MB")
         val dir = dir(context).apply { mkdirs() }
-        val tmp = java.io.File(dir, "import.tmp")
+        val tmp = File(dir, "import.tmp")
         try {
             val input = resolver.openInputStream(uri) ?: throw java.io.IOException("cannot open the file")
             input.use { inp ->
@@ -124,8 +124,8 @@ object TermFonts {
                 else -> throw IllegalArgumentException("${name ?: "the file"} is not a TrueType/OpenType font")
             }
             if (loadTypeface(tmp) == null) throw IllegalArgumentException("${name ?: "the file"} is not a font Android can load")
-            listOf("custom.ttf", "custom.otf").forEach { java.io.File(dir, it).delete() }
-            if (!tmp.renameTo(java.io.File(dir, "custom.$ext"))) throw java.io.IOException("could not save the font")
+            listOf("custom.ttf", "custom.otf").forEach { File(dir, it).delete() }
+            if (!tmp.renameTo(File(dir, "custom.$ext"))) throw java.io.IOException("could not save the font")
         } finally {
             tmp.delete()
         }

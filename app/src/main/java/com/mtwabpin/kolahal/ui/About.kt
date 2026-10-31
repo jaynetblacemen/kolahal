@@ -3,11 +3,9 @@ package com.mtwabpin.kolahal.ui
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -31,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import com.mtwabpin.kolahal.BuildConfig
 import com.mtwabpin.kolahal.CrashReports
 import com.mtwabpin.kolahal.R
@@ -48,7 +47,7 @@ internal const val DEVELOPER_EMAIL = "mtwabpin@gmail.com"
 /** The page id (in [com.mtwabpin.kolahal.terminal.TerminalViewModel.settingsCategory]) of the crash list. */
 internal const val CRASHES_PAGE = "crashes"
 
-internal val VERSION_TEXT = "Kolahal ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+internal const val VERSION_TEXT = "Kolahal ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
 
 /** A crash report as the list shows it; the full text is read only when it is sent. */
 internal class CrashRow(val report: CrashReports.Report, val title: String, val summary: String)
@@ -64,14 +63,14 @@ internal fun openGuide(context: Context): Boolean = openLink(context, GUIDE_URL)
 
 /** Opens [url] in the browser (or the app that takes it); false when no app can open it. */
 internal fun openLink(context: Context, url: String): Boolean =
-    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }.isSuccess
+    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }.isSuccess
 
 /**
  * A draft to [DEVELOPER_EMAIL] in the user's mail app, which they read and send themselves. Without
  * a mail app, any app that can send text; false when there is none.
  */
 internal fun emailDeveloper(context: Context, subject: String, body: String): Boolean {
-    val mail = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:"))
+    val mail = Intent(Intent.ACTION_SENDTO, "mailto:".toUri())
         .putExtra(Intent.EXTRA_EMAIL, arrayOf(DEVELOPER_EMAIL))
         .putExtra(Intent.EXTRA_SUBJECT, subject)
         .putExtra(Intent.EXTRA_TEXT, body)
@@ -101,7 +100,7 @@ internal fun aboutThisPhone(): String =
     "\n\n--\n$VERSION_TEXT · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.MANUFACTURER} ${Build.MODEL}"
 
 /** A tapped crash report: email it to the developer, share it, or delete it. */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun CrashSheet(crash: CrashRow, onDismiss: () -> Unit, onEmail: () -> Unit, onShare: () -> Unit, onDelete: () -> Unit) {
     val state = rememberBottomSheetState(SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))

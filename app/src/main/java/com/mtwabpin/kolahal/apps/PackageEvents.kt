@@ -18,7 +18,7 @@ import java.util.concurrent.Executors
  * Install / update / uninstall log.
  *
  * Android reports an update in several ways (removed + added with "replacing", changed, or a real
- * uninstall followed by a reinstall), so events are never logged as they arrive. Instead every
+ * uninstall followed by a reinstall), so events are never logged as they arrive. Instead, every
  * signal schedules a settle-and-diff: the installed apps (per profile: version, update time,
  * label) are compared with the last snapshot. A package that is still there with a new version or
  * update time is one "updated" line; one that disappeared and came back within [GRACE_MS] is also

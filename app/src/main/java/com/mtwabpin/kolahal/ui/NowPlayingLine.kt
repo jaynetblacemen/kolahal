@@ -1,6 +1,5 @@
 package com.mtwabpin.kolahal.ui
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -35,12 +34,12 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.control.NowPlaying
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Header line "♪ Title — Artist  ⏭" (drawn icons) over a bar for how far along the track is: tap
  * toggles play/pause, long-press or ⏭ skips to the next track.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun NowPlayingLine(
     np: NowPlaying,
@@ -61,7 +60,7 @@ internal fun NowPlayingLine(
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (np.playing) {
                 position = np.positionNow()
-                delay(250)
+                delay(250.milliseconds)
             }
             position = np.positionNow()
         }

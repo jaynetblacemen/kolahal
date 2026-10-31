@@ -46,11 +46,11 @@ class ScriptFolder(private val context: Context) {
         // folder can hold scripts another phone exported that this one doesn't have.
         val current = all.map { "${it.name}.${it.lang.ext}" }.toSet()
         prefs.getStringSet(KEY_EXPORTED, emptySet()).orEmpty().filter { it !in current }.forEach { files[it]?.delete() }
-        for (s in all) {
-            val fileName = "${s.name}.${s.lang.ext}"
+        for ((_, name, lang, code) in all) {
+            val fileName = "$name.${lang.ext}"
             val file = files[fileName] ?: dir.createFile(MIME_TEXT, fileName)
                 ?: throw IllegalStateException("can't create $fileName")
-            context.contentResolver.openOutputStream(file.uri, "wt")!!.use { it.write(s.code.toByteArray()) }
+            context.contentResolver.openOutputStream(file.uri, "wt")!!.use { it.write(code.toByteArray()) }
         }
         val manifest = mapOf(
             "version" to 1,

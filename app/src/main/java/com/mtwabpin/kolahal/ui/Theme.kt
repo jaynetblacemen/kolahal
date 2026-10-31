@@ -290,10 +290,10 @@ fun KolahalTheme(content: @Composable () -> Unit) {
  * hidden (`screen.bars hide`) its inset is 0, but the cutout's is not, so nothing ends up behind
  * the camera hole.
  */
-@androidx.compose.runtime.Composable
+@Composable
 fun androidx.compose.ui.Modifier.cutoutSafePadding(): androidx.compose.ui.Modifier = windowInsetsPadding(
-    androidx.compose.foundation.layout.WindowInsets.statusBars
-        .union(androidx.compose.foundation.layout.WindowInsets.displayCutout)
+    WindowInsets.statusBars
+        .union(WindowInsets.displayCutout)
         .only(androidx.compose.foundation.layout.WindowInsetsSides.Top + androidx.compose.foundation.layout.WindowInsetsSides.Horizontal),
 )
 

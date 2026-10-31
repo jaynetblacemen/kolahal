@@ -140,9 +140,9 @@ class ControlCommands(context: Context) : CommandGroup(context) {
         val cameraId: String? = runCatching {
             camera.cameraIdList.filter {
                 camera.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
-            }.sortedBy {
+            }.minByOrNull {
                 if (camera.getCameraCharacteristics(it).get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK) 0 else 1
-            }.firstOrNull()
+            }
         }.getOrNull()
 
         @Volatile private var on: Boolean? = null

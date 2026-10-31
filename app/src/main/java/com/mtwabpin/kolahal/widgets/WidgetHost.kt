@@ -180,8 +180,7 @@ class WidgetHost private constructor(context: Context) {
     /** True when [serial]'s profile is paused (work apps off) or locked (private space). */
     fun isPaused(serial: Long): Boolean {
         val user = userFor(serial) ?: return false
-        if (user == Process.myUserHandle()) return false
-        return runCatching { userManager.isQuietModeEnabled(user) || !userManager.isUserUnlocked(user) }.getOrDefault(false)
+        return user != Process.myUserHandle() && runCatching { userManager.isQuietModeEnabled(user) || !userManager.isUserUnlocked(user) }.getOrDefault(false)
     }
 
     /** Home-screen providers in every profile the launcher can see. */

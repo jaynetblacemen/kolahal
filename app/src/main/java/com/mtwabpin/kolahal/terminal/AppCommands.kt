@@ -11,7 +11,6 @@ import com.mtwabpin.kolahal.data.LogKind
 import com.mtwabpin.kolahal.script.Json
 import com.mtwabpin.kolahal.unlock.UnlockCounter
 import java.util.Date
-import kotlinx.coroutines.launch
 
 /**
  * App commands: listing, opening and launching apps and their shortcuts, pins, hiding and
@@ -258,7 +257,7 @@ class AppCommands(
         val list = apps.shortcuts(app)
         if (list.isEmpty()) {
             return info(
-                if (com.mtwabpin.kolahal.terminal.SetupChecks.isDefaultLauncher(context)) "${app.label} has no shortcuts"
+                if (SetupChecks.isDefaultLauncher(context)) "${app.label} has no shortcuts"
                 else "Shortcuts need Kolahal as the default launcher — run 'home'"
             )
         }

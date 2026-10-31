@@ -47,8 +47,8 @@ class ConfigCommands(context: Context, private val ui: TerminalUi) : CommandGrou
     fun font(args: List<String>) {
         val sub = args.firstOrNull()?.lowercase()
         val hasCustom = TermFonts.customFile(context) != null
-        when {
-            sub == null || sub == "ls" || sub == "list" -> {
+        when (sub) {
+            null, "ls", "list" -> {
                 val current = conf[Keys.FONT]
                 TermFonts.names.forEach { name ->
                     if (name == TermFonts.CUSTOM && !hasCustom) return@forEach
@@ -58,10 +58,10 @@ class ConfigCommands(context: Context, private val ui: TerminalUi) : CommandGrou
                 info("Tap a font to use it · 'font import' adds your own .ttf/.otf · size: config font.size")
                 info("The phone's font: ${conf[Keys.FONT_SANS]} · font sans prompt uses it for the prompt, font sans all for everything")
             }
-            sub == "import" -> ui.requestFontImport()
-            sub == "sans" -> args.getOrNull(1)?.let { setKey(Keys.FONT_SANS.key, it, "") }
+            "import" -> ui.requestFontImport()
+            "sans" -> args.getOrNull(1)?.let { setKey(Keys.FONT_SANS.key, it, "") }
                 ?: info("font.sans = ${conf.display(Keys.FONT_SANS)} · font sans off|prompt|all")
-            sub == TermFonts.CUSTOM && !hasCustom ->
+            TermFonts.CUSTOM if !hasCustom ->
                 logs.add(LogKind.ERROR, "No custom font yet — tap to import a .ttf/.otf", ctx = LogContext.of(LogContext.RUN to "font import"))
             else -> setKey(Keys.FONT.key, sub, "")
         }

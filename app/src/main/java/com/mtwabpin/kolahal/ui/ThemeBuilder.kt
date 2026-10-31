@@ -11,7 +11,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -88,7 +87,7 @@ private val ROLE_TEXT = mapOf(
     "surface" to ("Surface" to "Chips, the key bar and raised panels"),
     "text" to ("Text" to "Commands and their output"),
     "muted" to ("Muted text" to "Times, hints and older output"),
-    "accent" to ("Accent" to "The prompt, \$ and highlights; Settings use it too"),
+    "accent" to ("Accent" to "The prompt, $ and highlights; Settings use it too"),
     "link" to ("Links" to "Links and feed items"),
     "info" to ("Info" to "Notes from Kolahal"),
     "script" to ("Script output" to "Lines your scripts write"),
@@ -105,7 +104,6 @@ private val ROLE_TEXT = mapOf(
  * ([TerminalViewModel.themeBuilderName]). A small home screen at the top shows the colours as they
  * change; saving uses the theme.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThemeBuilderScreen(vm: TerminalViewModel) {
     val context = LocalContext.current
@@ -343,7 +341,7 @@ fun ThemePreview(p: Palette, modifier: Modifier = Modifier) {
  * Picks [colour] for [role]: hue, saturation and lightness, a hex code, or a swatch. Changes go
  * out at once ([onChange]) and nothing dims the screen, so the preview above shows them.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ColourSheet(role: String, colour: Int, swatches: List<Int>, onChange: (Int) -> Unit, onDismiss: () -> Unit) {
     val state = rememberBottomSheetState(SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
@@ -407,7 +405,6 @@ private fun ColourSheet(role: String, colour: Int, swatches: List<Int>, onChange
 }
 
 /** A labelled slider drawn over [brush], so the track shows what moving it does. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GradientSlider(label: String, value: Float, range: ClosedFloatingPointRange<Float>, brush: Brush, onChange: (Float) -> Unit) {
     Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)

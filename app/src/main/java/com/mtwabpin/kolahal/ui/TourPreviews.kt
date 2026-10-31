@@ -12,7 +12,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -28,7 +27,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +45,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
@@ -75,6 +74,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 // The tour's previews: a small home screen per setting, in the terminal's colours, font and text
 // size as set now, built from the real suggestion list, key bar and app selector where they can
@@ -231,33 +231,33 @@ internal fun TypingPreview(vm: TerminalViewModel) {
         suspend fun type(word: String): Boolean {
             for (i in 1..word.length) {
                 typed = word.take(i)
-                delay(420)
+                delay(420.milliseconds)
                 if (target(typed, mode) != null) return true
             }
-            delay(500)
+            delay(500.milliseconds)
             enter = true
-            delay(650)
+            delay(650.milliseconds)
             enter = false
             return false
         }
 
         while (isActive) {
             typed = ""
-            delay(900)
+            delay(900.milliseconds)
             type(appWord)
             typed = ""
             opened = demo
             lines += "Launched ${demo.label}" to false
-            delay(1500)
+            delay(1500.milliseconds)
             opened = null
-            delay(500)
+            delay(500.milliseconds)
             // fetch takes no arguments, so it can run by itself (`all`); its first lines, as it prints them.
             type("fetch")
             typed = ""
             lines += "fetch" to true
             lines += "${vm.config[Keys.USER_NAME]}@${android.os.Build.DEVICE}" to false
             lines += "OS  Android ${android.os.Build.VERSION.RELEASE} · API ${android.os.Build.VERSION.SDK_INT}" to false
-            delay(2200)
+            delay(2200.milliseconds)
             lines.clear()
         }
     }
@@ -316,7 +316,7 @@ internal fun LookPreview(vm: TerminalViewModel) {
             modifier = Modifier.align(Alignment.TopStart).padding(horizontal = 12.dp, vertical = 12.dp),
         ) {
             Text(
-                SimpleDateFormat(if (clock24) "HH:mm" else "h:mm a", Locale.getDefault()).format(now),
+                SimpleDateFormat(if (clock24) "HH:mm" else "h:mm a", LocalConfiguration.current.locales[0]).format(now),
                 style = Term.text.copy(color = Term.fg, fontWeight = FontWeight.Bold, fontSize = (Term.fontSize + 2).sp),
                 modifier = Modifier.testTag("tour-clock"),
             )
@@ -389,7 +389,7 @@ internal fun SelectorPreview(vm: TerminalViewModel) {
     val apps = rememberApps()
     val pinned = remember(apps) { vm.pinnedKeys() }
     var picked by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(picked) { if (picked != null) { delay(2000); picked = null } }
+    LaunchedEffect(picked) { if (picked != null) { delay(2000.milliseconds); picked = null } }
     HomeFrame(330.dp, tag = "tour-selector-preview") {
         Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(bottom = 8.dp)) {
             CommandLine("cal")
@@ -435,7 +435,6 @@ internal fun SelectorPreview(vm: TerminalViewModel) {
 private class TryLine(val text: String, val command: Boolean, val source: String?, val tap: String, val longPress: String)
 
 /** The log's gestures, to try on a few lines: tap, long-press, swipe left (deletes) and right (copies). */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun LogTryPreview() {
     val apps = rememberApps()
@@ -471,7 +470,7 @@ internal fun LogTryPreview() {
                                                     caption = "Swiped left: deleted. Undo shows for a moment."
                                                     offset.animateTo(-w.toFloat())
                                                     gone += i
-                                                    delay(1800)
+                                                    delay(1800.milliseconds)
                                                     offset.snapTo(0f)
                                                     gone -= i
                                                 }

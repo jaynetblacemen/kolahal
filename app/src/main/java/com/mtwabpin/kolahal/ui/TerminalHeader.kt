@@ -6,7 +6,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -177,7 +176,6 @@ private val HEADER_ROW = 40.dp
  * Clock, date and the status items in one flowing line that wraps as whole items. Items are tappable
  * (alarms, unlock history, battery, network, profile toggle); swipe down opens notifications.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun Header(
     unlocks: Int,

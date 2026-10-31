@@ -56,7 +56,7 @@ object Net {
                 override fun onLinkPropertiesChanged(network: android.net.Network, lp: android.net.LinkProperties) {
                     // Its own addresses' prefixes, and routes it reaches without a gateway (directly connected).
                     links = lp.linkAddresses.map { it.address.address to it.prefixLength } +
-                        lp.routes.filter { !it.hasGateway() && it.destination.prefixLength > 0 }.map { it.destination.address.address to it.destination.prefixLength }
+                        lp.routes.filter { it.gateway?.isAnyLocalAddress != false && it.destination.prefixLength > 0 }.map { it.destination.address.address to it.destination.prefixLength }
                 }
 
                 override fun onLost(network: android.net.Network) {

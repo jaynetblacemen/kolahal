@@ -87,8 +87,8 @@ object Fetch {
             val accent = { s: String -> StyledText.wrap(Style.BOLD, StyledText.colour(Colour.ACCENT, s)) }
             add(if ('@' in title) accent(title.substringBefore('@')) + "@" + accent(title.substringAfter('@')) else accent(title))
             add(StyledText.colour(Colour.MUTED, "─".repeat(title.length)))
-            for (r in rows) {
-                add(StyledText.wrap(Style.BOLD, StyledText.colour(Colour.ACCENT, r.label.padEnd(LABEL_WIDTH))) + ellipsize(r.value, width - LABEL_WIDTH))
+            for ((label, value) in rows) {
+                add(StyledText.wrap(Style.BOLD, StyledText.colour(Colour.ACCENT, label.padEnd(LABEL_WIDTH))) + ellipsize(value, width - LABEL_WIDTH))
             }
             add("")
             val block = if (width >= SWATCHES.size * 3) "███" else "██"

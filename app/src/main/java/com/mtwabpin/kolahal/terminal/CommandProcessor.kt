@@ -274,7 +274,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
         if (best == null) {
             error("Command not found: $text  (try 'help')")
         } else {
-            val corrected = (best + " " + rest).trim()
+            val corrected = "$best $rest".trim()
             logs.add(
                 LogKind.ERROR,
                 "Command not found: $head — did you mean '$corrected'? (tap to put it in the prompt)",
@@ -465,7 +465,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
         }
     }
 
-    /** `crashes [share|clear] [n]`: the crash reports kept on this phone ([CrashReports]). */
+    /** `crashes [share|clear] [n]`: the crash reports kept on this phone ([com.mtwabpin.kolahal.CrashReports]). */
     private fun crashes(args: List<String>) {
         val reports = com.mtwabpin.kolahal.CrashReports.list(context)
         when (args.firstOrNull()?.lowercase()) {

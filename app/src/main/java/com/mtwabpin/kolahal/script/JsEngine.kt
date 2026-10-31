@@ -55,11 +55,7 @@ class JsEngine : ScriptEngine {
         } finally {
             // Closing waits for the engine: a run stuck in a job loop never gets past it, and the
             // watchdog, still on, stops it.
-            try {
-                js.close()
-            } finally {
-                watchdog.close()
-            }
+            watchdog.use { js.close() }
         }
     }
 
@@ -84,10 +80,10 @@ class JsEngine : ScriptEngine {
         }
         js.define("http") {
             asyncFunction("get") { args ->
-                io { toJs(host.httpGet(args.req(0), args.getOrNull(1) as? Map<*, *>)) }
+                io { toJs(host.httpGet(args.req(), args.getOrNull(1) as? Map<*, *>)) }
             }
             asyncFunction("cached") { args ->
-                io { toJs(host.httpCached(args.req(0), (args.getOrNull(1) as? Number)?.toInt() ?: 600)) }
+                io { toJs(host.httpCached(args.req(), (args.getOrNull(1) as? Number)?.toInt() ?: 600)) }
             }
             asyncFunction("request") { args ->
                 val opts = args.getOrNull(0) as? Map<*, *>
@@ -97,7 +93,7 @@ class JsEngine : ScriptEngine {
                         host.httpRequest(
                             url = opts["url"]?.toString() ?: throw IllegalArgumentException("url is required"),
                             method = opts["method"]?.toString() ?: "GET",
-                            body = opts["body"]?.let { if (it is String) it else Json.stringify(it) },
+                            body = opts["body"]?.let { it as? String ?: Json.stringify(it) },
                             bodyIsJson = opts["body"].let { it != null && it !is String },
                             contentType = opts["contentType"]?.toString(),
                             headers = opts["headers"] as? Map<*, *>,
@@ -108,29 +104,29 @@ class JsEngine : ScriptEngine {
         }
         js.define("clipboard") {
             function("get") { host.clipboardGet() }
-            function("set") { args -> host.clipboardSet(args.req(0)) }
+            function("set") { args -> host.clipboardSet(args.req()) }
         }
         js.define("device") {
             function("battery") { toJs(host.battery()) }
             function("network") { host.network() }
             function("unlocks") { host.unlocksToday() }
             function("dnd") { host.dnd() }
-            function("setDnd") { args -> host.setDnd(args.req(0)) }
+            function("setDnd") { args -> host.setDnd(args.req()) }
             function("work") { host.work() }
             function("setWork") { args -> host.setWork(host.onOff(args.getOrNull(0), "device.setWork")) }
         }
         js.define("apps") { function("list") { toJs(host.appsList()) } }
         js.define("notifications") { function("recent") { args -> toJs(host.notificationsRecent((args.getOrNull(0) as? Number)?.toInt() ?: 20)) } }
-        js.define("launcher") { function("run") { args -> host.runCommand(args.req(0)) } }
+        js.define("launcher") { function("run") { args -> host.runCommand(args.req()) } }
         js.asyncFunction("sleep") { args -> host.sleepAsync((args.getOrNull(0) as? Number)?.toLong() ?: 0L) }
         js.define("rss") {
-            asyncFunction("fetch") { args -> io { toJs(host.rssFetch(args.req(0))) } }
-            asyncFunction("fresh") { args -> io { toJs(host.rssFresh(args.req(0))) } }
-            function("parse") { args -> toJs(host.rssParse(args.req(0))) }
+            asyncFunction("fetch") { args -> io { toJs(host.rssFetch(args.req())) } }
+            asyncFunction("fresh") { args -> io { toJs(host.rssFresh(args.req())) } }
+            function("parse") { args -> toJs(host.rssParse(args.req())) }
         }
         js.define("store") {
-            function("get") { args -> host.storeGet(args.req(0)) }
-            function("set") { args -> host.storeSet(args.req(0), args.str(1)) }
+            function("get") { args -> host.storeGet(args.req()) }
+            function("set") { args -> host.storeSet(args.req(), args.str(1)) }
         }
         js.define("md") {
             function("log") { args -> logArgs(args).let { (title, body, ctx) -> host.logMarkdown(title, body, ctx) } }
@@ -155,7 +151,7 @@ class JsEngine : ScriptEngine {
             function("plain") { args -> StyledText.plain(args.str(0).orEmpty()) }
         }
         js.define("secrets") {
-            function("get") { args -> host.secretGet(args.req(0)) }
+            function("get") { args -> host.secretGet(args.req()) }
         }
     }
 
@@ -171,10 +167,10 @@ class JsEngine : ScriptEngine {
         else Triple(args.str(0) ?: "undefined", second?.let(::render), args.getOrNull(2) as? Map<*, *>)
     }
 
-    private fun Array<Any?>.str(i: Int): String? = getOrNull(i)?.let { if (it is String) it else render(it) }
+    private fun Array<Any?>.str(i: Int): String? = getOrNull(i)?.let { it as? String ?: render(it) }
 
-    private fun Array<Any?>.req(i: Int): String =
-        str(i) ?: throw IllegalArgumentException("argument ${i + 1} is required")
+    private fun Array<Any?>.req(): String =
+        str(0) ?: throw IllegalArgumentException("argument 1 is required")
 
     /** Kotlin maps must be wrapped as [JsObject] to arrive as plain JS objects (not `Map`). */
     private fun toJs(v: Any?): Any? = when (v) {

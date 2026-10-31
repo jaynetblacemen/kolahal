@@ -23,6 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlin.time.Duration.Companion.milliseconds
 
 data class Contact(
     val id: Long,
@@ -82,7 +83,7 @@ class ContactsRepository private constructor(private val context: Context) {
     private fun reload(delayMs: Long) {
         reloadJob?.cancel()
         reloadJob = scope.launch {
-            if (delayMs > 0) delay(delayMs)
+            if (delayMs > 0) delay(delayMs.milliseconds)
             if (!hasPermission()) return@launch
             runCatching { _contacts.value = load() }
         }

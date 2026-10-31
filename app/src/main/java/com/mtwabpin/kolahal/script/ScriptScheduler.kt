@@ -242,7 +242,7 @@ object ScriptScheduler {
     /** Whether this thread is running a command a script sent ([sentByScript]). */
     internal val runningSentCommand: Boolean get() = byScript.get() == true
 
-    /** A run a typed command starts: its lines are that command's output ([LogContext.FROM]). */
+    /** A run a typed command starts: its lines are that command's output ([com.mtwabpin.kolahal.data.LogContext.FROM]). */
     private fun Data.Builder.fromCommand(context: Context) {
         LogRepository.get(context).currentCause?.let { putLong(ScriptWorker.KEY_FROM, it) }
     }

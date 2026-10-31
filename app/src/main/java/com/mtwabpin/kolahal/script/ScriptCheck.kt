@@ -39,15 +39,15 @@ object ScriptCheck {
         lines.forEachIndexed { i, line ->
             val m = directive.find(line) ?: return@forEachIndexed
             val (_, name, rest) = m.destructured
-            when {
-                name !in DIRECTIVES -> out += Issue(i + 1, "@$name isn't one Kolahal reads" + (DIRECTIVES.firstOrNull { CommandParsing.editDistance(it, name) <= 2 }?.let { ": @$it?" } ?: ""))
-                name == "every" && CommandParsing.parseInterval(rest.trim())?.takeIf { it >= 0 } == null ->
+            when (name) {
+                !in DIRECTIVES -> out += Issue(i + 1, "@$name isn't one Kolahal reads" + (DIRECTIVES.firstOrNull { CommandParsing.editDistance(it, name) <= 2 }?.let { ": @$it?" } ?: ""))
+                "every" if CommandParsing.parseInterval(rest.trim())?.takeIf { it >= 0 } == null ->
                     out += Issue(i + 1, "@every ${rest.trim()} isn't an interval: 15m, 1h, 1d or off")
-                name == "at" -> rest.split(',', ' ').filter { it.isNotBlank() }.firstOrNull { ScriptScheduler.normalizeTime(it) == null }
+                "at" -> rest.split(',', ' ').filter { it.isNotBlank() }.firstOrNull { ScriptScheduler.normalizeTime(it) == null }
                     ?.let { out += Issue(i + 1, "@at $it isn't a time: HH:mm, such as 07:30") }
-                name == "on" -> ScriptMeta.unknownEvents(line).firstOrNull()
+                "on" -> ScriptMeta.unknownEvents(line).firstOrNull()
                     ?.let { out += Issue(i + 1, "@on $it isn't an event: ${ScriptMeta.EVENTS.joinToString(", ")}") }
-                name == "uses" -> rest.split(',', ' ').map { it.trim() }.filter { it.isNotEmpty() && it !in ScriptMeta.USES }.firstOrNull()
+                "uses" -> rest.split(',', ' ').map { it.trim() }.firstOrNull { it.isNotEmpty() && it !in ScriptMeta.USES }
                     ?.let { out += Issue(i + 1, "@uses $it isn't one: ${ScriptMeta.USES.joinToString(", ")}") }
             }
         }

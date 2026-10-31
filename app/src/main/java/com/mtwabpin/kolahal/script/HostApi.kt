@@ -16,6 +16,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * The launcher-side API exposed to scripts. Engine-agnostic: the Lua and JS bindings both
@@ -46,7 +47,7 @@ class HostApi(
     /** The script's `@secret` names and the values you set for them ([SecretStore]); null for code typed at the prompt. */
     private val secrets: Secrets? = null,
     /** The typed command's line that started this run: its lines are that command's output. */
-    private val from: Long? = null,
+    from: Long? = null,
     /** Its `@option`s with your values or their defaults ([ScriptOptions]), the `options` table. */
     val options: Map<String, String> = emptyMap(),
 ) {
@@ -80,7 +81,7 @@ class HostApi(
     suspend fun sleepAsync(ms: Long) {
         val wait = ms.coerceIn(0, 5_000)
         val left = remainingMs()
-        kotlinx.coroutines.delay(minOf(wait, left))
+        kotlinx.coroutines.delay(minOf(wait, left).milliseconds)
         if (wait >= left) timedOut()
     }
 
@@ -279,7 +280,7 @@ class HostApi(
 
     /**
      * "Copy text" must copy what the line shows: all or part of it, the whole text of a line cut
-     * short with "…", or its link. Otherwise a line could show one address and copy another.
+     * short with "…", or its link. Otherwise, a line could show one address and copy another.
      */
     private fun honestCopy(copy: String, text: String, url: String?): Boolean {
         // The link as given, or as it was normalised (a trailing / added). webUrl is null for
@@ -565,8 +566,7 @@ class HostApi(
         live()
         if (!may("dnd", "device.setDnd")) return false
         val nm = context.getSystemService(android.app.NotificationManager::class.java)
-        if (!nm.isNotificationPolicyAccessGranted) return false
-        return runCatching { nm.setInterruptionFilter(filter) }.isSuccess
+        return nm.isNotificationPolicyAccessGranted && runCatching { nm.setInterruptionFilter(filter) }.isSuccess
     }
 
     /** The work profile: `on` or `paused`; nil when there is none, or it's switched off for the script. */
@@ -626,13 +626,13 @@ class HostApi(
     /** Recent notifications (needs notification access): [{pkg, app, title, text, time}], newest first. */
     fun notificationsRecent(limit: Int): List<Any?> {
         if (!may("notifications", "notifications.recent")) return emptyList()
-        val L = com.mtwabpin.kolahal.notifications.KolahalNotificationListener
+        val listener = com.mtwabpin.kolahal.notifications.KolahalNotificationListener
         // Access revoked while the listener wasn't bound leaves the copy behind: drop it, share nothing.
         if (!com.mtwabpin.kolahal.notifications.NotificationActions.isEnabled(context)) {
-            runCatching { L.clearMirror(context) }
+            runCatching { listener.clearMirror(context) }
             return emptyList()
         }
-        val raw = KvStore(context, L.MIRROR_SCOPE).get(L.MIRROR_KEY) ?: return emptyList()
+        val raw = KvStore(context, listener.MIRROR_SCOPE).get(listener.MIRROR_KEY) ?: return emptyList()
         return (runCatching { Json.parse(raw) as? List<*> }.getOrNull() ?: emptyList<Any?>()).take(limit.coerceIn(0, 50))
     }
 

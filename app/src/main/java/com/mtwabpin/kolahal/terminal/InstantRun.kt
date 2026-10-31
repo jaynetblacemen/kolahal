@@ -57,8 +57,7 @@ object InstantRun {
         val head = canonical(t.substringBefore(' '))
         if (head in SENSITIVE) return true
         val args = t.substringAfter(' ', "").split(' ')
-        if (head == "open" && (args.any { ':' in it } || "--resume" in args)) return true
-        return args.any { it == "--allow" || it == "--settings" }
+        return (head == "open" && (args.any { ':' in it } || "--resume" in args)) || args.any { it == "--allow" || it == "--settings" }
     }
 
     /**
@@ -145,8 +144,7 @@ object InstantRun {
         // An alias may stand for anything: it waits for Enter.
         if (word in aliases) return false
         val head = canonical(word)
-        if (head in SENSITIVE && head !in WHOLE_LINE_OK) return false
-        return commands[head]?.let { UsageLine.complete(line, it) } == true
+        return (head !in SENSITIVE || head in WHOLE_LINE_OK) && commands[head]?.let { UsageLine.complete(line, it) } == true
     }
 
     /**

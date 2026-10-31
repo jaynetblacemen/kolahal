@@ -47,7 +47,7 @@ sealed class ConfigKey<T>(val key: String, val default: T, val help: String) {
 object Keys {
     val HEADER_SHOW = ConfigKey.Bool("header.show", true, "Show the header: clock, header items and script status lines (off: the log takes the whole screen; open settings with the settings command)")
     val HEADER_DEVICE = ConfigKey.Bool("header.device", false, "Show name@device in the header (the name is user.name)")
-    // A name in name@device: no @ of its own, and no spaces, as user names go.
+    // A name in name@device: no @ of its own, and no spaces, as usernames go.
     val USER_NAME = ConfigKey.Text(
         "user.name", "kolahal",
         "Your name in name@device, in the header and in fetch (up to 32 characters, no spaces or @)",

@@ -206,6 +206,14 @@ class CalcTest {
         assertNull(a(""))
     }
 
+    /** Halves go up, as a calculator's do, for numbers of any size and with no answer passed on. */
+    @Test fun roundTakesHalvesUp() {
+        assertEquals("4", a("round(3.5)"))
+        assertEquals("-2", a("round(-2.5)"))
+        assertEquals("1e+30", a("round(10^30)"))
+        assertEquals("not a real number", assertThrows(ArithmeticException::class.java) { a("round(sqrt(-1))") }.message)
+    }
+
     @Test fun noAnswerSaysWhy() {
         assertEquals("can't divide by zero", assertThrows(ArithmeticException::class.java) { a("1/0") }.message)
         assertEquals("not a real number", assertThrows(ArithmeticException::class.java) { a("sqrt(-1)") }.message)

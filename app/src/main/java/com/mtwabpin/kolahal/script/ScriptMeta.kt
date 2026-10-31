@@ -5,7 +5,7 @@ package com.mtwabpin.kolahal.script
  *
  *   -- @command            (or `// @command` in JS) — the script can be run from the prompt by name
  *   -- @desc <text>        — one-line description shown in `help` and suggestions
- *   -- @usage [args]       — the arguments, written like a built-in usage line (`[random|<number>]`);
+ *   -- @usage <args>       — the arguments, written like a built-in usage line (`[random|<number>]`);
  *                            empty when there are none. Drives suggestions and `launch.instant`
  *   -- @on <event>[, ...]  — run when a device event happens (see [EVENTS]); the payload is `event`
  *   -- @uses <what>[, ...] — private data or reach it needs (see [USES]); without it those calls fail

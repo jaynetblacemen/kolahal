@@ -69,6 +69,7 @@ fun buildRows(
     val latestCommand = entries.lastOrNull { it.kind == LogKind.COMMAND }?.id ?: Long.MIN_VALUE
     val today = LocalDate.now(zone)
     val isScriptLine = { e: LogEntry -> e.kind == LogKind.SCRIPT }
+    // Two comparisons, not a range: seenUpTo + 1 overflows while it's Long.MAX_VALUE, and everything would be unread.
     val isUnread = { e: LogEntry -> e.id > seenUpTo && e.id <= unreadUntil }
     val unreadCount = entries.count { isUnread(it) && it.kind == LogKind.SCRIPT }
     val rows = ArrayList<LogRow>(entries.size + 4)

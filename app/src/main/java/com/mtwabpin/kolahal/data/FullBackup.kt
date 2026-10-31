@@ -206,7 +206,7 @@ object FullBackup {
     /**
      * Lines with other people's messages and numbers stay on the device: notifications, calls and
      * anything that carries a number. So do lines from a private space, known by the profile's
-     * serial or, as the space may be locked or gone by now, by the [S] after the app's name.
+     * serial or, as the space may be locked or gone by now, by the `[S]` after the app's name.
      */
     internal fun private(row: Map<String, Any?>, privateSerials: Set<Long>): Boolean {
         if (row["source"] == com.mtwabpin.kolahal.calls.CallEvents.SOURCE) return true

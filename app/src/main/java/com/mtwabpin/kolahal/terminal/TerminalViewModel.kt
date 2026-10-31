@@ -71,6 +71,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.currentCoroutineContext
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val PAGE = 400
 private const val KEY_PENDING_EXPORT = "pending_export"
@@ -105,7 +106,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     private val appPrefs = AppPrefs.get(app)
     private val completer = Completer(app, object : Completer.Data {
         override val history get() = this@TerminalViewModel.history
-        override val scripts get() = scriptCache.value
+        override val scripts get() = scriptList.value
         override val commandNames get() = _commandNames.value
         override val scriptUsages get() = this@TerminalViewModel.scriptUsages
         override val scriptDescriptions get() = this@TerminalViewModel.scriptDescriptions
@@ -120,7 +121,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     })
 
     /** Scripts, refreshed off the main thread whenever the log changes (every script action logs). */
-    private val scriptCache = MutableStateFlow<List<Script>>(emptyList())
+    val scriptList: StateFlow<List<Script>>
+        field = MutableStateFlow<List<Script>>(emptyList())
 
     private val _commandNames = MutableStateFlow<List<String>>(emptyList())
     /** Names of `@command` scripts; part of the suggestion inputs. */
@@ -133,7 +135,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     @Volatile private var scriptDescriptions: Map<String, String> = emptyMap()
 
     /** The bundled library's script names, read once (`script install` completes them). */
-    private val libraryNames: List<String> by lazy { com.mtwabpin.kolahal.script.ScriptLibrary(context).entries.map { it.name } }
+    private val libraryNames: List<String> by lazy { ScriptLibrary(context).entries.map { it.name } }
 
     private fun setCommandScripts(list: List<Script>) {
         val commands = list.filter { it.enabled && ScriptMeta.isCommand(it.code) }
@@ -151,7 +153,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
      * Header lines pinned by scripts with `status(text)`: only those of scripts that are switched on and
      * allowed a header line, whichever way they were switched off.
      */
-    val statuses: StateFlow<Map<String, String>> = combine(_statuses, scriptCache) { lines, list ->
+    val statuses: StateFlow<Map<String, String>> = combine(_statuses, scriptList) { lines, list ->
         val shown = list.filter { it.enabled && it.grants.allows(ScriptAccess.HEADER) }.mapTo(HashSet()) { it.name }
         lines.filterKeys { it in shown }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
@@ -259,7 +261,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     /** launcher.run(cmd) from scripts the user started (see HostApi.runCommand). */
     private val runCommandReceiver = object : android.content.BroadcastReceiver() {
-        override fun onReceive(c: android.content.Context, intent: Intent) {
+        override fun onReceive(c: Context, intent: Intent) {
             // Checked again here, where it runs: a sensitive command never runs from a script.
             intent.getStringExtra(HostApi.EXTRA_COMMAND)?.takeIf { !InstantRun.isSensitive(it) }?.let { runCommand(it, byScript = true) }
         }
@@ -279,7 +281,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             // Bursts of changes (a script logging many lines, another process) collapse into one reload.
             // Locking or unlocking the private space shows or hides its lines.
             launch { appsRepo.profiles.map(::lockedPrivate).distinctUntilChanged().drop(1).collect { requestReload() } }
-            combine(logs.version, reloadRequests) { a, b -> a to b }.debounce(40).collectLatest {
+            combine(logs.version, reloadRequests) { a, b -> a to b }.debounce(40.milliseconds).collectLatest {
                 // A failed reload keeps the previous rows instead of crashing home. Not logged:
                 // writing to the log would trigger the next reload.
                 try {
@@ -346,7 +348,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         val oldest = loaded.firstOrNull()?.id
         val incremental = newest != null && oldest != null && structure == loadedStructure && trimmed < oldest &&
             removed != null && now - fullAt < FULL_RELOAD_MS
-        val fresh = withContext(Dispatchers.IO) { if (incremental) logs.recent(limit, afterId = newest!!) else logs.recent(limit) }
+        val fresh = withContext(Dispatchers.IO) { if (incremental) logs.recent(limit, afterId = newest) else logs.recent(limit) }
         var start = logStart
         val all = if (!incremental) {
             start = fresh.size < limit
@@ -363,9 +365,9 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         }
         val print = withContext(Dispatchers.IO) { scripts.fingerprint() }
         if (print != scriptsPrint) {
-            val scriptList = withContext(Dispatchers.IO) { scripts.all() }
-            scriptCache.value = scriptList
-            withContext(Dispatchers.Default) { setCommandScripts(scriptList) }
+            val latest = withContext(Dispatchers.IO) { scripts.all() }
+            scriptList.value = latest
+            withContext(Dispatchers.Default) { setCommandScripts(latest) }
             scriptsPrint = print
         }
         _statuses.value = withContext(Dispatchers.IO) { KvStore(context, HostApi.STATUS_SCOPE).all() }
@@ -518,7 +520,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             _jumpTo.value = entry.id
             requestReload()
             // A line that never shows up (deleted meanwhile, past the page limit) doesn't stay a pending jump.
-            kotlinx.coroutines.delay(3_000)
+            kotlinx.coroutines.delay(3_000.milliseconds)
             if (_jumpTo.value == entry.id) {
                 _jumpTo.value = null
                 atNewest()
@@ -584,7 +586,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
      */
     private fun tipOfTheDay() {
         if (!config[Keys.LOG_TIPS]) return
-        val prefs = context.getSharedPreferences("tips", android.content.Context.MODE_PRIVATE)
+        val prefs = context.getSharedPreferences("tips", Context.MODE_PRIVATE)
         val today = java.time.LocalDate.now().toString()
         if (prefs.getString("day", null) == today) return
         val installed = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime }.getOrNull() ?: return
@@ -762,7 +764,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     private val lineActions = LogLineActions(context, processor, object : LogLineActions.Host {
         override val entries get() = _entries.value
-        override val scripts get() = scriptCache.value
+        override val scripts get() = scriptList.value
         override fun io(block: suspend () -> Unit) = this@TerminalViewModel.io(block)
         override fun setText(text: String) = this@TerminalViewModel.setText(text)
         override fun submit() = this@TerminalViewModel.submit()
@@ -821,7 +823,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         _undo.value = offer
         undoJob?.cancel()
         undoJob = viewModelScope.launch {
-            kotlinx.coroutines.delay(8_000)
+            kotlinx.coroutines.delay(8_000.milliseconds)
             _undo.value = null
             offer.expire()
         }
@@ -1015,7 +1017,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     private var lockHintShown = false
 
     /** Runs the action configured for a gesture: lock, shade, none or a terminal command. */
-    fun onGesture(key: com.mtwabpin.kolahal.data.ConfigKey.Text) {
+    fun onGesture(key: ConfigKey.Text) {
         val g = com.mtwabpin.kolahal.gesture.Gestures
         when (val action = config[key].trim()) {
             "", g.NONE -> Unit
@@ -1049,9 +1051,6 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     }
 
     // ---- GUI screens (settings, script manager) ------------------------------------------
-
-    /** Scripts for the manager screen. */
-    val scriptList: StateFlow<List<Script>> get() = scriptCache
 
     /** A message for the GUI screens; [seq] tells the same text twice apart, so both show. */
     data class Notice(val text: String, val seq: Long)
@@ -1113,7 +1112,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         if (previous == Screen.SETUP || previous == Screen.ONBOARDING) refreshSetup()
     }
 
-    private fun refreshScripts() = io { scriptCache.value = scripts.all() }
+    private fun refreshScripts() = io { scriptList.value = scripts.all() }
 
     private fun notice(text: String, error: Boolean = false) {
         show(text)
@@ -1124,7 +1123,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     private fun updateScript(s: Script, change: () -> Unit) = io {
         change()
         scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
-        scriptCache.value = scripts.all()
+        scriptList.value = scripts.all()
     }
 
     /** The Scripts screen's switch: it asks first when there is anything to decide ([enableScript]). */
@@ -1203,7 +1202,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         ScriptNames.invalid(to) { scripts.byName(it) != null }?.let { return@io notice(it, error = true) }
         scripts.rename(s.id, to)
         logs.onStatusChanged()
-        scriptCache.value = scripts.all()
+        scriptList.value = scripts.all()
         notice("Renamed ${s.name}.${s.lang.ext} to $to.${s.lang.ext}")
     }
 
@@ -1211,13 +1210,13 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         ScriptScheduler.cancel(context, s.id)
         scripts.delete(s.id)
         KvStore(context, HostApi.STATUS_SCOPE).set(s.name, null)
-        scriptCache.value = scripts.all()
+        scriptList.value = scripts.all()
         notice("Deleted ${s.name}")
     }
 
     fun newScript(name: String, lang: ScriptLang, asCommand: Boolean) {
         val clean = name.trim().lowercase()
-        if (!com.mtwabpin.kolahal.script.ScriptNames.NAME.matches(clean)) {
+        if (!ScriptNames.NAME.matches(clean)) {
             show("Names: lowercase letters, digits, - and _")
             return
         }
@@ -1229,7 +1228,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             if (scripts.byName(clean) != null) return@io notice("Script '$clean' already exists", error = true)
             val code = if (asCommand) ScriptTemplates.command(lang, clean) else ScriptTemplates.forLang(lang, clean)
             val s = scripts.create(clean, lang, code)
-            scriptCache.value = scripts.all()
+            scriptList.value = scripts.all()
             openEditor(s)
         }
     }
@@ -1302,8 +1301,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             if (r.full) {
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                     context.startActivity(
-                        android.content.Intent(context, com.mtwabpin.kolahal.MainActivity::class.java)
-                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        Intent(context, com.mtwabpin.kolahal.MainActivity::class.java)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                     )
                     android.os.Process.killProcess(android.os.Process.myPid())
                 }, 2_000)
@@ -1414,7 +1413,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     /** Scripts list + command names, refreshed after edits/imports (not only when the log changes). */
     private suspend fun refreshScriptCaches() {
         val list = withContext(Dispatchers.IO) { scripts.all() }
-        scriptCache.value = list
+        scriptList.value = list
         setCommandScripts(list)
     }
 
@@ -1491,7 +1490,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
      * Android's contact picker is back with [uri], or null when nothing was picked. Its numbers are
      * read now, while the picker allows it, and remembered for the next time the name is typed.
      */
-    fun onContactPicked(uri: android.net.Uri?) {
+    fun onContactPicked(uri: Uri?) {
         val then = contactPicked
         contactPicked = null
         if (uri == null) return
@@ -1770,7 +1769,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     init {
         viewModelScope.launch(Dispatchers.IO) {
             // A persistent flag, so `clear all` doesn't look like a first run.
-            val prefs = context.getSharedPreferences("launcher", android.content.Context.MODE_PRIVATE)
+            val prefs = context.getSharedPreferences("launcher", Context.MODE_PRIVATE)
             val firstRun = !prefs.getBoolean("intro_shown", false) && logs.recent(1).isEmpty()
             prefs.edit { putBoolean("intro_shown", true) }
             if (firstRun) {

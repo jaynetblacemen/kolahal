@@ -49,7 +49,7 @@ class Backup(private val context: Context) {
                     "name" to it.name, "lang" to it.lang.ext, "code" to it.code, "every" to it.intervalMin,
                     "at" to it.atTimes, "notify" to it.notify, "enabled" to it.enabled,
                     // Only what you switched off: what a script may use is allowed on each phone.
-                    "access" to it.access.filterValues { !it },
+                    "access" to it.access.filterValues { allowed -> !allowed },
                 )
             },
             // Everything else: todos, notes, reminders, feeds, script stores, log, history.

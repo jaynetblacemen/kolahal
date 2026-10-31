@@ -126,7 +126,7 @@ object Units {
 
     fun format(v: Double): String = when {
         v == 0.0 -> "0"
-        abs(v) >= 1e9 || abs(v) < 1e-4 -> String.format(Locale.ROOT, "%.4g", v)
+        abs(v) !in 1e-4..<1e9 -> String.format(Locale.ROOT, "%.4g", v)
         v % 1.0 == 0.0 -> String.format(Locale.ROOT, "%,.0f", v)
         else -> String.format(Locale.ROOT, "%,.4f", v).trimEnd('0').trimEnd('.')
     }

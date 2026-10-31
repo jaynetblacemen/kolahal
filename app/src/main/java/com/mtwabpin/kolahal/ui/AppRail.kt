@@ -11,7 +11,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -102,6 +101,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sign
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.time.Duration.Companion.milliseconds
 
 /** One row of the selector list: an app under its section letter (or the favourites section). */
 internal data class SelectorEntry<T>(
@@ -125,7 +125,7 @@ internal object SelectorMath {
     const val FAV = '★'
 
     /** Section order: `#` (digits, symbols, other scripts) first, then A–Z. */
-    val LETTERS: List<Char> = listOf(OTHER) + ('A'..'Z')
+    val LETTERS: List<Char> = listOf(OTHER) + ('A'..'Z').toList()
 
     /** Section letter of a label: its first letter or digit, accents stripped; anything outside A–Z is `#`. */
     fun letterOf(label: String): Char {
@@ -210,13 +210,12 @@ internal object SelectorMath {
                 blocks--
             }
         }
-        val lo = top
         val hi = bottom - (n - 1) * gap
         val out = FloatArray(n)
         var k = 0
         for (b in 0 until blocks) {
             repeat(weight[b]) {
-                out[k] = value[b].coerceIn(lo, hi) + k * gap
+                out[k] = value[b].coerceIn(top, hi) + k * gap
                 k++
             }
         }
@@ -226,7 +225,7 @@ internal object SelectorMath {
     /** How many entries each section has (★, #, A–Z, in list order): what [Sections] shares the strip by. */
     fun <T> sectionSizes(entries: List<SelectorEntry<T>>): List<Int> {
         val sizes = IntArray((entries.lastOrNull()?.sectionIndex ?: -1) + 1)
-        for (e in entries) sizes[e.sectionIndex]++
+        for ((_, _, _, sectionIndex) in entries) sizes[sectionIndex]++
         return sizes.toList()
     }
 
@@ -643,7 +642,6 @@ private fun LazyListState.scrollToPx(px: Float, rowPx: Int) {
  * touch starts the selector only in the strip's middle 200dp, where the handle is drawn at rest;
  * elsewhere the edge is Android's. Once down, the thumb uses the strip's whole length.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppSelector(
     apps: List<AppEntry>,
@@ -754,7 +752,7 @@ fun AppSelector(
         if (state.mode != Mode.OPEN || showList) return@LaunchedEffect
         snapshotFlow { listState.isScrollInProgress }.collectLatest { scrolling ->
             if (!scrolling) {
-                delay(IDLE_MS)
+                delay(IDLE_MS.milliseconds)
                 state.close()
             }
         }
@@ -1044,7 +1042,9 @@ fun AppSelector(
                         val down = awaitFirstDown(requireUnconsumed = false)
                         down.consume()
                         if (count == 0) {
-                            while (awaitPointerEvent().changes.onEach { it.consume() }.any { it.pressed }) {}
+                            do {
+                                val pressed = awaitPointerEvent().changes.onEach { it.consume() }.any { it.pressed }
+                            } while (pressed)
                             return@awaitEachGesture
                         }
                         var x = down.position.x
@@ -1261,7 +1261,7 @@ fun AppSelector(
                                         state.contact = Float.NaN
                                         if (byLetter && !onlyLetter) {
                                             if (glide?.isActive == true) {
-                                                glide?.cancel()
+                                                glide.cancel()
                                                 val (s, sh) = SelectorMath.place(state.listY, SelectorMath.maxScroll(list.size, rowPx.toFloat(), panelH(list.size)))
                                                 show(s, sh)
                                             }
@@ -1321,7 +1321,6 @@ fun AppSelector(
 }
 
 /** One list row: section letter in the gutter, profile tag in its colour, ★, the label. */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SelectorRow(
     entry: SelectorEntry<AppEntry>,

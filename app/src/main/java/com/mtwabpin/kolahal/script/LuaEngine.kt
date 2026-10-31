@@ -6,7 +6,6 @@ import kotlinx.coroutines.withContext
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 import party.iroiro.luajava.lua54.Lua54
-import kotlin.coroutines.coroutineContext
 import com.mtwabpin.kolahal.data.StyledText
 
 /**
@@ -38,12 +37,12 @@ class LuaEngine : ScriptEngine {
         val watchdog = RunWatchdog(host, timeoutMs, NATIVE_LIMIT_MB)
         try {
             lua.openLibraries()
-            lua.push(JFunction { l ->
+            lua.push { l ->
                 if (!ctx.isActive || System.currentTimeMillis() > deadline) {
                     l.push("script timed out after ${timeoutMs / 1000}s")
                     -1
                 } else 0
-            })
+            }
             lua.setGlobal("__kolahal_check")
             bindHost(lua, host)
             lua.push(code)
@@ -67,11 +66,7 @@ class LuaEngine : ScriptEngine {
         } finally {
             // Close while the watchdog still runs: lua_close runs pending __gc finalizers, where the
             // instruction hook is off, so a looping finalizer is only stopped by the watchdog.
-            try {
-                lua.close()
-            } finally {
-                watchdog.close()
-            }
+            watchdog.use { lua.close() }
         }
     }
 
@@ -90,7 +85,7 @@ class LuaEngine : ScriptEngine {
                     is Map<*, *> -> if (t.isEmpty()) emptyList() else throw IllegalArgumentException("logs expects a list of titles")
                     else -> throw IllegalArgumentException("logs expects a list of titles")
                 }
-            } else (1..l.getTop()).map { l.str(it) ?: "nil" }
+            } else (1..l.top).map { l.str(it) ?: "nil" }
             host.logs(titles)
             0
         }
@@ -108,16 +103,16 @@ class LuaEngine : ScriptEngine {
         }
         lua.table(
             "http",
-            "get" to { l: Lua -> l.pushValue(host.httpGet(l.checkString(1), l.mapArg(2))); 1 },
+            "get" to { l: Lua -> l.pushValue(host.httpGet(l.checkString(), l.mapArg(2))); 1 },
             // No lifetime, or nil, is the documented 600 s (nil read as a number would be 0: never cached).
-            "cached" to { l: Lua -> l.pushValue(host.httpCached(l.checkString(1), if (l.isNumber(2)) l.toInteger(2).toInt() else 600)); 1 },
+            "cached" to { l: Lua -> l.pushValue(host.httpCached(l.checkString(), if (l.isNumber(2)) l.toInteger(2).toInt() else 600)); 1 },
             "request" to { l: Lua ->
                 val opts = l.mapArg(1) ?: throw IllegalArgumentException("http.request expects a table")
                 l.pushValue(
                     host.httpRequest(
                         url = opts["url"]?.toString() ?: throw IllegalArgumentException("url is required"),
                         method = opts["method"]?.toString() ?: "GET",
-                        body = opts["body"]?.let { if (it is String) it else Json.stringify(it) },
+                        body = opts["body"]?.let { it as? String ?: Json.stringify(it) },
                         bodyIsJson = opts["body"].let { it != null && it !is String },
                         contentType = opts["contentType"]?.toString(),
                         headers = opts["headers"] as? Map<*, *>,
@@ -129,7 +124,7 @@ class LuaEngine : ScriptEngine {
         lua.table(
             "clipboard",
             "get" to { l: Lua -> l.pushValue(host.clipboardGet()); 1 },
-            "set" to { l: Lua -> host.clipboardSet(l.checkString(1)); 0 },
+            "set" to { l: Lua -> host.clipboardSet(l.checkString()); 0 },
         )
         lua.table(
             "device",
@@ -137,7 +132,7 @@ class LuaEngine : ScriptEngine {
             "network" to { l: Lua -> l.push(host.network()); 1 },
             "unlocks" to { l: Lua -> l.push(host.unlocksToday().toLong()); 1 },
             "dnd" to { l: Lua -> l.pushValue(host.dnd()); 1 },
-            "setDnd" to { l: Lua -> l.push(host.setDnd(l.checkString(1))); 1 },
+            "setDnd" to { l: Lua -> l.push(host.setDnd(l.checkString())); 1 },
             "work" to { l: Lua -> l.pushValue(host.work()); 1 },
             "setWork" to { l: Lua ->
                 val on = when (l.type(1)) {
@@ -151,22 +146,22 @@ class LuaEngine : ScriptEngine {
         )
         lua.table("apps", "list" to { l: Lua -> l.pushValue(host.appsList()); 1 })
         lua.table("notifications", "recent" to { l: Lua -> l.pushValue(host.notificationsRecent(if (l.isNumber(1)) l.toInteger(1).toInt() else 20)); 1 })
-        lua.table("launcher", "run" to { l: Lua -> l.push(host.runCommand(l.checkString(1))); 1 })
+        lua.table("launcher", "run" to { l: Lua -> l.push(host.runCommand(l.checkString())); 1 })
         lua.global("sleep") { l ->
             host.sleep(l.toInteger(1))
             0
         }
         lua.table(
             "rss",
-            "fetch" to { l: Lua -> l.pushValue(host.rssFetch(l.checkString(1))); 1 },
-            "fresh" to { l: Lua -> l.pushValue(host.rssFresh(l.checkString(1))); 1 },
-            "parse" to { l: Lua -> l.pushValue(host.rssParse(l.checkString(1))); 1 },
+            "fetch" to { l: Lua -> l.pushValue(host.rssFetch(l.checkString())); 1 },
+            "fresh" to { l: Lua -> l.pushValue(host.rssFresh(l.checkString())); 1 },
+            "parse" to { l: Lua -> l.pushValue(host.rssParse(l.checkString())); 1 },
         )
         lua.table(
             "store",
-            "get" to { l: Lua -> l.pushValue(host.storeGet(l.checkString(1))); 1 },
+            "get" to { l: Lua -> l.pushValue(host.storeGet(l.checkString())); 1 },
             // A boolean or a table is kept as text (true, JSON), not dropped as nil.
-            "set" to { l: Lua -> host.storeSet(l.checkString(1), l.str(2)); 0 },
+            "set" to { l: Lua -> host.storeSet(l.checkString(), l.str(2)); 0 },
         )
         lua.table(
             "md",
@@ -175,11 +170,11 @@ class LuaEngine : ScriptEngine {
         )
         lua.table(
             "fmt",
-            "bold" to { l: Lua -> l.styled(StyledText.Style.BOLD) },
-            "italic" to { l: Lua -> l.styled(StyledText.Style.ITALIC) },
-            "underline" to { l: Lua -> l.styled(StyledText.Style.UNDERLINE) },
-            "strike" to { l: Lua -> l.styled(StyledText.Style.STRIKE) },
-            "code" to { l: Lua -> l.styled(StyledText.Style.CODE) },
+            "bold" to { l: Lua -> l.styled(StyledText.Style.BOLD); 1 },
+            "italic" to { l: Lua -> l.styled(StyledText.Style.ITALIC); 1 },
+            "underline" to { l: Lua -> l.styled(StyledText.Style.UNDERLINE); 1 },
+            "strike" to { l: Lua -> l.styled(StyledText.Style.STRIKE); 1 },
+            "code" to { l: Lua -> l.styled(StyledText.Style.CODE); 1 },
             "color" to { l: Lua -> l.pushValue(StyledText.colour(colourNamed(l.toString(1)), l.str(2) ?: "nil")); 1 },
             "list" to { l: Lua ->
                 val items = (if (!l.isTable(1)) null else when (val v = Json.normalizeLua(l.toMap(1))) {
@@ -187,18 +182,18 @@ class LuaEngine : ScriptEngine {
                     is Map<*, *> -> if (v.isEmpty()) emptyList() else null
                     else -> null
                 }) ?: throw IllegalArgumentException("fmt.list expects a list of items")
-                l.pushValue(StyledText.list(items, numbered = l.getTop() >= 2 && l.toBoolean(2)))
+                l.pushValue(StyledText.list(items, numbered = l.top >= 2 && l.toBoolean(2)))
                 1
             },
             "plain" to { l: Lua -> l.pushValue(StyledText.plain(l.str(1) ?: "")); 1 },
         )
         lua.table(
             "secrets",
-            "get" to { l: Lua -> l.pushValue(host.secretGet(l.checkString(1))); 1 },
+            "get" to { l: Lua -> l.pushValue(host.secretGet(l.checkString())); 1 },
         )
         lua.table(
             "json",
-            "decode" to { l: Lua -> l.pushValue(Json.decode(l.checkString(1))); 1 },
+            "decode" to { l: Lua -> l.pushValue(Json.decode(l.checkString())); 1 },
             "encode" to { l: Lua -> l.push(Json.stringify(Json.normalizeLua(l.toObject(1)))); 1 },
         )
     }
@@ -208,34 +203,33 @@ class LuaEngine : ScriptEngine {
      * JSON (lua_tostring gives nil for both), a number as Lua writes it; null for nil or none.
      */
     private fun Lua.str(index: Int): String? = when {
-        getTop() < index || isNil(index) -> null
+        top < index || isNil(index) -> null
         isBoolean(index) -> toBoolean(index).toString()
         isTable(index) -> Json.stringify(Json.normalizeLua(toMap(index)))
         else -> toString(index)
     }
 
-    private fun Lua.checkString(index: Int): String =
-        toString(index) ?: throw IllegalArgumentException("argument #$index must be a string")
+    private fun Lua.checkString(): String =
+        toString(1) ?: throw IllegalArgumentException("argument #1 must be a string")
 
     /** `fmt.color(role, text)`'s role, or an error naming the ones there are. */
     private fun colourNamed(role: String?): StyledText.Colour = role?.let(StyledText.Colour::named)
         ?: throw IllegalArgumentException("fmt.color: no colour '$role'; use ${StyledText.Colour.entries.joinToString { it.role }}")
 
     /** `fmt.<style>(text)`: the text with [style] on it. */
-    private fun Lua.styled(style: StyledText.Style): Int {
+    private fun Lua.styled(style: StyledText.Style) {
         pushValue(StyledText.wrap(style, str(1) ?: "nil"))
-        return 1
     }
 
     /** `(title, body?, ctx?)` as log and md.log take them; a table second is the ctx: log(title, ctx). */
     private fun Lua.logArgs(): Triple<String, String?, Map<*, *>?> {
-        val tableSecond = getTop() >= 2 && isTable(2)
-        val body = if (getTop() >= 2 && !tableSecond) str(2) else null
+        val tableSecond = top >= 2 && isTable(2)
+        val body = if (top >= 2 && !tableSecond) str(2) else null
         return Triple(str(1) ?: "nil", body, mapArg(if (tableSecond) 2 else 3))
     }
 
     private fun Lua.mapArg(index: Int): Map<*, *>? =
-        if (getTop() >= index && isTable(index)) Json.normalizeLua(toMap(index)) as? Map<*, *> else null
+        if (top >= index && isTable(index)) Json.normalizeLua(toMap(index)) as? Map<*, *> else null
 
     private fun Lua.pushValue(value: Any?) {
         if (value == null) pushNil() else push(value, Lua.Conversion.FULL)

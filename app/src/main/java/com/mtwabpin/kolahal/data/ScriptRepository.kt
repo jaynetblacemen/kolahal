@@ -31,7 +31,7 @@ data class Script(
     val name: String,
     val lang: ScriptLang,
     val code: String,
-    /** 0 = manual only. WorkManager enforces a 15 minute minimum for periodic runs. */
+    /** 0 = manual only. WorkManager enforces a 15-minute minimum for periodic runs. */
     val intervalMin: Int,
     val enabled: Boolean,
     val notify: Boolean,
@@ -106,7 +106,7 @@ class ScriptRepository private constructor(private val context: Context) {
 
     /** Values of `@secret` lines the code no longer has are forgotten, not kept unseen. */
     private fun forgetRemovedSecrets(script: String, code: String) {
-        com.mtwabpin.kolahal.script.SecretStore(context).forgetUndeclared(script, ScriptMeta.secrets(code).map { it.name })
+        SecretStore(context).forgetUndeclared(script, ScriptMeta.secrets(code).map { it.name })
     }
 
     /**

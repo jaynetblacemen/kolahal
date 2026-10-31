@@ -173,7 +173,7 @@ class LogRepository private constructor(private val context: Context) {
 
     /**
      * Bumped by a change in the middle of the log that home can't apply to its page by itself (a
-     * restore, a hide, a clear): it then reads the page again. Lines removed ([takeRemoved]) and
+     * restore, a hide, a clear): it then reads the page again. Lines removed ([removedSince]) and
      * trims ([trimmedUpTo]) are told apart, so the page is only read again when they reach into it.
      */
     @Volatile var structure = 0L

@@ -126,7 +126,7 @@ object EditorLogic {
                 !(d.member == p.partial && (d.kind == ApiDoc.Kind.KEYWORD || d.kind == ApiDoc.Kind.VALUE))
         }
         return candidates.sortedWith(
-            compareBy<ApiDoc>(
+            compareBy(
                 { if (it.member.startsWith(p.partial)) 0 else 1 },
                 { if (it.kind == ApiDoc.Kind.KEYWORD) 1 else 0 },
                 { it.member.length },

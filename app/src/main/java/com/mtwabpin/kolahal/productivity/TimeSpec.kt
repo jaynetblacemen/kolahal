@@ -83,15 +83,15 @@ object TimeSpec {
     private val LEAP_YEAR: LocalDate = LocalDate.of(2028, 1, 1)
     private val DAY_NUMBER = Regex("^\\d+(st|nd|rd|th)?$", RegexOption.IGNORE_CASE)
 
-    /** A month and a number, either way round, or `2027-12-03`: meant as a date, valid or not. */
-    private fun looksLikeDate(tokens: List<String>, i: Int): Boolean {
-        val a = tokens.getOrNull(i) ?: return false
+    /** From the third token, a month and a number, either way round, or `2027-12-03`: meant as a date, valid or not. */
+    private fun looksLikeDate(tokens: List<String>): Boolean {
+        val a = tokens.getOrNull(2) ?: return false
         if (ISO_DATE.matches(a)) return true
-        val b = tokens.getOrNull(i + 1) ?: return false
+        val b = tokens.getOrNull(3) ?: return false
         return (month(a) != null && DAY_NUMBER.matches(b)) || (DAY_NUMBER.matches(a) && month(b) != null)
     }
 
-    /** A date at [tokens] from [i], how many tokens it took, and whether it named its year. */
+    /** A date read from the tokens, how many of them it took, and whether it named its year. */
     private data class Day(val date: LocalDate, val used: Int, val yearGiven: Boolean)
 
     /** `dec 3`, `3 dec`, `december 3rd`, either with a year after it (`dec 3 2027`), or `2027-12-03`. */
@@ -138,9 +138,9 @@ object TimeSpec {
         }
 
         val weekday = weekday(head)
-        val day: LocalDate? = when {
-            head == "today" -> now.toLocalDate()
-            head == "tomorrow" || head == "tmrw" || head == "tmr" -> now.toLocalDate().plusDays(1)
+        val day: LocalDate? = when (head) {
+            "today" -> now.toLocalDate()
+            "tomorrow", "tmrw", "tmr" -> now.toLocalDate().plusDays(1)
             // Today's own name is today, if its time is still ahead.
             else -> weekday?.let { dow ->
                 var d = now.toLocalDate()
@@ -191,7 +191,7 @@ object TimeSpec {
                 // In a leap year, so 29 February is a date: it's the 28th in other years ([Repeat]).
                 val day = parseDate(tokens, 2, LEAP_YEAR)
                 // Meant as a date but not one (`feb 30`, or `mar 14 2027`, as it repeats every year): a mistake, not the reminder's words.
-                if (day?.yearGiven == true || (day == null && looksLikeDate(tokens, 2))) return null
+                if (day?.yearGiven == true || (day == null && looksLikeDate(tokens))) return null
                 if (day != null) j = 2 + day.used
                 val d = day?.date ?: today
                 "year:%02d-%02d".format(d.monthValue, d.dayOfMonth)

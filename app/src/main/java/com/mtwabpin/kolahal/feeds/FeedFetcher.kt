@@ -24,9 +24,11 @@ import kotlin.coroutines.resumeWithException
 class FeedFetcher(context: Context) {
     private val repo = FeedRepository.get(context)
 
-    /** Outcome of one feed; [error] is null on success (including 304). */
-    /** [first]: this was the feed's first successful fetch, so [newItems] is its backlog, not news. */
-    /** [lanBlocked]: the feed is on the local network and Kolahal may not reach it yet. */
+    /**
+     * Outcome of one feed; [error] is null on success (including 304). [first]: this was the feed's
+     * first successful fetch, so [newItems] is its backlog, not news. [lanBlocked]: the feed is on
+     * the local network and Kolahal may not reach it yet.
+     */
     data class Result(val feed: Feed, val newItems: List<FeedItem>, val error: String?, val first: Boolean = false, val lanBlocked: Boolean = false)
 
     /**

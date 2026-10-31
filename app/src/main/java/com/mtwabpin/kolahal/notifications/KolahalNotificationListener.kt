@@ -16,6 +16,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.lang.ref.WeakReference
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Feeds posted notifications into [NotificationStore] and, unless muted, the terminal log
@@ -44,7 +45,7 @@ class KolahalNotificationListener : NotificationListenerService() {
     private fun mirror() {
         mirrorJob?.cancel()
         mirrorJob = scope.launch {
-            kotlinx.coroutines.delay(400)
+            kotlinx.coroutines.delay(400.milliseconds)
             // Only kept while a script may read it (`@uses notifications`); otherwise no copy at all.
             if (!com.mtwabpin.kolahal.script.TriggerDispatcher.get(this@KolahalNotificationListener).wantsNotifications()) {
                 runCatching { clearMirror(this@KolahalNotificationListener) }
@@ -229,7 +230,7 @@ class KolahalNotificationListener : NotificationListenerService() {
         internal fun isMessage(template: String?, category: String?): Boolean =
             template == MESSAGING_TEMPLATE || category == Notification.CATEGORY_MESSAGE
 
-        private const val MESSAGING_TEMPLATE = "android.app.Notification\$MessagingStyle"
+        private const val MESSAGING_TEMPLATE = $$"android.app.Notification$MessagingStyle"
 
         @Volatile
         private var instance: WeakReference<KolahalNotificationListener>? = null

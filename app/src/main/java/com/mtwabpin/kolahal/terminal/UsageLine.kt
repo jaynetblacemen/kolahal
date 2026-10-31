@@ -30,8 +30,7 @@ object UsageLine {
     fun complete(line: String, usage: String): Boolean {
         val words = line.trim().lowercase().split(Regex("\\s+"))
         val places = tokens(usage).drop(1)
-        if (words.size < 2 || words.size - 1 != places.size) return false
-        return words.drop(1).zip(places).all { (word, place) ->
+        return words.size >= 2 && words.size - 1 == places.size && words.drop(1).zip(places).all { (word, place) ->
             val choices = choices(place)
             choices.all { it.word != null } &&
                 choices.any { it.word == word && !it.takesValue } &&
@@ -45,10 +44,10 @@ object UsageLine {
         var depth = 0
         val cur = StringBuilder()
         for (ch in s) {
-            when {
-                ch == '[' || ch == '<' -> { depth++; cur.append(ch) }
-                ch == ']' || ch == '>' -> { depth--; cur.append(ch) }
-                ch == sep && depth == 0 -> { out += cur.toString(); cur.clear() }
+            when (ch) {
+                '[', '<' -> { depth++; cur.append(ch) }
+                ']', '>' -> { depth--; cur.append(ch) }
+                sep if depth == 0 -> { out += cur.toString(); cur.clear() }
                 else -> cur.append(ch)
             }
         }

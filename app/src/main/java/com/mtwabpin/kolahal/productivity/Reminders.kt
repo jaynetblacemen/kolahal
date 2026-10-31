@@ -91,7 +91,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 Notifier.postReminder(context, id, r.text)
                 LogRepository.get(context).add(
                     LogKind.SCRIPT, "Reminder: ${r.text}", "remind",
-                    // Tap puts a 10 minute snooze in the prompt.
+                    // Tap puts a 10-minute snooze in the prompt.
                     LogContext.of(LogContext.COMMAND to "remind 10m ${r.text}", LogContext.COPY to r.text),
                 )
             } finally {
@@ -140,7 +140,7 @@ class ReminderBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED,
-            android.app.AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED -> {
+            AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED -> {
                 val result = goAsync()
                 Thread {
                     try {

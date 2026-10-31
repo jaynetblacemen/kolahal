@@ -22,9 +22,6 @@ import com.mtwabpin.kolahal.notifications.NotificationActions
 import com.mtwabpin.kolahal.script.Json
 import com.mtwabpin.kolahal.script.ScriptScheduler
 import com.mtwabpin.kolahal.script.ScriptAccess
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 
 /**
  * What a tap or a long-press on a log line does; the line's saved [LogContext] decides. The view

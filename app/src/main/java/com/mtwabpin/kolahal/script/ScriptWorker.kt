@@ -13,6 +13,7 @@ import com.mtwabpin.kolahal.data.ScriptRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Runs one script (by id) or an inline REPL snippet. Executes inside the `:script` process via
@@ -89,7 +90,7 @@ internal object ScriptRun {
                 (from?.let { mapOf(LogContext.FROM to it.toString()) } ?: emptyMap())
         )
         val status = try {
-            val result = withTimeout(ScriptWorker.TIMEOUT_MS + 2_000) {
+            val result = withTimeout((ScriptWorker.TIMEOUT_MS + 2_000).milliseconds) {
                 engine.run(code, name, host, ScriptWorker.TIMEOUT_MS, repl, args, event)
             }
             host.flush()
