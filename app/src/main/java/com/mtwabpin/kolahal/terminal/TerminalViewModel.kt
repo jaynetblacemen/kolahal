@@ -440,8 +440,14 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         requestReload()
     }
 
-    /** The phone's time zone changed: the log and a search build their rows again, with each line's day in the new one. */
-    fun onZoneChanged() = logs.touch()
+    private var rowsZone = java.time.ZoneId.systemDefault()
+
+    /** The phone's time zone changed ([told]) or may have: the log and a search build their rows again, with each line's day in the new one. */
+    fun onZoneChanged(told: Boolean) {
+        val now = java.time.ZoneId.systemDefault()
+        if (told || now != rowsZone) logs.touch()
+        rowsZone = now
+    }
 
     /** Script lines in (seenUpTo, unreadUntil] arrived while the user was away; later ones were seen live. */
     @Volatile private var seenUpTo = Long.MAX_VALUE

@@ -123,6 +123,20 @@ class ScriptSecretsTest {
         }
     }
 
+    /** One kept before these stayed out goes the next time the script asks, fresh or not, and isn't handed back. */
+    @Test fun aResponseCachedWithASecretGoes() {
+        val plain = "{\"plain\":1}"
+        serving(plain) { url ->
+            val h = host()
+            val kept = KvStore(context, "repl")
+            kept.set("http.cache:$url", Json.stringify(mapOf("at" to System.currentTimeMillis(), "body" to "key=$value")))
+            val answer = h.httpCached(url, 60)
+            assertEquals(false, answer["cached"])
+            assertEquals(plain, answer["body"])
+            assertTrue(!kept.get("http.cache:$url").orEmpty().contains(value))
+        }
+    }
+
     @Test fun aFeedItemsSecretIsMaskedAndTheItemStillSeen() {
         val rss = "<rss version=\"2.0\"><channel><title>t</title><item><title>a</title>" +
             "<link>https://example.com/a?token=$value</link><guid>https://example.com/a?token=$value</guid></item></channel></rss>"

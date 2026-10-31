@@ -648,8 +648,8 @@ Outside =main=:
 
 | Path                               | What                                                                                                  |
 |------------------------------------+-------------------------------------------------------------------------------------------------------|
-| =app/src/test/=                    | about 360 JVM unit tests: fast, no phone needed                                                       |
-| =app/src/androidTest/=             | about 380 on-device tests (commands, script engines, backup, the screens)                             |
+| =app/src/test/=                    | about 400 JVM unit tests: fast, no phone needed                                                       |
+| =app/src/androidTest/=             | about 410 on-device tests (commands, script engines, backup, the screens)                             |
 | =app/src/play/AndroidManifest.xml= | removes the accessibility service, =READ_CALL_LOG= and =READ_CONTACTS= for the =play= build           |
 | =app/src/release/generated/=       | baseline profiles (pre-compiled start-up code)                                                        |
 | =baselineprofile/=                 | the module that generates those profiles                                                              |

@@ -39,11 +39,16 @@ class Backup(private val context: Context) {
     /** The whole backup as a file holds it; throws when it's too big to import again. */
     internal fun text(): String {
         val all = scripts.all()
+        val serials = FullBackup.privateSerials(context)
         val data = mapOf(
             "kolahal" to VERSION,
             "config" to Keys.ALL.filterNot(config::isDefault).associate { it.key to config.display(it) },
             "aliases" to prefs.aliases(),
-            "apps" to mapOf("hidden" to prefs.hiddenKeys(), "labels" to prefs.labels(), "pinned" to prefs.pinned()),
+            "apps" to mapOf(
+                "hidden" to prefs.hiddenKeys().filterNot { FullBackup.isPrivateApp(it, serials) },
+                "labels" to prefs.labels().filterKeys { !FullBackup.isPrivateApp(it, serials) },
+                "pinned" to prefs.pinned().filterNot { FullBackup.isPrivateApp(it, serials) },
+            ),
             "scripts" to all.map {
                 mapOf(
                     "name" to it.name, "lang" to it.lang.ext, "code" to it.code, "every" to it.intervalMin,

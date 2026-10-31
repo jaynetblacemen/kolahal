@@ -237,8 +237,8 @@ fun TerminalScreen(vm: TerminalViewModel, onPickFolder: () -> Unit, preview: Ter
     val lineTimeFormat = remember(configVersion, zone) {
         com.mtwabpin.kolahal.terminal.lineTimeFormat(config[Keys.CLOCK_24H])
     }
-    // The day dividers depend on the zone too: the rows are built again.
-    if (preview == null && zone > 0) LaunchedEffect(zone) { vm.onZoneChanged() }
+    // The day dividers depend on the zone too: the rows are built again, also for a change while another screen was up.
+    if (preview == null) LaunchedEffect(zone) { vm.onZoneChanged(told = zone > 0) }
     val fontSizeToast = rememberFontSizeToast()
     val doubleTapOn = remember(configVersion) {
         config[Keys.GESTURE_DOUBLE_TAP].trim().let { it.isNotEmpty() && it != com.mtwabpin.kolahal.gesture.Gestures.NONE }

@@ -548,8 +548,8 @@ Runs a terminal command, as if typed: another script's command too. Needs `@uses
 one-liner); in timer and event runs it logs an error and returns `false`. Sensitive commands
 (`clear`, `uninstall`, `work`, `notifs`, `script` and the like) must be typed: for those it logs
 an error and returns `false`. So do `search`, `yt`, `wiki`, `maps` and `play` with words to look
-for, unless the script may use the internet: they hand the words to a site. A run sends at most 10
-commands, and a script that another script started this way can't send any.
+for, and another `@command` script that goes online with words to pass it, unless the script may use
+the internet: they hand the words to a site. A run sends at most 10 commands, and a script that another script started this way can't send any.
 
 ```lua
 -- @command

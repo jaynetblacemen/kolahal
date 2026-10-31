@@ -211,6 +211,9 @@ class CalcTest {
         assertEquals("4", a("round(3.5)"))
         assertEquals("-2", a("round(-2.5)"))
         assertEquals("1e+30", a("round(10^30)"))
+        // Adding a half and flooring gets these wrong.
+        assertEquals("0", a("round(0.49999999999999994)"))
+        assertEquals("0", a("round(4503599627370497) - 4503599627370497"))
         assertEquals("not a real number", assertThrows(ArithmeticException::class.java) { a("round(sqrt(-1))") }.message)
     }
 

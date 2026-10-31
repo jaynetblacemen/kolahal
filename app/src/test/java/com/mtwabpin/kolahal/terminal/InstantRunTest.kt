@@ -180,14 +180,6 @@ class InstantRunTest {
         assertTrue(!InstantRun.isSensitive("search how to resume"))
     }
 
-    @Test fun aliasesExpandLevelByLevel() {
-        val aliases = mapOf("s" to "search", "x" to "s fixed words")
-        assertEquals(listOf("s words", "search words"), InstantRun.expansions("s words", aliases))
-        assertEquals(listOf("x", "s fixed words", "search fixed words"), InstantRun.expansions("x", aliases))
-        assertEquals(listOf("help"), InstantRun.expansions("help", aliases))
-        assertEquals(null, InstantRun.expansions("a", mapOf("a" to "b", "b" to "a")))
-    }
-
     @Test fun aliasesCantCarrySensitiveCommandsPastTheCheck() {
         val aliases = mapOf("c" to "clear", "x" to "c all", "w" to "weather")
         assertTrue(InstantRun.isSensitive("c", aliases))

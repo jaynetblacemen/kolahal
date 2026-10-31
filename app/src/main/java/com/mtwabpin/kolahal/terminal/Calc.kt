@@ -254,7 +254,7 @@ object Calc {
         "sqrt" to { a -> sqrt(a[0]) },
         "cbrt" to { a -> cbrt(a[0]) },
         "abs" to { a -> abs(a[0]) },
-        "round" to { a -> floor(a[0] + 0.5) },
+        "round" to { a -> floor(a[0]).let { f -> if (a[0] - f >= 0.5) f + 1 else f } },
         "floor" to { a -> floor(a[0]) },
         "ceil" to { a -> ceil(a[0]) },
         "ln" to { a -> ln(a[0]) },

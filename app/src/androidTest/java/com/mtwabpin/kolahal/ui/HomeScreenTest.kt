@@ -217,6 +217,38 @@ class HomeScreenTest {
         }
     }
 
+    /** Changed while another screen is up: the days are right on coming back, with no new line to bring that on. */
+    @Test fun theDaysFollowAZoneThatChangedElsewhere() {
+        assumeTrue("only on an emulator", Build.HARDWARE == "ranchu")
+        val logs = LogRepository.get(app)
+        val before = TimeZone.getDefault().id
+        logs.hideScreen()
+        val at = System.currentTimeMillis() - 3 * 86_400_000L
+        logs.addAll(listOf(LogRepository.Pending(LogKind.COMMAND, "tz away", null, LogContext.EMPTY, at)))
+        val line = logs.recent(limit = 10).single { it.text == "tz away" }.id
+        try {
+            assumeTrue("this device can't set its time zone from a test", setZone("Pacific/Kiritimati"))
+            lateinit var vm: TerminalViewModel
+            compose.runOnUiThread { vm = TerminalViewModel(app, androidx.lifecycle.SavedStateHandle()) }
+            val onHome = androidx.compose.runtime.mutableStateOf(true)
+            compose.setContent { KolahalTheme { if (onHome.value) TerminalScreen(vm, onPickFolder = {}) } }
+            fun shows(zone: String) {
+                val day = Instant.ofEpochMilli(at).atZone(ZoneId.of(zone)).toLocalDate()
+                compose.waitUntil(5_000) { vm.rows.value.any { it is LogRow.Day && it.day == day } }
+            }
+            shows("Pacific/Kiritimati")
+            compose.runOnUiThread { onHome.value = false }
+            compose.waitForIdle()
+            assertTrue(setZone("Pacific/Pago_Pago"))
+            compose.runOnUiThread { onHome.value = true }
+            shows("Pacific/Pago_Pago")
+        } finally {
+            shell("cmd alarm set-timezone $before")
+            logs.unhide()
+            logs.delete(line)
+        }
+    }
+
     /** The header's ⚙ shows no word; a screen reader still has one to say. */
     @Test fun headerSettingsHasANameForScreenReaders() {
         lateinit var vm: TerminalViewModel

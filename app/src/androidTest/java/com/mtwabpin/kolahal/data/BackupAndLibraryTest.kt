@@ -342,7 +342,6 @@ class BackupAndLibraryTest {
         }
     }
 
-    /** What this phone knows of its own calls and apps stays out of a backup, and a restore keeps it. */
     /** Other people's messages and numbers, and a private space's apps, stay on the phone. */
     @Test fun privateLinesStayOutOfBackups() {
         val logs = LogRepository.get(context)
@@ -354,15 +353,51 @@ class BackupAndLibraryTest {
         logs.add(LogKind.INFO, "Updated bkline-updated [S] ↻\ncom.example\n1.0", "apps")
         logs.add(LogKind.INFO, "Uninstalled bkline-gone [S] −", "apps")
         logs.add(LogKind.OUTPUT, "Call from bkline-call", CallEvents.SOURCE)
+        logs.add(LogKind.COMMAND, "call bkline-typed")
+        logs.add(LogKind.COMMAND, "text bkline-sms running late")
+        logs.add(LogKind.COMMAND, "todo bkline-command")
+        logs.add(LogKind.OUTPUT, "bkline-grid, Maps", ctx = LogContext.of(LogContext.APPS to "[]", LogContext.COPY to "bkline-grid [S]\nMaps"))
         logs.add(LogKind.INFO, "Dialing bkline-number", ctx = LogContext.of(LogContext.PHONE to "5550100"))
         try {
             Backup(context).export(Uri.fromFile(file))
             val text = file.readText()
             for (line in kept) assertTrue(line, text.contains(line))
-            for (word in listOf("launched", "updated", "gone", "call", "number")) assertFalse(word, text.contains("bkline-$word"))
+            assertTrue(text.contains("bkline-command"))
+            for (word in listOf("launched", "updated", "gone", "call", "number", "typed", "sms", "grid")) assertFalse(word, text.contains("bkline-$word"))
         } finally {
             logs.recent(50).filter { it.id > before }.forEach { logs.delete(it.id) }
             file.delete()
+        }
+    }
+
+    /** Its apps' pins, labels, hidden flags and launches too, known by the serial in their keys. */
+    @Test fun aPrivateSpacesAppsStayOutOfTheirSettings() {
+        val theirs = "com.bank/.Main#11"
+        val mine = "com.maps/.Main#0"
+        val entries = mapOf(
+            "hidden:$theirs" to mapOf("b" to true), "hidden:$mine" to mapOf("b" to true),
+            "label:$theirs" to mapOf("s" to "x"), "launch:$theirs" to mapOf("s" to "1:2"),
+            "pinned" to mapOf("s" to "$theirs\n$mine"),
+        )
+        val kept = FullBackup.withoutPrivateApps(entries, setOf(11L))
+        assertEquals(setOf("hidden:$mine", "pinned"), kept.keys)
+        assertEquals(mapOf("s" to mine), kept["pinned"])
+        assertEquals(entries, FullBackup.withoutPrivateApps(entries, emptySet()))
+    }
+
+    /** What `http.cached` keeps is only a cache, and one from before 0.4.9 can hold a key. */
+    @Test fun cachedResponsesStayOutOfBackups() {
+        val repo = ScriptRepository.get(context)
+        val script = repo.create("bkcache", ScriptLang.LUA, "log('x')")
+        try {
+            KvStore(context, ScriptRepository.scopeOf(script.id)).apply {
+                set("http.cache:https://example.com/", "a response")
+                set("mine", "kept")
+            }
+            val stores = FullBackup.export(context)["scriptStores"] as Map<*, *>
+            assertEquals(mapOf("mine" to "kept"), stores["bkcache"])
+        } finally {
+            repo.delete(script.id)
         }
     }
 

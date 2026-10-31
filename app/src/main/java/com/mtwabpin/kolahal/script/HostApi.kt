@@ -669,13 +669,19 @@ class HostApi(
             logError("launcher.run refused '${command.substringBefore(' ')}': sensitive commands must be typed")
             return false
         }
-        // A search or a place hands its words to a site through another app: only with the internet.
-        // Through an alias too, and the words can be the alias's own.
-        val verb = com.mtwabpin.kolahal.terminal.InstantRun.expansions(command, aliases).orEmpty().filter { it.contains(' ') }
-            .map { com.mtwabpin.kolahal.terminal.InstantRun.canonical(it.substringBefore(' ')) }.firstOrNull { it in WEB_COMMANDS }
-        if (verb != null && grants != null && !grants.allows(ScriptAccess.INTERNET)) {
-            logError("launcher.run refused '$verb': it sends words to a website, and this script has no internet")
-            return false
+        if (command.contains(' ') && grants != null && !grants.allows(ScriptAccess.INTERNET)) {
+            val verb = com.mtwabpin.kolahal.terminal.InstantRun.canonical(command.substringBefore(' '))
+            // A search or a place hands its words to a site through another app: only with the internet.
+            if (verb in WEB_COMMANDS) {
+                logError("launcher.run refused '$verb': it sends words to a website, and this script has no internet")
+                return false
+            }
+            // A `@command` script runs with its own switches, so it could send them on itself.
+            val other = com.mtwabpin.kolahal.data.ScriptRepository.get(context).byName(verb)
+            if (other != null && ScriptMeta.isCommand(other.code) && ScriptMeta.goesOnline(other.code)) {
+                logError("launcher.run refused '$verb': it goes online, and this script has no internet to give it words")
+                return false
+            }
         }
         flush()
         context.sendBroadcast(
@@ -686,10 +692,14 @@ class HostApi(
 
     /** GET with a per-script cache: returns the stored response if it is younger than [maxAgeSeconds]. */
     fun httpCached(url: String, maxAgeSeconds: Int): Map<String, Any?> {
-        val key = urlKey("http.cache:", url)
+        val key = urlKey(HTTP_CACHE, url)
         val cached = store.get(key)?.let { runCatching { Json.parse(it) as? Map<*, *> }.getOrNull() }
         val at = (cached?.get("at") as? Number)?.toLong() ?: 0L
-        if (cached != null && System.currentTimeMillis() - at < maxAgeSeconds * 1000L) {
+        // One kept before a body holding a key stayed out goes now, and isn't handed back.
+        val kept = cached?.get("body") as? String
+        if (kept != null && redact(kept) != kept) {
+            store.set(key, null)
+        } else if (cached != null && System.currentTimeMillis() - at < maxAgeSeconds * 1000L) {
             return mapOf("status" to 200, "ok" to true, "body" to cached["body"], "headers" to emptyMap<String, String>(), "cached" to true)
         }
         val resp = httpGet(url)
@@ -701,7 +711,7 @@ class HostApi(
             // Cached responses count toward the store's limits. Full, the other ones make room: they
             // are only a cache, and a store left full would refuse the script's own values.
             runCatching { store.set(key, entry) }.recoverCatching {
-                store.deleteStartingWith("http.cache:", except = key)
+                store.deleteStartingWith(HTTP_CACHE, except = key)
                 store.set(key, entry)
             }
         }
@@ -733,6 +743,8 @@ class HostApi(
         const val EXTRA_COMMAND = "command"
         /** The context keys a script's line may carry; anything else is dropped. */
         private val SCRIPT_CTX = setOf(LogContext.URL, LogContext.IMAGE, LogContext.COPY, LogContext.MONO)
+        /** What starts the store key of a response `http.cached` keeps. */
+        const val HTTP_CACHE = "http.cache:"
         /** Commands that hand their words to a site (through the browser or another app). */
         private val WEB_COMMANDS = setOf("search", "yt", "wiki", "maps", "play")
         private val METHODS_REQUIRING_BODY = setOf("POST", "PUT", "PATCH", "PROPPATCH", "REPORT")
