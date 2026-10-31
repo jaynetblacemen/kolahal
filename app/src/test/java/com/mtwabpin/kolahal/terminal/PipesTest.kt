@@ -19,6 +19,16 @@ class PipesTest {
         assertEquals(listOf("lua return 1 | 2"), Pipes.split("lua return 1 | 2"))
     }
 
+    /** The key bar's `|` adds no spaces. */
+    @Test fun spacesAroundThePipeAreOptional() {
+        for (line in listOf("help|grep feed", "help |grep feed", "help| grep feed", "help | grep feed")) {
+            assertEquals(line, listOf("help", "grep feed"), Pipes.split(line))
+        }
+        // Still not a pipe: `||` is code, whatever follows it.
+        assertEquals(listOf("js a ||grep"), Pipes.split("js a ||grep"))
+        assertEquals(listOf("js a || grep"), Pipes.split("js a || grep"))
+    }
+
     @Test fun grepIsCaseInsensitiveAndInvertible() {
         assertEquals(listOf("Apple", "pineapple"), run("grep apple", "Apple", "pear", "pineapple"))
         assertEquals(listOf("pear"), run("grep -v apple", "Apple", "pear", "pineapple"))

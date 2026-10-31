@@ -81,7 +81,7 @@ The strip above the prompt changes as you type:
     queries.
 
 Command chips start with `$` (`$ maps`), app chips show the app name, and a ✕ at the end of the
-prompt clears it. Tap a chip to use it. Tab (on the key bar or a hardware keyboard) takes the first one; it is
+prompt clears it. Tap a chip to use it. Tab (on a hardware keyboard, or on the key bar if you add it) takes the first one; it is
 filled when Enter acts on it too. The number of chips is `suggestions.max` (default 30).
 
 By default (`suggestions.style list`) the suggestions are a **list** stacked directly above the
@@ -260,7 +260,7 @@ Filters: `grep [-v] <pattern>` (case-insensitive regex; an invalid regex is matc
 a pattern after a second, with an error; if the pattern is still working, `restart` ends it. Error
 lines always come through. Only output the command prints right away is filtered; replies that arrive later (network
 requests, scripts) are written as usual. A `|` only starts a filter when a filter name follows it,
-so `js a || b` and Lua code are left alone.
+so `js a || b` and Lua code are left alone. The spaces around it are optional.
 
 ### Tap and long-press
 
@@ -341,22 +341,22 @@ phone's text size, as the text does. **Taller tappable
 lines** (`log.taller-taps`) makes the lines you can tap a little taller than the others, easier to
 hit, and `chips.height` sets the height of suggestion and app-grid chips.
 
-Touch keyboards lack the keys a terminal needs, so Kolahal adds a two-row bar:
+A touch keyboard's letters page leaves out what a terminal needs, so Kolahal adds a row with just that:
 
 ```
-ESC  /  -  ⇤  ↑  ⇥  ⌫
-TAB  |  .  ←  ↓  →  ⏎
+/  |  =  ←  ↑  ↓  →
 ```
 
-- `↑` / `↓` walk the command history; `TAB` completes; `ESC` clears the prompt; `⇤` / `⇥` jump to
-  the start or end.
+- `/` starts a [log search](#searching-the-log), `|` a [pipe](#pipes) and `=` the calculator.
+- `←` / `→` move the cursor; `↑` / `↓` walk the command history.
 - Arrows and backspace repeat while held, and dragging sideways across the bar moves the cursor.
-- Both rows are configurable: `keybar.row1` and `keybar.row2` take comma-separated keys from `ESC TAB UP DOWN
+- The bar is yours to change: `keybar.row1` and `keybar.row2` take comma-separated keys from `ESC TAB UP DOWN
   LEFT RIGHT HOME END BKSP ENTER SPACE KBD`, or any literal text. `KBD` shows the soft keyboard.
-  Clear **Row 2 keys** in Settings for a single row, or hide the bar with `keybar.show off`.
+  Row 2 is empty until you fill it, under Settings too. Hide the bar with `keybar.show off`.
 
 ```sh
 config set keybar.row1 ESC,TAB,UP,DOWN,|,~,KBD
+config set keybar.row2 HOME,END,-,BKSP    # a second row
 config reset keybar.row1      # back to the default row
 ```
 

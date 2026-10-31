@@ -68,7 +68,7 @@ object Keys {
         "keybar.row1", DEFAULT_KEYBAR,
         "Touch keys, comma separated: ESC TAB UP DOWN LEFT RIGHT HOME END BKSP ENTER SPACE KBD or literal text",
     )
-    val KEYBAR2 = ConfigKey.Text("keybar.row2", DEFAULT_KEYBAR2, "Second key bar row (same syntax; empty for one row)")
+    val KEYBAR2 = ConfigKey.Text("keybar.row2", DEFAULT_KEYBAR2, "Second key bar row (same syntax; empty by default)")
     val KEYBAR_SHOW = ConfigKey.Bool("keybar.show", false, "Show the touch key bar")
     val KEYBAR_AUTO = ConfigKey.Bool("keybar.auto", true, "Show the key bar only while the on-screen keyboard is up for the prompt (off: always)")
     val KEYBAR_HEIGHT = ConfigKey.Num("keybar.height", 40, 20..64, "Key bar row height (dp); smaller leaves more room for the log")
@@ -238,8 +238,9 @@ object Keys {
     }
 }
 
-private const val DEFAULT_KEYBAR = "ESC,/,-,HOME,UP,END,BKSP"
-private const val DEFAULT_KEYBAR2 = "TAB,|,.,LEFT,DOWN,RIGHT,ENTER"
+// What a keyboard's letters page doesn't have: the rest (`.`, backspace, Enter) sits right below the bar.
+private const val DEFAULT_KEYBAR = "/,|,=,LEFT,UP,DOWN,RIGHT"
+private const val DEFAULT_KEYBAR2 = ""
 
 /** Snapshot of all settings; recomposes the UI when anything changes. */
 class Config private constructor(private val prefs: SharedPreferences) {

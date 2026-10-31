@@ -75,7 +75,7 @@ private object CANCELLED
 private val REPEATING = setOf(KeyBarKey.UP, KeyBarKey.DOWN, KeyBarKey.LEFT, KeyBarKey.RIGHT, KeyBarKey.BKSP)
 
 /**
- * On-screen keys that touch keyboards lack: history, cursor, completion, and a few symbols.
+ * On-screen keys that touch keyboards lack: history, the cursor and a few symbols.
  * Up to [FILL_MAX] keys share the width; more scroll, with a fade marking the overflow.
  * Arrows and backspace repeat while held; dragging sideways across the bar moves the cursor.
  */

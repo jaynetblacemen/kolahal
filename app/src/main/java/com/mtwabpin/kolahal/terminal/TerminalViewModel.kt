@@ -675,6 +675,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun insert(text: String) {
         val v = input
         val newText = v.text.replaceRange(v.selection.min, v.selection.max, text)
+        historyIndex = -1
         input = TextFieldValue(newText, TextRange(v.selection.min + text.length))
     }
 
@@ -682,13 +683,13 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         if (history.isEmpty()) return
         if (historyIndex == -1) draft = input.text
         historyIndex = (historyIndex + 1).coerceAtMost(history.lastIndex)
-        setText(history.getOrNull(historyIndex) ?: return)
+        recall(history.getOrNull(historyIndex) ?: return)
     }
 
     fun historyDown() {
         if (historyIndex == -1) return
         historyIndex--
-        setText(if (historyIndex == -1) draft else history.getOrNull(historyIndex) ?: draft)
+        recall(if (historyIndex == -1) draft else history.getOrNull(historyIndex) ?: draft)
     }
 
     /** Backspace for the touch key bar (deletes the selection or the char before the cursor). */
@@ -724,7 +725,6 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     }
 
     fun escape() {
-        historyIndex = -1
         setText("")
     }
 
@@ -753,7 +753,13 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         }
     }
 
+    /** A new line for the prompt: ↑ and ↓ start again from it. */
     private fun setText(text: String) {
+        historyIndex = -1
+        recall(text)
+    }
+
+    private fun recall(text: String) {
         input = TextFieldValue(text, TextRange(text.length))
     }
 

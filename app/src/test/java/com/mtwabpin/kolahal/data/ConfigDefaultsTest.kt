@@ -16,6 +16,9 @@ class ConfigDefaultsTest {
         assertEquals(5, Keys.LOG_SPACING.default)
         assertEquals(22, Keys.LOG_LINE_HEIGHT.default)
         assertEquals(false, Keys.LOG_TALLER_TAPS.default)
+        // From 0.4.10: one row, of what the keyboard's letters page doesn't have.
+        assertEquals("/,|,=,LEFT,UP,DOWN,RIGHT", Keys.KEYBAR.default)
+        assertEquals("", Keys.KEYBAR2.default)
     }
 
     /** kolahal@device until you set your own name: one word, without an @ of its own. */

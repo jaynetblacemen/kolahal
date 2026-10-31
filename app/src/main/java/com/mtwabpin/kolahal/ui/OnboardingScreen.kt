@@ -288,7 +288,7 @@ private fun Keyboard(vm: TerminalViewModel) {
     Page("Above the keyboard", preview = { KeyboardPreview(vm) }) {
         SwitchRow(
             "Key bar",
-            "Arrows, Tab, Esc and more under the prompt, for editing what you type",
+            "History, arrows and a few symbols under the prompt, for what the keyboard leaves out",
             remember(version) { vm.config[Keys.KEYBAR_SHOW] },
         ) { vm.setConfig(Keys.KEYBAR_SHOW, if (it) "on" else "off") }
         SwitchRow(

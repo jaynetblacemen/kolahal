@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger
 object Pipes {
     val FILTERS = listOf("grep", "head", "tail", "count", "wc", "sort", "uniq")
 
-    private val SPLIT = Regex("""\s\|\s*(?=(?:${FILTERS.joinToString("|")})\b)""")
+    private val SPLIT = Regex("""(?<!\|)\s*\|\s*(?=(?:${FILTERS.joinToString("|")})\b)""")
 
     fun split(line: String): List<String> = line.split(SPLIT).map { it.trim() }.filter { it.isNotEmpty() }
 

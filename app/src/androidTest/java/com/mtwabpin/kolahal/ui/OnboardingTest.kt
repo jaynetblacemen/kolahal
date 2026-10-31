@@ -163,9 +163,9 @@ class OnboardingTest {
     @Test fun theKeyBarShowsInThePreview() {
         show()
         repeat(4) { next() }
-        compose.onAllNodesWithText("ESC", useUnmergedTree = true).assertCountEquals(0)
+        compose.onAllNodesWithText("|", useUnmergedTree = true).assertCountEquals(0)
         tap("Key bar")
-        compose.onAllNodesWithText("ESC", useUnmergedTree = true).assertCountEquals(1)
+        compose.onAllNodesWithText("|", useUnmergedTree = true).assertCountEquals(1)
     }
 
     /** The app selector itself is in its preview once it's on, on the edge chosen. */
