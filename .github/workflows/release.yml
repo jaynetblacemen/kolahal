@@ -1,21 +1,28 @@
-
 name: Release
 
-# Automatic release: push a vX.Y.Z tag.
-# Manual release: run this workflow from Actions and enter vX.Y.Z.
+# Push a tag named after the version, such as v0.3.1, and this builds, signs and publishes it:
+# - kolahal-X.Y.Z.apk (the full build) and kolahal-X.Y.Z-play.apk (the Play build, for phones where
+#   Play Protect blocks the full one), both signed with the release key, and the mapping zip, on a
+#   GitHub release whose notes are docs/release/notes/X.Y.Z.md;
+# - kolahal-X.Y.Z-play.aab, signed with the upload key, kept with this run for Play Console, and,
+#   once the PLAY_ variables are set, uploaded to Google Play on a testing track: a draft, or sent
+#   for review with PLAY_SEND_FOR_REVIEW true.
+#
+# Secrets (tools/make-keys.sh --secrets stores them): RELEASE_KEYSTORE_BASE64,
+# RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD, and the same four for UPLOAD_.
+# How it all fits together: docs/release/README.org.
+# Variable, optional but recommended: RELEASE_CERT_SHA256, the release key's certificate digest;
+# when set, both APKs must carry it, so a release can never go out under another key.
+# Variables for the Play upload, without a key (docs/release/google-play.org → Uploads from the
+# workflow): PLAY_WIF_PROVIDER and PLAY_SERVICE_ACCOUNT; PLAY_TRACK when it isn't alpha;
+# PLAY_SEND_FOR_REVIEW true to send it for review instead of leaving a draft.
 on:
   push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
-    inputs:
-      release_tag:
-        description: 'Release tag (e.g. v0.4.1)'
-        required: true
-        type: string
+    tags: ['v*']
 
 permissions:
   contents: write
+  # GitHub's identity token for this run, which Google trusts for the Play upload alone.
   id-token: write
 
 concurrency:
@@ -26,109 +33,57 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 45
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v7
 
-      - name: Set up Java
-        uses: actions/setup-java@v6
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 25
 
-      # Install the NDK version pinned by the project.
-      - name: Install NDK
+      # The NDK app/build.gradle.kts pins: without it the native libraries go out unstripped and
+      # the Play bundle has no symbols for them.
+      - name: The NDK
         run: |
           ndk=$(sed -n 's/^ *ndkVersion = "\(.*\)"$/\1/p' app/build.gradle.kts)
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk" > /dev/null || true
           test -d "$ANDROID_HOME/ndk/$ndk"
 
+      # v5: v6 brings caching under Gradle's own terms of use rather than the MIT licence.
       - uses: gradle/actions/setup-gradle@v5
 
-      # Validate the version and create the tag for manual releases.
-      - name: Check version and prepare release tag
+      - name: Check the tag, the version and the notes
         env:
           PLAY_UPLOAD: ${{ vars.PLAY_WIF_PROVIDER }}
-          MANUAL_TAG: ${{ inputs.release_tag }}
         run: |
-          set -euo pipefail
-
           version=$(sed -n 's/^ *versionName = "\(.*\)"$/\1/p' app/build.gradle.kts)
-
-          if [ -z "$version" ]; then
-            echo "::error::Could not read versionName from app/build.gradle.kts."
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::The tag is $GITHUB_REF_NAME, but app/build.gradle.kts says versionName $version."
             exit 1
           fi
-
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            tag="$MANUAL_TAG"
-          else
-            tag="$GITHUB_REF_NAME"
-          fi
-
-          if [ "$tag" != "v$version" ]; then
-            echo "::error::Tag $tag does not match app version $version."
-            exit 1
-          fi
-
           if [ ! -s "docs/release/notes/$version.md" ]; then
-            echo "::error::Missing docs/release/notes/$version.md."
+            echo "::error::docs/release/notes/$version.md is missing; it becomes the release notes."
             exit 1
           fi
-
+          # Missing at the Play upload, the GitHub release would already be out.
           if [ -n "$PLAY_UPLOAD" ] && [ ! -s "docs/release/notes/$version-play.txt" ]; then
-            echo "::error::Missing docs/release/notes/$version-play.txt."
+            echo "::error::docs/release/notes/$version-play.txt is missing; it becomes the notes on Google Play."
             exit 1
           fi
-
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            current_commit=$(git rev-parse HEAD)
-
-            remote_tag=$(git ls-remote --tags origin \
-              "refs/tags/$tag" "refs/tags/$tag^{}")
-
-            if [ -n "$remote_tag" ]; then
-              git fetch origin "refs/tags/$tag:refs/tags/$tag"
-              tag_commit=$(git rev-list -n 1 "$tag")
-
-              if [ "$tag_commit" != "$current_commit" ]; then
-                echo "::error::Tag $tag already exists on a different commit."
-                exit 1
-              fi
-
-              echo "Tag $tag already exists on this commit; continuing."
-            else
-              git config user.name "github-actions[bot]"
-              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-              git tag -a "$tag" -m "Kolahal $version"
-              git push origin "refs/tags/$tag"
-            fi
-          fi
-
           echo "VERSION=$version" >> "$GITHUB_ENV"
-          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
 
-      - name: Check signing keys
+      - name: Signing keys
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           UPLOAD_KEYSTORE_BASE64: ${{ secrets.UPLOAD_KEYSTORE_BASE64 }}
         run: |
           if [ -z "$RELEASE_KEYSTORE_BASE64" ] || [ -z "$UPLOAD_KEYSTORE_BASE64" ]; then
-            echo "::error::Signing keys are missing. Configure the repository secrets."
+            echo "::error::The signing keys aren't set up; run tools/make-keys.sh --secrets."
             exit 1
           fi
-
           mkdir -p "$RUNNER_TEMP/keys"
-
-          printf %s "$RELEASE_KEYSTORE_BASE64" |
-            base64 -d > "$RUNNER_TEMP/keys/release.jks"
-
-          printf %s "$UPLOAD_KEYSTORE_BASE64" |
-            base64 -d > "$RUNNER_TEMP/keys/upload.jks"
+          printf %s "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keys/release.jks"
+          printf %s "$UPLOAD_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keys/upload.jks"
 
       - name: Unit tests and signed builds
         env:
@@ -141,110 +96,62 @@ jobs:
           KOLAHAL_UPLOAD_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
           KOLAHAL_UPLOAD_KEY_PASSWORD: ${{ secrets.UPLOAD_KEY_PASSWORD }}
         run: |
-          ./gradlew --no-daemon \
-            :app:testDebugUnitTest \
-            :app:assembleRelease \
-            :app:bundlePlay
-
+          ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleRelease :app:bundlePlay
+          # The Play build again as an APK, signed with the release key like the full one.
           ./gradlew --no-daemon -PplayApk :app:assemblePlay
 
-      - name: Check Play build policy
+      - name: The Play build leaves out what Play's policy rules out
         run: tools/check-play-build.sh
 
-      - name: Verify signatures
+      - name: Check the signatures
         env:
           EXPECTED: ${{ vars.RELEASE_CERT_SHA256 }}
         run: |
-          set -euo pipefail
-
-          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/* |
-            sort -V | tail -1)/apksigner
-
-          expected=$(printf %s "$EXPECTED" |
-            tr -d ':' | tr 'A-F' 'a-f')
-
+          # shellcheck disable=SC2012  # build-tools versions are plain numbers
+          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
+          # keytool prints AB:CD…, apksigner abcd…: compare without colons, in lower case.
+          expected=$(printf %s "$EXPECTED" | tr -d ':' | tr 'A-F' 'a-f')
           echo "### Signatures" >> "$GITHUB_STEP_SUMMARY"
-
-          for apk in \
-            app/build/outputs/apk/release/app-release.apk \
-            app/build/outputs/apk/play/app-play.apk
-          do
+          # Build-tools 36 prints "Signer #1 certificate SHA-256 digest: …", 37 "V2 Signer: certificate …".
+          for apk in app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/play/app-play.apk; do
             certs=$("$apksigner" verify --print-certs "$apk")
-
-            digest=$(printf %s "$certs" |
-              sed -n 's/^.*[Ss]igner.* certificate SHA-256 digest: //p' |
-              head -1)
-
-            if [ -z "$digest" ]; then
-              echo "$certs"
-              echo "::error::$apk isn't signed."
-              exit 1
-            fi
-
-            if printf %s "$certs" | grep -q 'CN=Android Debug'; then
-              echo "::error::$apk is debug-signed."
-              exit 1
-            fi
-
+            digest=$(printf %s "$certs" | sed -n 's/^.*[Ss]igner.* certificate SHA-256 digest: //p' | head -1)
+            if [ -z "$digest" ]; then echo "$certs"; echo "::error::$apk isn't signed."; exit 1; fi
+            # Without the release key secrets the build falls back to the debug key: never ship that.
+            if printf %s "$certs" | grep -q 'CN=Android Debug'; then echo "::error::$apk is debug-signed."; exit 1; fi
             if [ -n "$expected" ] && [ "$digest" != "$expected" ]; then
-              echo "::error::$apk has the wrong signing certificate."
+              echo "::error::$apk is signed with $digest, not the release key $expected."
               exit 1
             fi
-
             echo "- $(basename "$apk"): \`$digest\`" >> "$GITHUB_STEP_SUMMARY"
           done
+          bundle=$(keytool -printcert -jarfile app/build/outputs/bundle/play/app-play.aab)
+          if ! printf %s "$bundle" | grep -q '^Owner:'; then echo "::error::The Play bundle isn't signed."; exit 1; fi
+          if printf %s "$bundle" | grep -q 'CN=Android Debug'; then echo "::error::The Play bundle is debug-signed; Play refuses it."; exit 1; fi
+          echo "- app-play.aab: $(printf %s "$bundle" | sed -n 's/^Owner: //p' | head -1)" >> "$GITHUB_STEP_SUMMARY"
 
-          bundle=$(keytool -printcert -jarfile \
-            app/build/outputs/bundle/play/app-play.aab)
-
-          if ! printf %s "$bundle" | grep -q '^Owner:'; then
-            echo "::error::The Play bundle isn't signed."
-            exit 1
-          fi
-
-          if printf %s "$bundle" | grep -q 'CN=Android Debug'; then
-            echo "::error::The Play bundle is debug-signed."
-            exit 1
-          fi
-
-          echo "- app-play.aab: $(printf %s "$bundle" |
-            sed -n 's/^Owner: //p' | head -1)" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Package release
+      - name: Package
         run: |
           mkdir -p out
-
-          cp app/build/outputs/apk/release/app-release.apk \
-            "out/kolahal-$VERSION.apk"
-
-          cp app/build/outputs/apk/play/app-play.apk \
-            "out/kolahal-$VERSION-play.apk"
-
-          cp app/build/outputs/bundle/play/app-play.aab \
-            "out/kolahal-$VERSION-play.aab"
-
-          (
-            cd app/build/outputs/mapping
-            zip -qr "$GITHUB_WORKSPACE/out/kolahal-$VERSION-mapping.zip" release play
-          )
-
+          cp app/build/outputs/apk/release/app-release.apk "out/kolahal-$VERSION.apk"
+          cp app/build/outputs/apk/play/app-play.apk "out/kolahal-$VERSION-play.apk"
+          cp app/build/outputs/bundle/play/app-play.aab "out/kolahal-$VERSION-play.aab"
+          # R8's names for each build, to read crash traces with retrace.
+          (cd app/build/outputs/mapping && zip -qr "$GITHUB_WORKSPACE/out/kolahal-$VERSION-mapping.zip" release play)
           cp "docs/release/notes/$VERSION.md" out/notes.md
+          # shellcheck disable=SC2016  # the backticks are Markdown, not a command
+          printf '\n\nBoth APKs and the Play bundle are built from `%s`, the commit this tag points to.\n' "${GITHUB_SHA::7}" >> out/notes.md
 
-          printf '\n\nBoth APKs and the Play bundle are built from `%s`, the commit this tag points to.\n' \
-            "${GITHUB_SHA::7}" >> out/notes.md
-
-      - name: Publish GitHub release
+      - name: Publish the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$RELEASE_TAG" --verify-tag --latest \
-            --title "Kolahal $VERSION" \
-            --notes-file out/notes.md \
-            "out/kolahal-$VERSION.apk" \
-            "out/kolahal-$VERSION-play.apk" \
-            "out/kolahal-$VERSION-mapping.zip"
+          gh release create "$GITHUB_REF_NAME" --verify-tag --latest \
+            --title "Kolahal $VERSION" --notes-file out/notes.md \
+            "out/kolahal-$VERSION.apk" "out/kolahal-$VERSION-play.apk" "out/kolahal-$VERSION-mapping.zip"
 
-      - name: Keep Play bundle
+      # For Play Console (Test and release → a track → Create new release → upload).
+      - name: Keep the Play bundle
         uses: actions/upload-artifact@v7
         with:
           name: kolahal-${{ env.VERSION }}-play
@@ -253,6 +160,8 @@ jobs:
             app/build/outputs/mapping/play/mapping.txt
           retention-days: 90
 
+      # Last, so a failed upload leaves the bundle above to upload by hand. A draft to roll out in
+      # Play Console, or with PLAY_SEND_FOR_REVIEW true, rolled out and sent for review.
       - name: Upload to Google Play
         if: vars.PLAY_WIF_PROVIDER != '' && vars.PLAY_SERVICE_ACCOUNT != ''
         env:
@@ -260,8 +169,4 @@ jobs:
           PLAY_SERVICE_ACCOUNT: ${{ vars.PLAY_SERVICE_ACCOUNT }}
           PLAY_TRACK: ${{ vars.PLAY_TRACK }}
           PLAY_SEND_FOR_REVIEW: ${{ vars.PLAY_SEND_FOR_REVIEW }}
-        run: |
-          tools/play-upload.sh \
-            "out/kolahal-$VERSION-play.aab" \
-            "docs/release/notes/$VERSION-play.txt" \
-            "$VERSION"
+        run: tools/play-upload.sh "out/kolahal-$VERSION-play.aab" "docs/release/notes/$VERSION-play.txt" "$VERSION"
