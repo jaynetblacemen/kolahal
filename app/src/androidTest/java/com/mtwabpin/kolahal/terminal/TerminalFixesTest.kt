@@ -316,9 +316,10 @@ class TerminalFixesTest {
         val command = vm.entries.value.single { it.text == "tf echo" }
         val delete = vm.actionsFor(command).single { it.label == "Delete command and output" }
         instrumentation.runOnMainSync { delete.run() }
-        waitUntil("the block goes") { logs.recent(50).none { it.text == "tf echo" } }
-        val left = logs.recent(50).map { it.text }.filter { it.startsWith("tf ") }
-        assertEquals(listOf("tf script", "tf installed"), left)
-        logs.recent(50).filter { it.text in left }.forEach { logs.delete(it.id) }
+        fun left() = logs.recent(50).map { it.text }.filter { it.startsWith("tf ") }
+        // They go one at a time.
+        waitUntil("the block goes") { left().size <= 2 }
+        assertEquals(listOf("tf script", "tf installed"), left())
+        logs.recent(50).filter { it.text.startsWith("tf ") }.forEach { logs.delete(it.id) }
     }
 }

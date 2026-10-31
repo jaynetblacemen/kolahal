@@ -235,17 +235,26 @@ class CommandFamiliesTest {
     @Test fun backupEverySchedulesBackups() {
         val wm = androidx.work.WorkManager.getInstance(context)
         fun state() = wm.getWorkInfosForUniqueWork("auto-backup").get().lastOrNull()?.state
+        fun waitFor(ms: Long = 5_000, check: () -> Boolean): Boolean {
+            val until = System.currentTimeMillis() + ms
+            while (!check() && System.currentTimeMillis() < until) Thread.sleep(50)
+            return check()
+        }
+        // The first backup starts by itself, at any moment from here on. With no folder it fails, and says
+        // so in the log: not a line of the command this test ran.
+        val failed = "Automatic backup failed"
+        fun said(line: String) = run(line).filterNot { it.startsWith(failed) }
+        val before = logs.maxId()
         try {
-            assertTrue(run("backup every weekly").first().startsWith("Backups weekly to "))
+            assertTrue(said("backup every weekly").first().startsWith("Backups weekly to "))
             assertEquals("weekly", config[Keys.BACKUP_AUTO])
-            val until = System.currentTimeMillis() + 5_000
-            while (state() != androidx.work.WorkInfo.State.ENQUEUED && System.currentTimeMillis() < until) Thread.sleep(100)
-            assertEquals(androidx.work.WorkInfo.State.ENQUEUED, state())
-            assertEquals(listOf("Usage: backup every daily|weekly|off"), run("backup every hourly"))
-            assertEquals(listOf("Automatic backups off"), run("backup every off"))
-            val off = System.currentTimeMillis() + 5_000
-            while (state() == androidx.work.WorkInfo.State.ENQUEUED && System.currentTimeMillis() < off) Thread.sleep(100)
-            assertEquals(androidx.work.WorkInfo.State.CANCELLED, state())
+            val scheduled = setOf(androidx.work.WorkInfo.State.ENQUEUED, androidx.work.WorkInfo.State.RUNNING)
+            assertTrue("scheduled: ${state()}", waitFor { state() in scheduled })
+            // Over and done with, so its line can't turn up in the next test's output.
+            waitFor(ms = 3_000) { logs.recent(50).any { it.id > before && it.text.startsWith(failed) } }
+            assertEquals(listOf("Usage: backup every daily|weekly|off"), said("backup every hourly"))
+            assertEquals(listOf("Automatic backups off"), said("backup every off"))
+            assertTrue("cancelled: ${state()}", waitFor { state() == androidx.work.WorkInfo.State.CANCELLED })
         } finally {
             config.reset(Keys.BACKUP_AUTO)
         }

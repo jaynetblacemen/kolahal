@@ -12,7 +12,6 @@ import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.data.Script
 import com.mtwabpin.kolahal.data.StyledText
 import org.junit.After
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -67,8 +66,10 @@ class FetchCommandTest {
     }
 
     @Test fun neofetchAndFastfetchAreFetch() {
-        val fetch = run("fetch").size
-        assertEquals(fetch, run("neofetch").size)
-        assertEquals(fetch, run("fastfetch").size)
+        // By what they print, not how many lines: rows such as Apps join once they've loaded, after a cold start.
+        for (name in listOf("neofetch", "fastfetch")) {
+            val text = run(name).map { StyledText.plain(it.text) }
+            assertTrue(name, text.any { "kolahal@" in it } && text.any { "OS" in it && "Android" in it } && text.any { "Kolahal" in it && BuildConfig.VERSION_NAME in it })
+        }
     }
 }
