@@ -53,25 +53,46 @@ jobs:
       # v5: v6 brings caching under Gradle's own terms of use rather than the MIT licence.
       - uses: gradle/actions/setup-gradle@v5
 
-      - name: Check the tag, the version and the notes
+            - name: Check version and prepare release tag
         env:
           PLAY_UPLOAD: ${{ vars.PLAY_WIF_PROVIDER }}
+          MANUAL_TAG: ${{ inputs.release_tag }}
         run: |
           version=$(sed -n 's/^ *versionName = "\(.*\)"$/\1/p' app/build.gradle.kts)
-          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
-            echo "::error::The tag is $GITHUB_REF_NAME, but app/build.gradle.kts says versionName $version."
+
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            tag="$MANUAL_TAG"
+          else
+            tag="$GITHUB_REF_NAME"
+          fi
+
+          if [ "$tag" != "v$version" ]; then
+            echo "::error::Tag $tag does not match version $version."
             exit 1
           fi
+
           if [ ! -s "docs/release/notes/$version.md" ]; then
-            echo "::error::docs/release/notes/$version.md is missing; it becomes the release notes."
+            echo "::error::Release notes are missing."
             exit 1
           fi
-          # Missing at the Play upload, the GitHub release would already be out.
+
           if [ -n "$PLAY_UPLOAD" ] && [ ! -s "docs/release/notes/$version-play.txt" ]; then
-            echo "::error::docs/release/notes/$version-play.txt is missing; it becomes the notes on Google Play."
+            echo "::error::Play release notes are missing."
             exit 1
           fi
+
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+              echo "::error::Tag $tag already exists."
+              exit 1
+            fi
+
+            git tag -a "$tag" -m "Kolahal $version"
+            git push origin "$tag"
+          fi
+
           echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
 
       - name: Signing keys
         env:
@@ -147,7 +168,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --verify-tag --latest \
+          gh release create "$RELEASE_TAG" --verify-tag --latest \
             --title "Kolahal $VERSION" --notes-file out/notes.md \
             "out/kolahal-$VERSION.apk" "out/kolahal-$VERSION-play.apk" "out/kolahal-$VERSION-mapping.zip"
 
