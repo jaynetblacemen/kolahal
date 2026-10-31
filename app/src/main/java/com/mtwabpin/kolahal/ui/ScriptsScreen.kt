@@ -120,7 +120,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToLong
 
-private val INTERVALS = listOf(0 to "Off", 15 to "15m", 30 to "30m", 60 to "1h", 180 to "3h", 360 to "6h", 720 to "12h", 1440 to "1d")
+private val INTERVALS = listOf(0 to "Off", 15 to "15 minutes", 30 to "30 minutes", 60 to "1 hour", 180 to "3 hours", 360 to "6 hours", 720 to "12 hours", 1440 to "1 day")
 
 /** A library script with its state against what is installed, and its `@on` events. */
 private class LibRow(val entry: ScriptLibrary.Entry, val state: ScriptLibrary.State, val events: List<String>)
@@ -1011,16 +1011,7 @@ private fun ScriptSheet(
             }
 
             Spacer(Modifier.height(16.dp))
-            Text("Runs every", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            IntervalGroup(s.intervalMin, { vm.setScriptInterval(s, it) }, INTERVALS)
-            if (s.intervalMin > 0 && INTERVALS.none { it.first == s.intervalMin }) {
-                Text(
-                    "Currently every ${CommandParsing.formatInterval(s.intervalMin)} (set from the terminal)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
+            IntervalSelector("Runs every", s.intervalMin, { vm.setScriptInterval(s, it) }, INTERVALS)
 
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(

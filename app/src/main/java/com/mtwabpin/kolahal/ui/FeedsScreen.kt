@@ -94,8 +94,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.URI
 
-/** Per-feed refresh presets (minutes) for the connected button group. */
-private val FEED_INTERVALS = listOf(15 to "15m", 30 to "30m", 60 to "1h", 180 to "3h", 360 to "6h", 720 to "12h", 1440 to "24h")
+/** Per-feed refresh presets (minutes). */
+private val FEED_INTERVALS = listOf(15 to "15 minutes", 30 to "30 minutes", 60 to "1 hour", 180 to "3 hours", 360 to "6 hours", 720 to "12 hours", 1440 to "24 hours")
 
 /** Items shown per feed (the database keeps at most [com.mtwabpin.kolahal.feeds.FeedDb.MAX_ITEMS_PER_FEED]). */
 private const val ITEM_LIMIT = 300
@@ -474,16 +474,7 @@ private fun FeedSheet(
             SwitchRow("Enabled", "Fetch this feed on its schedule", feed.enabled, onChange = onEnabled)
 
             Spacer(Modifier.height(12.dp))
-            Text("Refresh every", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            IntervalGroup(feed.intervalMin, onInterval, FEED_INTERVALS)
-            if (FEED_INTERVALS.none { it.first == feed.intervalMin }) {
-                Text(
-                    "Currently every ${CommandParsing.formatInterval(feed.intervalMin)} (set from the terminal)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
+            IntervalSelector("Refresh every", feed.intervalMin, onInterval, FEED_INTERVALS)
 
             Spacer(Modifier.height(16.dp))
             TextButton(
