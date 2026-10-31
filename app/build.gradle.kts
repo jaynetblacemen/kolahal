@@ -39,7 +39,7 @@ android {
         minSdk = 28
         targetSdk = 37
         versionCode = 12
-        versionName = "0.4.1"
+        versionName = "0.4.1-dev"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // The accessibility service (double-tap / `lock`), the call log and READ_CONTACTS are in the
         // manifest; the play build leaves them out.
