@@ -11,6 +11,40 @@ class TimeSpecTest {
     private val now = LocalDateTime.of(2026, 10, 17, 14, 20, 0)
     private fun parse(s: String) = TimeSpec.parseWhen(s.split(" "), now)
 
+    @Test fun theSmallHoursEndAtSix() {
+        assertEquals(true, TimeSpec.inTheSmallHours(LocalDateTime.of(2026, 10, 18, 0, 0)))
+        assertEquals(true, TimeSpec.inTheSmallHours(LocalDateTime.of(2026, 10, 18, 5, 59)))
+        assertEquals(false, TimeSpec.inTheSmallHours(LocalDateTime.of(2026, 10, 18, 6, 0)))
+        assertEquals(false, TimeSpec.inTheSmallHours(LocalDateTime.of(2026, 10, 18, 23, 0)))
+    }
+
+    /** A bare hour after a day word could be the text's first word instead, at the default time. */
+    @Test fun aBareHourAfterADayWordReadsTwoWays() {
+        fun other(s: String): TimeSpec.Reading? {
+            val tokens = s.split(" ")
+            return TimeSpec.otherReading(tokens, TimeSpec.parseWhen(tokens, now)!!.consumed, now)
+        }
+        assertEquals(TimeSpec.Reading(LocalDateTime.of(2026, 10, 18, 9, 0), "2 tickets"), other("tomorrow 2 tickets"))
+        assertEquals(TimeSpec.Reading(LocalDateTime.of(2026, 10, 23, 9, 0), "3 things to buy"), other("fri 3 things to buy"))
+        assertEquals(TimeSpec.Reading(LocalDateTime.of(2026, 10, 18, 9, 0), "2 tickets"), other("on tomorrow 2 tickets"))
+        // It says what it means: there's no other way to read these.
+        assertNull(other("tomorrow at 2 tickets"))
+        assertNull(other("tomorrow 2am tickets"))
+        assertNull(other("tomorrow 2:00 tickets"))
+        assertNull(other("at 5 tickets"))
+        assertNull(other("5:30 tickets"))
+    }
+
+    /** What a tap on the question sets is what it said, even after midnight. */
+    @Test fun exactWordsReadBackAsTheSameTime() {
+        val at = LocalDateTime.of(2026, 10, 18, 2, 0)
+        assertEquals("2026-10-18 02:00 2 tickets", TimeSpec.exactWords(at, "2 tickets"))
+        val tokens = TimeSpec.exactWords(at, "2 tickets").split(" ")
+        val parsed = TimeSpec.parseWhen(tokens, now.withHour(23))!!
+        assertEquals(at, parsed.at)
+        assertEquals(listOf("2", "tickets"), tokens.drop(parsed.consumed))
+    }
+
     @Test fun minutes() = assertEquals(TimeSpec.Parsed(now.plusMinutes(10), 1), parse("10m tea"))
     @Test fun hours() = assertEquals(now.plusHours(2), parse("2h call")?.at)
     @Test fun combined() = assertEquals(TimeSpec.Parsed(now.plusMinutes(90), 1), parse("1h30m stretch"))

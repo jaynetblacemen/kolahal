@@ -56,6 +56,11 @@ remind rm 1               # cancel
 A date without a year that has passed this year means next year's. After a date, a bare number is
 an hour only after `at` (`dec 3 at 10`), so `remind dec 3 2 tickets` is about two tickets.
 
+A time before 6 AM asks first, as it may not be what you meant. `remind tomorrow 2 tickets` says it
+read 2 in the morning, sets nothing, and offers two lines to tap: 2 in the morning about `tickets`,
+or 9:00 about `2 tickets`. `remind --yes tomorrow 5:30 flight` doesn't ask, for an alias or a script.
+A duration such as `remind 2h pills` never asks.
+
 ### Repeating reminders
 
 ```sh

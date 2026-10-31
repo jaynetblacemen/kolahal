@@ -206,6 +206,27 @@ object TimeSpec {
         return Repeating(rule, Repeat.next(rule, time ?: DEFAULT_TIME, now), j)
     }
 
+    private val SMALL_HOURS_END: LocalTime = LocalTime.of(6, 0)
+
+    /** Worth asking about, when the time was typed: `remind tomorrow 2 tickets` is more likely two tickets than 2 AM. */
+    fun inTheSmallHours(at: LocalDateTime): Boolean = at.toLocalTime().isBefore(SMALL_HOURS_END)
+
+    data class Reading(val at: LocalDateTime, val text: String)
+
+    /**
+     * The other way to read [tokens], whose first [consumed] said when: a bare hour after a day word
+     * as the text's first word, at the default time. Null for any other time.
+     */
+    fun otherReading(tokens: List<String>, consumed: Int, now: LocalDateTime): Reading? {
+        val hour = tokens.getOrNull(consumed - 1) ?: return null
+        if (!hour.all(Char::isDigit) || tokens.getOrNull(consumed - 2)?.lowercase() == "at") return null
+        val at = parseWhen(tokens.take(consumed - 1) + DEFAULT_TIME.toString(), now)?.at ?: return null
+        return Reading(at, tokens.drop(consumed - 1).joinToString(" "))
+    }
+
+    /** Words for [at] and [text] that mean the same whenever they're run: a "tomorrow" would move on at midnight. */
+    fun exactWords(at: LocalDateTime, text: String): String = "${at.toLocalDate()} ${at.toLocalTime()} $text"
+
     /** 7800 -> "2h 10m"; 45 -> "45s"; 90000 -> "1d 1h". */
     fun formatDuration(seconds: Long): String {
         val s = seconds.coerceAtLeast(0)

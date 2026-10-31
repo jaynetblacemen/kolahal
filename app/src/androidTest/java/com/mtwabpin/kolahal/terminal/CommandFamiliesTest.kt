@@ -123,6 +123,61 @@ class CommandFamiliesTest {
         assertTrue(run("remind someday x").single().startsWith("Usage: remind"))
     }
 
+    /** A time typed for before 6 AM sets nothing until it's tapped, and says what else it could mean. */
+    @Test fun aTimeBeforeSixAsksFirst() {
+        val store = com.mtwabpin.kolahal.productivity.ReminderStore.get(context)
+        fun mine() = store.all().filter { "cptest" in it.text }
+        fun time(r: com.mtwabpin.kolahal.productivity.Reminder) =
+            java.time.Instant.ofEpochMilli(r.at).atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+        fun cancelAll() = mine().forEach {
+            com.mtwabpin.kolahal.productivity.ReminderScheduler.cancel(context, it.id)
+            store.remove(it.id)
+        }
+        /** What tapping the newest line starting with [start] runs. */
+        fun tap(start: String) = run(logs.recent(20).last { it.text.startsWith(start) }.ctx.values.getValue(com.mtwabpin.kolahal.data.LogContext.RUN))
+        try {
+            val asked = run("remind tomorrow 2 cptest tickets")
+            assertEquals(asked.toString(), 3, asked.size)
+            assertTrue(asked[0], asked[0].startsWith("Not set yet, as tomorrow ") && asked[0].endsWith(" is before 6 AM: cptest tickets"))
+            assertTrue(asked[1], asked[1].startsWith("Tap to set it for tomorrow "))
+            assertTrue(asked[2], asked[2].startsWith("Or tap to set it for tomorrow ") && asked[2].endsWith(": 2 cptest tickets"))
+            assertEquals(emptyList<Any>(), mine())
+
+            // Either reading, and tapped twice it's still one reminder.
+            assertTrue(tap("Tap to set it").first().startsWith("Reminder set for tomorrow "))
+            assertEquals("cptest tickets", mine().single().text)
+            assertEquals(java.time.LocalTime.of(2, 0), time(mine().single()))
+            assertEquals(listOf("Already set: cptest tickets"), tap("Tap to set it"))
+            assertEquals(1, mine().size)
+            cancelAll()
+            assertTrue(tap("Or tap to set it").first().startsWith("Reminder set for tomorrow "))
+            assertEquals("2 cptest tickets", mine().single().text)
+            assertEquals(java.time.LocalTime.of(9, 0), time(mine().single()))
+            cancelAll()
+
+            // Any time typed for then, with nothing else to offer when it says what it means.
+            for (typed in listOf("5:59", "at 2", "tomorrow at 2", "12am", "tomorrow 5am")) {
+                assertEquals(typed, 2, run("remind $typed cptest x").size)
+                assertEquals(typed, emptyList<Any>(), mine())
+            }
+            run("remind every day 2:30 cptest pills").let { assertTrue(it.toString(), it[1].endsWith(", then every day")) }
+            assertEquals(emptyList<Any>(), mine())
+            assertTrue(tap("Tap to set it").first().contains("then every day: cptest pills"))
+            assertEquals("day", mine().single().repeat)
+            assertEquals(listOf("Already set: cptest pills"), tap("Tap to set it"))
+            cancelAll()
+
+            // From 6 on, a duration, or --yes: it's set at once.
+            for (typed in listOf("6:00", "tomorrow 9", "10m", "in 2h", "--yes 5:00", "--yes tomorrow 2")) {
+                assertTrue(typed, run("remind $typed cptest x").first().startsWith("Reminder set for"))
+                assertEquals(typed, 1, mine().size)
+                cancelAll()
+            }
+        } finally {
+            cancelAll()
+        }
+    }
+
     /** A repeating reminder is set again for its next time when it fires; Snooze adds a one-off copy. */
     @Test fun aRepeatingReminderComesBack() {
         val store = com.mtwabpin.kolahal.productivity.ReminderStore.get(context)

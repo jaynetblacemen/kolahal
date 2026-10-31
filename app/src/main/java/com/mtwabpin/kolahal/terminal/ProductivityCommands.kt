@@ -210,7 +210,10 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
     // ---- reminders -----------------------------------------------------------------------------
 
     private fun remind(rest: String) {
-        val w = words(rest)
+        var w = words(rest)
+        // A tap on the question below, or someone who means it.
+        val confirmed = w.firstOrNull()?.lowercase() == "--yes"
+        if (confirmed) w = w.drop(1)
         when (w.firstOrNull()?.lowercase()) {
             null, "ls", "list" -> return listReminders()
             "rm", "cancel", "remove" -> {
@@ -237,8 +240,12 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
             ?: return error("Usage: remind <10m|2h|18:30|tomorrow 9:00|fri 8am|dec 3 10:00|every mon 19:00> <text>")
         val text = w.drop(parsed.consumed).joinToString(" ")
         if (text.isBlank()) return error("What should I remind you of? remind ${w.take(parsed.consumed).joinToString(" ")} <text>")
-        val at = (if (repeating == null) TimeSpec.relativeSeconds(w) else null)?.let { System.currentTimeMillis() + it * 1000 }
-            ?: parsed.at.atZone(zone).toInstant().toEpochMilli()
+        val relative = if (repeating == null) TimeSpec.relativeSeconds(w) else null
+        // A time typed for the small hours asks first; a duration is plainly meant.
+        if (!confirmed && relative == null && TimeSpec.inTheSmallHours(parsed.at)) return askAboutTheSmallHours(w, parsed, repeating, text, now)
+        val at = relative?.let { System.currentTimeMillis() + it * 1000 } ?: parsed.at.atZone(zone).toInstant().toEpochMilli()
+        // The question can be tapped twice.
+        if (confirmed && reminders.all().any { it.at == at && it.text == text && it.repeat == repeating?.rule }) return info("Already set: $text")
         val r = reminders.add(at, text, repeating?.rule)
         ReminderScheduler.schedule(context, r)
         val then = repeating?.let { ", then ${Repeat.label(it.rule)}" }.orEmpty()
@@ -251,6 +258,18 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
         }
         if (!ReminderScheduler.canBeExact(context)) {
             info("Exact alarms are off, so it may be up to an hour late — tap to allow them", LogContext.of(LogContext.RUN to "remind exact"))
+        }
+    }
+
+    /** Says what was read and sets nothing: a tap does, on this reading or on the other one, if there is one. */
+    private fun askAboutTheSmallHours(w: List<String>, parsed: TimeSpec.Parsed, repeating: TimeSpec.Repeating?, text: String, now: LocalDateTime) {
+        fun label(at: LocalDateTime) = whenLabel(at.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
+        val then = repeating?.let { ", then ${Repeat.label(it.rule)}" }.orEmpty()
+        info("Not set yet, as ${label(parsed.at)} is before 6 AM: $text")
+        val words = if (repeating != null) w.joinToString(" ") else TimeSpec.exactWords(parsed.at, text)
+        info("Tap to set it for ${label(parsed.at)}$then", LogContext.of(LogContext.RUN to "remind --yes $words"))
+        TimeSpec.otherReading(w, parsed.consumed, now)?.let {
+            info("Or tap to set it for ${label(it.at)}: ${it.text}", LogContext.of(LogContext.RUN to "remind --yes ${TimeSpec.exactWords(it.at, it.text)}"))
         }
     }
 
