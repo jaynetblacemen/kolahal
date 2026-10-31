@@ -135,7 +135,11 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "script" -> scriptCommands.script(args)
                 "lua" -> eval(ScriptLang.LUA, rest)
                 "js" -> eval(ScriptLang.JS, rest)
-                "update" -> updateCommands.run(args)
+                "update" -> if (com.mtwabpin.kolahal.BuildConfig.SELF_UPDATE) {
+    updateCommands.run(args)
+} else {
+    error("Self-updates aren't available in the Play build")
+                }
                 "rss" -> feedCommands.rss(rest)
                 "feeds" -> if (args.isEmpty()) ui.openScreen(Screen.FEEDS) else feedCommands.feeds(args).also { runCatching { com.mtwabpin.kolahal.feeds.FeedScheduler.sync(context) } }
                 // A feed added, removed, switched or given a new interval changes the schedule.
