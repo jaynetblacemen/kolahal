@@ -28,6 +28,7 @@ import androidx.compose.material3.SelectableDropdownMenuItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -141,6 +142,16 @@ internal fun SwitchRow(
         }
     }
 }
+
+/**
+ * Material's Expressive text field colours, on the container of the tonal buttons beside it: its own
+ * (`surfaceContainer`) hardly shows on a sheet in these themes.
+ */
+@Composable
+internal fun fieldColors() = TextFieldDefaults.tonalColors().copy(
+    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+)
 
 /** How often something runs: a row like [SwitchRow], whose button says the time and opens a menu of the presets. A time set from the terminal shows as it is. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
