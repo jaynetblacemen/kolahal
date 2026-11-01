@@ -140,8 +140,8 @@ class ScriptFixesTest {
         val s = scripts.create("sftimes", ScriptLang.LUA, "return 1", enabled = false)
         lateinit var vm: TerminalViewModel
         instrumentation.runOnMainSync { vm = TerminalViewModel(app, SavedStateHandle()) }
-        assertFalse(vm.setScriptTimes(s, "8:00, 25:00"))
-        assertTrue(vm.setScriptTimes(s, "18:30, 8:00"))
+        assertFalse(vm.scriptActions.setScriptTimes(s, "8:00, 25:00"))
+        assertTrue(vm.scriptActions.setScriptTimes(s, "18:30, 8:00"))
         waitUntil("switched on") { scripts.byId(s.id)!!.enabled }
         assertEquals(listOf("08:00", "18:30"), scripts.byId(s.id)!!.atTimes)
     }

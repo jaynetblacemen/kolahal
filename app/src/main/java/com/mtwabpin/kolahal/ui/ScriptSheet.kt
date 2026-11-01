@@ -90,7 +90,7 @@ internal fun ScriptSheet(
     var comparing by remember(s.id) { mutableStateOf(false) }
     // Back to the library version: an edited copy's edits go, so it asks first; an older copy of yours had none.
     fun resetFromLibrary(row: LibRow) {
-        if (row.state == ScriptLibrary.State.MODIFIED) confirmReplace = true else vm.installFromLibrary(row.entry)
+        if (row.state == ScriptLibrary.State.MODIFIED) confirmReplace = true else vm.scriptActions.installFromLibrary(row.entry)
     }
     var times by remember(s.id, s.atTimes) { mutableStateOf(s.atTimes.joinToString(", ")) }
     var pickingTime by remember(s.id) { mutableStateOf(false) }
@@ -105,13 +105,13 @@ internal fun ScriptSheet(
     val access = remember(s.code) { ScriptAccess.items(s.code) }
     val notifies = remember(s.code) { ScriptMeta.postsNotifications(s.code) }
     val secrets = remember(s.code) { ScriptMeta.secrets(s.code) }
-    val secretsVersion by vm.secretsVersion.collectAsStateWithLifecycle()
-    val secretsSet by produceState(emptySet(), s.code, s.name, secretsVersion) { value = withContext(Dispatchers.IO) { vm.secretsSet(s) } }
+    val secretsVersion by vm.scriptActions.secretsVersion.collectAsStateWithLifecycle()
+    val secretsSet by produceState(emptySet(), s.code, s.name, secretsVersion) { value = withContext(Dispatchers.IO) { vm.scriptActions.secretsSet(s) } }
     var editingSecret by remember(s.id) { mutableStateOf<ScriptMeta.Secret?>(null) }
     val options = remember(s.code) { ScriptMeta.options(s.code) }
-    val optionsVersion by vm.optionsVersion.collectAsStateWithLifecycle()
+    val optionsVersion by vm.scriptActions.optionsVersion.collectAsStateWithLifecycle()
     val optionValues by produceState(emptyMap<String, String>() to emptySet<String>(), s.code, s.name, optionsVersion) {
-        value = withContext(Dispatchers.IO) { vm.optionValues(s) }
+        value = withContext(Dispatchers.IO) { vm.scriptActions.optionValues(s) }
     }
     var editingOption by remember(s.id) { mutableStateOf<ScriptMeta.Option?>(null) }
     val grants = remember(s.code, s.access) { s.grants }
@@ -155,7 +155,7 @@ internal fun ScriptSheet(
 
             Spacer(Modifier.height(16.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { vm.runScriptNow(s) }) {
+                Button(onClick = { vm.scriptActions.runScriptNow(s) }) {
                     Icon(painterResource(R.drawable.ic_play), null, Modifier.size(ButtonDefaults.IconSize))
                     Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                     Text("Run")
@@ -187,15 +187,15 @@ internal fun ScriptSheet(
                 Text("Access", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.height(4.dp))
                 val (base, declared) = uses.partition { it == ScriptAccess.INTERNET || it == ScriptAccess.HEADER }
-                base.forEach { item -> SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), grants.allows(item)) { vm.setScriptAccess(s, item, it) } }
-                if (notifies) SwitchRow("Post notifications", "Lets the script notify you", s.notify) { vm.setScriptNotify(s, it) }
-                declared.forEach { item -> SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), grants.allows(item)) { vm.setScriptAccess(s, item, it) } }
+                base.forEach { item -> SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), grants.allows(item)) { vm.scriptActions.setScriptAccess(s, item, it) } }
+                if (notifies) SwitchRow("Post notifications", "Lets the script notify you", s.notify) { vm.scriptActions.setScriptNotify(s, it) }
+                declared.forEach { item -> SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), grants.allows(item)) { vm.scriptActions.setScriptAccess(s, item, it) } }
             }
             if (events.isNotEmpty()) {
                 Spacer(Modifier.height(16.dp))
                 Text("Events", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.height(4.dp))
-                events.forEach { item -> SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), grants.allows(item)) { vm.setScriptAccess(s, item, it) } }
+                events.forEach { item -> SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), grants.allows(item)) { vm.scriptActions.setScriptAccess(s, item, it) } }
             }
 
             // Keys and tokens it declares with @secret: set here, never in its code.
@@ -227,7 +227,7 @@ internal fun ScriptSheet(
             }
 
             Spacer(Modifier.height(16.dp))
-            IntervalSelector("Runs every", s.intervalMin, { vm.setScriptInterval(s, it) }, INTERVALS)
+            IntervalSelector("Runs every", s.intervalMin, { vm.scriptActions.setScriptInterval(s, it) }, INTERVALS)
 
             Spacer(Modifier.height(12.dp))
             TextField(
@@ -251,10 +251,10 @@ internal fun ScriptSheet(
                     capitalization = KeyboardCapitalization.None,
                     imeAction = ImeAction.Done,
                 ),
-                keyboardActions = KeyboardActions(onDone = { timesError = !vm.setScriptTimes(s, times) }),
+                keyboardActions = KeyboardActions(onDone = { timesError = !vm.scriptActions.setScriptTimes(s, times) }),
                 trailingIcon = if (times != s.atTimes.joinToString(", ")) {
                     {
-                        IconButton(onClick = { timesError = !vm.setScriptTimes(s, times) }) {
+                        IconButton(onClick = { timesError = !vm.scriptActions.setScriptTimes(s, times) }) {
                             Icon(painterResource(R.drawable.ic_check), "Set times")
                         }
                     }
@@ -272,7 +272,7 @@ internal fun ScriptSheet(
                             val picked = "%02d:%02d".format(clock.hour, clock.minute)
                             // With what the box holds now, saved or not.
                             times = (times.split(',', ' ').filter { it.isNotBlank() } + picked).distinct().sorted().joinToString(", ")
-                            timesError = !vm.setScriptTimes(s, times)
+                            timesError = !vm.scriptActions.setScriptTimes(s, times)
                             pickingTime = false
                         }) { Text("Add") }
                     },
@@ -283,7 +283,7 @@ internal fun ScriptSheet(
             Spacer(Modifier.height(8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 sharedUpdate?.let { e ->
-                    FilledTonalButton(onClick = { vm.installSharedScript(e) }) { Text("Update to ${e.version}") }
+                    FilledTonalButton(onClick = { vm.scriptActions.installSharedScript(e) }) { Text("Update to ${e.version}") }
                 }
                 if (lib != null && lib.state.differs()) {
                     CompareButton(ButtonDefaults.MinHeight) { comparing = true }
@@ -304,14 +304,14 @@ internal fun ScriptSheet(
     editingSecret?.let { d ->
         SecretDialog(s.name, d, d.name in secretsSet, onDismiss = { editingSecret = null }) { value ->
             editingSecret = null
-            vm.setSecret(s.name, d, value)
+            vm.scriptActions.setSecret(s.name, d, value)
         }
     }
 
     editingOption?.let { o ->
         OptionDialog(s.name, o, optionValues.first[o.name] ?: o.default, changed = o.name in optionValues.second, onDismiss = { editingOption = null }) { value ->
             editingOption = null
-            vm.setOption(s.name, o.name, value)
+            vm.scriptActions.setOption(s.name, o.name, value)
         }
     }
 
@@ -319,12 +319,12 @@ internal fun ScriptSheet(
         val all by vm.scriptList.collectAsStateWithLifecycle()
         RenameDialog(s, all.mapTo(HashSet()) { it.name }, onDismiss = { renaming = false }) { to ->
             renaming = false
-            vm.renameScript(s, to)
+            vm.scriptActions.renameScript(s, to)
         }
     }
 
     if (confirmReplace && lib != null) {
-        ResetDialog(lib, onDismiss = { confirmReplace = false }) { confirmReplace = false; vm.installFromLibrary(lib.entry) }
+        ResetDialog(lib, onDismiss = { confirmReplace = false }) { confirmReplace = false; vm.scriptActions.installFromLibrary(lib.entry) }
     }
 
     if (comparing && lib != null && lib.state.differs()) {
@@ -339,7 +339,7 @@ internal fun ScriptSheet(
             text = { Text("Its timers, stored data and status line are removed too. Export it first to keep a copy.") },
             confirmButton = {
                 TextButton(
-                    onClick = { confirmDelete = false; onDismiss(); vm.deleteScript(s) },
+                    onClick = { confirmDelete = false; onDismiss(); vm.scriptActions.deleteScript(s) },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 ) { Text("Delete") }
             },

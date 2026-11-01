@@ -1,13 +1,7 @@
 package com.mtwabpin.kolahal.ui
 
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import java.text.Normalizer
 import kotlin.math.PI
 import kotlin.math.abs

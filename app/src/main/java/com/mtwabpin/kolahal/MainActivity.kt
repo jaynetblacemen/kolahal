@@ -12,38 +12,38 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.core.graphics.drawable.toDrawable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.mtwabpin.kolahal.terminal.TerminalViewModel
-import com.mtwabpin.kolahal.terminal.Screen
-import com.mtwabpin.kolahal.terminal.UiEvent
-import com.mtwabpin.kolahal.data.Backup
-import com.mtwabpin.kolahal.ui.FeedsScreen
-import com.mtwabpin.kolahal.ui.SettingsOverHome
-import com.mtwabpin.kolahal.ui.ScriptsScreen
-import com.mtwabpin.kolahal.ui.SetupScreen
-import com.mtwabpin.kolahal.ui.KolahalTheme
-import com.mtwabpin.kolahal.ui.Palettes
-import com.mtwabpin.kolahal.ui.Term
-import com.mtwabpin.kolahal.ui.TermFonts
-import androidx.compose.ui.text.font.FontFamily
-import com.mtwabpin.kolahal.data.Keys
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontFamily
+import androidx.core.graphics.drawable.toDrawable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import com.mtwabpin.kolahal.data.Backup
+import com.mtwabpin.kolahal.data.Keys
+import com.mtwabpin.kolahal.terminal.Screen
+import com.mtwabpin.kolahal.terminal.TerminalViewModel
+import com.mtwabpin.kolahal.terminal.UiEvent
+import com.mtwabpin.kolahal.ui.FeedsScreen
+import com.mtwabpin.kolahal.ui.KolahalTheme
+import com.mtwabpin.kolahal.ui.Palettes
 import com.mtwabpin.kolahal.ui.ScriptEditor
+import com.mtwabpin.kolahal.ui.ScriptsScreen
+import com.mtwabpin.kolahal.ui.SettingsOverHome
+import com.mtwabpin.kolahal.ui.SetupScreen
+import com.mtwabpin.kolahal.ui.Term
+import com.mtwabpin.kolahal.ui.TermFonts
 import com.mtwabpin.kolahal.ui.TerminalScreen
 import com.mtwabpin.kolahal.ui.WidgetPickerScreen
 import com.mtwabpin.kolahal.ui.WidgetsScreen
 import com.mtwabpin.kolahal.widgets.WidgetBinder
 import com.mtwabpin.kolahal.widgets.WidgetHost
-import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val vm: TerminalViewModel by viewModels()
@@ -67,13 +67,13 @@ class MainActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { vm.onScriptFolderPicked(it) }
 
     private val pickBackupFolder =
-        registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { vm.onBackupFolderPicked(it) }
+        registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { vm.backupActions.onBackupFolderPicked(it) }
 
     private val exportBackup =
-        registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { vm.exportBackup(it) }
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { vm.backupActions.exportBackup(it) }
 
     private val importBackup =
-        registerForActivityResult(ActivityResultContracts.OpenDocument()) { vm.importBackup(it) }
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { vm.backupActions.importBackup(it) }
 
     private val fontPicker =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { vm.importFont(it) }
@@ -84,10 +84,10 @@ class MainActivity : ComponentActivity() {
 
     // Many file managers label .lua / .js as octet-stream or text, so accept anything and filter by name.
     private val importScripts =
-        registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { vm.importScriptFiles(it) }
+        registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { vm.scriptActions.importScriptFiles(it) }
 
     private val exportScript =
-        registerForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { vm.finishExportScript(it) }
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { vm.scriptActions.finishExportScript(it) }
 
     /** Add-a-widget flow (bind permission + configure activity). */
     private val widgetBinder = WidgetBinder(this) { _ ->
@@ -202,7 +202,7 @@ class MainActivity : ComponentActivity() {
                             vm,
                             onImportFiles = { importScripts.launch(arrayOf("*/*")) },
                             onExportScript = { s ->
-                                vm.beginExportScript(s)
+                                vm.scriptActions.beginExportScript(s)
                                 exportScript.launch("${s.name}.${s.lang.ext}")
                             },
                         )

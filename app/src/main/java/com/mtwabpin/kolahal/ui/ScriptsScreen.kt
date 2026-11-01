@@ -137,19 +137,19 @@ fun ScriptsScreen(
 
     // Switching on a script that declares what nobody allowed yet asks first, with everything on.
     fun setEnabled(s: Script, on: Boolean) {
-        if (on && s.grants.undecided.isNotEmpty()) consentFor = s else vm.setScriptEnabled(s, on)
+        if (on && s.grants.undecided.isNotEmpty()) consentFor = s else vm.scriptActions.setScriptEnabled(s, on)
     }
 
     // Back to the library version: an edited copy's edits go, so it asks first; an older copy of yours had none.
     fun resetFromLibrary(row: LibRow) {
-        if (row.state == ScriptLibrary.State.MODIFIED) resetting = row else vm.installFromLibrary(row.entry)
+        if (row.state == ScriptLibrary.State.MODIFIED) resetting = row else vm.scriptActions.installFromLibrary(row.entry)
     }
 
     // The library scripts and their directives come from assets; read them off the main thread.
-    val library by produceState<List<LibRow>?>(null, vm.library, scripts) {
+    val library by produceState<List<LibRow>?>(null, vm.scriptActions.library, scripts) {
         value = withContext(Dispatchers.IO) {
             runCatching {
-                vm.library.entries.map { LibRow(it, vm.library.state(it, scripts), ScriptMeta.events(vm.library.code(it))) }
+                vm.scriptActions.library.entries.map { LibRow(it, vm.scriptActions.library.state(it, scripts), ScriptMeta.events(vm.scriptActions.library.code(it))) }
             }.getOrDefault(emptyList())
         }
     }
@@ -157,18 +157,18 @@ fun ScriptsScreen(
     // Shared scripts with a newer version, from the list kept by Get more scripts (no download here).
     val sharedUpdates by produceState(emptyMap(), scripts) {
         value = withContext(Dispatchers.IO) {
-            vm.scriptCatalog.cached().orEmpty()
-                .filter { vm.scriptCatalog.state(it, scripts) == ScriptCatalog.State.UPDATE_AVAILABLE }.associateBy { it.name }
+            vm.scriptActions.scriptCatalog.cached().orEmpty()
+                .filter { vm.scriptActions.scriptCatalog.state(it, scripts) == ScriptCatalog.State.UPDATE_AVAILABLE }.associateBy { it.name }
         }
     }
 
     val infos = remember(scripts) { scripts.map(::ScriptInfo) }
     // Declared secrets with no value yet, by script name.
-    val secretsVersion by vm.secretsVersion.collectAsStateWithLifecycle()
+    val secretsVersion by vm.scriptActions.secretsVersion.collectAsStateWithLifecycle()
     val missingKeys by produceState(emptyMap(), infos, secretsVersion) {
         value = withContext(Dispatchers.IO) {
             infos.filter { it.secrets.isNotEmpty() }
-                .associate { i -> i.script.name to (i.secrets.map { it.name } - vm.secretsSet(i.script)) }
+                .associate { i -> i.script.name to (i.secrets.map { it.name } - vm.scriptActions.secretsSet(i.script)) }
                 .filterValues { it.isNotEmpty() }
         }
     }
@@ -303,9 +303,9 @@ fun ScriptsScreen(
                             onExpand = { flipped = if (s.id in flipped) flipped - s.id else flipped + s.id },
                             onClick = { sheetId = s.id },
                             onEnabled = { setEnabled(s, it) },
-                            onRun = { vm.runScriptNow(s) },
-                            onAccess = { item, on -> vm.setScriptAccess(s, item, on) },
-                            onNotify = { vm.setScriptNotify(s, it) },
+                            onRun = { vm.scriptActions.runScriptNow(s) },
+                            onAccess = { item, on -> vm.scriptActions.setScriptAccess(s, item, on) },
+                            onNotify = { vm.scriptActions.setScriptNotify(s, it) },
                             onCompare = { comparing = s.id },
                             onReset = { libByName[s.name]?.let(::resetFromLibrary) },
                         )
@@ -344,7 +344,7 @@ fun ScriptsScreen(
         }
 
         resetting?.let { lib ->
-            ResetDialog(lib, onDismiss = { resetting = null }) { resetting = null; vm.installFromLibrary(lib.entry) }
+            ResetDialog(lib, onDismiss = { resetting = null }) { resetting = null; vm.scriptActions.installFromLibrary(lib.entry) }
         }
 
         val compared = comparing?.let { id -> scripts.firstOrNull { it.id == id } }
@@ -356,13 +356,13 @@ fun ScriptsScreen(
         consentFor?.let { s ->
             AccessDialog("Turn on ${s.name}.${s.lang.ext}?", s.grants.undecided, "Turn on", onDismiss = { consentFor = null }) { choices ->
                 consentFor = null
-                vm.enableScript(s, choices)
+                vm.scriptActions.enableScript(s, choices)
             }
         }
 
         if (creating) NewScriptDialog(scripts.map { it.name }.toSet(), onDismiss = { creating = false }) { name, lang, command ->
             creating = false
-            vm.newScript(name, lang, command)
+            vm.scriptActions.newScript(name, lang, command)
         }
     }
 }

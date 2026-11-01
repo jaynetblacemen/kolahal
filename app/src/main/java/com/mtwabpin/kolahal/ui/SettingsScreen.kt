@@ -13,12 +13,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,15 +41,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
-import com.mtwabpin.kolahal.data.CustomThemes
 import com.mtwabpin.kolahal.data.ConfigKey
+import com.mtwabpin.kolahal.data.CustomThemes
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.terminal.Screen
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
@@ -306,12 +306,12 @@ fun SettingsScreen(
                 // backup.auto: picking daily or weekly with no folder yet asks for one.
                 item(key = "backup-auto") { SettingItem(vm, config, Keys.BACKUP_AUTO, version, 0, 1) }
                 item(key = "backup") {
-                    val backupVersion by vm.backupVersion.collectAsStateWithLifecycle()
-                    val folder by produceState<String?>(null, backupVersion) { value = withContext(Dispatchers.IO) { vm.backupFolderLine() } }
+                    val backupVersion by vm.backupActions.backupVersion.collectAsStateWithLifecycle()
+                    val folder by produceState<String?>(null, backupVersion) { value = withContext(Dispatchers.IO) { vm.backupActions.backupFolderLine() } }
                     ActionGroup(
                         listOf(
                             Action(R.drawable.ic_folder, "Backup folder", folder ?: "Not chosen yet: automatic backups and Back up now write there") { vm.askBackupFolder(false) },
-                            Action(R.drawable.ic_download, "Back up now", "Today's backup file, in the backup folder", onClick = { vm.backUpNow() }),
+                            Action(R.drawable.ic_download, "Back up now", "Today's backup file, in the backup folder", onClick = { vm.backupActions.backUpNow() }),
                             Action(R.drawable.ic_download, "Export everything", "Settings, apps, scripts, todos, notes, reminders, feeds and the log in one file (notification and call lines stay on the phone)", onClick = onExportBackup),
                             Action(R.drawable.ic_upload, "Import a backup", "Restores everything (replaces todos, notes, feeds and the log)", onClick = onImportBackup),
                         )

@@ -48,10 +48,10 @@ fun ScriptLibraryScreen(vm: TerminalViewModel) {
     val scripts by vm.scriptList.collectAsStateWithLifecycle()
     val notice by vm.notice.collectAsStateWithLifecycle()
     BackHandler { vm.closeScreen() }
-    val library by produceState<List<LibRow>?>(null, vm.library, scripts) {
+    val library by produceState<List<LibRow>?>(null, vm.scriptActions.library, scripts) {
         value = withContext(Dispatchers.IO) {
             runCatching {
-                vm.library.entries.map { LibRow(it, vm.library.state(it, scripts), ScriptMeta.events(vm.library.code(it))) }
+                vm.scriptActions.library.entries.map { LibRow(it, vm.scriptActions.library.state(it, scripts), ScriptMeta.events(vm.scriptActions.library.code(it))) }
             }.getOrDefault(emptyList())
         }
     }
@@ -82,7 +82,7 @@ fun ScriptLibraryScreen(vm: TerminalViewModel) {
             ) {
                 val rows = library.orEmpty()
                 itemsIndexed(rows, key = { _, r -> "lib:" + r.entry.name }) { i, r ->
-                    LibraryRow(r, i, rows.size) { vm.installFromLibrary(r.entry) }
+                    LibraryRow(r, i, rows.size) { vm.scriptActions.installFromLibrary(r.entry) }
                 }
                 item(key = "more") {
                     Column(Modifier.padding(top = 16.dp)) {

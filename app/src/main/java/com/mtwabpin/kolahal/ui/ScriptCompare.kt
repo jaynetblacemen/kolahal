@@ -48,7 +48,7 @@ internal fun CompareDialog(vm: TerminalViewModel, s: Script, lib: LibRow, onDism
     // Read here, outside the dialog's own composition, and handed in: its counts and its lines then
     // change together (read inside it, the lines could show while the counts stayed at 0).
     val hunks = produceState<List<LineDiff.Hunk>?>(null, s.code, lib.entry) {
-        value = withContext(Dispatchers.IO) { LineDiff.hunks(LineDiff.lines(vm.library.code(lib.entry), s.code)) }
+        value = withContext(Dispatchers.IO) { LineDiff.hunks(LineDiff.lines(vm.scriptActions.library.code(lib.entry), s.code)) }
     }.value
     val removed = hunks.orEmpty().sumOf { h -> h.lines.count { it.kind == LineDiff.Kind.REMOVED } }
     val added = hunks.orEmpty().sumOf { h -> h.lines.count { it.kind == LineDiff.Kind.ADDED } }

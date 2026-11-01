@@ -62,6 +62,7 @@ import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.script.ScriptMeta
 import com.mtwabpin.kolahal.terminal.LogAction
 import com.mtwabpin.kolahal.terminal.LogRow
+import com.mtwabpin.kolahal.terminal.ScriptActions
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import com.mtwabpin.kolahal.terminal.UiEvent
 import kotlin.math.roundToInt
@@ -219,7 +220,7 @@ fun TerminalScreen(vm: TerminalViewModel, onPickFolder: () -> Unit, preview: Ter
     }
     menu?.let { ActionSheet(it, onDismiss = { menu = null }) }
     // `script secret <name> <NAME>`: the masked box for its value, over home.
-    val secretPrompt by vm.secretPrompt.collectAsStateWithLifecycle()
+    val secretPrompt by vm.scriptActions.secretPrompt.collectAsStateWithLifecycle()
     secretPrompt?.let { p -> TerminalSecretPrompt(vm, p) }
     val commandGap = remember(configVersion) { config[Keys.LOG_SPACING].dp }
     val showGutter = remember(configVersion) { config[Keys.LOG_GUTTER] }
@@ -314,7 +315,7 @@ fun TerminalScreen(vm: TerminalViewModel, onPickFolder: () -> Unit, preview: Ter
                     config = config,
                     version = configVersion,
                     onStatusTap = vm::runScriptNamed,
-                    onStatusLongPress = { name -> showMenu("$name ▸ ${statuses[name].orEmpty()}", null) { vm.statusActions(name) } },
+                    onStatusLongPress = { name -> showMenu("$name ▸ ${statuses[name].orEmpty()}", null) { vm.scriptActions.statusActions(name) } },
                     onSwipeDown = { vm.onGesture(Keys.GESTURE_SWIPE_DOWN) },
                     onTarget = vm::onHeaderTap,
                     onProfileTap = vm::onProfileTap,
@@ -607,22 +608,22 @@ private fun Modifier.pinchToZoomFont(onChange: (Int) -> Unit, onEnd: (from: Int,
 
 /** The box `script secret` opens; gone if the script or its `@secret` line is. */
 @Composable
-private fun TerminalSecretPrompt(vm: TerminalViewModel, prompt: TerminalViewModel.SecretPrompt) {
+private fun TerminalSecretPrompt(vm: TerminalViewModel, prompt: ScriptActions.SecretPrompt) {
     val scripts by vm.scriptList.collectAsStateWithLifecycle()
     val secret = remember(scripts, prompt) {
         scripts.firstOrNull { it.name == prompt.script }?.let { s -> ScriptMeta.secrets(s.code).firstOrNull { it.name == prompt.name } }
     }
     if (secret == null) {
-        LaunchedEffect(prompt) { vm.closeSecretPrompt() }
+        LaunchedEffect(prompt) { vm.scriptActions.closeSecretPrompt() }
         return
     }
     val isSet by produceState(false, prompt) {
-        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { vm.secretStore.isSet(prompt.script, secret) }
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { vm.scriptActions.secretStore.isSet(prompt.script, secret) }
     }
     GuiTheme {
-        SecretDialog(prompt.script, secret, isSet, onDismiss = vm::closeSecretPrompt) { value ->
-            vm.closeSecretPrompt()
-            vm.setSecret(prompt.script, secret, value)
+        SecretDialog(prompt.script, secret, isSet, onDismiss = vm.scriptActions::closeSecretPrompt) { value ->
+            vm.scriptActions.closeSecretPrompt()
+            vm.scriptActions.setSecret(prompt.script, secret, value)
         }
     }
 }

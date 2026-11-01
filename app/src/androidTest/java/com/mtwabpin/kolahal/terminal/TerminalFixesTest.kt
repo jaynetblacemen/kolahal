@@ -116,9 +116,9 @@ class TerminalFixesTest {
     /** The same message twice shows twice: each is a notice of its own. */
     @Test fun theSameMessageTwiceIsTwoNotices() {
         val vm = viewModel()
-        instrumentation.runOnMainSync { vm.newScript("Not A Name", ScriptLang.LUA, asCommand = false) }
+        instrumentation.runOnMainSync { vm.scriptActions.newScript("Not A Name", ScriptLang.LUA, asCommand = false) }
         val first = vm.notice.value!!
-        instrumentation.runOnMainSync { vm.newScript("Not A Name", ScriptLang.LUA, asCommand = false) }
+        instrumentation.runOnMainSync { vm.scriptActions.newScript("Not A Name", ScriptLang.LUA, asCommand = false) }
         val second = vm.notice.value!!
         assertEquals(first.text, second.text)
         assertTrue(first != second)
