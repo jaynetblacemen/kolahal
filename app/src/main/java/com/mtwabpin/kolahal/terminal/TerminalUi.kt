@@ -25,6 +25,7 @@ interface TerminalUi {
     fun requestCalendarPermission() {}
     /** READ_CALL_LOG for calls in the log and `calls`. */
     fun requestCallLogPermission() {}
+    fun setUpdateProgress(progress: UpdateProgress?) {}
     /**
      * `notifs enable` with access off: what notification access reads and what for, with a choice,
      * before Android's Notification access screen opens.
