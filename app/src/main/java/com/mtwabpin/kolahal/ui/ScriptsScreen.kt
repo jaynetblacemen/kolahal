@@ -1,133 +1,70 @@
 package com.mtwabpin.kolahal.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedListItem
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.TimePickerDialog
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.R
-import com.mtwabpin.kolahal.data.Config
-import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.data.Script
-import com.mtwabpin.kolahal.data.ScriptLang
-import com.mtwabpin.kolahal.data.shortTime
-import com.mtwabpin.kolahal.script.ScriptAccess
 import com.mtwabpin.kolahal.script.ScriptCatalog
-import com.mtwabpin.kolahal.script.LineDiff
 import com.mtwabpin.kolahal.script.ScriptLibrary
 import com.mtwabpin.kolahal.script.ScriptMeta
-import com.mtwabpin.kolahal.script.ScriptNames
 import com.mtwabpin.kolahal.script.ScriptScheduler
-import com.mtwabpin.kolahal.script.SecretStore
 import com.mtwabpin.kolahal.terminal.CommandParsing
-import com.mtwabpin.kolahal.terminal.CommandProcessor
 import com.mtwabpin.kolahal.terminal.Screen
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToLong
 
-private val INTERVALS = listOf(0 to "Off", 15 to "15 minutes", 30 to "30 minutes", 60 to "1 hour", 180 to "3 hours", 360 to "6 hours", 720 to "12 hours", 1440 to "1 day")
+internal val INTERVALS = listOf(0 to "Off", 15 to "15 minutes", 30 to "30 minutes", 60 to "1 hour", 180 to "3 hours", 360 to "6 hours", 720 to "12 hours", 1440 to "1 day")
 
 /** A library script with its state against what is installed, and its `@on` events. */
-private class LibRow(val entry: ScriptLibrary.Entry, val state: ScriptLibrary.State, val events: List<String>)
+internal class LibRow(val entry: ScriptLibrary.Entry, val state: ScriptLibrary.State, val events: List<String>)
 
 /** What a script's card shows and the filters match, read from its code once per change. */
-private class ScriptInfo(val script: Script) {
+internal class ScriptInfo(val script: Script) {
     val title = ScriptMeta.title(script.code)
     val desc = ScriptMeta.description(script.code)
     val isCommand = ScriptMeta.isCommand(script.code)
@@ -149,7 +86,7 @@ private class ScriptState(val inHeader: Boolean, val needsKey: Boolean, val diff
 private class ScriptFilter(val id: String, val label: String, val keeps: (info: ScriptInfo, state: ScriptState) -> Boolean)
 
 /** Short names for what scripts use, in chips. */
-private val USES_SHORT = mapOf("notifications" to "notifications", "clipboard" to "clipboard", "apps" to "apps", "commands" to "commands", "dnd" to "Do Not Disturb", "work" to "work profile")
+internal val USES_SHORT = mapOf("notifications" to "notifications", "clipboard" to "clipboard", "apps" to "apps", "commands" to "commands", "dnd" to "Do Not Disturb", "work" to "work profile")
 
 private val SCRIPT_FILTERS = listOf(
     ScriptFilter("commands", "Commands") { s, _ -> s.isCommand },
@@ -200,19 +137,19 @@ fun ScriptsScreen(
 
     // Switching on a script that declares what nobody allowed yet asks first, with everything on.
     fun setEnabled(s: Script, on: Boolean) {
-        if (on && s.grants.undecided.isNotEmpty()) consentFor = s else vm.setScriptEnabled(s, on)
+        if (on && s.grants.undecided.isNotEmpty()) consentFor = s else vm.scriptActions.setScriptEnabled(s, on)
     }
 
     // Back to the library version: an edited copy's edits go, so it asks first; an older copy of yours had none.
     fun resetFromLibrary(row: LibRow) {
-        if (row.state == ScriptLibrary.State.MODIFIED) resetting = row else vm.installFromLibrary(row.entry)
+        if (row.state == ScriptLibrary.State.MODIFIED) resetting = row else vm.scriptActions.installFromLibrary(row.entry)
     }
 
     // The library scripts and their directives come from assets; read them off the main thread.
-    val library by produceState<List<LibRow>?>(null, vm.library, scripts) {
+    val library by produceState<List<LibRow>?>(null, vm.scriptActions.library, scripts) {
         value = withContext(Dispatchers.IO) {
             runCatching {
-                vm.library.entries.map { LibRow(it, vm.library.state(it, scripts), ScriptMeta.events(vm.library.code(it))) }
+                vm.scriptActions.library.entries.map { LibRow(it, vm.scriptActions.library.state(it, scripts), ScriptMeta.events(vm.scriptActions.library.code(it))) }
             }.getOrDefault(emptyList())
         }
     }
@@ -220,18 +157,18 @@ fun ScriptsScreen(
     // Shared scripts with a newer version, from the list kept by Get more scripts (no download here).
     val sharedUpdates by produceState(emptyMap(), scripts) {
         value = withContext(Dispatchers.IO) {
-            vm.scriptCatalog.cached().orEmpty()
-                .filter { vm.scriptCatalog.state(it, scripts) == ScriptCatalog.State.UPDATE_AVAILABLE }.associateBy { it.name }
+            vm.scriptActions.scriptCatalog.cached().orEmpty()
+                .filter { vm.scriptActions.scriptCatalog.state(it, scripts) == ScriptCatalog.State.UPDATE_AVAILABLE }.associateBy { it.name }
         }
     }
 
     val infos = remember(scripts) { scripts.map(::ScriptInfo) }
     // Declared secrets with no value yet, by script name.
-    val secretsVersion by vm.secretsVersion.collectAsStateWithLifecycle()
+    val secretsVersion by vm.scriptActions.secretsVersion.collectAsStateWithLifecycle()
     val missingKeys by produceState(emptyMap(), infos, secretsVersion) {
         value = withContext(Dispatchers.IO) {
             infos.filter { it.secrets.isNotEmpty() }
-                .associate { i -> i.script.name to (i.secrets.map { it.name } - vm.secretsSet(i.script)) }
+                .associate { i -> i.script.name to (i.secrets.map { it.name } - vm.scriptActions.secretsSet(i.script)) }
                 .filterValues { it.isNotEmpty() }
         }
     }
@@ -366,9 +303,9 @@ fun ScriptsScreen(
                             onExpand = { flipped = if (s.id in flipped) flipped - s.id else flipped + s.id },
                             onClick = { sheetId = s.id },
                             onEnabled = { setEnabled(s, it) },
-                            onRun = { vm.runScriptNow(s) },
-                            onAccess = { item, on -> vm.setScriptAccess(s, item, on) },
-                            onNotify = { vm.setScriptNotify(s, it) },
+                            onRun = { vm.scriptActions.runScriptNow(s) },
+                            onAccess = { item, on -> vm.scriptActions.setScriptAccess(s, item, on) },
+                            onNotify = { vm.scriptActions.setScriptNotify(s, it) },
                             onCompare = { comparing = s.id },
                             onReset = { libByName[s.name]?.let(::resetFromLibrary) },
                         )
@@ -407,7 +344,7 @@ fun ScriptsScreen(
         }
 
         resetting?.let { lib ->
-            ResetDialog(lib, onDismiss = { resetting = null }) { resetting = null; vm.installFromLibrary(lib.entry) }
+            ResetDialog(lib, onDismiss = { resetting = null }) { resetting = null; vm.scriptActions.installFromLibrary(lib.entry) }
         }
 
         val compared = comparing?.let { id -> scripts.firstOrNull { it.id == id } }
@@ -419,13 +356,13 @@ fun ScriptsScreen(
         consentFor?.let { s ->
             AccessDialog("Turn on ${s.name}.${s.lang.ext}?", s.grants.undecided, "Turn on", onDismiss = { consentFor = null }) { choices ->
                 consentFor = null
-                vm.enableScript(s, choices)
+                vm.scriptActions.enableScript(s, choices)
             }
         }
 
         if (creating) NewScriptDialog(scripts.map { it.name }.toSet(), onDismiss = { creating = false }) { name, lang, command ->
             creating = false
-            vm.newScript(name, lang, command)
+            vm.scriptActions.newScript(name, lang, command)
         }
     }
 }
@@ -445,17 +382,17 @@ private fun addActions(vm: TerminalViewModel, onNew: () -> Unit, onImportFiles: 
 )
 
 /** How [s] gets started: `command · every 1h · daily 08:00 · on boot`, or "run by hand". */
-private fun schedule(s: Script, isCommand: Boolean, events: List<String>): String = buildList {
+internal fun schedule(s: Script, isCommand: Boolean, events: List<String>): String = buildList {
     if (isCommand) add("command")
     if (s.intervalMin > 0) add("every ${CommandParsing.formatInterval(s.intervalMin)}")
     if (s.atTimes.isNotEmpty()) add("daily ${s.atTimes.joinToString(", ")}")
     if (events.isNotEmpty()) add("on ${events.joinToString(", ")}")
 }.joinToString(" · ").ifEmpty { "manual" }
 
-private fun Script.failed() = lastStatus?.let { it.startsWith("error") || it.startsWith("stopped") || it == "timeout" } == true
+internal fun Script.failed() = lastStatus?.let { it.startsWith("error") || it.startsWith("stopped") || it == "timeout" } == true
 
 /** When a switched-on script runs next on its own: its next daily time, or about one interval after its last run. */
-private fun nextRun(s: Script): Pair<Long, Boolean>? {
+internal fun nextRun(s: Script): Pair<Long, Boolean>? {
     if (!s.enabled) return null
     val now = System.currentTimeMillis()
     // To the minute: the daily time itself, not a few seconds before it.
@@ -466,977 +403,4 @@ private fun nextRun(s: Script): Pair<Long, Boolean>? {
         every != null -> every to false
         else -> null
     }
-}
-
-/**
- * One script, its card tinted in the theme's colour when on and faded when off. Compact: a dot (on,
- * failed, off), its title and file name, Run for a command, the
- * details arrow, the switch, and one line of how it runs and how its last run went. Expanded, also
- * its header line, description, next run, usage, events and what it may use.
- */
-@Composable
-private fun ScriptCard(
-    info: ScriptInfo,
-    line: String?,
-    /** Declared secrets with no value yet, and those that have one. */
-    missingKeys: List<String>,
-    secretsSet: List<String>,
-    expanded: Boolean,
-    updateAvailable: Boolean,
-    /** Its copy from the library, edited or not; null for a script of your own. */
-    library: ScriptLibrary.State?,
-    onExpand: () -> Unit,
-    onClick: () -> Unit,
-    onEnabled: (Boolean) -> Unit,
-    onRun: () -> Unit,
-    onAccess: (String, Boolean) -> Unit,
-    onNotify: (Boolean) -> Unit,
-    onCompare: () -> Unit,
-    onReset: () -> Unit,
-) {
-    val s = info.script
-    val colors = MaterialTheme.colorScheme
-    val failed = s.failed()
-    val summary = buildList {
-        // Events switched off don't run it: left out.
-        add(schedule(s, info.isCommand, info.events.filter { s.grants.allows(it) }))
-        add(s.lastRun?.let { (if (failed) "failed " else "ran ") + relative(it, short = true) } ?: "never run")
-        if (missingKeys.isNotEmpty()) add("needs " + missingKeys.joinToString(", "))
-        if (updateAvailable) add("update available")
-        if (library == ScriptLibrary.State.MODIFIED) add("edited")
-    }.joinToString(" · ")
-    // On or off at a glance: an on script's card takes the theme's colour, an off one's fades into the page.
-    Surface(
-        onClick = onClick,
-        shape = MaterialTheme.shapes.large,
-        color = if (s.enabled) colors.primaryContainer else colors.surfaceContainerLow,
-        modifier = Modifier.fillMaxWidth().animateContentSize().testTag("script-card"),
-    ) {
-        Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.size(8.dp).clip(CircleShape)
-                        .background(if (!s.enabled) colors.outlineVariant else if (failed) colors.error else colors.primary)
-                )
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        info.title ?: s.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (s.enabled) colors.onPrimaryContainer else colors.outline,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        "${s.name}.${s.lang.ext}",
-                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-                        color = if (s.enabled) scriptColor(s.name) else colors.outline,
-                        maxLines = 1,
-                    )
-                }
-                if (info.isCommand && s.enabled) TextButton(onClick = onRun) { Text("Run") }
-                IconButton(onClick = onExpand) {
-                    Icon(
-                        painterResource(R.drawable.ic_expand_more),
-                        contentDescription = if (expanded) "Hide details" else "Show details",
-                        modifier = Modifier.rotate(if (expanded) 180f else 0f),
-                    )
-                }
-                Switch(checked = s.enabled, onCheckedChange = onEnabled)
-            }
-            Text(
-                summary,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (failed || missingKeys.isNotEmpty()) colors.error else if (updateAvailable) colors.primary else colors.onSurfaceVariant,
-                maxLines = if (expanded) 3 else 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 20.dp, end = 8.dp),
-            )
-            if (expanded) ScriptDetails(info, line, secretsSet, library, onAccess, onNotify, onCompare, onReset)
-        }
-    }
-}
-
-/**
- * A card's details: its header line, description, next run and usage, a pill for each thing it may
- * do (on or off, a tap switches it), its secrets, and for an edited or older library copy, Compare
- * and Reset or Update.
- */
-@Composable
-private fun ScriptDetails(
-    info: ScriptInfo,
-    line: String?,
-    secretsSet: List<String>,
-    library: ScriptLibrary.State?,
-    onAccess: (String, Boolean) -> Unit,
-    onNotify: (Boolean) -> Unit,
-    onCompare: () -> Unit,
-    onReset: () -> Unit,
-) {
-    val s = info.script
-    val colors = MaterialTheme.colorScheme
-    val grants = s.grants
-    Column(Modifier.padding(start = 20.dp, top = 10.dp, end = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        line?.let {
-            Surface(shape = MaterialTheme.shapes.small, color = colors.surfaceContainerHighest) {
-                Text(
-                    "${s.name} ▸ $it",
-                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                )
-            }
-        }
-        info.desc?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-        nextRun(s)?.let { (at, exact) ->
-            val time = Config.get(LocalContext.current).shortTime(at)
-            Fact("Next run", if (exact) time else "about $time")
-        }
-        info.usage?.let { Fact("Usage", it) }
-        // Everything it may do, as in its sheet: its access (internet, its header line and notifications
-        // when its code uses them, what it declares with @uses), and apart from it the events of its @on
-        // lines. A tap switches one.
-        val (events, access) = ScriptAccess.items(s.code).partition { it in info.events }
-        if (access.isNotEmpty() || info.notifies) PillGroup("Access") {
-            // Notifications after internet and the header line, as in the sheet.
-            val (base, declared) = access.partition { it == ScriptAccess.INTERNET || it == ScriptAccess.HEADER }
-            for (item in base + listOfNotNull("notify".takeIf { info.notifies }) + declared) {
-                if (item == "notify") {
-                    AccessPill("notifies", s.notify) { onNotify(!s.notify) }
-                    continue
-                }
-                val name = USES_SHORT[item] ?: ScriptAccess.label(item).lowercase()
-                val allowed = grants.allows(item)
-                AccessPill(if (item in grants.undecided) "$name · not allowed yet" else name, allowed) { onAccess(item, !allowed) }
-            }
-        }
-        if (events.isNotEmpty()) PillGroup("Events") {
-            for (item in events) {
-                val allowed = grants.allows(item)
-                AccessPill(item, allowed) { onAccess(item, !allowed) }
-            }
-        }
-        if (info.secrets.isNotEmpty()) {
-            Fact("Secrets", info.secrets.joinToString(", ") { d -> d.name + if (d.name in secretsSet) " (set)" else " (not set)" })
-        }
-        // The last run's failure, worded as the editor words it ("Line 7: …", "Stopped: …").
-        if (s.failed()) Text(EditorLogic.runResult(s.lastStatus, com.mtwabpin.kolahal.script.ScriptWorker.TIMEOUT_MS / 1000, tapHint = false).text, style = MaterialTheme.typography.bodySmall, color = colors.error)
-        // A library script edited, or from an older Kolahal: how it differs, and back to this version's copy.
-        if (library != null && library.differs()) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                CompareButton(ButtonDefaults.ExtraSmallContainerHeight, onCompare)
-                LibraryCopyButton(library, ButtonDefaults.ExtraSmallContainerHeight, onReset)
-            }
-        }
-    }
-}
-
-/**
- * Back to this version's library copy, [height] tall (as small as a pill in a card): an edited copy's
- * Reset, its icon in the error colour as your edits go (it asks first); an older copy's Update, as
- * nothing of yours does.
- */
-@Composable
-private fun LibraryCopyButton(state: ScriptLibrary.State, height: Dp, onClick: () -> Unit) {
-    val edited = state == ScriptLibrary.State.MODIFIED
-    OutlinedAction(
-        if (edited) "Reset to library version" else "Update from library",
-        R.drawable.ic_refresh,
-        height,
-        iconTint = if (edited) MaterialTheme.colorScheme.error else null,
-        onClick = onClick,
-    )
-}
-
-/** A library copy that isn't this version's: edited, or from an older Kolahal. */
-private fun ScriptLibrary.State.differs() = this == ScriptLibrary.State.MODIFIED || this == ScriptLibrary.State.UPDATE_AVAILABLE
-
-/** Compare, [height] tall: opens a library copy against the library version. */
-@Composable
-private fun CompareButton(height: Dp, onClick: () -> Unit) = OutlinedAction("Compare", R.drawable.ic_visibility, height, onClick = onClick)
-
-/**
- * Compare's and Reset's button, [height] tall: outlined, in the theme's text and outline colours, so it
- * sits as well on an on script's tinted card as on the page in every theme; [iconTint] only for its icon.
- */
-@Composable
-private fun OutlinedAction(label: String, icon: Int, height: Dp, iconTint: Color? = null, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    OutlinedButton(
-        onClick = onClick,
-        shapes = ButtonDefaults.shapesFor(height),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.onSurface),
-        border = BorderStroke(1.dp, colors.outline),
-        contentPadding = ButtonDefaults.contentPaddingFor(height),
-        modifier = Modifier.heightIn(min = height),
-    ) {
-        Icon(painterResource(icon), null, Modifier.size(ButtonDefaults.iconSizeFor(height)), tint = iconTint ?: colors.onSurface)
-        Spacer(Modifier.width(ButtonDefaults.iconSpacingFor(height)))
-        Text(label, style = ButtonDefaults.textStyleFor(height))
-    }
-}
-
-/**
- * Compare: your copy of a library script against the library version. Its changed lines with three
- * unchanged ones around each, those only in the library version in red and those only in yours in
- * the theme's colour, the rest counted; Reset (or Update) from there.
- */
-@Composable
-private fun CompareDialog(vm: TerminalViewModel, s: Script, lib: LibRow, onDismiss: () -> Unit, onReset: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    // Read here, outside the dialog's own composition, and handed in: its counts and its lines then
-    // change together (read inside it, the lines could show while the counts stayed at 0).
-    val hunks = produceState<List<LineDiff.Hunk>?>(null, s.code, lib.entry) {
-        value = withContext(Dispatchers.IO) { LineDiff.hunks(LineDiff.lines(vm.library.code(lib.entry), s.code)) }
-    }.value
-    val removed = hunks.orEmpty().sumOf { h -> h.lines.count { it.kind == LineDiff.Kind.REMOVED } }
-    val added = hunks.orEmpty().sumOf { h -> h.lines.count { it.kind == LineDiff.Kind.ADDED } }
-    fun lines(n: Int) = if (n == 1) "1 line" else "$n lines"
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(color = colors.surface, modifier = Modifier.fillMaxSize().testTag("compare")) {
-            Column(Modifier.safeDrawingPadding()) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 4.dp, top = 8.dp, end = 16.dp)) {
-                    IconButton(onClick = onDismiss) { Icon(painterResource(R.drawable.ic_close), contentDescription = "Close") }
-                    Text(
-                        "${s.name}.${s.lang.ext}",
-                        style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Monospace),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                // What the colours mean, with how many lines each.
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    DiffKey("- ${lines(removed)} only in the library version", colors.errorContainer)
-                    DiffKey("+ ${lines(added)} only in yours", colors.primaryContainer)
-                }
-                LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(vertical = 8.dp)) {
-                    if (hunks != null && hunks.isEmpty()) item {
-                        Text("No differences", color = colors.onSurfaceVariant, modifier = Modifier.padding(16.dp))
-                    }
-                    hunks.orEmpty().forEach { hunk ->
-                        if (hunk.skipped > 0) item {
-                            Text(
-                                "⋯ ${lines(hunk.skipped)} unchanged",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = colors.outline,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            )
-                        }
-                        items(hunk.lines) { DiffLine(it) }
-                    }
-                }
-                Row(Modifier.padding(16.dp)) { LibraryCopyButton(lib.state, ButtonDefaults.MinHeight, onReset) }
-            }
-        }
-    }
-}
-
-/** What a colour in Compare means. */
-@Composable
-private fun DiffKey(label: String, color: Color) {
-    Surface(shape = MaterialTheme.shapes.small, color = color) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-        )
-    }
-}
-
-/** One line in Compare: - and red only in the library version, + and the theme's colour only in yours; a long one wraps under its text. */
-@Composable
-private fun DiffLine(line: LineDiff.Line) {
-    val colors = MaterialTheme.colorScheme
-    val (sign, background) = when (line.kind) {
-        LineDiff.Kind.REMOVED -> "-" to colors.errorContainer
-        LineDiff.Kind.ADDED -> "+" to colors.primaryContainer
-        LineDiff.Kind.SAME -> " " to Color.Transparent
-    }
-    val style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
-    val color = if (line.kind == LineDiff.Kind.SAME) colors.onSurfaceVariant else colors.onSurface
-    Row(Modifier.fillMaxWidth().background(background).padding(horizontal = 16.dp, vertical = 1.dp)) {
-        Text("$sign ", style = style, color = color)
-        Text(line.text.replace("\t", "    "), style = style, color = color, modifier = Modifier.weight(1f))
-    }
-}
-
-/** One thing a script may do, on or off by its colour: filled in the theme's colour when on, faded when off; a tap switches it. */
-@Composable
-private fun AccessPill(label: String, on: Boolean, onToggle: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    FilterChip(
-        selected = on,
-        onClick = onToggle,
-        label = { Text(label) },
-        colors = FilterChipDefaults.filterChipColors(
-            labelColor = colors.outline,
-            selectedContainerColor = colors.primary,
-            selectedLabelColor = colors.onPrimary,
-        ),
-        border = FilterChipDefaults.filterChipBorder(enabled = true, selected = on, borderColor = colors.outlineVariant),
-        modifier = Modifier.semantics { stateDescription = if (on) "on" else "off" },
-    )
-}
-
-/** A card's line of pills under a small [label]: what a script may use, or the events it runs on. */
-@Composable
-private fun PillGroup(label: String, pills: @Composable FlowRowScope.() -> Unit) {
-    Column {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp), content = pills)
-    }
-}
-
-/** A label and its value on a script's sheet, whether the script is yours or from the shared list. */
-@Composable
-internal fun Fact(label: String, value: String) {
-    Text("$label: $value", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-}
-
-/** Scripts → Add script → From the library: the ready-made scripts that come with Kolahal. */
-@Composable
-fun ScriptLibraryScreen(vm: TerminalViewModel) {
-    val scripts by vm.scriptList.collectAsStateWithLifecycle()
-    val notice by vm.notice.collectAsStateWithLifecycle()
-    BackHandler { vm.closeScreen() }
-    val library by produceState<List<LibRow>?>(null, vm.library, scripts) {
-        value = withContext(Dispatchers.IO) {
-            runCatching {
-                vm.library.entries.map { LibRow(it, vm.library.state(it, scripts), ScriptMeta.events(vm.library.code(it))) }
-            }.getOrDefault(emptyList())
-        }
-    }
-    GuiTheme {
-        val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-        val snackbar = remember { SnackbarHostState() }
-        LaunchedEffect(notice) { notice?.let { snackbar.showSnackbar(it.text) } }
-        Scaffold(
-            modifier = Modifier.imePadding().nestedScroll(scroll.nestedScrollConnection),
-            containerColor = MaterialTheme.colorScheme.surface,
-            snackbarHost = { SnackbarHost(snackbar) },
-            topBar = {
-                LargeFlexibleTopAppBar(
-                    title = { Text("Library") },
-                    subtitle = { Text("Ready-made scripts that come with Kolahal") },
-                    navigationIcon = { BackButton(vm::closeScreen) },
-                    scrollBehavior = scroll,
-                )
-            },
-        ) { padding ->
-            LazyColumn(
-                contentPadding = PaddingValues(
-                    start = 16.dp, end = 16.dp,
-                    top = padding.calculateTopPadding() + 8.dp, bottom = padding.calculateBottomPadding() + 32.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                val rows = library.orEmpty()
-                itemsIndexed(rows, key = { _, r -> "lib:" + r.entry.name }) { i, r ->
-                    LibraryRow(r, i, rows.size) { vm.installFromLibrary(r.entry) }
-                }
-                item(key = "more") {
-                    Column(Modifier.padding(top = 16.dp)) {
-                        ActionGroup(
-                            listOf(
-                                Action(R.drawable.ic_download, "Get more scripts", "Shared by people who use Kolahal, on GitHub", chevron = true) {
-                                    vm.openScreen(Screen.GET_SCRIPTS)
-                                },
-                            )
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** Everything about one script: run, edit, export, on/off, notifications, timers, library and delete. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ScriptSheet(
-    vm: TerminalViewModel,
-    s: Script,
-    lib: LibRow?,
-    /** The shared version, when it is newer than this unedited copy. */
-    sharedUpdate: ScriptCatalog.Entry?,
-    onEnabled: (Boolean) -> Unit,
-    onDismiss: () -> Unit,
-    onEdit: () -> Unit,
-    onExport: () -> Unit,
-) {
-    val state = rememberBottomSheetState(SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
-    var confirmDelete by remember(s.id) { mutableStateOf(false) }
-    var confirmReplace by remember(s.id) { mutableStateOf(false) }
-    var comparing by remember(s.id) { mutableStateOf(false) }
-    // Back to the library version: an edited copy's edits go, so it asks first; an older copy of yours had none.
-    fun resetFromLibrary(row: LibRow) {
-        if (row.state == ScriptLibrary.State.MODIFIED) confirmReplace = true else vm.installFromLibrary(row.entry)
-    }
-    var times by remember(s.id, s.atTimes) { mutableStateOf(s.atTimes.joinToString(", ")) }
-    var pickingTime by remember(s.id) { mutableStateOf(false) }
-    var timesError by remember(s.id) { mutableStateOf(false) }
-    val isCommand = remember(s.code) { ScriptMeta.isCommand(s.code) }
-    val desc = remember(s.code) { ScriptMeta.description(s.code) }
-    val title = remember(s.code) { ScriptMeta.title(s.code) }
-    // `@version` and `@author`, when it says: v1.2 · by Someone
-    val byLine = remember(s.code) {
-        listOfNotNull(ScriptMeta.version(s.code)?.let { "v$it" }, ScriptMeta.author(s.code)?.let { "by $it" }).joinToString(" · ").ifEmpty { null }
-    }
-    val access = remember(s.code) { ScriptAccess.items(s.code) }
-    val notifies = remember(s.code) { ScriptMeta.postsNotifications(s.code) }
-    val secrets = remember(s.code) { ScriptMeta.secrets(s.code) }
-    val secretsVersion by vm.secretsVersion.collectAsStateWithLifecycle()
-    val secretsSet by produceState(emptySet(), s.code, s.name, secretsVersion) { value = withContext(Dispatchers.IO) { vm.secretsSet(s) } }
-    var editingSecret by remember(s.id) { mutableStateOf<ScriptMeta.Secret?>(null) }
-    val options = remember(s.code) { ScriptMeta.options(s.code) }
-    val optionsVersion by vm.optionsVersion.collectAsStateWithLifecycle()
-    val optionValues by produceState(emptyMap<String, String>() to emptySet<String>(), s.code, s.name, optionsVersion) {
-        value = withContext(Dispatchers.IO) { vm.optionValues(s) }
-    }
-    var editingOption by remember(s.id) { mutableStateOf<ScriptMeta.Option?>(null) }
-    val grants = remember(s.code, s.access) { s.grants }
-    var renaming by remember(s.id) { mutableStateOf(false) }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = state,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
-        Column(
-            Modifier.verticalScroll(rememberScrollState()).navigationBarsPadding()
-                .padding(start = 24.dp, end = 24.dp, bottom = 16.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "${s.name}.${s.lang.ext}",
-                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Monospace),
-                    color = scriptColor(s.name),
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                IconButton(onClick = { renaming = true }) {
-                    Icon(painterResource(R.drawable.ic_edit), contentDescription = "Rename", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            title?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
-            Text(
-                listOfNotNull(if (s.lang == ScriptLang.LUA) "Lua" else "JavaScript", byLine, if (isCommand) "command" else null, desc)
-                    .joinToString(" · "),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                s.lastRun?.let { "Last run ${relative(it)} · ${s.lastStatus.orEmpty()}" } ?: "Never run",
-                style = MaterialTheme.typography.bodySmall,
-                color = if (s.failed()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
-                maxLines = 4,
-                overflow = TextOverflow.Ellipsis,
-            )
-
-            Spacer(Modifier.height(16.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { vm.runScriptNow(s) }) {
-                    Icon(painterResource(R.drawable.ic_play), null, Modifier.size(ButtonDefaults.IconSize))
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Run")
-                }
-                FilledTonalButton(onClick = onEdit) {
-                    Icon(painterResource(R.drawable.ic_edit), null, Modifier.size(ButtonDefaults.IconSize))
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Edit")
-                }
-                OutlinedButton(onClick = onExport) {
-                    Icon(painterResource(R.drawable.ic_download), null, Modifier.size(ButtonDefaults.IconSize))
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Export")
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-            SwitchRow(
-                "Enabled",
-                if (isCommand) "Runs on its timers and events, and from the prompt" else "Runs on its timers and events",
-                s.enabled,
-            ) { onEnabled(it) }
-
-            // What it may use: internet, its header line and notifications when its code uses them, and
-            // what it declares with @uses; then, in a group of their own, the events of its @on lines.
-            val (events, uses) = access.partition { it in ScriptMeta.EVENTS }
-            if (uses.isNotEmpty() || notifies) {
-                Spacer(Modifier.height(16.dp))
-                Text("Access", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.height(4.dp))
-                val (base, declared) = uses.partition { it == ScriptAccess.INTERNET || it == ScriptAccess.HEADER }
-                base.forEach { item -> SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), grants.allows(item)) { vm.setScriptAccess(s, item, it) } }
-                if (notifies) SwitchRow("Post notifications", "Lets the script notify you", s.notify) { vm.setScriptNotify(s, it) }
-                declared.forEach { item -> SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), grants.allows(item)) { vm.setScriptAccess(s, item, it) } }
-            }
-            if (events.isNotEmpty()) {
-                Spacer(Modifier.height(16.dp))
-                Text("Events", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.height(4.dp))
-                events.forEach { item -> SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), grants.allows(item)) { vm.setScriptAccess(s, item, it) } }
-            }
-
-            // Keys and tokens it declares with @secret: set here, never in its code.
-            if (secrets.isNotEmpty()) {
-                Spacer(Modifier.height(16.dp))
-                Text("Secrets", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                Text(
-                    "Keys and tokens it needs. Kept encrypted on this phone, never in its code, backups or the log.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
-                )
-                secrets.forEach { d -> SecretRow(d, isSet = d.name in secretsSet) { editingSecret = d } }
-            }
-
-            // Settings it declares with @option: changed here, not in its code, so its updates keep them.
-            if (options.isNotEmpty()) {
-                Spacer(Modifier.height(16.dp))
-                Text("Options", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                Text(
-                    "Settings it reads as it runs. Values set here are kept when the script updates.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
-                )
-                options.forEach { o ->
-                    OptionRow(o, optionValues.first[o.name] ?: o.default, changed = o.name in optionValues.second) { editingOption = o }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-            IntervalSelector("Runs every", s.intervalMin, { vm.setScriptInterval(s, it) }, INTERVALS)
-
-            Spacer(Modifier.height(12.dp))
-            TextField(
-                shape = TextFieldDefaults.roundedShape,
-                colors = fieldColors(),
-                value = times,
-                onValueChange = { times = it; timesError = false },
-                label = { Text("Daily at") },
-                placeholder = { Text("08:00, 18:30") },
-                // Or pick one on a clock: added to the times and set at once.
-                leadingIcon = {
-                    IconButton(onClick = { pickingTime = true }) { Icon(painterResource(R.drawable.ic_alarm), "Add a time") }
-                },
-                singleLine = true,
-                isError = timesError,
-                supportingText = if (timesError) {
-                    { Text("Use HH:mm, separated by commas") }
-                } else null,
-                keyboardOptions = KeyboardOptions(
-                    autoCorrectEnabled = false,
-                    capitalization = KeyboardCapitalization.None,
-                    imeAction = ImeAction.Done,
-                ),
-                keyboardActions = KeyboardActions(onDone = { timesError = !vm.setScriptTimes(s, times) }),
-                trailingIcon = if (times != s.atTimes.joinToString(", ")) {
-                    {
-                        IconButton(onClick = { timesError = !vm.setScriptTimes(s, times) }) {
-                            Icon(painterResource(R.drawable.ic_check), "Set times")
-                        }
-                    }
-                } else null,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            if (pickingTime) {
-                val clock = rememberTimePickerState(initialHour = 8, initialMinute = 0, is24Hour = vm.config[Keys.CLOCK_24H])
-                TimePickerDialog(
-                    onDismissRequest = { pickingTime = false },
-                    title = { Text("Daily at") },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            val picked = "%02d:%02d".format(clock.hour, clock.minute)
-                            // With what the box holds now, saved or not.
-                            times = (times.split(',', ' ').filter { it.isNotBlank() } + picked).distinct().sorted().joinToString(", ")
-                            timesError = !vm.setScriptTimes(s, times)
-                            pickingTime = false
-                        }) { Text("Add") }
-                    },
-                    dismissButton = { TextButton(onClick = { pickingTime = false }) { Text("Cancel") } },
-                ) { TimePicker(clock) }
-            }
-
-            Spacer(Modifier.height(8.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                sharedUpdate?.let { e ->
-                    FilledTonalButton(onClick = { vm.installSharedScript(e) }) { Text("Update to ${e.version}") }
-                }
-                if (lib != null && lib.state.differs()) {
-                    CompareButton(ButtonDefaults.MinHeight) { comparing = true }
-                    LibraryCopyButton(lib.state, ButtonDefaults.MinHeight) { resetFromLibrary(lib) }
-                }
-                TextButton(
-                    onClick = { confirmDelete = true },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                ) {
-                    Icon(painterResource(R.drawable.ic_delete), null, Modifier.size(ButtonDefaults.IconSize))
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Delete")
-                }
-            }
-        }
-    }
-
-    editingSecret?.let { d ->
-        SecretDialog(s.name, d, d.name in secretsSet, onDismiss = { editingSecret = null }) { value ->
-            editingSecret = null
-            vm.setSecret(s.name, d, value)
-        }
-    }
-
-    editingOption?.let { o ->
-        OptionDialog(s.name, o, optionValues.first[o.name] ?: o.default, changed = o.name in optionValues.second, onDismiss = { editingOption = null }) { value ->
-            editingOption = null
-            vm.setOption(s.name, o.name, value)
-        }
-    }
-
-    if (renaming) {
-        val all by vm.scriptList.collectAsStateWithLifecycle()
-        RenameDialog(s, all.mapTo(HashSet()) { it.name }, onDismiss = { renaming = false }) { to ->
-            renaming = false
-            vm.renameScript(s, to)
-        }
-    }
-
-    if (confirmReplace && lib != null) {
-        ResetDialog(lib, onDismiss = { confirmReplace = false }) { confirmReplace = false; vm.installFromLibrary(lib.entry) }
-    }
-
-    if (comparing && lib != null && lib.state.differs()) {
-        CompareDialog(vm, s, lib, onDismiss = { comparing = false }) { comparing = false; resetFromLibrary(lib) }
-    }
-
-    if (confirmDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            icon = { Icon(painterResource(R.drawable.ic_delete), null) },
-            title = { Text("Delete ${s.name}.${s.lang.ext}?") },
-            text = { Text("Its timers, stored data and status line are removed too. Export it first to keep a copy.") },
-            confirmButton = {
-                TextButton(
-                    onClick = { confirmDelete = false; onDismiss(); vm.deleteScript(s) },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                ) { Text("Delete") }
-            },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
-        )
-    }
-}
-
-/** Resetting an edited library script to the library version: the edits go, so it asks first. */
-@Composable
-private fun ResetDialog(lib: LibRow, onDismiss: () -> Unit, onReset: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Reset ${lib.entry.file}?") },
-        text = { Text("Your copy differs from the library version. Its code is replaced by the library version and your changes are lost; its timers and switches are kept. Export it first to keep a copy.") },
-        confirmButton = {
-            TextButton(onClick = onReset, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Reset") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
-}
-
-/**
- * Before a script may use what it declares: switching on one that declares what nobody allowed yet,
- * or installing a shared one. Each item ([items], [ScriptAccess] names) with a switch, all on, to
- * switch off what you don't want before [confirm]. The script's Access switches change them later.
- */
-@Composable
-internal fun AccessDialog(title: String, items: List<String>, confirm: String, onDismiss: () -> Unit, onConfirm: (Map<String, Boolean>) -> Unit) {
-    val choices = remember(items) { mutableStateMapOf<String, Boolean>().apply { items.forEach { put(it, true) } } }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("It requests:", style = MaterialTheme.typography.bodyMedium)
-                items.forEach { item ->
-                    SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), choices[item] == true, color = Color.Transparent) { choices[item] = it }
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = { onConfirm(choices.toMap()) }) { Text(confirm) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
-}
-
-/**
- * Sets one of a script's secrets: a masked box (the eye shows it) that the keyboard doesn't learn
- * from, never filled with the stored value. Clear forgets it.
- */
-@Composable
-internal fun SecretDialog(script: String, secret: ScriptMeta.Secret, isSet: Boolean, onDismiss: () -> Unit, onSave: (String?) -> Unit) {
-    var value by remember { mutableStateOf("") }
-    var visible by remember { mutableStateOf(false) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("${secret.name} for $script") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (secret.desc.isNotBlank()) Text(secret.desc, style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    "Sent only to ${secret.hosts.joinToString()}. Kept encrypted on this phone: never in the script, its backups or the log.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                TextField(
-                    shape = TextFieldDefaults.roundedShape,
-                    colors = fieldColors(),
-                    value = value,
-                    onValueChange = { value = it },
-                    singleLine = true,
-                    placeholder = { Text(if (isSet) "Set · type a new one to replace it" else "Paste the value") },
-                    visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
-                    trailingIcon = {
-                        IconButton(onClick = { visible = !visible }) {
-                            Icon(
-                                painterResource(R.drawable.ic_visibility),
-                                contentDescription = if (visible) "Hide it" else "Show it",
-                                tint = if (visible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().testTag("secret-value"),
-                )
-            }
-        },
-        confirmButton = { TextButton(onClick = { onSave(value.trim()) }, enabled = value.trim().length >= SecretStore.MIN_LENGTH) { Text("Save") } },
-        dismissButton = {
-            Row {
-                if (isSet) TextButton(onClick = { onSave(null) }) { Text("Clear") }
-                TextButton(onClick = onDismiss) { Text("Cancel") }
-            }
-        },
-    )
-}
-
-/**
- * Changes one of a script's options: one of its choices, or a box with the value in it. Default
- * puts its default back.
- */
-@Composable
-internal fun OptionDialog(script: String, option: ScriptMeta.Option, current: String, changed: Boolean, onDismiss: () -> Unit, onSave: (String?) -> Unit) {
-    var value by remember { mutableStateOf(TextFieldValue(current, TextRange(current.length))) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("${option.name} for $script") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (option.desc.isNotBlank()) Text(option.desc, style = MaterialTheme.typography.bodyMedium)
-                if (option.choices.isNotEmpty()) {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        option.choices.forEach { c ->
-                            FilterChip(selected = value.text == c, onClick = { value = TextFieldValue(c) }, label = { Text(c) })
-                        }
-                    }
-                } else {
-                    TextField(
-                        shape = TextFieldDefaults.roundedShape,
-                        colors = fieldColors(),
-                        value = value,
-                        onValueChange = { value = it },
-                        singleLine = true,
-                        placeholder = { if (option.default.isNotEmpty()) Text(option.default) },
-                        modifier = Modifier.fillMaxWidth().testTag("option-value"),
-                    )
-                }
-                Text(
-                    "Default: " + option.default.ifEmpty { "empty" },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
-        confirmButton = { TextButton(onClick = { onSave(value.text.trim()) }) { Text("Save") } },
-        dismissButton = {
-            Row {
-                if (changed) TextButton(onClick = { onSave(null) }) { Text("Reset") }
-                TextButton(onClick = onDismiss) { Text("Cancel") }
-            }
-        },
-    )
-}
-
-/** One option in a script's sheet: its name, what it is for, and its value (muted while it is the default). */
-@Composable
-private fun OptionRow(option: ScriptMeta.Option, value: String, changed: Boolean, onClick: () -> Unit) {
-    Surface(onClick = onClick, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
-            Column(Modifier.weight(1f)) {
-                Text(option.name, style = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace))
-                if (option.desc.isNotBlank()) {
-                    Text(option.desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            Spacer(Modifier.width(16.dp))
-            Text(
-                value.ifEmpty { "—" },
-                style = MaterialTheme.typography.labelLarge,
-                color = if (changed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 160.dp),
-            )
-        }
-    }
-}
-
-/** One secret in a script's sheet: its name, what it is for, where it goes, and whether it is set. */
-@Composable
-private fun SecretRow(secret: ScriptMeta.Secret, isSet: Boolean, onClick: () -> Unit) {
-    Surface(onClick = onClick, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
-            Column(Modifier.weight(1f)) {
-                Text(secret.name, style = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace))
-                Text(
-                    listOf(secret.desc, "sent only to ${secret.hosts.joinToString()}").filter { it.isNotBlank() }.joinToString(" · "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.width(16.dp))
-            Text(
-                if (isSet) "Set" else "Not set",
-                style = MaterialTheme.typography.labelLarge,
-                color = if (isSet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-            )
-        }
-    }
-}
-
-/** A new name for [s], from its sheet. */
-@Composable
-private fun RenameDialog(s: Script, existing: Set<String>, onDismiss: () -> Unit, onRename: (String) -> Unit) {
-    var name by remember(s.id) { mutableStateOf(TextFieldValue(s.name, TextRange(s.name.length))) }
-    val clean = name.text.trim().lowercase()
-    // The same checks as `script mv`, shown while typing.
-    val problem = if (clean.isEmpty() || clean == s.name) null else ScriptNames.invalid(clean) { it in existing }
-    val valid = clean.isNotEmpty() && clean != s.name && problem == null
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = { Icon(painterResource(R.drawable.ic_edit), null) },
-        title = { Text("Rename ${s.name}.${s.lang.ext}") },
-        text = {
-            TextField(
-                shape = TextFieldDefaults.roundedShape,
-                colors = fieldColors(),
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Name") },
-                suffix = { Text(".${s.lang.ext}") },
-                singleLine = true,
-                isError = problem != null,
-                supportingText = {
-                    Text(problem ?: "Its keys, timers and header line are kept. A copy from the library or Get more scripts becomes yours and no longer gets updates.")
-                },
-                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, capitalization = KeyboardCapitalization.None, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { if (valid) onRename(clean) }),
-                modifier = Modifier.fillMaxWidth(),
-            )
-        },
-        confirmButton = { TextButton(enabled = valid, onClick = { onRename(clean) }) { Text("Rename") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
-}
-
-@Composable
-private fun NewScriptDialog(existing: Set<String>, onDismiss: () -> Unit, onCreate: (String, ScriptLang, Boolean) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var lang by remember { mutableStateOf(ScriptLang.LUA) }
-    var command by remember { mutableStateOf(false) }
-    val builtIns = CommandProcessor.RESERVED_NAMES
-    val clean = name.trim().lowercase()
-    // The same checks as `script new`, shown while typing.
-    val problem = when {
-        clean.isEmpty() -> null
-        !ScriptNames.NAME.matches(clean) -> "Lowercase letters, digits, - and _"
-        clean in builtIns -> "'$clean' is a built-in command"
-        clean in existing -> "You already have a script named $clean"
-        else -> null
-    }
-    val valid = clean.isNotEmpty() && problem == null
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = { Icon(painterResource(R.drawable.ic_code), null) },
-        title = { Text("New script") },
-        text = {
-            Column {
-                TextField(
-                    shape = TextFieldDefaults.roundedShape,
-                    colors = fieldColors(),
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Name") },
-                    placeholder = { Text("hn, weather, feeds…") },
-                    singleLine = true,
-                    isError = problem != null,
-                    supportingText = { Text(problem ?: "Lowercase letters, digits, - and _") },
-                    keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, capitalization = KeyboardCapitalization.None),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(8.dp))
-                ConnectedChoices(listOf("Lua", "JavaScript"), if (lang == ScriptLang.LUA) "Lua" else "JavaScript") {
-                    lang = if (it == "Lua") ScriptLang.LUA else ScriptLang.JS
-                }
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-                    Checkbox(checked = command, onCheckedChange = { command = it })
-                    Column {
-                        Text("Command template", style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            "Runs from the prompt by name, with arguments",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = { TextButton(enabled = valid, onClick = { onCreate(name, lang, command) }) { Text("Create") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
-}
-
-/** A library script not installed yet: its title, tap for the description; one tap installs it with suggested timers. */
-@Composable
-private fun LibraryRow(r: LibRow, index: Int, count: Int, onInstall: () -> Unit) {
-    var open by rememberSaveable(r.entry.name) { mutableStateOf(false) }
-    val e = r.entry
-    SegmentedListItem(
-        onClick = { open = !open },
-        shapes = segShapes(index, count),
-        colors = segColors(),
-        overlineContent = {
-            Text(
-                "${e.name}.${e.lang.ext}" + (if (e.command) " · command" else
-                    if (e.suggestedEvery > 0) " · every ${CommandParsing.formatInterval(e.suggestedEvery)}" else "") +
-                    r.events.let { if (it.isEmpty()) "" else " · on " + it.joinToString(", ") },
-                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-            )
-        },
-        supportingContent = if (open) {
-            { Text(e.description) }
-        } else null,
-        trailingContent = {
-            when (r.state) {
-                ScriptLibrary.State.NOT_INSTALLED -> FilledTonalButton(onClick = onInstall) { Text("Install") }
-                ScriptLibrary.State.UPDATE_AVAILABLE -> FilledTonalButton(onClick = onInstall) { Text("Update") }
-                // Replacing your edited copy is in its sheet (Scripts), behind a confirmation.
-                ScriptLibrary.State.MODIFIED -> Text("Edited", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                ScriptLibrary.State.INSTALLED -> Text("Installed", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        },
-    ) { Text(e.title) }
 }

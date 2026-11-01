@@ -61,20 +61,20 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.apps.AppEntry
 import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.data.Keys
-import com.mtwabpin.kolahal.terminal.CommandProcessor
+import com.mtwabpin.kolahal.terminal.CommandCatalog
 import com.mtwabpin.kolahal.terminal.InstantRun
 import com.mtwabpin.kolahal.terminal.Suggestion
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // The tour's previews: a small home screen per setting, in the terminal's colours, font and text
 // size as set now, built from the real suggestion list, key bar and app selector where they can
@@ -189,7 +189,7 @@ internal fun TypingPreview(vm: TerminalViewModel) {
     val clock24 = remember(version) { vm.config[Keys.CLOCK_24H] }
     val repo = AppRepository.get(LocalContext.current)
     val apps = rememberApps()
-    val commands = CommandProcessor.COMMAND_USAGES
+    val commands = CommandCatalog.COMMAND_USAGES
 
     fun target(typed: String, m: String) = InstantRun.target(
         typed, m, minLetters,

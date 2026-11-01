@@ -123,7 +123,7 @@ class ScriptCommands(
             "new" -> {
                 val (name, lang) = parseName(target ?: return error("Usage: script new <name>[.lua|.js] [lua|js] [--cmd]"))
                 if (!ScriptNames.NAME.matches(name)) return error("Script names: lowercase letters, digits, - and _ only")
-                if (name in CommandProcessor.RESERVED_NAMES) return error("'$name' is a built-in command, pick another name")
+                if (name in CommandCatalog.RESERVED_NAMES) return error("'$name' is a built-in command, pick another name")
                 val asCommand = "--cmd" in args || "cmd" in args
                 val chosen = args.drop(2).firstNotNullOfOrNull(ScriptLang::of) ?: lang ?: ScriptLang.LUA
                 if (scripts.byName(name) != null) return error("Script '$name' already exists — 'script edit $name'")

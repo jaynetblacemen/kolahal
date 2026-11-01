@@ -68,7 +68,7 @@ class CommandFamiliesTest {
 
     @Test fun helpListsEveryCommandAndPipesFilterIt() {
         val help = run("help")
-        for (spec in CommandProcessor.COMMANDS) assertTrue("${spec.usage} missing from help", spec.usage in help)
+        for (spec in CommandCatalog.COMMANDS) assertTrue("${spec.usage} missing from help", spec.usage in help)
         val grepped = run("help | grep crashes")
         assertTrue(grepped.toString(), grepped.isNotEmpty() && grepped.all { it.contains("crashes", ignoreCase = true) })
         assertEquals(2, run("help | grep -v zzz | head 2").size)
@@ -76,11 +76,11 @@ class CommandFamiliesTest {
 
     /** `help todo` is that command alone; a synonym finds its command, a near miss the nearest ones. */
     @Test fun helpForOneCommand() {
-        val todo = CommandProcessor.COMMANDS.first { it.name == "todo" }
+        val todo = CommandCatalog.COMMANDS.first { it.name == "todo" }
         val one = run("help todo")
         assertEquals(todo.usage, one.first())
         assertTrue(one.toString(), one.size <= 3)
-        assertTrue(run("help cls").let { it.first() == CommandProcessor.COMMANDS.first { c -> c.name == "clear" }.usage && "Also known as cls" in it })
+        assertTrue(run("help cls").let { it.first() == CommandCatalog.COMMANDS.first { c -> c.name == "clear" }.usage && "Also known as cls" in it })
         assertTrue(run("help tod").toString(), todo.usage in run("help tod"))
         assertTrue(run("help zzzzzz").single().startsWith("No command called 'zzzzzz'"))
     }

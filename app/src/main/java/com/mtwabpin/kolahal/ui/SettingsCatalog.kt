@@ -171,7 +171,13 @@ private val CATEGORIES = listOf(
     Category(
         "look", "Look & feel", "Theme, font, text size, full screen", R.drawable.ic_palette,
         listOf(
-            "Terminal" to listOf(Keys.THEME, Keys.THEME_ALWAYS_DARK, Keys.FONT, Keys.FONT_SANS, Keys.FONT_SIZE),
+            "Terminal" to listOf(
+                Keys.THEME,
+                Keys.THEME_ALWAYS_DARK,
+                Keys.FONT,
+                Keys.FONT_SANS,
+                Keys.FONT_SIZE,
+            ),
             "Screen" to listOf(Keys.STATUS_BAR),
         ),
     ),
@@ -179,13 +185,28 @@ private val CATEGORIES = listOf(
         "home", "Home screen", "Clock, header items, widgets", R.drawable.ic_home,
         listOf(
             "Header" to listOf(Keys.HEADER_SHOW),
-            "Clock" to listOf(Keys.HEADER_DATE, Keys.CLOCK_24H, Keys.HEADER_DEVICE, Keys.USER_NAME),
+            "Clock" to listOf(
+                Keys.HEADER_DATE,
+                Keys.CLOCK_24H,
+                Keys.HEADER_DEVICE,
+                Keys.USER_NAME,
+            ),
             "Header items" to listOf(
-                Keys.HEADER_ICONS, Keys.HEADER_UNLOCKS, Keys.HEADER_BATTERY, Keys.HEADER_NETWORK, Keys.HEADER_ALARM,
-                Keys.HEADER_PROFILES, Keys.HEADER_MEDIA, Keys.HEADER_TODO, Keys.HEADER_STATUS,
+                Keys.HEADER_ICONS,
+                Keys.HEADER_UNLOCKS,
+                Keys.HEADER_BATTERY,
+                Keys.HEADER_NETWORK,
+                Keys.HEADER_ALARM,
+                Keys.HEADER_PROFILES,
+                Keys.HEADER_MEDIA,
+                Keys.HEADER_TODO,
+                Keys.HEADER_STATUS,
             ),
             "Behaviour" to listOf(Keys.HEADER_AUTOHIDE),
-            "Widgets" to listOf(Keys.WIDGETS_PAGE, Keys.WIDGETS_WALLPAPER),
+            "Widgets" to listOf(
+                Keys.WIDGETS_PAGE,
+                Keys.WIDGETS_WALLPAPER,
+            ),
         ),
         manage = Triple("Arrange widgets", "Add, resize and reorder widgets", Screen.WIDGETS),
     ),
@@ -194,40 +215,99 @@ private val CATEGORIES = listOf(
         "selector", "App selector", "Edge, letters, icons", R.drawable.ic_apps,
         listOf(
             null to listOf(Keys.SELECTOR_RAIL),
-            "On the edge" to listOf(Keys.SELECTOR_BROWSE, Keys.SELECTOR_SIDE, Keys.SELECTOR_POSITION, Keys.SELECTOR_HEIGHT, Keys.SELECTOR_HANDLE, Keys.SELECTOR_LETTERS),
-            "The list" to listOf(Keys.SELECTOR_FILTER, Keys.SELECTOR_ROW_HEIGHT, Keys.SELECTOR_ICONS, Keys.SELECTOR_SYSTEM_FONT),
+            "On the edge" to listOf(
+                Keys.SELECTOR_BROWSE,
+                Keys.SELECTOR_SIDE,
+                Keys.SELECTOR_POSITION,
+                Keys.SELECTOR_HEIGHT,
+                Keys.SELECTOR_HANDLE,
+                Keys.SELECTOR_LETTERS,
+            ),
+            "The list" to listOf(
+                Keys.SELECTOR_FILTER,
+                Keys.SELECTOR_ROW_HEIGHT,
+                Keys.SELECTOR_ICONS,
+                Keys.SELECTOR_SYSTEM_FONT,
+            ),
         ),
     ),
     Category(
         "log", "Log", "Times, spacing, line height, history", R.drawable.ic_stat_terminal,
         listOf(
-            "Display" to listOf(Keys.SHOW_TIMESTAMPS, Keys.LOG_DIM, Keys.LOG_GUTTER, Keys.LOG_SPACING, Keys.LOG_LINE_HEIGHT, Keys.LOG_TALLER_TAPS, Keys.LOG_WALLPAPER),
-            "History" to listOf(Keys.LOG_FRESH, Keys.LOG_KEEP_DAYS),
+            "Display" to listOf(
+                Keys.SHOW_TIMESTAMPS,
+                Keys.LOG_DIM,
+                Keys.LOG_GUTTER,
+                Keys.LOG_SPACING,
+                Keys.LOG_LINE_HEIGHT,
+                Keys.LOG_TALLER_TAPS,
+                Keys.LOG_WALLPAPER,
+            ),
+            "History" to listOf(
+                Keys.LOG_FRESH,
+                Keys.LOG_KEEP_DAYS,
+            ),
             "Tips" to listOf(Keys.LOG_TIPS),
         ),
     ),
     Category(
         FEEDS_CATEGORY, "Feeds", "Refresh, log, read / unread, notifications", R.drawable.ic_rss,
         listOf(
-            "In the log" to listOf(Keys.FEEDS_LOG, Keys.FEEDS_LOG_LINES),
-            "Read / unread" to listOf(Keys.FEEDS_READ_SHOWN, Keys.FEEDS_BACKLOG_READ),
+            "In the log" to listOf(
+                Keys.FEEDS_LOG,
+                Keys.FEEDS_LOG_LINES,
+            ),
+            "Read / unread" to listOf(
+                Keys.FEEDS_READ_SHOWN,
+                Keys.FEEDS_BACKLOG_READ,
+            ),
             "Refreshing" to listOf(Keys.FEEDS_WIFI),
-            "New subscriptions" to listOf(Keys.FEEDS_INTERVAL, Keys.FEEDS_NOTIFY),
+            "New subscriptions" to listOf(
+                Keys.FEEDS_INTERVAL,
+                Keys.FEEDS_NOTIFY,
+            ),
         ),
     ),
     Category(
         "typing", "Typing", "Suggestions, key bar, prompt, keyboard", R.drawable.ic_keyboard,
         listOf(
-            "Suggestions" to listOf(Keys.SUGGESTIONS_STYLE, Keys.SUGGEST_ICONS, Keys.SUGGESTIONS_WRAP, Keys.SUGGESTIONS_AUTO, Keys.SUGGESTION_ROWS, Keys.SUGGEST_IDLE, Keys.SUGGESTIONS, Keys.CHIP_HEIGHT),
-            "Key bar" to listOf(Keys.KEYBAR_SHOW, Keys.KEYBAR_AUTO, Keys.KEYBAR_HEIGHT, Keys.KEYBAR, Keys.KEYBAR2),
-            "Prompt & keyboard" to listOf(Keys.PROMPT_HEIGHT_TYPING, Keys.IME_SUGGESTIONS, Keys.FOCUS_ON_HOME),
+            "Suggestions" to listOf(
+                Keys.SUGGESTIONS_STYLE,
+                Keys.SUGGEST_ICONS,
+                Keys.SUGGESTIONS_WRAP,
+                Keys.SUGGESTIONS_AUTO,
+                Keys.SUGGESTION_ROWS,
+                Keys.SUGGEST_IDLE,
+                Keys.SUGGESTIONS,
+                Keys.CHIP_HEIGHT,
+            ),
+            "Key bar" to listOf(
+                Keys.KEYBAR_SHOW,
+                Keys.KEYBAR_AUTO,
+                Keys.KEYBAR_HEIGHT,
+                Keys.KEYBAR,
+                Keys.KEYBAR2,
+            ),
+            "Prompt & keyboard" to listOf(
+                Keys.PROMPT_HEIGHT_TYPING,
+                Keys.IME_SUGGESTIONS,
+                Keys.FOCUS_ON_HOME,
+            ),
         ),
     ),
     Category(
         "launch", "Launching & search", "Instant launch, Enter, web search", R.drawable.ic_search,
         listOf(
-            "Launching" to listOf(Keys.LAUNCH_INSTANT, Keys.LAUNCH_INSTANT_MIN, Keys.LAUNCH_TOP, Keys.AUTO_LAUNCH),
-            "Web search" to listOf(Keys.SEARCH_ENGINE, Keys.SEARCH_URL),
+            "Launching" to listOf(
+                Keys.LAUNCH_INSTANT,
+                Keys.LAUNCH_INSTANT_MIN,
+                Keys.LAUNCH_TOP,
+                Keys.AUTO_LAUNCH,
+            ),
+            "Web search" to listOf(
+                Keys.SEARCH_ENGINE,
+                Keys.SEARCH_URL,
+            ),
         ),
     ),
     Category(
