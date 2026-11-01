@@ -130,7 +130,7 @@ internal fun CrashSheet(crash: CrashRow, onDismiss: () -> Unit, onEmail: () -> U
                 Button(onClick = onEmail) {
                     Icon(painterResource(R.drawable.ic_mail), null, Modifier.size(ButtonDefaults.IconSize))
                     Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Email to Us")
+                    Text("Email us")
                 }
                 OutlinedIconButton(onClick = onShare) {
                     Icon(painterResource(R.drawable.ic_share), "Share", Modifier.size(ButtonDefaults.IconSize))

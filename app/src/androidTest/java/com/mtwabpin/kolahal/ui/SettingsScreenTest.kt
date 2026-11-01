@@ -298,7 +298,7 @@ class SettingsScreenTest {
         waitForText("second sttest", substring = true)
 
         compose.onNodeWithText("second sttest", substring = true).performClick()
-        compose.onNodeWithText("Email to Us").assertIsDisplayed()
+        compose.onNodeWithText("Email us").assertIsDisplayed()
         compose.onNodeWithContentDescription("Delete").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("second sttest", substring = true).fetchSemanticsNodes().isEmpty() }
         assertEquals(listOf("IllegalStateException: first sttest"), CrashReports.list(app).map { it.text().lines()[6] })
@@ -342,7 +342,7 @@ class SettingsScreenTest {
         waitForText("shared sttest", substring = true)
         compose.onNodeWithText("shared sttest", substring = true).performClick()
 
-        val email = compose.onNodeWithText("Email to Us").getUnclippedBoundsInRoot()
+        val email = compose.onNodeWithText("Email us").getUnclippedBoundsInRoot()
         val share = compose.onNodeWithContentDescription("Share").assertIsDisplayed().getUnclippedBoundsInRoot()
         val delete = compose.onNodeWithContentDescription("Delete").getUnclippedBoundsInRoot()
         // Icons alone: the names are for screen readers.

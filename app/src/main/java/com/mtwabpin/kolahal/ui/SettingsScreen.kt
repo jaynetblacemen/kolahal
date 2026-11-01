@@ -372,7 +372,7 @@ fun SettingsScreen(
                                 if (!openLink(context, SOURCE_URL)) tapScope.launch { snackbar.showSnackbar("No browser to open $SOURCE_URL") }
                             },
                             Action(R.drawable.ic_bug, "Crash reports", kept, chevron = true) { openId = CRASHES_PAGE },
-                            Action(R.drawable.ic_mail, "Email to Us", DEVELOPER_EMAIL) {
+                            Action(R.drawable.ic_mail, "Email us", DEVELOPER_EMAIL) {
                                 if (!emailDeveloper(context, VERSION_TEXT, aboutThisPhone())) {
                                     tapScope.launch { snackbar.showSnackbar("No app on this phone can send email") }
                                 }
