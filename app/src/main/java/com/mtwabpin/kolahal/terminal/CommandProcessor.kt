@@ -129,7 +129,11 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
                 // Made only behind the build's switch, so R8 leaves the updater out of the Play build: Play
                 // allows no update but its own (tools/check-play-build.sh checks).
                 "update" -> if (com.mtwabpin.kolahal.BuildConfig.SELF_UPDATE) {
-                    UpdateCommands(context, ::background).run(args)
+                    UpdateCommands(
+    context = context,
+    background = ::background,
+    onProgress = ui::setUpdateProgress,
+).run(args)
                 } else {
                     error("This build updates through Google Play, so update isn't available")
                 }
