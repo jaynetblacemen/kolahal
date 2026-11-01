@@ -191,7 +191,7 @@ class BackupAndLibraryTest {
         val until = System.currentTimeMillis() + 5_000
         while (apps.apps.value.isEmpty() && System.currentTimeMillis() < until) Thread.sleep(50)
         val name = apps.apps.value.map { it.label.lowercase().replace(Regex("[^a-z0-9]"), "") }
-            .first { it.length in 3..40 && it !in com.mtwabpin.kolahal.terminal.CommandProcessor.RESERVED_NAMES && scripts.byName(it) == null }
+            .first { it.length in 3..40 && it !in com.mtwabpin.kolahal.terminal.CommandCatalog.RESERVED_NAMES && scripts.byName(it) == null }
         assertNotNull(com.mtwabpin.kolahal.script.ScriptNames.clash(context, name))
         val file = File(context.cacheDir, "kolahal-backup-app-name.json")
         try {

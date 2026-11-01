@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.mtwabpin.kolahal.apps.AppEntry
 import com.mtwabpin.kolahal.apps.ProfileKind
 import com.mtwabpin.kolahal.data.Keys
-import com.mtwabpin.kolahal.terminal.CommandProcessor
+import com.mtwabpin.kolahal.terminal.CommandCatalog
 import com.mtwabpin.kolahal.terminal.Suggestion
 
 /** A profile tag at the end of a completion's label (`Maps [W]`), as app rows show it. */
@@ -60,7 +60,7 @@ private fun taggedLabel(label: String): androidx.compose.ui.text.AnnotatedString
 /** Short help shown next to a completion: a command's description, or a config key's. */
 internal fun completionHelp(label: String, replacement: String): String? {
     // Top-level command completions replace the whole input with "name ".
-    if (replacement.trim() == label) CommandProcessor.COMMANDS.firstOrNull { it.name == label }?.let { return it.help }
+    if (replacement.trim() == label) CommandCatalog.COMMANDS.firstOrNull { it.name == label }?.let { return it.help }
     return Keys.ALL.firstOrNull { it.key == label }?.help
 }
 

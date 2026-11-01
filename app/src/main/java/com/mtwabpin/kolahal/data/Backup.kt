@@ -208,6 +208,6 @@ class Backup(private val context: Context) {
     companion object {
         const val VERSION = 2
         const val FILE_NAME = "kolahal-backup.json"
-        private val BUILT_INS get() = com.mtwabpin.kolahal.terminal.CommandProcessor.RESERVED_NAMES
+        private val BUILT_INS get() = com.mtwabpin.kolahal.terminal.CommandCatalog.RESERVED_NAMES
     }
 }

@@ -41,7 +41,7 @@ object FullBackup {
 
     /** kv scopes are "script:<id>"; ids differ between devices, so backups key them by script name. */
     private const val SCRIPT_SCOPE = "script:"
-    private val BUILT_INS get() = com.mtwabpin.kolahal.terminal.CommandProcessor.RESERVED_NAMES
+    private val BUILT_INS get() = com.mtwabpin.kolahal.terminal.CommandCatalog.RESERVED_NAMES
 
     /**
      * kv scopes about this phone: the last call and the apps it has seen (another phone's would log

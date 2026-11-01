@@ -78,7 +78,7 @@ private const val KEY_PENDING_EXPORT = "pending_export"
 private const val MAX_PAGE = 5000
 
 /** Commands whose effect shows in the todo, note, reminder and feed caches. */
-private val PRODUCTIVITY_COMMANDS = CommandProcessor.PRODUCTIVITY + setOf("feed", "feeds")
+private val PRODUCTIVITY_COMMANDS = CommandCatalog.PRODUCTIVITY + setOf("feed", "feeds")
 
 /** The whole page is read again at least this often, catching trims by other processes. */
 private const val FULL_RELOAD_MS = 60_000L
@@ -646,7 +646,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         val target = InstantRun.target(
             text, config[Keys.LAUNCH_INSTANT], config[Keys.LAUNCH_INSTANT_MIN],
             rankedApps = { appsRepo.searchRanked(it) }, appLabel = { it.label },
-            commands = scriptUsages + CommandProcessor.COMMAND_USAGES, aliases = appPrefs.aliases(), scriptCommands = _commandNames.value,
+            commands = scriptUsages + CommandCatalog.COMMAND_USAGES, aliases = appPrefs.aliases(), scriptCommands = _commandNames.value,
             isOn = { !it.profile.quiet },
         ) ?: return
         setText("")
@@ -662,9 +662,9 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     private fun runsOnTap(line: String) = config[Keys.LAUNCH_INSTANT] == InstantRun.ALL &&
         // A trailing space marks a prefill ("apps " from help): it is waiting for an argument.
         !line.endsWith(' ') &&
-        (InstantRun.canRun(line, scriptUsages + CommandProcessor.COMMAND_USAGES, appPrefs.aliases(), _commandNames.value) { name ->
+        (InstantRun.canRun(line, scriptUsages + CommandCatalog.COMMAND_USAGES, appPrefs.aliases(), _commandNames.value) { name ->
             appsRepo.searchRanked(name).firstOrNull()?.second == 0
-        } || InstantRun.wholeLine(line, scriptUsages + CommandProcessor.COMMAND_USAGES, appPrefs.aliases()))
+        } || InstantRun.wholeLine(line, scriptUsages + CommandCatalog.COMMAND_USAGES, appPrefs.aliases()))
 
     fun submit() {
         val line = input.text
@@ -1250,7 +1250,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             show("Names: lowercase letters, digits, - and _")
             return
         }
-        if (clean in CommandProcessor.RESERVED_NAMES) {
+        if (clean in CommandCatalog.RESERVED_NAMES) {
             show("'$clean' is a built-in command, pick another name")
             return
         }
