@@ -238,6 +238,16 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     var input by mutableStateOf(TextFieldValue(""))
         private set
 
+    /** What the line in the prompt would change ([LivePreview]). */
+    val livePreview: LivePreview?
+        get() = LivePreview.of(input.text, config) { TermFonts.customFile(getApplication()) != null }
+
+    /** A preview whose line was just entered, until its command has run: the old look would show for a moment. */
+    private var entered by mutableStateOf<LivePreview?>(null)
+
+    /** How to look for now, if not as the settings say. On home alone: other screens show what's in use. */
+    val previewed: LivePreview? get() = entered ?: livePreview?.takeIf { _screen.value == Screen.TERMINAL }
+
     private val _editing = MutableStateFlow<Script?>(null)
     val editing: StateFlow<Script?> = _editing.asStateFlow()
 
@@ -663,11 +673,18 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             _events.tryEmit(UiEvent.HideKeyboard)
             return
         }
+        entered = livePreview
         input = TextFieldValue("")
         historyIndex = -1
         if (line.isBlank()) return
         collapseHeader()
-        io { processor.run(line) }
+        io {
+            try {
+                processor.run(line)
+            } finally {
+                entered = null
+            }
+        }
         _events.tryEmit(UiEvent.ScrollToBottom)
     }
 

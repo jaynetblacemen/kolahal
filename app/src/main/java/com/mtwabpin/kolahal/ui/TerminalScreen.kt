@@ -507,6 +507,7 @@ fun TerminalScreen(vm: TerminalViewModel, onPickFolder: () -> Unit, preview: Ter
         val keyBarAuto = remember(configVersion) { config[Keys.KEYBAR_AUTO] }
         val promptTypingHeight = remember(configVersion) { config[Keys.PROMPT_HEIGHT_TYPING].dp }
         val keyBarOn = remember(configVersion) { config[Keys.KEYBAR_SHOW] }
+        LivePreviewBand(if (preview == null) vm.livePreview else null)
         Prompt(
             vm = vm,
             focus = focus,

@@ -131,6 +131,8 @@ class MainActivity : ComponentActivity() {
         // Theme follows settings without reading config state in composition (which would recompose
         // the whole tree on every settings change).
         lifecycleScope.launch { vm.config.version.collect { applyTheme() } }
+        lifecycleScope.launch { androidx.compose.runtime.snapshotFlow { vm.previewed }.collect { applyTheme() } }
+        lifecycleScope.launch { vm.screen.collect { if (vm.livePreview != null) applyTheme() } }
         lifecycleScope.launch {
             vm.events.collect {
                 when (it) {
@@ -288,10 +290,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun applyTheme() {
-        Term.palette = Palettes.named(vm.config[Keys.THEME], darkTheme())
-        com.mtwabpin.kolahal.ui.WallpaperMatch.follow(this, com.mtwabpin.kolahal.ui.WallpaperMatch.themeColour())
-        Term.fontSize = vm.config[Keys.FONT_SIZE]
-        val font = vm.config[Keys.FONT]
+        val live = vm.previewed
+        Term.palette = Palettes.named(live?.theme ?: vm.config[Keys.THEME], darkTheme())
+        // Not for a preview: the wallpaper changes only once it's kept.
+        if (live == null) com.mtwabpin.kolahal.ui.WallpaperMatch.follow(this, com.mtwabpin.kolahal.ui.WallpaperMatch.themeColour())
+        Term.fontSize = live?.fontSize ?: vm.config[Keys.FONT_SIZE]
+        val font = live?.font ?: vm.config[Keys.FONT]
         val family = TermFonts.family(this, font)
         if (family == null) vm.onFontUnavailable(font)
         Term.fontFamily = family ?: FontFamily.Monospace

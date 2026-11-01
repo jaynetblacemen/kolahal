@@ -93,6 +93,32 @@ class WallpaperMatchTest {
         shell("cmd uimode night $night")
     }
 
+    /** A theme being tried leaves the wallpaper as it is: it changes when the theme is kept. */
+    @Test fun aPreviewLeavesItAloneUntilEnter() {
+        ActivityScenario.launch(com.mtwabpin.kolahal.MainActivity::class.java).use { scenario ->
+            lateinit var vm: com.mtwabpin.kolahal.terminal.TerminalViewModel
+            scenario.onActivity {
+                vm = androidx.lifecycle.ViewModelProvider(it)[com.mtwabpin.kolahal.terminal.TerminalViewModel::class.java]
+                vm.openScreen(com.mtwabpin.kolahal.terminal.Screen.TERMINAL)
+            }
+            val before = wallpaperOf(Term.palette)
+            assertTrue(WallpaperMatch.set(context, before))
+            followsTo("the theme in use", before)
+            val id = wallpapers.getWallpaperId(system)
+
+            instrumentation.runOnMainSync { vm.onInputChange(androidx.compose.ui.text.input.TextFieldValue("theme dracula")) }
+            waitFor("the theme tried") { wallpaperOf(Term.palette) != before }
+            Thread.sleep(1_500)
+            assertEquals(id, wallpapers.getWallpaperId(system))
+            assertEquals(before, colourSet())
+
+            instrumentation.runOnMainSync { vm.submit() }
+            waitFor("the theme kept") { config[Keys.THEME] == "dracula" }
+            followsTo("the theme kept", wallpaperOf(Term.palette))
+            assertNotEquals(before, colourSet())
+        }
+    }
+
     @Test fun itKnowsTheWallpaperItSet() {
         assertFalse(WallpaperMatch.isMatched(context))
         assertTrue(WallpaperMatch.set(context, Color.RED))
