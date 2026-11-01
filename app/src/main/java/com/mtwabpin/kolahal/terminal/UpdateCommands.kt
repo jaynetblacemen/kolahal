@@ -28,6 +28,7 @@ import okhttp3.Request
 internal class UpdateCommands(
     context: Context,
     private val background: (String, () -> Unit) -> Unit,
+    private val onProgress: (UpdateProgress?) -> Unit = {},
 ) : CommandGroup(context) {
     data class Release(
         val version: String,
@@ -146,7 +147,8 @@ internal class UpdateCommands(
             } catch (e: Exception) {
                 error("Update failed: ${e.message ?: e.javaClass.simpleName}", releaseLink)
             } finally {
-                running.set(false)
+    onProgress(null)
+    running.set(false)
             }
         }
     }
@@ -226,10 +228,66 @@ internal class UpdateCommands(
     }
 
     private fun fetch(release: Release, destination: File) {
-        val request = Request.Builder()
-            .url(release.url)
-            .header("User-Agent", Net.USER_AGENT)
-            .build()
+    val request = Request.Builder()
+        .url(release.url)
+        .header("User-Agent", Net.USER_AGENT)
+        .build()
+
+    downloadClient.newCall(request).execute().use { response ->
+        if (!response.isSuccessful) {
+            throw IllegalStateException(
+                "APK download returned HTTP ${response.code}"
+            )
+        }
+
+        val body = response.body
+
+        if (body.contentLength() > release.size) {
+            throw IllegalStateException(
+                "Downloaded APK is larger than expected."
+            )
+        }
+
+        var total = 0L
+        var lastUpdate = 0L
+
+        onProgress(UpdateProgress(0L, release.size))
+
+        body.byteStream().use { input ->
+            destination.outputStream().use { output ->
+                val buffer = ByteArray(16 * 1024)
+
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count == -1) break
+
+                    total += count
+
+                    if (total > release.size) {
+                        throw IllegalStateException(
+                            "Downloaded APK is larger than expected."
+                        )
+                    }
+
+                    output.write(buffer, 0, count)
+
+                    // Limit UI updates to roughly every 150 ms.
+                    val now = android.os.SystemClock.elapsedRealtime()
+
+                    if (now - lastUpdate >= 150L) {
+                        onProgress(
+                            UpdateProgress(total, release.size)
+                        )
+                        lastUpdate = now
+                    }
+                }
+            }
+        }
+
+        // Publish the final progress before verification.
+        onProgress(UpdateProgress(total, release.size))
+    }
+    }
 
         downloadClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
