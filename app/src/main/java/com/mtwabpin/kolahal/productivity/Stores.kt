@@ -4,7 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import com.mtwabpin.kolahal.data.Db
 
-data class Todo(val id: Long, val text: String, val done: Boolean, val created: Long, val doneAt: Long?)
+data class Todo(val id: Long, val text: String, val done: Boolean)
 data class Note(val id: Long, val text: String, val created: Long)
 /** [repeat]: a [Repeat] rule, or null for a reminder that fires once. */
 data class Reminder(val id: Long, val at: Long, val text: String, val repeat: String? = null)
@@ -26,20 +26,17 @@ class TodoStore private constructor(context: Context) {
     fun all(): List<Todo> {
         val out = ArrayList<Todo>()
         db.readableDatabase.rawQuery(
-            "SELECT id, text, done, created, done_at FROM todos ORDER BY done, CASE WHEN done = 0 THEN created ELSE -done_at END, id",
+            "SELECT id, text, done FROM todos ORDER BY done, CASE WHEN done = 0 THEN created ELSE -done_at END, id",
             null,
         ).use { c ->
             while (c.moveToNext()) {
-                out += Todo(c.getLong(0), c.getString(1), c.getInt(2) != 0, c.getLong(3), if (c.isNull(4)) null else c.getLong(4))
+                out += Todo(c.getLong(0), c.getString(1), c.getInt(2) != 0)
             }
         }
         return out
     }
 
     fun open(): List<Todo> = all().filter { !it.done }
-
-    fun openCount(): Int = db.readableDatabase.rawQuery("SELECT COUNT(*) FROM todos WHERE done = 0", null)
-        .use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
 
     fun add(text: String): Long = db.writableDatabase.insert("todos", null, ContentValues().apply {
         put("text", text)

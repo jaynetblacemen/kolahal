@@ -115,7 +115,7 @@ class CompleterTest {
 
     @Test fun todoDoneOffersOnlyOpenItems() {
         val now = System.currentTimeMillis()
-        todos = listOf(Todo(1, "milk", false, now, null), Todo(2, "bread", true, now, now))
+        todos = listOf(Todo(1, "milk", false), Todo(2, "bread", true))
         assertTrue(lines("todo done ").toString(), "todo done 1" in lines("todo done "))
         assertFalse("todo done 2" in lines("todo done "))
         assertTrue("todo undo 2" in lines("todo undo "))
@@ -282,7 +282,7 @@ class CompleterReviewTest {
 
     @Test fun staleNumberedLinesAndCoveredLinesAreLeftOut() {
         val now = System.currentTimeMillis()
-        todos = listOf(Todo(1, "milk", false, now, null))
+        todos = listOf(Todo(1, "milk", false))
         history = listOf("todo done 3", "todo done 1")
         assertEquals(listOf("todo done 1"), lines("todo done "))
         val app = apps.apps.value.first { it.profile.kind == ProfileKind.PERSONAL && it.label.length >= 4 }

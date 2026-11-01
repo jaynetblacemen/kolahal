@@ -8,11 +8,9 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -62,7 +60,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
@@ -104,6 +101,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sign
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.time.Duration.Companion.milliseconds
 
 /** One row of the selector list: an app under its section letter (or the favourites section). */
 internal data class SelectorEntry<T>(
@@ -127,7 +125,7 @@ internal object SelectorMath {
     const val FAV = '★'
 
     /** Section order: `#` (digits, symbols, other scripts) first, then A–Z. */
-    val LETTERS: List<Char> = listOf(OTHER) + ('A'..'Z')
+    val LETTERS: List<Char> = listOf(OTHER) + ('A'..'Z').toList()
 
     /** Section letter of a label: its first letter or digit, accents stripped; anything outside A–Z is `#`. */
     fun letterOf(label: String): Char {
@@ -212,13 +210,12 @@ internal object SelectorMath {
                 blocks--
             }
         }
-        val lo = top
         val hi = bottom - (n - 1) * gap
         val out = FloatArray(n)
         var k = 0
         for (b in 0 until blocks) {
             repeat(weight[b]) {
-                out[k] = value[b].coerceIn(lo, hi) + k * gap
+                out[k] = value[b].coerceIn(top, hi) + k * gap
                 k++
             }
         }
@@ -228,7 +225,7 @@ internal object SelectorMath {
     /** How many entries each section has (★, #, A–Z, in list order): what [Sections] shares the strip by. */
     fun <T> sectionSizes(entries: List<SelectorEntry<T>>): List<Int> {
         val sizes = IntArray((entries.lastOrNull()?.sectionIndex ?: -1) + 1)
-        for (e in entries) sizes[e.sectionIndex]++
+        for ((_, _, _, sectionIndex) in entries) sizes[sectionIndex]++
         return sizes.toList()
     }
 
@@ -245,14 +242,14 @@ internal object SelectorMath {
 
     /**
      * `selector.browse letters`: the letter at [pos] along the edge (in letters: letter `i` spans
-     * `[i, i + 1)`, as [alongLetters] gives it), staying on [current] until [pos] is [stick] past
+     * `[i, i + 1)`, as [alongLetters] gives it), staying on [current] until [pos] is [STICK] past
      * either end of its stretch.
      */
-    fun letterAt(pos: Float, current: Int, count: Int, stick: Float = STICK): Int {
+    fun letterAt(pos: Float, current: Int, count: Int): Int {
         if (count <= 0) return -1
         val raw = floor(pos).toInt().coerceIn(0, count - 1)
         if (current !in 0 until count) return raw
-        return if (pos >= current - stick && pos < current + 1 + stick) current else raw
+        return if (pos >= current - STICK && pos < current + 1 + STICK) current else raw
     }
 
     /**
@@ -562,8 +559,6 @@ private class SelectorState {
     var contact by mutableFloatStateOf(Float.NaN)
     /** Where the fisheye was last centred (rows, as [contact]): it shrinks back there once the finger leaves the list. */
     var lensAt by mutableFloatStateOf(Float.NaN)
-    /** Finger Y in the selector's coordinates (moves the handle). */
-    var fingerY by mutableFloatStateOf(0f)
     /** Scroll offset (px) set by scrubbing. */
     var scrollPx = 0f
     /**
@@ -647,7 +642,6 @@ private fun LazyListState.scrollToPx(px: Float, rowPx: Int) {
  * touch starts the selector only in the strip's middle 200dp, where the handle is drawn at rest;
  * elsewhere the edge is Android's. Once down, the thumb uses the strip's whole length.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppSelector(
     apps: List<AppEntry>,
@@ -656,7 +650,7 @@ fun AppSelector(
     onLongPress: (AppEntry) -> Unit,
     modifier: Modifier = Modifier,
     heightDp: Int = 350,
-    /** selector.handle: draw the A–Z handle when idle (it still shows under the finger). */
+    /** selector.handle: draw the A–Z handle when idle. */
     showHandle: Boolean = true,
     /** selector.letters: each letter along the strip, where its apps are, so you can see where to touch. */
     letters: Boolean = false,
@@ -758,7 +752,7 @@ fun AppSelector(
         if (state.mode != Mode.OPEN || showList) return@LaunchedEffect
         snapshotFlow { listState.isScrollInProgress }.collectLatest { scrolling ->
             if (!scrolling) {
-                delay(IDLE_MS)
+                delay(IDLE_MS.milliseconds)
                 state.close()
             }
         }
@@ -1048,7 +1042,9 @@ fun AppSelector(
                         val down = awaitFirstDown(requireUnconsumed = false)
                         down.consume()
                         if (count == 0) {
-                            while (awaitPointerEvent().changes.onEach { it.consume() }.any { it.pressed }) {}
+                            do {
+                                val pressed = awaitPointerEvent().changes.onEach { it.consume() }.any { it.pressed }
+                            } while (pressed)
                             return@awaitEachGesture
                         }
                         var x = down.position.x
@@ -1086,7 +1082,6 @@ fun AppSelector(
 
                         fun update(now: Long) {
                             val cy = stripTopPx + y
-                            state.fingerY = cy
                             // A new letter's apps glide in from where the list is drawn; off the edge the
                             // list is where the letter put it, a glide still under way ended there at once.
                             var newLetter = false
@@ -1266,7 +1261,7 @@ fun AppSelector(
                                         state.contact = Float.NaN
                                         if (byLetter && !onlyLetter) {
                                             if (glide?.isActive == true) {
-                                                glide?.cancel()
+                                                glide.cancel()
                                                 val (s, sh) = SelectorMath.place(state.listY, SelectorMath.maxScroll(list.size, rowPx.toFloat(), panelH(list.size)))
                                                 show(s, sh)
                                             }
@@ -1326,7 +1321,6 @@ fun AppSelector(
 }
 
 /** One list row: section letter in the gutter, profile tag in its colour, ★, the label. */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SelectorRow(
     entry: SelectorEntry<AppEntry>,

@@ -7,6 +7,11 @@ import java.io.File
 
 /** Keeps [ApiDocs] in sync with the functions the engines actually bind (parsed from their sources). */
 class ApiDocsTest {
+    /** The editor's reference lists every `@` line the editor accepts. */
+    @Test fun everyDirectiveIsListed() {
+        assertEquals(ScriptCheck.DIRECTIVES, ApiDocs.directives.map { it.name }.toSet())
+    }
+
 
     private fun source(name: String): List<String> {
         val rel = "src/main/java/com/mtwabpin/kolahal/script/$name"

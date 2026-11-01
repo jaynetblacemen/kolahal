@@ -1,6 +1,5 @@
 package com.mtwabpin.kolahal.script
 
-import com.mtwabpin.kolahal.data.shortTime
 import android.content.Context
 import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.apps.ProfileKind
@@ -14,10 +13,10 @@ import com.mtwabpin.kolahal.notify.Notifier
 import okhttp3.Headers.Companion.toHeaders
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * The launcher-side API exposed to scripts. Engine-agnostic: the Lua and JS bindings both
@@ -48,7 +47,7 @@ class HostApi(
     /** The script's `@secret` names and the values you set for them ([SecretStore]); null for code typed at the prompt. */
     private val secrets: Secrets? = null,
     /** The typed command's line that started this run: its lines are that command's output. */
-    private val from: Long? = null,
+    from: Long? = null,
     /** Its `@option`s with your values or their defaults ([ScriptOptions]), the `options` table. */
     val options: Map<String, String> = emptyMap(),
 ) {
@@ -82,7 +81,7 @@ class HostApi(
     suspend fun sleepAsync(ms: Long) {
         val wait = ms.coerceIn(0, 5_000)
         val left = remainingMs()
-        kotlinx.coroutines.delay(minOf(wait, left))
+        kotlinx.coroutines.delay(minOf(wait, left).milliseconds)
         if (wait >= left) timedOut()
     }
 
@@ -146,8 +145,8 @@ class HostApi(
     fun redact(text: String): String = secretForms.fold(marks.replace(text, "••••")) { t, v -> t.replace(v, "••••") }
 
     /**
-     * Private data and local-network reach are only for scripts that declare them: undeclared is a
-     * mistake in the script. Declared but switched off by the user is false: the caller answers empty.
+     * Private data is only for scripts that declare it: undeclared is a mistake in the script.
+     * Declared but switched off by the user is false: the caller answers empty.
      */
     private fun may(what: String, call: String): Boolean {
         val g = grants ?: return true
@@ -177,8 +176,6 @@ class HostApi(
         throw java.io.IOException(message)
     }
 
-    /** May reach this device or the local network over http. */
-    val allowsLan: Boolean get() = grants == null || grants.allows("lan")
     private val logs = LogRepository.get(context)
     private val store = KvStore(context, scriptId?.let(ScriptRepository::scopeOf) ?: "repl")
 
@@ -188,10 +185,6 @@ class HostApi(
 
     /** A notify() call was dropped because notifications are blocked (reported once by the worker). */
     var notifyBlocked = false
-        private set
-
-    /** A request was refused because Kolahal may not reach the local network yet (reported once by the worker). */
-    var lanBlocked = false
         private set
 
     private val baseCtx: Map<String, String> =
@@ -281,11 +274,12 @@ class HostApi(
 
     /**
      * "Copy text" must copy what the line shows: all or part of it, the whole text of a line cut
-     * short with "…", or its link. Otherwise a line could show one address and copy another.
+     * short with "…", or its link. Otherwise, a line could show one address and copy another.
      */
     private fun honestCopy(copy: String, text: String, url: String?): Boolean {
-        // The link as given, or as it was normalised (a trailing / added).
-        if (copy == url || Net.webUrl(copy) == url) return true
+        // The link as given, or as it was normalised (a trailing / added). webUrl is null for
+        // anything but a link, so on a line with no link it must not count as a match.
+        if (url != null && (copy == url || Net.webUrl(copy) == url)) return true
         // As they read: styles and list marks aside.
         fun bare(s: String) = StyledText.plain(s).filterNot { it.isWhitespace() || it == ',' }
         val c = bare(copy)
@@ -351,16 +345,16 @@ class HostApi(
         val realUrl = fillSecrets(url, target)
         val realBody = body?.let { fillSecrets(it, target) }
         val h = Json.toStringMap(headers).mapValues { fillSecrets(it.value, target) }.toMutableMap()
-        if (h.keys.none { it.equals("User-Agent", ignoreCase = true) }) h["User-Agent"] = USER_AGENT
+        if (h.keys.none { it.equals("User-Agent", ignoreCase = true) }) h["User-Agent"] = Net.USER_AGENT
         val m = method.uppercase()
         // The body's type: `contentType`, else a Content-Type header (OkHttp replaces that header
         // with the body's type, so it must become the body's), else JSON for a table, else text.
-        val typeHeader = h.keys.firstOrNull { it.equals("Content-Type", ignoreCase = true) }
+        // With no body, nothing replaces the header: it's sent as it is.
+        val typeHeader = h.keys.firstOrNull { it.equals("Content-Type", ignoreCase = true) }?.takeIf { realBody != null }
         val type = contentType ?: typeHeader?.let { h.remove(it) } ?: if (bodyIsJson) "application/json; charset=utf-8" else "text/plain; charset=utf-8"
         val reqBody = realBody?.toRequestBody(type.toMediaTypeOrNull())
             ?: if (m in METHODS_REQUIRING_BODY) ByteArray(0).toRequestBody() else null
-        // This phone and the local network only with `@uses lan` (or code typed at the prompt).
-        val request = Net.reach(Request.Builder(), if (allowsLan) Net.Reach.ANY else Net.Reach.PUBLIC)
+        val request = Request.Builder()
             .url(realUrl)
             .headers(h.toHeaders())
             .method(m, if (m != "GET" && m != "HEAD") reqBody else null)
@@ -370,27 +364,16 @@ class HostApi(
             })
             .build()
         checkSecrets(request.url.host, listOf(request.url.toString(), realBody.orEmpty()) + h.values, request.url.isHttps)
-        try {
-            val call = (if (allowsLan) client else Net.publicClient).newCall(request)
-            // No longer than the run has left (the client's own limit is 30 s).
-            call.timeout().timeout(minOf(remainingMs(), Net.CALL_TIMEOUT_MS), TimeUnit.MILLISECONDS)
-            call.execute().use { resp ->
-                return mapOf(
-                    "status" to resp.code,
-                    "ok" to resp.isSuccessful,
-                    "body" to resp.peekBody(MAX_BODY).string(),
-                    "headers" to resp.headers.associate { (k, v) -> k.lowercase() to v },
-                )
-            }
-        } catch (e: Net.LocalNetworkBlocked) {
-            // Without `@uses lan` the address isn't allowed at all; switched off, the user said no;
-            // otherwise Android's permission is what's missing.
-            if (grants != null && "lan" in grants.declared && !grants.allows("lan")) {
-                deny("lan", "${e.host} is on your local network, switched off for this script")
-            }
-            if (!allowsLan) throw java.io.IOException("${e.host} is this phone or the local network: not allowed here")
-            lanBlocked = true
-            throw e
+        val call = client.newCall(request)
+        // No longer than the run has left (the client's own limit is 30 s).
+        call.timeout().timeout(minOf(remainingMs(), Net.CALL_TIMEOUT_MS), TimeUnit.MILLISECONDS)
+        return call.execute().use { resp ->
+            mapOf(
+                "status" to resp.code,
+                "ok" to resp.isSuccessful,
+                "body" to resp.peekBody(MAX_BODY).string(),
+                "headers" to resp.headers.associate { (k, v) -> k.lowercase() to v },
+            )
         }
     }
 
@@ -441,12 +424,13 @@ class HostApi(
         val key = urlKey("rss.seen:", url)
         // JavaScript runs host calls side by side: two rss.fresh finishing together must not lose ids.
         val fresh = synchronized(pendingSeen) {
-            val seen = pendingSeen[key] ?: readSeen(key)
+            // Ids are stored, and a store goes into backups: a key in an item's link is masked, the same each run.
+            val seen = (pendingSeen[key] ?: readSeen(key)).map(::redact)
             val seenSet = seen.toHashSet()
-            feed.items.filter { it.id !in seenSet }.also { fresh ->
+            feed.items.filter { redact(it.id) !in seenSet }.also { fresh ->
                 // Never forget an id the feed still lists: a feed longer than MAX_SEEN would otherwise
                 // push its own old items out and report them as new on the next run.
-                pendingSeen[key] = (fresh.map { it.id } + seen).take(maxOf(MAX_SEEN, feed.items.size + 100))
+                pendingSeen[key] = (fresh.map { redact(it.id) } + seen).take(maxOf(MAX_SEEN, feed.items.size + 100))
             }
         }
         return feed.copy(items = fresh).toMap()
@@ -564,8 +548,7 @@ class HostApi(
         live()
         if (!may("dnd", "device.setDnd")) return false
         val nm = context.getSystemService(android.app.NotificationManager::class.java)
-        if (!nm.isNotificationPolicyAccessGranted) return false
-        return runCatching { nm.setInterruptionFilter(filter) }.isSuccess
+        return nm.isNotificationPolicyAccessGranted && runCatching { nm.setInterruptionFilter(filter) }.isSuccess
     }
 
     /** The work profile: `on` or `paused`; nil when there is none, or it's switched off for the script. */
@@ -576,11 +559,6 @@ class HostApi(
         return if (runCatching { um.isQuietModeEnabled(user) }.getOrDefault(false)) "paused" else "on"
     }
 
-    /**
-     * Resumes ([on]) or pauses the work profile. False when Android won't let Kolahal: it must be
-     * the default launcher and in front (a daily time runs in the foreground, which counts), on
-     * Android 10 or newer; or resuming needs your work PIN; or there's no work profile.
-     */
     /** setWork's argument: true or false, or "on" or "off", the same in Lua and JavaScript. */
     fun onOff(value: Any?, call: String): Boolean = when (value) {
         is Boolean -> value
@@ -589,6 +567,11 @@ class HostApi(
         else -> throw IllegalArgumentException("$call takes true or false (or \"on\" or \"off\")")
     }
 
+    /**
+     * Resumes ([on]) or pauses the work profile. False when Android won't let Kolahal: it must be
+     * the default launcher and in front (a daily time runs in the foreground, which counts), on
+     * Android 10 or newer; or resuming needs your work PIN; or there's no work profile.
+     */
     fun setWork(on: Boolean): Boolean {
         live()
         if (!may("work", "device.setWork")) return false
@@ -625,13 +608,13 @@ class HostApi(
     /** Recent notifications (needs notification access): [{pkg, app, title, text, time}], newest first. */
     fun notificationsRecent(limit: Int): List<Any?> {
         if (!may("notifications", "notifications.recent")) return emptyList()
-        val L = com.mtwabpin.kolahal.notifications.KolahalNotificationListener
+        val listener = com.mtwabpin.kolahal.notifications.KolahalNotificationListener
         // Access revoked while the listener wasn't bound leaves the copy behind: drop it, share nothing.
         if (!com.mtwabpin.kolahal.notifications.NotificationActions.isEnabled(context)) {
-            runCatching { L.clearMirror(context) }
+            runCatching { listener.clearMirror(context) }
             return emptyList()
         }
-        val raw = KvStore(context, L.MIRROR_SCOPE).get(L.MIRROR_KEY) ?: return emptyList()
+        val raw = KvStore(context, listener.MIRROR_SCOPE).get(listener.MIRROR_KEY) ?: return emptyList()
         return (runCatching { Json.parse(raw) as? List<*> }.getOrNull() ?: emptyList<Any?>()).take(limit.coerceIn(0, 50))
     }
 
@@ -668,11 +651,19 @@ class HostApi(
             logError("launcher.run refused '${command.substringBefore(' ')}': sensitive commands must be typed")
             return false
         }
-        // A search or a place hands its words to a site through another app: only with the internet.
-        val verb = com.mtwabpin.kolahal.terminal.InstantRun.canonical(command.substringBefore(' '))
-        if (verb in WEB_COMMANDS && command.contains(' ') && grants != null && !grants.allows(ScriptAccess.INTERNET)) {
-            logError("launcher.run refused '$verb': it sends words to a website, and this script has no internet")
-            return false
+        if (command.contains(' ') && grants != null && !grants.allows(ScriptAccess.INTERNET)) {
+            val verb = com.mtwabpin.kolahal.terminal.InstantRun.canonical(command.substringBefore(' '))
+            // A search or a place hands its words to a site through another app: only with the internet.
+            if (verb in WEB_COMMANDS) {
+                logError("launcher.run refused '$verb': it sends words to a website, and this script has no internet")
+                return false
+            }
+            // A `@command` script runs with its own switches, so it could send them on itself.
+            val other = com.mtwabpin.kolahal.data.ScriptRepository.get(context).byName(verb)
+            if (other != null && ScriptMeta.isCommand(other.code) && ScriptMeta.goesOnline(other.code)) {
+                logError("launcher.run refused '$verb': it goes online, and this script has no internet to give it words")
+                return false
+            }
         }
         flush()
         context.sendBroadcast(
@@ -683,21 +674,26 @@ class HostApi(
 
     /** GET with a per-script cache: returns the stored response if it is younger than [maxAgeSeconds]. */
     fun httpCached(url: String, maxAgeSeconds: Int): Map<String, Any?> {
-        val key = urlKey("http.cache:", url)
+        val key = urlKey(HTTP_CACHE, url)
         val cached = store.get(key)?.let { runCatching { Json.parse(it) as? Map<*, *> }.getOrNull() }
         val at = (cached?.get("at") as? Number)?.toLong() ?: 0L
-        if (cached != null && System.currentTimeMillis() - at < maxAgeSeconds * 1000L) {
+        // One kept before a body holding a key stayed out goes now, and isn't handed back.
+        val kept = cached?.get("body") as? String
+        if (kept != null && redact(kept) != kept) {
+            store.set(key, null)
+        } else if (cached != null && System.currentTimeMillis() - at < maxAgeSeconds * 1000L) {
             return mapOf("status" to 200, "ok" to true, "body" to cached["body"], "headers" to emptyMap<String, String>(), "cached" to true)
         }
         val resp = httpGet(url)
         // A body near the store's value cap isn't cached; it would be refused anyway.
         val body = resp["body"] as? String
-        if (resp["ok"] == true && (body?.length ?: 0) < KvStore.MAX_VALUE / 2) {
+        // A site can send a key back, and a store goes into backups: a body holding one isn't kept.
+        if (resp["ok"] == true && (body?.length ?: 0) < KvStore.MAX_VALUE / 2 && (body == null || redact(body) == body)) {
             val entry = Json.stringify(mapOf("at" to System.currentTimeMillis(), "body" to body))
             // Cached responses count toward the store's limits. Full, the other ones make room: they
             // are only a cache, and a store left full would refuse the script's own values.
             runCatching { store.set(key, entry) }.recoverCatching {
-                store.deleteStartingWith("http.cache:", except = key)
+                store.deleteStartingWith(HTTP_CACHE, except = key)
                 store.set(key, entry)
             }
         }
@@ -721,7 +717,6 @@ class HostApi(
             "alarms" to android.app.NotificationManager.INTERRUPTION_FILTER_ALARMS,
             "none" to android.app.NotificationManager.INTERRUPTION_FILTER_NONE,
         )
-        private const val USER_AGENT = "Kolahal-Launcher/0.1 (+https://github.com/mtwabpin)"
         private const val MAX_BODY = 4L * 1024 * 1024
         private const val MAX_SEEN = 500
         private const val STATUS_MAX = 80
@@ -730,6 +725,8 @@ class HostApi(
         const val EXTRA_COMMAND = "command"
         /** The context keys a script's line may carry; anything else is dropped. */
         private val SCRIPT_CTX = setOf(LogContext.URL, LogContext.IMAGE, LogContext.COPY, LogContext.MONO)
+        /** What starts the store key of a response `http.cached` keeps. */
+        const val HTTP_CACHE = "http.cache:"
         /** Commands that hand their words to a site (through the browser or another app). */
         private val WEB_COMMANDS = setOf("search", "yt", "wiki", "maps", "play")
         private val METHODS_REQUIRING_BODY = setOf("POST", "PUT", "PATCH", "PROPPATCH", "REPORT")

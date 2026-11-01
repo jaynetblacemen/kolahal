@@ -16,8 +16,6 @@ class ScriptLibrary(private val context: Context) {
         val description: String,
         val command: Boolean,
         val suggestedEvery: Int,
-        val suggestedAt: List<String>,
-        val notify: Boolean,
     )
 
     enum class State { NOT_INSTALLED, INSTALLED, MODIFIED, UPDATE_AVAILABLE }
@@ -36,8 +34,6 @@ class ScriptLibrary(private val context: Context) {
                 description = ScriptMeta.description(code).orEmpty(),
                 command = ScriptMeta.isCommand(code),
                 suggestedEvery = ScriptMeta.every(code) ?: 0,
-                suggestedAt = ScriptMeta.at(code),
-                notify = ScriptMeta.notifies(code),
             )
         }
     }
@@ -65,7 +61,7 @@ class ScriptLibrary(private val context: Context) {
     }
 
     /**
-     * Installs (or updates) [entry] with its suggested timers. Remembers the installed text so a
+     * Installs [entry] with its suggested timers, or updates it keeping its own. Remembers the installed text so a
      * later app update can tell "update available" from "you edited it".
      */
     fun install(entry: Entry): Script {

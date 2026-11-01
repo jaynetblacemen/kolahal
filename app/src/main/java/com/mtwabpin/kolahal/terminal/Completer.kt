@@ -218,10 +218,10 @@ class Completer(private val context: Context, private val data: Data) {
             "open" -> if (arg.contains(':')) shortcutSuggestions(head, arg)
                 else appsRepo.search(arg.replace(FLAGS, "").trim()).take(cap).map { Suggestion.App(it) }
             // `unhide` and `unpin` offer what they can undo, not every app.
-            "info", "uninstall", "hide", "unhide", "rename", "shortcuts", "pin", "unpin" -> when {
-                cmd == "rename" && arg.contains('=') -> emptyList()
-                cmd == "unhide" -> appCompletions(head, arg, includeHidden = true) { appPrefs.isHidden(it.key) }
-                cmd == "unpin" -> appPrefs.pinned().toSet().let { pinned -> appCompletions(head, arg) { it.key in pinned } }
+            "info", "uninstall", "hide", "unhide", "rename", "shortcuts", "pin", "unpin" -> when (cmd) {
+                "rename" if arg.contains('=') -> emptyList()
+                "unhide" -> appCompletions(head, arg, includeHidden = true) { appPrefs.isHidden(it.key) }
+                "unpin" -> appPrefs.pinned().toSet().let { pinned -> appCompletions(head, arg) { it.key in pinned } }
                 else -> appCompletions(head, arg)
             }
             "notifs" -> when {
@@ -238,12 +238,12 @@ class Completer(private val context: Context, private val data: Data) {
             "help" -> if (parts.size == 2) (CommandProcessor.COMMAND_NAMES - CommandProcessor.UNAVAILABLE).filter { it.starts(last) }
                 .map { Suggestion.Completion(it, "$head $it", help = CommandProcessor.COMMANDS.firstOrNull { c -> c.name == it }?.help) } else emptyList()
             "status" -> if (parts.size == 3 && parts[1] == "clear") words(data.statusNames.toList() + "all", R.drawable.ic_code) else emptyList()
-            "feed" -> when {
-                parts.size == 3 && parts[1] in FEED_ID_SUBCOMMANDS -> data.feeds
+            "feed" -> when (parts.size) {
+                3 if parts[1] in FEED_ID_SUBCOMMANDS -> data.feeds
                     .filter { last.isEmpty() || it.id.toString().startsWith(last) || (it.title ?: it.url).contains(last, ignoreCase = true) }
                     .take(cap).map { Suggestion.Completion("#${it.id} ${it.title ?: it.url}", "$head ${parts[1]} ${it.id}", icon = R.drawable.ic_rss) }
-                parts.size == 4 && parts[1] == "notify" -> words(listOf("on", "off"))
-                parts.size == 4 && parts[1] == "every" -> words(INTERVALS)
+                4 if parts[1] == "notify" -> words(listOf("on", "off"))
+                4 if parts[1] == "every" -> words(INTERVALS)
                 else -> emptyList()
             }
             "usage", "unlocks" -> if (parts.size == 2) listOf("1", "7", "14", "30")
@@ -298,23 +298,23 @@ class Completer(private val context: Context, private val data: Data) {
             }
             "config" -> {
                 val keyIndex = if (parts.getOrNull(1) in listOf("set", "get", "reset")) 2 else 1
-                when {
-                    parts.size == 2 && keyIndex == 2 -> emptyList()
-                    parts.size == keyIndex + 1 -> {
+                when (parts.size) {
+                    2 if keyIndex == 2 -> emptyList()
+                    keyIndex + 1 -> {
                         val prefix = parts.take(keyIndex).joinToString(" ")
                         val subs = if (keyIndex == 1) listOf("ls", "set", "get", "reset").filter { it.startsWith(last, ignoreCase = true) } else emptyList()
                         subs.map { Suggestion.Completion(it, "$prefix $it ") } +
                             Keys.ALL.filter { it.key.starts(last) }
                                 .map { Suggestion.Completion(it.key, "$prefix ${it.key} ", icon = R.drawable.ic_tune) }
                     }
-                    parts.size == keyIndex + 2 -> {
+                    keyIndex + 2 -> {
                         val key = Keys.byName(parts[keyIndex]) ?: return emptyList()
                         val prefix = parts.take(keyIndex + 1).joinToString(" ")
                         val values = when {
                             key is ConfigKey.Bool -> listOf("on", "off")
                             key is ConfigKey.Choice -> key.choices
                             // A gesture's action: one of the words, or any command.
-                            key.key.startsWith("gesture.") -> listOf("lock", "shade", "quick", "none")
+                            key.key.startsWith("gesture.") -> listOf("lock", "shade", "quick", "none") - CommandProcessor.UNAVAILABLE
                             else -> emptyList()
                         }
                         values.filter { it.starts(last) }.map { Suggestion.Completion(it, "$prefix $it") }

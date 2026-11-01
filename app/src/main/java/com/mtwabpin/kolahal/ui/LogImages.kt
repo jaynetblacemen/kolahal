@@ -47,7 +47,6 @@ object LogImages {
     private val locks = java.util.concurrent.ConcurrentHashMap<String, Any>()
 
     /** At most two pictures load at a time, so a page of them can't use every IO thread. */
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val loader = Dispatchers.IO.limitedParallelism(2)
 
     private val memory = object : LruCache<String, ImageBitmap>(24 * 1024 * 1024) {
@@ -103,9 +102,8 @@ object LogImages {
         val httpUrl = url.toHttpUrlOrNull() ?: return null
         val tmp = File(dir, "$name.${System.nanoTime()}.part")
         val ok = runCatching {
-            // A picture a script names is drawn by home: never from this phone or the local network.
-            val request = Net.reach(okhttp3.Request.Builder(), Net.Reach.PUBLIC).url(httpUrl).header("User-Agent", Net.USER_AGENT).build()
-            Net.publicClient.newCall(request).execute().use { resp ->
+            val request = okhttp3.Request.Builder().url(httpUrl).header("User-Agent", Net.USER_AGENT).build()
+            Net.client.newCall(request).execute().use { resp ->
                 resp.isSuccessful && resp.body.contentLength() <= MAX_BYTES &&
                     resp.body.byteStream().use { input -> tmp.outputStream().use { out -> copyLimited(input, out) } }
             }
@@ -154,7 +152,7 @@ fun LogImage(url: String, modifier: Modifier = Modifier) {
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val widthPx = constraints.maxWidth.coerceAtLeast(1)
         // null while loading; Result.failure once it can't be had.
-        val state by produceState<Result<ImageBitmap>?>(LogImages.cached(url, widthPx)?.let { Result.success(it) }, url, widthPx) {
+        val state by produceState(LogImages.cached(url, widthPx)?.let { Result.success(it) }, url, widthPx) {
             if (value == null) {
                 value = withContext(LogImages.loader) { LogImages.load(context.applicationContext, url, widthPx) }
                     ?.let { Result.success(it) } ?: Result.failure(IllegalStateException())

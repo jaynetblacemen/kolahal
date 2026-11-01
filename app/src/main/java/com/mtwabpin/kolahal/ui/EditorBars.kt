@@ -55,7 +55,6 @@ import com.mtwabpin.kolahal.data.ScriptLang
 import com.mtwabpin.kolahal.script.ApiDoc
 import com.mtwabpin.kolahal.script.ApiDocs
 
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 internal fun EditorButton(label: String, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
     Text(
@@ -70,7 +69,7 @@ internal fun EditorButton(label: String, onLongClick: (() -> Unit)? = null, onCl
 
 /**
  * The editor's Run with (a long press on run): the words to run it with, as `args` when it runs as
- * a command, and an event to run it as, with made-up values ([ScriptMeta.sampleEvent]): its `@on`
+ * a command, and an event to run it as, with made-up values ([com.mtwabpin.kolahal.script.ScriptMeta.sampleEvent]): its `@on`
  * events and `@at` times, or none.
  */
 @Composable
@@ -83,7 +82,7 @@ internal fun RunWithDialog(code: String, onDismiss: () -> Unit, onRun: (List<Str
     var chosen by remember { mutableStateOf<Pair<String, String?>?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Run with", style = Term.code.copy(color = Term.prompt, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)) },
+        title = { Text("Run with", style = Term.code.copy(color = Term.prompt, fontWeight = FontWeight.Bold)) },
         containerColor = Term.surface,
         text = {
             Column {

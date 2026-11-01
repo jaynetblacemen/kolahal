@@ -3,15 +3,32 @@ package com.mtwabpin.kolahal.terminal
 import java.math.BigDecimal
 import java.math.MathContext
 import kotlin.math.abs
+import kotlin.math.acos
+import kotlin.math.asin
+import kotlin.math.atan
+import kotlin.math.cbrt
+import kotlin.math.ceil
+import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.floor
+import kotlin.math.ln
+import kotlin.math.log10
+import kotlin.math.log2
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
+import kotlin.math.tan
 
 /**
  * The `=` calculator's arithmetic, worked out at once on the phone (and shown while you type):
  * `+ - * /` (also `−`, `×`, `x`, `÷`), `^` or `**`, `mod`, `n!`, parentheses, `pi` (`π`), `e`, and
  * sqrt, cbrt, abs, round, floor, ceil, ln, log (base 10), log2, exp, sin, cos, tan, asin, acos,
  * atan (radians; `30°` is degrees), min and max. A percent works as on a phone's calculator:
- * `15%` is 0.15, `80 + 15%` adds 15% of 80, and `15% of 80` is 12; `%` before a number is the
- * remainder (`10 % 3`). `2pi` and `3(4+5)` multiply. Anything else (Lua code) is left to Lua.
+ * `15%` is 0.15, `80 + 15%` adds 15% of 80, `15% of 80` is 12, and `10% - 3` and `10%-3` are
+ * -2.9; `%` before a number is the remainder (`10 % 3`), and before a signed one if it stands apart
+ * from the number before it (`10 % -3`). `2pi`, `3(4+5)` and `3x4` multiply. Commas in a number
+ * read as in [Units.number] (`1,500`, `0,5`), but in a function's parentheses they separate values
+ * (`max(1,500)`). Anything else (Lua code) is left to Lua.
  */
 object Calc {
     /** The answer to [text], or null when it isn't arithmetic this reads. Throws [ArithmeticException] for one with no answer. */
@@ -32,7 +49,7 @@ object Calc {
 
     fun format(v: Double): String {
         if (v == 0.0) return "0"
-        if (abs(v) >= 1e15 || abs(v) < 1e-9) return BigDecimal(v).round(MathContext(10)).stripTrailingZeros().toString().replace("E", "e")
+        if (abs(v) !in 1e-9..<1e15) return BigDecimal(v).round(MathContext(10)).stripTrailingZeros().toString().replace("E", "e")
         return BigDecimal(v).round(MathContext(12)).stripTrailingZeros().toPlainString()
     }
 
@@ -41,8 +58,30 @@ object Calc {
     private data class Word(val w: String) : Token
     private data class Op(val c: String) : Token
 
+    /**
+     * `3x4`: [word] starts with a times sign stuck to the number after it, when a value comes before
+     * it (`2x3x4` reads as one word). But `0x10`, written together, is hexadecimal, for Lua.
+     */
+    private fun timesThenDigits(word: String, before: List<Token>, text: String, at: Int): Boolean {
+        if (!TIMES_THEN_DIGITS.matches(word)) return false
+        val last = before.lastOrNull()
+        return !(last is Num && last.v == 0.0 && text.getOrNull(at - 1) == '0') && (last is Num || last in ENDS_A_VALUE)
+    }
+    private val TIMES_THEN_DIGITS = Regex("(x\\d+)+")
+    private val ENDS_A_VALUE = setOf(Op(")"), Op("!"), Op("%"), Op("°"), Word("pi"), Word("e"))
+
+    /**
+     * `10 % -3`: the `%` at [at] is the remainder when it stands apart from the number before it and
+     * a sign is stuck to the number after it. `10%-3`, `10% -3` and `10 % - 3` are a percent, then a sum.
+     */
+    private fun remainderBeforeSign(text: String, at: Int) =
+        text.getOrNull(at - 1)?.isWhitespace() == true && SIGNED_NUMBER.matchesAt(text, at + 1)
+    private val SIGNED_NUMBER = Regex("""\s*[-+−][\d.(]""")
+
     private fun tokenize(text: String): List<Token>? {
         val out = ArrayList<Token>()
+        // How deep in a function's parentheses, where a comma separates values.
+        var inFunction = 0
         var i = 0
         while (i < text.length) {
             val c = text[i]
@@ -50,7 +89,9 @@ object Calc {
                 c.isWhitespace() -> i++
                 c.isDigit() || (c == '.' && i + 1 < text.length && text[i + 1].isDigit()) -> {
                     var j = i
-                    while (j < text.length && (text[j].isDigit() || text[j] == '.')) j++
+                    // A comma between digits belongs to the number (`1,500`), except in a function's parentheses.
+                    fun commaInNumber() = text[j] == ',' && inFunction == 0 && text.getOrNull(j + 1)?.isDigit() == true
+                    while (j < text.length && (text[j].isDigit() || text[j] == '.' || commaInNumber())) j++
                     // An exponent only when digits follow: `2e` is 2 × e.
                     if (j < text.length && (text[j] == 'e' || text[j] == 'E')) {
                         val k = if (j + 1 < text.length && (text[j + 1] == '+' || text[j + 1] == '-')) j + 2 else j + 1
@@ -59,16 +100,23 @@ object Calc {
                             while (j < text.length && text[j].isDigit()) j++
                         }
                     }
-                    out += Num(text.substring(i, j).toDoubleOrNull() ?: return null)
+                    out += Num(Units.number(text.substring(i, j)) ?: return null)
                     i = j
                 }
                 c.isLetter() && c != 'π' -> {
                     var j = i
                     while (j < text.length && text[j].isLetterOrDigit() && text[j] != 'π') j++
-                    out += Word(text.substring(i, j).lowercase())
-                    i = j
+                    val word = text.substring(i, j).lowercase()
+                    if (timesThenDigits(word, out, text, i)) {
+                        out += Word("x")
+                        i++
+                    } else {
+                        out += Word(word)
+                        i = j
+                    }
                 }
                 c == 'π' -> { out += Word("pi"); i++ }
+                c == '%' && remainderBeforeSign(text, i) -> { out += Word("mod"); i++ }
                 c == '*' && text.getOrNull(i + 1) == '*' -> { out += Op("^"); i += 2 }
                 else -> {
                     val op = when (c) {
@@ -80,6 +128,8 @@ object Calc {
                         '(', ')', '!', '%', '°', ',' -> c.toString()
                         else -> return null
                     }
+                    if (c == '(' && (inFunction > 0 || (out.lastOrNull() as? Word)?.w in FUNCTIONS)) inFunction++
+                    if (c == ')' && inFunction > 0) inFunction--
                     out += Op(op)
                     i++
                 }
@@ -145,7 +195,7 @@ object Calc {
             val base = postfix()
             if (!isOp("^")) return base
             pos++
-            return Value(Math.pow(base.value, unary().value))
+            return Value(base.value.pow(unary().value))
         }
 
         private fun postfix(): Value {
@@ -165,7 +215,7 @@ object Calc {
             val t = tokens.getOrNull(pos++) ?: throw IllegalStateException("ends early")
             return when (t) {
                 is Num -> Value(t.v)
-                is Op -> if (t.c == "(") expression().also { expect(")") } else throw IllegalStateException("unexpected ${t.c}")
+                is Op -> if (t.c == "(") expression().also { expectClose() } else throw IllegalStateException("unexpected ${t.c}")
                 is Word -> when (t.w) {
                     "pi" -> Value(Math.PI)
                     "e" -> Value(Math.E)
@@ -181,13 +231,13 @@ object Calc {
             pos++
             val args = arrayListOf(expression().value)
             while (isOp(",")) { pos++; args += expression().value }
-            expect(")")
+            expectClose()
             if (name !in MANY && args.size != 1) throw IllegalStateException("$name takes one value")
             return args
         }
 
-        private fun expect(c: String) {
-            if (!isOp(c)) throw IllegalStateException("expected $c")
+        private fun expectClose() {
+            if (!isOp(")")) throw IllegalStateException("expected )")
             pos++
         }
     }
@@ -201,22 +251,22 @@ object Calc {
     private val MANY = setOf("min", "max")
 
     private val FUNCTIONS: Map<String, (List<Double>) -> Double> = mapOf(
-        "sqrt" to { a -> Math.sqrt(a[0]) },
-        "cbrt" to { a -> Math.cbrt(a[0]) },
+        "sqrt" to { a -> sqrt(a[0]) },
+        "cbrt" to { a -> cbrt(a[0]) },
         "abs" to { a -> abs(a[0]) },
-        "round" to { a -> Math.round(a[0]).toDouble() },
+        "round" to { a -> floor(a[0]).let { f -> if (a[0] - f >= 0.5) f + 1 else f } },
         "floor" to { a -> floor(a[0]) },
-        "ceil" to { a -> Math.ceil(a[0]) },
-        "ln" to { a -> Math.log(a[0]) },
-        "log" to { a -> Math.log10(a[0]) },
-        "log2" to { a -> Math.log(a[0]) / Math.log(2.0) },
-        "exp" to { a -> Math.exp(a[0]) },
-        "sin" to { a -> Math.sin(a[0]) },
-        "cos" to { a -> Math.cos(a[0]) },
-        "tan" to { a -> Math.tan(a[0]) },
-        "asin" to { a -> Math.asin(a[0]) },
-        "acos" to { a -> Math.acos(a[0]) },
-        "atan" to { a -> Math.atan(a[0]) },
+        "ceil" to { a -> ceil(a[0]) },
+        "ln" to { a -> ln(a[0]) },
+        "log" to { a -> log10(a[0]) },
+        "log2" to { a -> log2(a[0]) },
+        "exp" to { a -> exp(a[0]) },
+        "sin" to { a -> sin(a[0]) },
+        "cos" to { a -> cos(a[0]) },
+        "tan" to { a -> tan(a[0]) },
+        "asin" to { a -> asin(a[0]) },
+        "acos" to { a -> acos(a[0]) },
+        "atan" to { a -> atan(a[0]) },
         "min" to { a -> a.min() },
         "max" to { a -> a.max() },
     )

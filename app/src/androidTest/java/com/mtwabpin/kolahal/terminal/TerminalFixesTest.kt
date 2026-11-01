@@ -124,6 +124,14 @@ class TerminalFixesTest {
         assertTrue(first != second)
     }
 
+    /** `tfhf|count` is the alias and a filter: no spaces needed, and the alias's own pipe still applies. */
+    @Test fun anAliasTakesAPipeWithNoSpace() {
+        run("alias tfhf = help | grep feed")
+        val some = run("tfhf").size
+        assertTrue(some > 0)
+        assertEquals(listOf("$some"), run("tfhf|count").map { it.text })
+    }
+
     /** `alias hf = help | grep feed`: the pipe is the alias's, for when hf runs. */
     @Test fun anAliasKeepsItsPipe() {
         run("alias tfhf = help | grep feed")
@@ -316,9 +324,10 @@ class TerminalFixesTest {
         val command = vm.entries.value.single { it.text == "tf echo" }
         val delete = vm.actionsFor(command).single { it.label == "Delete command and output" }
         instrumentation.runOnMainSync { delete.run() }
-        waitUntil("the block goes") { logs.recent(50).none { it.text == "tf echo" } }
-        val left = logs.recent(50).map { it.text }.filter { it.startsWith("tf ") }
-        assertEquals(listOf("tf script", "tf installed"), left)
-        logs.recent(50).filter { it.text in left }.forEach { logs.delete(it.id) }
+        fun left() = logs.recent(50).map { it.text }.filter { it.startsWith("tf ") }
+        // They go one at a time.
+        waitUntil("the block goes") { left().size <= 2 }
+        assertEquals(listOf("tf script", "tf installed"), left())
+        logs.recent(50).filter { it.text.startsWith("tf ") }.forEach { logs.delete(it.id) }
     }
 }

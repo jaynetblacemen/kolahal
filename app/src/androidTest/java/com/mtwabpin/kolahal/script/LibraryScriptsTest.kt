@@ -28,14 +28,14 @@ class LibraryScriptsTest {
     private val store = KvStore(context, ScriptRepository.scopeOf(id))
     private val status = KvStore(context, HostApi.STATUS_SCOPE)
 
-    /** [options]: the ones you set; the rest are the script's defaults. */
-    private fun run(file: String, argline: String = "", event: Map<String, Any?>? = null, options: Map<String, String> = emptyMap()) {
+    /** [options]: the ones you set; the rest are the script's defaults. [before]: code to run first, such as a stand-in for the network. */
+    private fun run(file: String, argline: String = "", event: Map<String, Any?>? = null, options: Map<String, String> = emptyMap(), before: String = "") {
         lines().forEach { logs.delete(it.id) }
         val entry = library.entries.single { it.file == file }
         val declared = ScriptMeta.options(library.code(entry)).associate { it.name to it.default }
         val host = HostApi(context, name, scriptId = id, notifyEnabled = false, options = declared + options)
         val args = argline.split(' ').filter(String::isNotEmpty)
-        runBlocking { ScriptEngine.forLang(entry.lang).run(library.code(entry), name, host, 10_000, false, args, event) }
+        runBlocking { ScriptEngine.forLang(entry.lang).run(before + library.code(entry), name, host, 10_000, false, args, event) }
         host.flush()
     }
 
@@ -89,6 +89,41 @@ class LibraryScriptsTest {
         assertEquals("${today.plusDays(5)}: in 5 days", only().first)
         run("countdown.lua")
         assertEquals(3, lines().size)
+    }
+
+    /** 5 November comes before the 20th, and is the nearest, however it was typed. */
+    @Test fun countdownSortsByTheDayNotTheText() {
+        val year = LocalDate.now().year + 1
+        run("countdown.lua", "add $year-11-20 Later")
+        run("countdown.lua", "add $year-11-5 Sooner")
+        run("countdown.lua")
+        assertEquals(listOf("1. Sooner", "2. Later"), lines().map { it.text.let(StyledText::plain).substringBeforeLast("  ").trim() })
+        assertEquals(true, status.get(name).orEmpty().contains("Sooner"))
+    }
+
+    /** A network that answers with [body], and a notify that says so in the log. */
+    private fun standIns(body: String) =
+        "const http = { get: async () => ({ ok: true, status: 200, body: ${com.mtwabpin.kolahal.script.Json.stringify(body)} }) };\n" +
+            "const notify = (title) => log('notified ' + title);\n"
+
+    /** Typed, the quote is on screen; the notification is for its daily time. */
+    @Test fun quoteNotifiesOnlyAtItsTime() {
+        val before = standIns("""[{"q":"Be kind","a":"Someone"}]""")
+        run("quote.js", before = before)
+        assertEquals(listOf("“Be kind”"), lines().map { it.text.let(StyledText::plain) })
+        run("quote.js", event = at("08:00"), before = before)
+        assertEquals(setOf("“Be kind”", "notified Someone"), lines().map { it.text.let(StyledText::plain) }.toSet())
+    }
+
+    /** 10 hours and 59.5 minutes reads as 11 hours, not "10h 60m". */
+    @Test fun sunsDayLengthRoundsAsAWhole() {
+        fun length(secs: Int): String {
+            run("sun.js", "12.97 77.59", before = standIns("""{"daily":{"sunrise":["2026-10-16T06:12"],"sunset":["2026-10-16T17:12"],"daylight_duration":[$secs]}}"""))
+            return only().second.orEmpty().let(StyledText::plain).substringAfterLast(" · ")
+        }
+        assertEquals("11h 0m of daylight", length(39_570))
+        assertEquals("10h 50m of daylight", length(39_000))
+        assertEquals("10h 59m of daylight", length(39_569))
     }
 
     @Test fun releasesWatchesAndListsRepos() {

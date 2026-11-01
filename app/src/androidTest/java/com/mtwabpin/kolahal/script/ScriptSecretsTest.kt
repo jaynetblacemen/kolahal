@@ -3,6 +3,7 @@ package com.mtwabpin.kolahal.script
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mtwabpin.kolahal.data.ScriptLang
+import com.mtwabpin.kolahal.data.KvStore
 import com.mtwabpin.kolahal.data.ScriptRepository
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.junit.After
@@ -80,6 +81,73 @@ class ScriptSecretsTest {
         refused<IllegalArgumentException>("Host header") { h.httpGet("https://api.example.com/", mapOf("Host" to "evil.example")) }
         refused<java.io.IOException>("may only be sent to") {
             h.httpRequest("https://evil.example/", method = "POST", body = "{\"k\":\"$mark\"}")
+        }
+    }
+
+    /** Answers every request with [body], on this phone, for [block] to fetch. */
+    private fun serving(body: String, block: (String) -> Unit) {
+        val socket = java.net.ServerSocket(0, 50, java.net.InetAddress.getByName("127.0.0.1"))
+        kotlin.concurrent.thread(isDaemon = true) {
+            while (!socket.isClosed) {
+                val client = runCatching { socket.accept() }.getOrNull() ?: break
+                client.use { c ->
+                    val reader = c.getInputStream().bufferedReader()
+                    while (reader.readLine()?.isNotEmpty() == true) Unit
+                    val bytes = body.toByteArray()
+                    c.getOutputStream().write("HTTP/1.1 200 OK\r\nContent-Length: ${bytes.size}\r\nConnection: close\r\n\r\n".toByteArray() + bytes)
+                }
+            }
+        }
+        val url = "http://127.0.0.1:${socket.localPort}/"
+        try {
+            block(url)
+        } finally {
+            socket.close()
+            listOf("http.cache:", "rss.seen:").forEach { KvStore(context, "repl").deleteStartingWith(it) }
+        }
+    }
+
+    /** A store goes into backups: a site sending the key back must not put it there. */
+    @Test fun aResponseHoldingASecretIsntCached() {
+        val body = "{\"next\":\"https://api.example.com/?key=$value\"}"
+        serving(body) { url ->
+            val h = host()
+            assertEquals(body, h.httpCached(url, 60)["body"])
+            assertNull(h.storeGet("http.cache:$url"))
+            assertEquals(false, h.httpCached(url, 60)["cached"])
+        }
+        serving("{\"plain\":1}") { url ->
+            val h = host()
+            h.httpCached(url, 60)
+            assertEquals(true, h.httpCached(url, 60)["cached"])
+        }
+    }
+
+    /** One kept before these stayed out goes the next time the script asks, fresh or not, and isn't handed back. */
+    @Test fun aResponseCachedWithASecretGoes() {
+        val plain = "{\"plain\":1}"
+        serving(plain) { url ->
+            val h = host()
+            val kept = KvStore(context, "repl")
+            kept.set("http.cache:$url", Json.stringify(mapOf("at" to System.currentTimeMillis(), "body" to "key=$value")))
+            val answer = h.httpCached(url, 60)
+            assertEquals(false, answer["cached"])
+            assertEquals(plain, answer["body"])
+            assertTrue(!kept.get("http.cache:$url").orEmpty().contains(value))
+        }
+    }
+
+    @Test fun aFeedItemsSecretIsMaskedAndTheItemStillSeen() {
+        val rss = "<rss version=\"2.0\"><channel><title>t</title><item><title>a</title>" +
+            "<link>https://example.com/a?token=$value</link><guid>https://example.com/a?token=$value</guid></item></channel></rss>"
+        serving(rss) { url ->
+            val first = host()
+            assertEquals(1, (first.rssFresh(url)["items"] as List<*>).size)
+            first.commit()
+            val stored = first.storeGet("rss.seen:$url").orEmpty()
+            assertFalse(stored, stored.contains(value))
+            assertTrue(stored, stored.contains("••••"))
+            assertEquals("seen by the next run", 0, (host().rssFresh(url)["items"] as List<*>).size)
         }
     }
 

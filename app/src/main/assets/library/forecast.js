@@ -84,7 +84,7 @@ for (let i = 0; i < d.time.length; i++) {
 const width = (key) => Math.max(0, ...rows.map((r) => r[key].length));
 const [dayWidth, skyWidth, tempWidth] = [width("label"), width("sky"), width("temp")];
 const days = rows.map((r) => {
-  // A likely-rain day in the warning colour: padded first, so the colour's markers don't shift the column.
+  // A likely-rain day in the warning colour: the last column, so the colour's markers can't shift another.
   const rainText = r.rain != null ? `rain ${r.rain}%` : "";
   const rain = r.rain != null && r.rain >= 60 ? fmt.color("warn", rainText) : rainText;
   return `${fmt.bold(r.label.padEnd(dayWidth))}  ${r.sky.padEnd(skyWidth)}  ${r.temp.padEnd(tempWidth)}  ${rain}`.trimEnd();

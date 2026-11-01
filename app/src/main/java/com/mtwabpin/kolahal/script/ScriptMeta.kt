@@ -5,10 +5,10 @@ package com.mtwabpin.kolahal.script
  *
  *   -- @command            (or `// @command` in JS) — the script can be run from the prompt by name
  *   -- @desc <text>        — one-line description shown in `help` and suggestions
- *   -- @usage [args]       — the arguments, written like a built-in usage line (`[random|<number>]`);
+ *   -- @usage <args>       — the arguments, written like a built-in usage line (`[random|<number>]`);
  *                            empty when there are none. Drives suggestions and `launch.instant`
  *   -- @on <event>[, ...]  — run when a device event happens (see [EVENTS]); the payload is `event`
- *   -- @uses <what>[, ...] — private data or reach it needs (see [USES]); without it those calls fail
+ *   -- @uses <what>[, ...] — what it needs (see [USES]); without it those calls fail
  *   -- @secret <NAME> <site> <description> — a key you set, read with secrets.get, sent only to <site> ([Secret])
  *   -- @option <name> <default> <description> — a setting you change without editing it, read as options.<name> ([Option])
  *
@@ -30,12 +30,12 @@ object ScriptMeta {
 
     /**
      * What a script may ask for with `@uses`: `notifications` (notifications.recent and the
-     * `@on notification` trigger), `clipboard`, `apps` (apps.list), `lan` (http to the local
-     * network or this device), `commands` (launcher.run: terminal commands and other scripts),
+     * `@on notification` trigger), `clipboard`, `apps` (apps.list), `commands` (launcher.run:
+     * terminal commands and other scripts),
      * `dnd` (device.dnd and device.setDnd: Do Not Disturb) and `work` (device.work and
      * device.setWork: the work profile). The user allows each one ([ScriptAccess]).
      */
-    val USES = listOf("notifications", "clipboard", "apps", "lan", "commands", "dnd", "work")
+    val USES = listOf("notifications", "clipboard", "apps", "commands", "dnd", "work")
 
     /** Known names from every `@uses` line; unknown ones are ignored. */
     fun uses(code: String): Set<String> {
@@ -58,7 +58,7 @@ object ScriptMeta {
         "unplug" -> mapOf("name" to name, "level" to 64)
         "notification" -> mapOf(
             "name" to name, "app" to "Messages", "pkg" to "com.google.android.apps.messaging",
-            "title" to "Asha", "text" to "Running late, there in 10", "time" to System.currentTimeMillis(),
+            "title" to "Alice", "text" to "Running late, there in 10", "time" to System.currentTimeMillis(),
         )
         "headset" -> mapOf("name" to name, "type" to "wired", "device" to "Headset", "mic" to true)
         "wifi" -> mapOf("name" to name, "network" to "wifi")
@@ -148,9 +148,6 @@ object ScriptMeta {
 
     fun version(code: String): String? = value(code, "version")
 
-    fun tags(code: String): List<String> =
-        value(code, "tags")?.split(',')?.map { it.trim().lowercase() }?.filter { it.isNotEmpty() }?.distinct().orEmpty()
-
     /** `@every 1h`: the interval it suggests, in minutes; null without one (or `off`). */
     fun every(code: String): Int? =
         value(code, "every")?.let { com.mtwabpin.kolahal.terminal.CommandParsing.parseInterval(it) }?.takeIf { it > 0 }
@@ -159,6 +156,33 @@ object ScriptMeta {
     fun at(code: String): List<String> =
         value(code, "at")?.split(',', ' ')?.filter { it.isNotBlank() }?.mapNotNull(ScriptScheduler::normalizeTime)
             ?.distinct()?.sorted().orEmpty()
+
+    /**
+     * A script's interval, [current] now, once its code goes from [old] to [new]: a new or changed
+     * `@every` line sets it, one taken out takes back what it had set (a timer set in the sheet stays).
+     */
+    fun intervalAfter(old: String, new: String, current: Int): Int {
+        val was = every(old)?.coerceAtLeast(ScriptScheduler.MIN_INTERVAL_MIN)
+        val now = every(new)?.coerceAtLeast(ScriptScheduler.MIN_INTERVAL_MIN)
+        return when {
+            now == was -> current
+            now != null -> now
+            current == was -> 0
+            else -> current
+        }
+    }
+
+    /** A script's daily times, [current] now, once its code goes from [old] to [new]: [intervalAfter]'s rule, for `@at` lines. */
+    fun timesAfter(old: String, new: String, current: List<String>): List<String> {
+        val was = at(old)
+        val now = at(new)
+        return when {
+            now == was -> current
+            now.isNotEmpty() -> now
+            current.sorted() == was -> emptyList()
+            else -> current
+        }
+    }
 
     /** `@notify`: it suggests letting it post notifications. */
     fun notifies(code: String): Boolean = Regex("""^\s*(--|//)\s*@notify\b""", RegexOption.MULTILINE).containsMatchIn(code)

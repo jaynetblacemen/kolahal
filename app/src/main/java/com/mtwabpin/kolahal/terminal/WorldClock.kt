@@ -5,6 +5,7 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.abs
 
 /**
  * `date <place>`: the time somewhere else. A place is a city from the time-zone database (`tokyo`,
@@ -21,12 +22,13 @@ object WorldClock {
 
     /** Every city in the time-zone database, by name; a name that several ids share (links) is listed once. */
     private val places: List<Place> by lazy {
-        ZoneId.getAvailableZoneIds()
+        ZoneId.getAvailableZoneIds().asSequence()
             .filter { '/' in it && !it.startsWith("Etc/") && !it.startsWith("SystemV/") }
             .sortedWith(compareBy({ it.length }, { it }))
             .map { Place(it.substringAfterLast('/').replace('_', ' '), ZoneId.of(it)) }
             .distinctBy { key(it.name) }
             .sortedBy { it.name }
+            .toList()
     }
 
     private fun key(s: String) = s.lowercase().filter { it.isLetterOrDigit() }
@@ -69,7 +71,7 @@ object WorldClock {
         val local = now.atZone(here)
         val time = there.format(DateTimeFormatter.ofPattern(if (clock24) "HH:mm" else "h:mm a", locale))
         val minutes = (there.offset.totalSeconds - local.offset.totalSeconds) / 60
-        val apart = Math.abs(minutes).let { m -> "${m / 60}h" + if (m % 60 == 0) "" else (m % 60).toString().padStart(2, '0') }
+        val apart = abs(minutes).let { m -> "${m / 60}h" + if (m % 60 == 0) "" else (m % 60).toString().padStart(2, '0') }
         val relative = when {
             minutes == 0 -> "same time"
             minutes > 0 -> "$apart ahead"

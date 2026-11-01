@@ -8,7 +8,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -49,7 +48,6 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.SheetValue
@@ -59,6 +57,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDialog
 import androidx.compose.material3.rememberTimePickerState
@@ -119,8 +119,9 @@ import com.mtwabpin.kolahal.terminal.Screen
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToLong
 
-private val INTERVALS = listOf(0 to "Off", 15 to "15m", 30 to "30m", 60 to "1h", 180 to "3h", 360 to "6h", 720 to "12h", 1440 to "1d")
+private val INTERVALS = listOf(0 to "Off", 15 to "15 minutes", 30 to "30 minutes", 60 to "1 hour", 180 to "3 hours", 360 to "6 hours", 720 to "12 hours", 1440 to "1 day")
 
 /** A library script with its state against what is installed, and its `@on` events. */
 private class LibRow(val entry: ScriptLibrary.Entry, val state: ScriptLibrary.State, val events: List<String>)
@@ -148,7 +149,7 @@ private class ScriptState(val inHeader: Boolean, val needsKey: Boolean, val diff
 private class ScriptFilter(val id: String, val label: String, val keeps: (info: ScriptInfo, state: ScriptState) -> Boolean)
 
 /** Short names for what scripts use, in chips. */
-private val USES_SHORT = mapOf("notifications" to "notifications", "clipboard" to "clipboard", "apps" to "apps", "lan" to "local network", "commands" to "commands", "dnd" to "Do Not Disturb", "work" to "work profile")
+private val USES_SHORT = mapOf("notifications" to "notifications", "clipboard" to "clipboard", "apps" to "apps", "commands" to "commands", "dnd" to "Do Not Disturb", "work" to "work profile")
 
 private val SCRIPT_FILTERS = listOf(
     ScriptFilter("commands", "Commands") { s, _ -> s.isCommand },
@@ -167,7 +168,7 @@ private val SCRIPT_FILTERS = listOf(
  * access), filtered by chips and search. Add script holds new, library, shared and imported ones;
  * a card opens the script's sheet.
  */
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScriptsScreen(
     vm: TerminalViewModel,
@@ -217,7 +218,7 @@ fun ScriptsScreen(
     }
     val libByName = remember(library) { library.orEmpty().associateBy { it.entry.name } }
     // Shared scripts with a newer version, from the list kept by Get more scripts (no download here).
-    val sharedUpdates by produceState(emptyMap<String, ScriptCatalog.Entry>(), scripts) {
+    val sharedUpdates by produceState(emptyMap(), scripts) {
         value = withContext(Dispatchers.IO) {
             vm.scriptCatalog.cached().orEmpty()
                 .filter { vm.scriptCatalog.state(it, scripts) == ScriptCatalog.State.UPDATE_AVAILABLE }.associateBy { it.name }
@@ -227,7 +228,7 @@ fun ScriptsScreen(
     val infos = remember(scripts) { scripts.map(::ScriptInfo) }
     // Declared secrets with no value yet, by script name.
     val secretsVersion by vm.secretsVersion.collectAsStateWithLifecycle()
-    val missingKeys by produceState(emptyMap<String, List<String>>(), infos, secretsVersion) {
+    val missingKeys by produceState(emptyMap(), infos, secretsVersion) {
         value = withContext(Dispatchers.IO) {
             infos.filter { it.secrets.isNotEmpty() }
                 .associate { i -> i.script.name to (i.secrets.map { it.name } - vm.secretsSet(i.script)) }
@@ -306,7 +307,8 @@ fun ScriptsScreen(
                 item(key = "tabs") { FeatureTabs(vm, Screen.SCRIPTS) }
                 if (searching) {
                     item(key = "search") {
-                        OutlinedTextField(
+                        TextField(
+                            colors = fieldColors(),
                             value = query,
                             onValueChange = { query = it },
                             placeholder = { Text("Search by name, title or description") },
@@ -453,10 +455,11 @@ private fun schedule(s: Script, isCommand: Boolean, events: List<String>): Strin
 private fun Script.failed() = lastStatus?.let { it.startsWith("error") || it.startsWith("stopped") || it == "timeout" } == true
 
 /** When a switched-on script runs next on its own: its next daily time, or about one interval after its last run. */
-private fun nextRun(s: Script, now: Long = System.currentTimeMillis()): Pair<Long, Boolean>? {
+private fun nextRun(s: Script): Pair<Long, Boolean>? {
     if (!s.enabled) return null
+    val now = System.currentTimeMillis()
     // To the minute: the daily time itself, not a few seconds before it.
-    val daily = s.atTimes.map { Math.round((now + ScriptScheduler.millisUntil(it)) / 60_000.0) * 60_000 }.minOrNull()
+    val daily = s.atTimes.minOfOrNull { ((now + ScriptScheduler.millisUntil(it)) / 60_000.0).roundToLong() * 60_000 }
     val every = if (s.intervalMin > 0) maxOf(now, (s.lastRun ?: now) + s.intervalMin * 60_000L) else null
     return when {
         daily != null && (every == null || daily <= every) -> daily to true
@@ -471,7 +474,6 @@ private fun nextRun(s: Script, now: Long = System.currentTimeMillis()): Pair<Lon
  * details arrow, the switch, and one line of how it runs and how its last run went. Expanded, also
  * its header line, description, next run, usage, events and what it may use.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ScriptCard(
     info: ScriptInfo,
@@ -560,7 +562,6 @@ private fun ScriptCard(
  * do (on or off, a tap switches it), its secrets, and for an edited or older library copy, Compare
  * and Reset or Update.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ScriptDetails(
     info: ScriptInfo,
@@ -681,7 +682,6 @@ private fun OutlinedAction(label: String, icon: Int, height: Dp, iconTint: Color
  * unchanged ones around each, those only in the library version in red and those only in yours in
  * the theme's colour, the rest counted; Reset (or Update) from there.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CompareDialog(vm: TerminalViewModel, s: Script, lib: LibRow, onDismiss: () -> Unit, onReset: () -> Unit) {
     val colors = MaterialTheme.colorScheme
@@ -715,11 +715,10 @@ private fun CompareDialog(vm: TerminalViewModel, s: Script, lib: LibRow, onDismi
                     DiffKey("+ ${lines(added)} only in yours", colors.primaryContainer)
                 }
                 LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(vertical = 8.dp)) {
-                    val shown = hunks
-                    if (shown != null && shown.isEmpty()) item {
+                    if (hunks != null && hunks.isEmpty()) item {
                         Text("No differences", color = colors.onSurfaceVariant, modifier = Modifier.padding(16.dp))
                     }
-                    shown.orEmpty().forEach { hunk ->
+                    hunks.orEmpty().forEach { hunk ->
                         if (hunk.skipped > 0) item {
                             Text(
                                 "⋯ ${lines(hunk.skipped)} the same",
@@ -785,7 +784,6 @@ private fun AccessPill(label: String, on: Boolean, onToggle: () -> Unit) {
 }
 
 /** A card's line of pills under a small [label]: what a script may use, or the events it runs on. */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PillGroup(label: String, pills: @Composable FlowRowScope.() -> Unit) {
     Column {
@@ -794,8 +792,9 @@ private fun PillGroup(label: String, pills: @Composable FlowRowScope.() -> Unit)
     }
 }
 
+/** A label and its value on a script's sheet, whether the script is yours or from the shared list. */
 @Composable
-private fun Fact(label: String, value: String) {
+internal fun Fact(label: String, value: String) {
     Text("$label: $value", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
@@ -858,7 +857,7 @@ fun ScriptLibraryScreen(vm: TerminalViewModel) {
 }
 
 /** Everything about one script: run, edit, export, on/off, notifications, timers, library and delete. */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScriptSheet(
     vm: TerminalViewModel,
@@ -893,7 +892,7 @@ private fun ScriptSheet(
     val notifies = remember(s.code) { ScriptMeta.postsNotifications(s.code) }
     val secrets = remember(s.code) { ScriptMeta.secrets(s.code) }
     val secretsVersion by vm.secretsVersion.collectAsStateWithLifecycle()
-    val secretsSet by produceState(emptySet<String>(), s.code, s.name, secretsVersion) { value = withContext(Dispatchers.IO) { vm.secretsSet(s) } }
+    val secretsSet by produceState(emptySet(), s.code, s.name, secretsVersion) { value = withContext(Dispatchers.IO) { vm.secretsSet(s) } }
     var editingSecret by remember(s.id) { mutableStateOf<ScriptMeta.Secret?>(null) }
     val options = remember(s.code) { ScriptMeta.options(s.code) }
     val optionsVersion by vm.optionsVersion.collectAsStateWithLifecycle()
@@ -1014,20 +1013,12 @@ private fun ScriptSheet(
             }
 
             Spacer(Modifier.height(16.dp))
-            Text("Runs every", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(8.dp))
-            IntervalGroup(s.intervalMin, { vm.setScriptInterval(s, it) }, INTERVALS)
-            if (s.intervalMin > 0 && INTERVALS.none { it.first == s.intervalMin }) {
-                Text(
-                    "Currently every ${CommandParsing.formatInterval(s.intervalMin)} (set from the terminal)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
+            IntervalSelector("Runs every", s.intervalMin, { vm.setScriptInterval(s, it) }, INTERVALS)
 
             Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
+            TextField(
+                shape = TextFieldDefaults.roundedShape,
+                colors = fieldColors(),
                 value = times,
                 onValueChange = { times = it; timesError = false },
                 label = { Text("Daily at") },
@@ -1200,7 +1191,9 @@ internal fun SecretDialog(script: String, secret: ScriptMeta.Secret, isSet: Bool
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                OutlinedTextField(
+                TextField(
+                    shape = TextFieldDefaults.roundedShape,
+                    colors = fieldColors(),
                     value = value,
                     onValueChange = { value = it },
                     singleLine = true,
@@ -1250,7 +1243,9 @@ internal fun OptionDialog(script: String, option: ScriptMeta.Option, current: St
                         }
                     }
                 } else {
-                    OutlinedTextField(
+                    TextField(
+                        shape = TextFieldDefaults.roundedShape,
+                        colors = fieldColors(),
                         value = value,
                         onValueChange = { value = it },
                         singleLine = true,
@@ -1335,7 +1330,9 @@ private fun RenameDialog(s: Script, existing: Set<String>, onDismiss: () -> Unit
         icon = { Icon(painterResource(R.drawable.ic_edit), null) },
         title = { Text("Rename ${s.name}.${s.lang.ext}") },
         text = {
-            OutlinedTextField(
+            TextField(
+                shape = TextFieldDefaults.roundedShape,
+                colors = fieldColors(),
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Name") },
@@ -1365,7 +1362,7 @@ private fun NewScriptDialog(existing: Set<String>, onDismiss: () -> Unit, onCrea
     // The same checks as `script new`, shown while typing.
     val problem = when {
         clean.isEmpty() -> null
-        !Regex("^[a-z0-9_-]{1,40}$").matches(clean) -> "Lowercase letters, digits, - and _"
+        !ScriptNames.NAME.matches(clean) -> "Lowercase letters, digits, - and _"
         clean in builtIns -> "'$clean' is a built-in command"
         clean in existing -> "You already have a script named $clean"
         else -> null
@@ -1377,7 +1374,9 @@ private fun NewScriptDialog(existing: Set<String>, onDismiss: () -> Unit, onCrea
         title = { Text("New script") },
         text = {
             Column {
-                OutlinedTextField(
+                TextField(
+                    shape = TextFieldDefaults.roundedShape,
+                    colors = fieldColors(),
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Name") },

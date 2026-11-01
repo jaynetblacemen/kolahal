@@ -13,13 +13,16 @@ import com.mtwabpin.kolahal.script.ScriptScheduler
  * be kept on a computer, edited there, and imported again.
  *
  * ```
- * { "kolahal": 1,
+ * { "kolahal": 2,
  *   "config":  { "theme.name": "gruvbox", ... },          // only changed settings
  *   "aliases": { "m": "open maps" },
- *   "apps":    { "hidden": ["<component>#<user>"], "labels": { "<component>#<user>": "Name" } },
+ *   "apps":    { "hidden": ["<component>#<user>"], "labels": { "<component>#<user>": "Name" }, "pinned": [...] },
  *   "scripts": [ { "name": "hn", "lang": "lua", "code": "...", "every": 30,
  *                  "at": ["08:00"], "notify": true, "enabled": true,
  *                  "access": { "header": false } } ],                     // only "false" is restored
+ *   "data":    { ... },                                     // everything else: [FullBackup]
+ *   "font":    { "name": "...", "base64": "..." },          // an imported terminal font
+ *   "widgets": [ ... ],                                     // to offer adding them again
  *   "themes":  { "mine": { "background": "#0B0D0B", ... } } }   // made in the theme builder
  * ```
  */
@@ -29,18 +32,29 @@ class Backup(private val context: Context) {
     private val scripts = ScriptRepository.get(context)
 
     fun export(uri: Uri): Int {
+        Files.writeText(context, uri, text())
+        return scripts.all().size
+    }
+
+    /** The whole backup as a file holds it; throws when it's too big to import again. */
+    internal fun text(): String {
         val all = scripts.all()
+        val serials = FullBackup.privateSerials(context)
         val data = mapOf(
             "kolahal" to VERSION,
             "config" to Keys.ALL.filterNot(config::isDefault).associate { it.key to config.display(it) },
             "aliases" to prefs.aliases(),
-            "apps" to mapOf("hidden" to prefs.hiddenKeys(), "labels" to prefs.labels(), "pinned" to prefs.pinned()),
+            "apps" to mapOf(
+                "hidden" to prefs.hiddenKeys().filterNot { FullBackup.isPrivateApp(it, serials) },
+                "labels" to prefs.labels().filterKeys { !FullBackup.isPrivateApp(it, serials) },
+                "pinned" to prefs.pinned().filterNot { FullBackup.isPrivateApp(it, serials) },
+            ),
             "scripts" to all.map {
                 mapOf(
                     "name" to it.name, "lang" to it.lang.ext, "code" to it.code, "every" to it.intervalMin,
                     "at" to it.atTimes, "notify" to it.notify, "enabled" to it.enabled,
                     // Only what you switched off: what a script may use is allowed on each phone.
-                    "access" to it.access.filterValues { !it },
+                    "access" to it.access.filterValues { allowed -> !allowed },
                 )
             },
             // Everything else: todos, notes, reminders, feeds, script stores, log, history.
@@ -60,8 +74,7 @@ class Backup(private val context: Context) {
             "the backup would be $mb MB, more than the ${Files.MAX_BACKUP_BYTES / (1024 * 1024)} MB a backup can be imported at: " +
                 "lower log.keep-lines or clear the log (clear all), then export again"
         }
-        Files.writeText(context, uri, text)
-        return all.size
+        return text
     }
 
     data class Result(
@@ -126,7 +139,7 @@ class Backup(private val context: Context) {
             val lang = m["lang"]?.toString()?.let(ScriptLang::of)
             val code = m["code"]?.toString()
             // Your own scripts: a name an app also has stays (it arrives switched off, as all do).
-            if (name == null || lang == null || code == null || !NAME.matches(name) || name in BUILT_INS) {
+            if (name == null || lang == null || code == null || !com.mtwabpin.kolahal.script.ScriptNames.NAME.matches(name) || name in BUILT_INS) {
                 skipped += "script ${m["name"]}"
                 return@forEach
             }
@@ -195,7 +208,6 @@ class Backup(private val context: Context) {
     companion object {
         const val VERSION = 2
         const val FILE_NAME = "kolahal-backup.json"
-        val NAME = Regex("^[a-z0-9_-]{1,40}$")
         private val BUILT_INS get() = com.mtwabpin.kolahal.terminal.CommandProcessor.RESERVED_NAMES
     }
 }

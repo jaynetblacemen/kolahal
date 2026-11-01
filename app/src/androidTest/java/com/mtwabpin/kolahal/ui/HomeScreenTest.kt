@@ -1,6 +1,9 @@
 package com.mtwabpin.kolahal.ui
 
 import android.app.Application
+import android.os.Build
+import android.os.ParcelFileDescriptor
+import android.os.SystemClock
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -15,6 +18,8 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -34,15 +39,24 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mtwabpin.kolahal.data.Config
 import com.mtwabpin.kolahal.data.Keys
+import com.mtwabpin.kolahal.data.LogContext
+import com.mtwabpin.kolahal.data.LogKind
 import com.mtwabpin.kolahal.data.LogRepository
+import com.mtwabpin.kolahal.terminal.LogRow
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import com.mtwabpin.kolahal.terminal.UiEvent
+import com.mtwabpin.kolahal.terminal.lineTimeFormat
+import java.time.Instant
+import java.time.ZoneId
+import java.util.Date
+import java.util.TimeZone
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.launch
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -65,7 +79,7 @@ class HomeScreenTest {
             // focused prompt) and the system bars are taken out of the window, not of the frame.
             KolahalTheme {
                 Box(Modifier.size(width, height).testTag("frame").consumeWindowInsets(WindowInsets.safeDrawing)) {
-                    TerminalScreen(vm, onRequestNotifications = {}, onPickFolder = {})
+                    TerminalScreen(vm, onPickFolder = {})
                 }
             }
         }
@@ -156,6 +170,85 @@ class HomeScreenTest {
         }
     }
 
+    private fun shell(command: String) =
+        ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command))
+            .bufferedReader().use { it.readText() }
+
+    /** Sets the phone's time zone; false if this device won't let a test do that. */
+    private fun setZone(id: String): Boolean {
+        shell("cmd alarm set-timezone $id")
+        val until = SystemClock.uptimeMillis() + 5_000
+        while (TimeZone.getDefault().id != id && SystemClock.uptimeMillis() < until) Thread.sleep(50)
+        return TimeZone.getDefault().id == id
+    }
+
+    /** The phone changing time zone under a home that stays up: a line's time and day follow at once, as the header's do. */
+    @Test fun theLogFollowsThePhonesTimeZone() {
+        // It changes a real setting, so it never runs on a phone.
+        assumeTrue("only on an emulator", Build.HARDWARE == "ranchu")
+        val logs = LogRepository.get(app)
+        val before = TimeZone.getDefault().id
+        // More than a day apart: the hour and the date both differ.
+        val east = "Pacific/Kiritimati"
+        val west = "Pacific/Pago_Pago"
+        // Only this line shows, and being days old it has a day divider.
+        logs.hideScreen()
+        val at = System.currentTimeMillis() - 3 * 86_400_000L
+        logs.addAll(listOf(LogRepository.Pending(LogKind.COMMAND, "tz line", null, LogContext.EMPTY, at)))
+        val line = logs.recent(limit = 10).single { it.text == "tz line" }.id
+        try {
+            assumeTrue("this device can't set its time zone from a test", setZone(east))
+            val vm = show(360.dp, 700.dp)
+            fun shows(zone: String) {
+                val time = lineTimeFormat(config[Keys.CLOCK_24H]).apply { timeZone = TimeZone.getTimeZone(zone) }.format(Date(at))
+                val day = Instant.ofEpochMilli(at).atZone(ZoneId.of(zone)).toLocalDate()
+                compose.waitUntil(5_000) {
+                    compose.onAllNodes(hasTestTag("line-$line") and hasText(time)).fetchSemanticsNodes().isNotEmpty() &&
+                        vm.rows.value.any { it is LogRow.Day && it.day == day }
+                }
+            }
+            shows(east)
+            assertTrue(setZone(west))
+            shows(west)
+        } finally {
+            shell("cmd alarm set-timezone $before")
+            logs.unhide()
+            logs.delete(line)
+        }
+    }
+
+    /** Changed while another screen is up: the days are right on coming back, with no new line to bring that on. */
+    @Test fun theDaysFollowAZoneThatChangedElsewhere() {
+        assumeTrue("only on an emulator", Build.HARDWARE == "ranchu")
+        val logs = LogRepository.get(app)
+        val before = TimeZone.getDefault().id
+        logs.hideScreen()
+        val at = System.currentTimeMillis() - 3 * 86_400_000L
+        logs.addAll(listOf(LogRepository.Pending(LogKind.COMMAND, "tz away", null, LogContext.EMPTY, at)))
+        val line = logs.recent(limit = 10).single { it.text == "tz away" }.id
+        try {
+            assumeTrue("this device can't set its time zone from a test", setZone("Pacific/Kiritimati"))
+            lateinit var vm: TerminalViewModel
+            compose.runOnUiThread { vm = TerminalViewModel(app, androidx.lifecycle.SavedStateHandle()) }
+            val onHome = androidx.compose.runtime.mutableStateOf(true)
+            compose.setContent { KolahalTheme { if (onHome.value) TerminalScreen(vm, onPickFolder = {}) } }
+            fun shows(zone: String) {
+                val day = Instant.ofEpochMilli(at).atZone(ZoneId.of(zone)).toLocalDate()
+                compose.waitUntil(5_000) { vm.rows.value.any { it is LogRow.Day && it.day == day } }
+            }
+            shows("Pacific/Kiritimati")
+            compose.runOnUiThread { onHome.value = false }
+            compose.waitForIdle()
+            assertTrue(setZone("Pacific/Pago_Pago"))
+            compose.runOnUiThread { onHome.value = true }
+            shows("Pacific/Pago_Pago")
+        } finally {
+            shell("cmd alarm set-timezone $before")
+            logs.unhide()
+            logs.delete(line)
+        }
+    }
+
     /** The header's ⚙ shows no word; a screen reader still has one to say. */
     @Test fun headerSettingsHasANameForScreenReaders() {
         lateinit var vm: TerminalViewModel
@@ -165,7 +258,7 @@ class HomeScreenTest {
         compose.setContent {
             KolahalTheme {
                 Box(Modifier.size(360.dp, 700.dp)) {
-                    TerminalScreen(vm, onRequestNotifications = {}, onPickFolder = {}, preview = TerminalViewModel.Peek(null, typing = false))
+                    TerminalScreen(vm, onPickFolder = {}, preview = TerminalViewModel.Peek(null, typing = false))
                 }
             }
         }

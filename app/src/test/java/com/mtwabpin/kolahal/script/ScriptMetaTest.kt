@@ -80,7 +80,8 @@ class ScriptMetaTest {
 
     @Test fun usesDirective() {
         assertEquals(setOf("notifications", "clipboard"), ScriptMeta.uses("-- @uses notifications, clipboard\nlog(1)"))
-        assertEquals(setOf("lan"), ScriptMeta.uses("// @uses LAN camera\n"))
+        assertEquals(setOf("dnd"), ScriptMeta.uses("// @uses DND camera\n"))
+        assertTrue("gone: an old script's line means nothing", ScriptMeta.uses("-- @uses lan\nlog(1)").isEmpty())
         assertTrue("none declared", ScriptMeta.uses("-- @command\nlog(1)").isEmpty())
     }
 
@@ -88,6 +89,42 @@ class ScriptMetaTest {
         assertEquals("never reads its arguments", "ip", ScriptMeta.usage("-- @command\nlog(http.get('x').body)", "ip"))
         assertNull("reads them: unknown", ScriptMeta.usage("-- @command\nlog(argline)", "w"))
         assertNull(ScriptMeta.usage("// @command\nlog(args[0]);", "w"))
+    }
+
+    /** A new or changed `@every` line sets the interval, one taken out takes back what it had set; else it stays yours. */
+    @Test fun theIntervalFollowsChangesToItsLine() {
+        val hourly = "-- @every 1h\nreturn 1"
+        val none = "return 1"
+        assertEquals("only the rest changed", 120, ScriptMeta.intervalAfter(hourly, "-- @every 1h\nreturn 2", 120))
+        assertEquals("a timer you switched off", 0, ScriptMeta.intervalAfter(hourly, "-- @every 1h\nreturn 2", 0))
+        assertEquals("a new line", 60, ScriptMeta.intervalAfter(none, hourly, 120))
+        assertEquals("a changed line", 30, ScriptMeta.intervalAfter(hourly, "-- @every 30m\nreturn 1", 120))
+        assertEquals("taken out, what it set", 0, ScriptMeta.intervalAfter(hourly, none, 60))
+        assertEquals("taken out, a timer of yours", 120, ScriptMeta.intervalAfter(hourly, none, 120))
+        assertEquals("@every off is no line", 0, ScriptMeta.intervalAfter(hourly, "-- @every off\nreturn 1", 60))
+        assertEquals("no line either way", 120, ScriptMeta.intervalAfter(none, "return 2", 120))
+    }
+
+    /** Android's minimum: a line under it says the minimum, wherever that line is. */
+    @Test fun anIntervalLineCountsAsWhatItCanSet() {
+        assertEquals(15, ScriptMeta.intervalAfter("return 1", "-- @every 5m", 0))
+        assertEquals(0, ScriptMeta.intervalAfter("-- @every 5m", "return 1", 15))
+        assertEquals("the minimum both times", 120, ScriptMeta.intervalAfter("-- @every 5m", "-- @every 10m", 120))
+    }
+
+    /** The same for `@at`, however the times on the line are written. */
+    @Test fun theDailyTimesFollowChangesToTheirLine() {
+        val daily = "-- @at 07:00, 18:30\nreturn 1"
+        val none = "return 1"
+        val yours = listOf("09:00")
+        assertEquals("only the rest changed", yours, ScriptMeta.timesAfter(daily, "-- @at 07:00, 18:30\nreturn 2", yours))
+        assertEquals("times you took off", emptyList<String>(), ScriptMeta.timesAfter(daily, "-- @at 07:00, 18:30\nreturn 2", emptyList()))
+        assertEquals("written another way", yours, ScriptMeta.timesAfter(daily, "-- @at 18:30,7:00\nreturn 1", yours))
+        assertEquals("a new line", listOf("08:00"), ScriptMeta.timesAfter(none, "-- @at 8:00", yours))
+        assertEquals("a changed line", listOf("08:00"), ScriptMeta.timesAfter(daily, "-- @at 08:00", yours))
+        assertEquals("taken out, what it set", emptyList<String>(), ScriptMeta.timesAfter(daily, none, listOf("18:30", "07:00")))
+        assertEquals("taken out, times of yours", yours, ScriptMeta.timesAfter(daily, none, yours))
+        assertEquals("no line either way", yours, ScriptMeta.timesAfter(none, "return 2", yours))
     }
 
     /** Do Not Disturb and the work profile are only for scripts that ask. */

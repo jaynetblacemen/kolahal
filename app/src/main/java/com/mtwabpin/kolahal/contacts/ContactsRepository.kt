@@ -23,6 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlin.time.Duration.Companion.milliseconds
 
 data class Contact(
     val id: Long,
@@ -82,7 +83,7 @@ class ContactsRepository private constructor(private val context: Context) {
     private fun reload(delayMs: Long) {
         reloadJob?.cancel()
         reloadJob = scope.launch {
-            if (delayMs > 0) delay(delayMs)
+            if (delayMs > 0) delay(delayMs.milliseconds)
             if (!hasPermission()) return@launch
             runCatching { _contacts.value = load() }
         }
@@ -163,7 +164,7 @@ class ContactsRepository private constructor(private val context: Context) {
         prefs.edit { putString(KEY_PICKED, a.toString()) }
     }
 
-    /** Name or number matches, favourites first. */
+    /** Name or number matches, the best match first and favourites first among equals. */
     fun search(query: String, limit: Int = 12): List<Contact> {
         val q = query.trim().lowercase()
         if (q.isEmpty()) return emptyList()

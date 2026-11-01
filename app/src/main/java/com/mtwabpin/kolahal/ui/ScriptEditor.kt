@@ -69,11 +69,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Monospace editor for scripts: line numbers, light syntax colouring, undo/redo, find/replace,
  * API completion and inline docs. Saving says what it changed beyond the code (a timer its `@every`
- * line set) and what [ScriptCheck] finds; a run's lines show under the code ([runLines]), and a
+ * line set) and what [com.mtwabpin.kolahal.script.ScriptCheck] finds; a run's lines show under the code ([runLines]), and a
  * long press on run runs it with args or as an event ([RunWithDialog]).
  * Ctrl+S saves, Ctrl+R saves and runs, Ctrl+Z / Ctrl+Shift+Z undo/redo, Ctrl+F find, Ctrl+H replace,
  * F3 / Shift+F3 next/previous match, Ctrl+G go to line, Tab accepts the first suggestion,
@@ -131,11 +132,11 @@ fun ScriptEditor(
             EditorMessage.Kind.ERROR -> Unit
             // A run that never reports (the worker didn't start) stops waiting after the time limit.
             EditorMessage.Kind.BUSY -> {
-                delay(ScriptWorker.TIMEOUT_MS + 15_000)
+                delay((ScriptWorker.TIMEOUT_MS + 15_000).milliseconds)
                 if (message === m) { message = null; runSince = null }
             }
             else -> {
-                delay(3_000)
+                delay(3_000.milliseconds)
                 if (message === m) message = null
             }
         }
@@ -178,7 +179,7 @@ fun ScriptEditor(
         }
     }
 
-    /** "Saved", what saving changed, and the first of what [ScriptCheck] finds (a tap goes to its line). */
+    /** "Saved", what saving changed, and the first of what [com.mtwabpin.kolahal.script.ScriptCheck] finds (a tap goes to its line). */
     fun savedMessage(text: String, changed: String?): EditorMessage {
         val head = listOfNotNull("Saved", changed).joinToString(" · ")
         val issues = com.mtwabpin.kolahal.script.ScriptCheck.check(text, script.lang)
@@ -274,7 +275,7 @@ fun ScriptEditor(
         findOpen = true
         if (withReplace) replaceOpen = true
         scope.launch {
-            delay(50)
+            delay(50.milliseconds)
             runCatching { findFocus.requestFocus() }
         }
     }
@@ -327,7 +328,7 @@ fun ScriptEditor(
             lastSearch = null
             return@LaunchedEffect
         }
-        delay(if (value.text.length > 200_000) 250 else 80)
+        delay((if (value.text.length > 200_000) 250 else 80).milliseconds)
         val text = value.text
         val q = query.text
         val ic = ignoreCase
@@ -383,7 +384,7 @@ fun ScriptEditor(
     LaunchedEffect(script.id) { runCatching { focus.requestFocus() } }
     LaunchedEffect(flashLine) {
         if (flashLine != null) {
-            delay(3_000)
+            delay(3_000.milliseconds)
             flashLine = null
         }
     }

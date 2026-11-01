@@ -156,6 +156,34 @@ class LogRowsTest {
         assertEquals("hn · Tue 20 Oct 09:05:00", lineDetail(old, clock24 = true, now = now, zone = zone, locale = java.util.Locale.UK))
     }
 
+    /** A format keeps the zone it was made in; one made after the phone's zone changed shows the new zone. */
+    @Test
+    fun aLineTimeFormatKeepsTheZoneItWasMadeIn() {
+        val at = java.util.Date(java.time.LocalDateTime.of(2026, 10, 24, 18, 5).toInstant(java.time.ZoneOffset.UTC).toEpochMilli())
+        val before = java.util.TimeZone.getDefault()
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
+            val old = lineTimeFormat(clock24 = true, locale = java.util.Locale.UK)
+            assertEquals("18:05", old.format(at))
+            assertEquals("6:05", lineTimeFormat(clock24 = false, locale = java.util.Locale.UK).format(at))
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Tokyo"))
+            assertEquals("18:05", old.format(at))
+            assertEquals("03:05", lineTimeFormat(clock24 = true, locale = java.util.Locale.UK).format(at))
+        } finally {
+            java.util.TimeZone.setDefault(before)
+        }
+    }
+
+    /** A line's day divider is its day in the zone the rows are built in. */
+    @Test
+    fun aLinesDayIsItsDayInTheZone() {
+        val at = java.time.LocalDateTime.of(2020, 1, 15, 23, 30).toInstant(java.time.ZoneOffset.UTC).toEpochMilli()
+        val entry = LogEntry(1, at, LogKind.INFO, null, "x", LogContext.EMPTY)
+        fun day(zone: String) = buildRows(listOf(entry), zone = java.time.ZoneId.of(zone)).filterIsInstance<LogRow.Day>().single().day
+        assertEquals(java.time.LocalDate.of(2020, 1, 15), day("UTC"))
+        assertEquals(java.time.LocalDate.of(2020, 1, 16), day("Asia/Tokyo"))
+    }
+
     /** A script's or a feed's lines are a group of their own, even right after other lines. */
     @Test
     fun aRunStartsAGroupEvenRightAfterOtherLines() {

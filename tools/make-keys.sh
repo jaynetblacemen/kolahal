@@ -3,8 +3,9 @@
 #
 #   tools/make-keys.sh [directory]   makes both keys, once, outside the repository (default
 #                                    ~/.config/keys), and writes keystore.properties for local builds
-#   tools/make-keys.sh --secrets     stores the keys keystore.properties names as GitHub Actions
-#                                    secrets, for the Release workflow (needs `gh`, logged in)
+#   tools/make-keys.sh --secrets     stores the keys keystore.properties names as secrets of the
+#                                    release environment on GitHub, for the Release workflow (needs
+#                                    `gh`, logged in)
 #
 # release  signs the APKs on GitHub. Given to Google Play (Play app signing → use your own key), it
 #          also signs what people install from Play, so the two kinds of install update each other.
@@ -22,16 +23,16 @@ if [ "${1:-}" = "--secrets" ]; then
     [ -f "$props" ] || { echo "No keystore.properties: make the keys first." >&2; exit 1; }
     command -v gh >/dev/null || { echo "This needs gh, the GitHub command line, logged in." >&2; exit 1; }
     get() { sed -n "s/^$1=//p" "$props"; }
-    put() { printf %s "$2" | gh secret set "$1" --repo mtwabpin/kolahal; }
-    base64 -w0 "$(get storeFile)" | gh secret set RELEASE_KEYSTORE_BASE64 --repo mtwabpin/kolahal
+    put() { printf %s "$2" | gh secret set "$1" --env release --repo mtwabpin/kolahal; }
+    base64 -w0 "$(get storeFile)" | gh secret set RELEASE_KEYSTORE_BASE64 --env release --repo mtwabpin/kolahal
     put RELEASE_STORE_PASSWORD "$(get storePassword)"
     put RELEASE_KEY_ALIAS "$(get keyAlias)"
     put RELEASE_KEY_PASSWORD "$(get keyPassword)"
-    base64 -w0 "$(get uploadStoreFile)" | gh secret set UPLOAD_KEYSTORE_BASE64 --repo mtwabpin/kolahal
+    base64 -w0 "$(get uploadStoreFile)" | gh secret set UPLOAD_KEYSTORE_BASE64 --env release --repo mtwabpin/kolahal
     put UPLOAD_STORE_PASSWORD "$(get uploadStorePassword)"
     put UPLOAD_KEY_ALIAS "$(get uploadKeyAlias)"
     put UPLOAD_KEY_PASSWORD "$(get uploadKeyPassword)"
-    echo "Stored the release and upload keys as GitHub Actions secrets."
+    echo "Stored the release and upload keys as secrets of the release environment."
     exit 0
 fi
 

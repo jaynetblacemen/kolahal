@@ -22,20 +22,20 @@ open gmail -w
 ```sh
 apps                 # grid of chips (alias: ls)
 apps -l              # one per line
-apps work            # one profile: work, personal, private
 apps hidden          # only hidden apps
 apps -a              # include hidden apps
+apps work            # one profile: work, personal, private
 ```
 
-Tap a chip to launch it; long-press for launch, shortcuts, the other-profile copy, app info, copy
-package name, hide and uninstall.
+Tap a chip to launch it; long-press for launch, shortcuts, app info, copy package name, hide,
+uninstall and the other-profile copy.
 
 <Image src={grid} alt="The apps grid: personal apps, then work apps marked W" class="shot shot-single" width={320} />
 
 ## Favourites
 
-Pinned apps lead the suggestion strip whenever the prompt is empty, in the order you
-pinned them, followed by your most-used apps.
+With **Favourites & most-used on empty prompt** (`suggestions.idle`, off by default), pinned apps lead
+the suggestions whenever the prompt is empty, in the order you pinned them, followed by your most-used apps.
 
 ```sh
 pin maps                     # or long-press an app → Pin to favourites

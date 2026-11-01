@@ -43,9 +43,9 @@ class QuietRepostTest {
 
     /** "are you free?" then "never mind, call me now" ten seconds later: both reach the log. */
     @Test fun everyNewMessageIsALine() {
-        val first = 1_000_000L to "Asha — are you free?"
-        assertTrue(isNewLine(first, "Asha — never mind, call me now", first.first + 10_000, message = true))
-        assertFalse(isNewLine(first, "Asha — are you free?", first.first + 10_000, message = true))
+        val first = 1_000_000L to "Alice — are you free?"
+        assertTrue(isNewLine(first, "Alice — never mind, call me now", first.first + 10_000, message = true))
+        assertFalse(isNewLine(first, "Alice — are you free?", first.first + 10_000, message = true))
     }
 
     /** Anything else re-posted with new text keeps its first line for 30 seconds. */

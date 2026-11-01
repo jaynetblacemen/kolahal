@@ -18,7 +18,7 @@ internal object Fuzzy {
         if (q.length < 4) return false
         val max = if (q.length >= 8) 2 else 1
         return names.any { name ->
-            (q.length - 1..q.length + 1).any { n -> n in 1..name.length && distance(q, name.take(n)) <= max }
+            (q.length - max..q.length + max).any { n -> n in 1..name.length && distance(q, name.take(n)) <= max }
         }
     }
 

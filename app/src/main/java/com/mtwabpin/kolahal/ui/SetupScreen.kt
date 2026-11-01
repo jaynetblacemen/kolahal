@@ -24,7 +24,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -35,7 +34,7 @@ import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 
 /**
- * Setup checklist (`setup`, first run, or Settings → Setup checklist). Each unchecked item opens
+ * Setup checklist (`setup`, or Settings → Setup checklist). Each unchecked item opens
  * the right system page; the list refreshes when the user comes back.
  */
 @Composable

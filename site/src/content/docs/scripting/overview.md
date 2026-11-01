@@ -75,8 +75,8 @@ Tap a card for **Run**, **Edit**, **Export**, access, notifications, timers and 
 **Add script** writes a new one, or takes one from the library, from
 [the scripts people share](#getting-scripts-from-others) or from a file.
 
-The script's **return value** is printed into the log (tables and objects as JSON). Each line it
-logs ends with the script's name. When a script fails, the error line is
+The script's **return value** is printed into the log (tables and objects as JSON). The first line
+of a run ends with the script's name, unless it's right under the command that ran it. When a script fails, the error line is
 tappable and opens the editor at the failing line.
 
 ### One-liners
@@ -195,7 +195,7 @@ shows them, and the [library](/scripting/library/) scripts carry them too.
 Scripts run in a separate `:script` process, so a crashing engine can't take down the home screen.
 
 - **60 seconds** per run, and a **64 MB** memory cap. In Lua, `string.rep`
-  refuses results over 16 MB, and a run whose memory grows past 256 MB between checks is stopped
+  refuses results over 16 MB, and a run whose memory grows past 128 MB between checks is stopped
   (the script process is restarted).
 - At most **500 log lines** and **256K characters** per run, error lines and each line's link and
   other details included; past either, one line says the rest weren't logged.
@@ -213,7 +213,7 @@ Scripts run in a separate `:script` process, so a crashing engine can't take dow
 
 ## What a script may use
 
-Your notifications, the clipboard, the list of your apps, your local network, running
+Your notifications, the clipboard, the list of your apps, running
 commands, Do Not Disturb and the work profile are only for scripts that ask, with a `@uses` line at
 the top:
 
@@ -226,15 +226,14 @@ the top:
 | `notifications` | [`notifications.recent`](/scripting/api/#notificationsrecentn) and the `@on notification` trigger |
 | `clipboard` | [`clipboard.get` and `clipboard.set`](/scripting/api/#clipboardget--clipboardsettext) |
 | `apps` | [`apps.list`](/scripting/api/#appslist) |
-| `lan` | `http` requests to this phone or your local network (192.168.…, router pages, a home server) |
 | `commands` | [`launcher.run`](/scripting/api/#launcherruncommand): terminal commands, and other scripts by their names, when you start it from the prompt |
 | `dnd` | [`device.dnd` and `device.setDnd`](/scripting/api/#devicednd--devicesetdndmode): seeing and setting Do Not Disturb |
 | `work` | [`device.work` and `device.setWork`](/scripting/api/#devicework--devicesetworkon): seeing, pausing and resuming the work profile |
 
 Calling one of these without its `@uses` line stops the script with an error saying what to add.
-On Android 17 and newer, reaching your local network also needs Android's
-local network permission: run `local-network` once, or tap the line a blocked request leaves in the
-log. Code you type at the prompt (`lua`, `js`, `=`) may use everything.
+Code you type at the prompt (`lua`, `js`, `=`) may use everything. The internet has no `@uses` line, and
+it takes in every address: a script that may use it can also reach this phone and your local network
+([HTTP](/scripting/api/#http)).
 
 ### Switching access off
 
@@ -252,7 +251,7 @@ stops where it isn't:
 | Internet | stops at its first `http` or `rss` call, with a line to tap to allow it again; its lines carry no links or pictures |
 | Header line | runs as before, but its `status()` line doesn't show |
 | Post notifications | runs as before; `notify()` returns false |
-| An `@uses` item | gets nothing: `apps.list()` and `notifications.recent()` return empty lists, `clipboard.get()` returns nil and `clipboard.set()` does nothing. Switched-off `lan` requests stop the script, and `launcher.run` returns false |
+| An `@uses` item | gets nothing: `apps.list()` and `notifications.recent()` return empty lists, `clipboard.get()` returns nil and `clipboard.set()` does nothing, and `launcher.run` returns false |
 | An `@on` event | doesn't run on that event |
 
 Long-press a script's line in the header for **Hide from header**. In the terminal,

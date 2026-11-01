@@ -51,10 +51,6 @@ class ControlArgsTest {
     }
 
     @Test fun formatting() {
-        assertEquals("30s", ControlArgs.formatDuration(30_000))
-        assertEquals("2m", ControlArgs.formatDuration(120_000))
-        assertEquals("1m 30s", ControlArgs.formatDuration(90_000))
-        assertEquals("1h 30m", ControlArgs.formatDuration(5_400_000))
         assertEquals("1:23", ControlArgs.clock(83_000))
         assertEquals("1:02:03", ControlArgs.clock(3_723_000))
         assertEquals("█████░░░░░", ControlArgs.bar(50))

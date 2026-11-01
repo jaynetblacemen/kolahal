@@ -130,6 +130,25 @@ class CommandProcessorTest {
         assertTrue(run("script new help").single().contains("built-in"))
     }
 
+    /** Commas, spaces or both between the times, as the docs write them and as on an `@at` line. */
+    @Test fun scriptAtForms() {
+        run("script new cptest")
+        fun times() = ScriptRepository.get(context).byName("cptest")!!.atTimes
+        run("script at cptest 22:30, 06:30")
+        assertEquals(listOf("06:30", "22:30"), times())
+        run("script at cptest 9:00 18:30")
+        assertEquals(listOf("09:00", "18:30"), times())
+        run("script at cptest 7:05,19:00")
+        assertEquals(listOf("07:05", "19:00"), times())
+        // A line that's wrong changes nothing: not one good time of it, and a comma alone isn't `off`.
+        assertTrue(run("script at cptest 8:00, 25:00").single().startsWith("Bad time"))
+        assertTrue(run("script at cptest ,").single().startsWith("Usage"))
+        assertTrue(run("script at cptest").single().startsWith("Usage"))
+        assertEquals(listOf("07:05", "19:00"), times())
+        run("script at cptest off")
+        assertEquals(emptyList<String>(), times())
+    }
+
     @Test fun hideAndRenameApp() {
         val app = apps.apps.value.first { it.profile.kind == com.mtwabpin.kolahal.apps.ProfileKind.PERSONAL }
         try {

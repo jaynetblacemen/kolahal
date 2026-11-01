@@ -6,7 +6,7 @@ import android.provider.OpenableColumns
 
 /** Storage Access Framework helpers shared by backup, script import/export and folder sync. */
 object Files {
-    /** Large enough for any script or backup; guards against picking a huge file by mistake. */
+    /** Large enough for any script; guards against picking a huge file by mistake. */
     const val MAX_BYTES = 2 * 1024 * 1024
 
     /** What a full backup may weigh: the log, feed items, script stores and an imported font. */

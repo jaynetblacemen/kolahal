@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.dokar.quickjs.QuickJs
+import com.mtwabpin.kolahal.calls.CallEvents
 import com.mtwabpin.kolahal.apps.AppPrefs
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.script.ScriptLibrary
@@ -246,7 +247,189 @@ class BackupAndLibraryTest {
         }
     }
 
-    /** What this phone knows of its own calls and apps stays out of a backup, and a restore keeps it. */
+    /** Exports and imports as on a phone whose log is new: its ids go on from the newest line restored. */
+    private fun restoreOnANewPhone() {
+        val file = File(context.cacheDir, "kolahal-backup-new-phone.json")
+        try {
+            Backup(context).export(Uri.fromFile(file))
+            Db.get(context).writableDatabase.delete("sqlite_sequence", "name = 'logs'", null)
+            Backup(context).import(Uri.fromFile(file))
+        } finally {
+            file.delete()
+        }
+    }
+
+    /** A line that stays out of backups, as notification lines do. */
+    private fun LogRepository.addPrivate() =
+        add(LogKind.SCRIPT, "bk notification", "bk", LogContext.of(com.mtwabpin.kolahal.notifications.KolahalNotificationListener.CTX_KEY to "1"))
+
+    /** Hidden up to a line that stays behind: what was hidden stays hidden, and the next line shows. */
+    @Test fun aHidePastTheRestoredLinesKeepsNewLinesInView() {
+        val logs = LogRepository.get(context)
+        try {
+            val old = logs.add(LogKind.OUTPUT, "bk old")
+            logs.hideScreen(logs.addPrivate())
+            restoreOnANewPhone()
+            assertTrue(logs.isHidden(old))
+            val new = logs.add(LogKind.OUTPUT, "bk new")
+            assertFalse(logs.isHidden(new))
+            assertTrue(logs.recent(limit = 50).any { it.id == new })
+        } finally {
+            logs.clearAll()
+        }
+    }
+
+    /** A hide within the restored lines comes back as it was: the lines up to it hidden, the rest in view. */
+    @Test fun aHideWithinTheRestoredLinesStaysWhereItWas() {
+        val logs = LogRepository.get(context)
+        try {
+            val hidden = logs.add(LogKind.OUTPUT, "bk hidden")
+            val shown = logs.add(LogKind.OUTPUT, "bk shown")
+            logs.hideScreen(hidden)
+            restoreOnANewPhone()
+            assertTrue(logs.isHidden(hidden))
+            assertFalse(logs.isHidden(shown))
+            assertEquals(listOf(shown), logs.recent(limit = 50).map { it.id }.filter { it == hidden || it == shown })
+        } finally {
+            logs.clearAll()
+        }
+    }
+
+    /** A cleared screen leaves only its commands: they stay out of view and in ↑ history, and the next line shows. */
+    @Test fun aClearPastTheRestoredLinesKeepsNewLinesInView() {
+        val logs = LogRepository.get(context)
+        try {
+            val command = logs.add(LogKind.COMMAND, "bk command")
+            logs.add(LogKind.OUTPUT, "bk output")
+            logs.purgeCleared(logs.clearScreen().upTo)
+            restoreOnANewPhone()
+            assertTrue(logs.recent(limit = 50).none { it.id == command })
+            assertTrue("bk command" in logs.commandHistory())
+            val new = logs.add(LogKind.OUTPUT, "bk new")
+            assertTrue(logs.recent(limit = 50).any { it.id == new })
+        } finally {
+            logs.clearAll()
+        }
+    }
+
+    /** ↑ history emptied at a line that stays behind: it stays empty of the old commands, and new ones are recalled. */
+    @Test fun historyEmptiedPastTheRestoredLinesRecallsNewCommands() {
+        val logs = LogRepository.get(context)
+        try {
+            logs.add(LogKind.COMMAND, "bk old command")
+            logs.addPrivate()
+            logs.clearHistory()
+            restoreOnANewPhone()
+            assertFalse("bk old command" in logs.commandHistory())
+            logs.add(LogKind.COMMAND, "bk new command")
+            assertTrue("bk new command" in logs.commandHistory())
+        } finally {
+            logs.clearAll()
+        }
+    }
+
+    /** Seen up to a line that stays behind: the seen mark, which `log.fresh` hides up to, comes down with it. */
+    @Test fun whatWasSeenStaysWithinTheRestoredLines() {
+        val logs = LogRepository.get(context)
+        try {
+            logs.add(LogKind.OUTPUT, "bk old")
+            val notification = logs.addPrivate()
+            logs.seenUpTo = notification
+            restoreOnANewPhone()
+            assertTrue(logs.seenUpTo < notification)
+        } finally {
+            logs.clearAll()
+        }
+    }
+
+    /** Other people's messages and numbers, and a private space's apps, stay on the phone. */
+    @Test fun privateLinesStayOutOfBackups() {
+        val logs = LogRepository.get(context)
+        val before = logs.maxId()
+        val file = File(context.cacheDir, "kolahal-backup-private.json")
+        val kept = listOf("Launched bkline-plain", "Launched bkline-work [W]", "bkline-word [Sunday] plans", "bkline-brackets [S]a")
+        kept.forEach { logs.add(LogKind.INFO, it) }
+        logs.add(LogKind.INFO, "Launched bkline-launched [S]")
+        logs.add(LogKind.INFO, "Updated bkline-updated [S] ↻\ncom.example\n1.0", "apps")
+        logs.add(LogKind.INFO, "Uninstalled bkline-gone [S] −", "apps")
+        logs.add(LogKind.OUTPUT, "Call from bkline-call", CallEvents.SOURCE)
+        logs.add(LogKind.COMMAND, "call bkline-typed")
+        logs.add(LogKind.COMMAND, "text bkline-sms running late")
+        logs.add(LogKind.COMMAND, "todo bkline-command")
+        logs.add(LogKind.OUTPUT, "bkline-grid, Maps", ctx = LogContext.of(LogContext.APPS to "[]", LogContext.COPY to "bkline-grid [S]\nMaps"))
+        logs.add(LogKind.INFO, "Dialing bkline-number", ctx = LogContext.of(LogContext.PHONE to "5550100"))
+        try {
+            Backup(context).export(Uri.fromFile(file))
+            val text = file.readText()
+            for (line in kept) assertTrue(line, text.contains(line))
+            assertTrue(text.contains("bkline-command"))
+            for (word in listOf("launched", "updated", "gone", "call", "number", "typed", "sms", "grid")) assertFalse(word, text.contains("bkline-$word"))
+        } finally {
+            logs.recent(50).filter { it.id > before }.forEach { logs.delete(it.id) }
+            file.delete()
+        }
+    }
+
+    /** Its apps' pins, labels, hidden flags and launches too, known by the serial in their keys. */
+    @Test fun aPrivateSpacesAppsStayOutOfTheirSettings() {
+        val theirs = "com.bank/.Main#11"
+        val mine = "com.maps/.Main#0"
+        val entries = mapOf(
+            "hidden:$theirs" to mapOf("b" to true), "hidden:$mine" to mapOf("b" to true),
+            "label:$theirs" to mapOf("s" to "x"), "launch:$theirs" to mapOf("s" to "1:2"),
+            "pinned" to mapOf("s" to "$theirs\n$mine"),
+        )
+        val kept = FullBackup.withoutPrivateApps(entries, setOf(11L))
+        assertEquals(setOf("hidden:$mine", "pinned"), kept.keys)
+        assertEquals(mapOf("s" to mine), kept["pinned"])
+        assertEquals(entries, FullBackup.withoutPrivateApps(entries, emptySet()))
+    }
+
+    /** What `http.cached` keeps is only a cache, and one from before 0.4.9 can hold a key. */
+    @Test fun cachedResponsesStayOutOfBackups() {
+        val repo = ScriptRepository.get(context)
+        val script = repo.create("bkcache", ScriptLang.LUA, "log('x')")
+        try {
+            KvStore(context, ScriptRepository.scopeOf(script.id)).apply {
+                set("http.cache:https://example.com/", "a response")
+                set("mine", "kept")
+            }
+            val stores = FullBackup.export(context)["scriptStores"] as Map<*, *>
+            assertEquals(mapOf("mine" to "kept"), stores["bkcache"])
+        } finally {
+            repo.delete(script.id)
+        }
+    }
+
+    /** A private space's line that names no [S]: its profile's serial says so. */
+    @Test fun aPrivateProfilesSerialCountsToo() {
+        val ctx = LogContext.of(LogContext.USER to "11").toJson()
+        val row = mapOf("text" to "Opened something", "source" to null, "ctx" to ctx)
+        assertTrue(FullBackup.private(row, setOf(11L)))
+        assertFalse(FullBackup.private(row, setOf(12L)))
+        assertFalse(FullBackup.private(row, emptySet()))
+    }
+
+    /** A repeat this version can't read must not come back to crash the app when it's due. */
+    @Test fun aReminderRepeatItCantReadComesBackWithoutIt() {
+        val store = com.mtwabpin.kolahal.productivity.ReminderStore.get(context)
+        val good = store.add(System.currentTimeMillis() + 3_600_000, "bkrem-good", "day")
+        val bad = store.add(System.currentTimeMillis() + 3_600_000, "bkrem-bad", "day")
+        try {
+            @Suppress("UNCHECKED_CAST") val data = FullBackup.export(context).toMutableMap()
+            @Suppress("UNCHECKED_CAST") val tables = (data["tables"] as Map<String, Any?>).toMutableMap()
+            @Suppress("UNCHECKED_CAST") val rows = tables["reminders"] as List<Map<String, Any?>>
+            tables["reminders"] = rows.map { if (it["text"] == "bkrem-bad") it + ("repeat_rule" to "biweekly") else it }
+            data["tables"] = tables
+            FullBackup.importRaw(context, data)
+            val back = store.all()
+            assertEquals("day", back.single { it.text == "bkrem-good" }.repeat)
+            assertNull(back.single { it.text == "bkrem-bad" }.repeat)
+        } finally {
+            store.all().filter { it.text.startsWith("bkrem-") }.forEach { store.remove(it.id) }
+        }
+    }
+
     @Test fun thisPhonesRecordsStayOutOfBackups() {
         val packages = KvStore(context, "packages")
         packages.set("bk-device", "this phone")

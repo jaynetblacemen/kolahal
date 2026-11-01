@@ -11,6 +11,40 @@ class TimeSpecTest {
     private val now = LocalDateTime.of(2026, 10, 17, 14, 20, 0)
     private fun parse(s: String) = TimeSpec.parseWhen(s.split(" "), now)
 
+    @Test fun theSmallHoursEndAtSix() {
+        assertEquals(true, TimeSpec.inTheSmallHours(LocalDateTime.of(2026, 10, 18, 0, 0)))
+        assertEquals(true, TimeSpec.inTheSmallHours(LocalDateTime.of(2026, 10, 18, 5, 59)))
+        assertEquals(false, TimeSpec.inTheSmallHours(LocalDateTime.of(2026, 10, 18, 6, 0)))
+        assertEquals(false, TimeSpec.inTheSmallHours(LocalDateTime.of(2026, 10, 18, 23, 0)))
+    }
+
+    /** A bare hour after a day word could be the text's first word instead, at the default time. */
+    @Test fun aBareHourAfterADayWordReadsTwoWays() {
+        fun other(s: String): TimeSpec.Reading? {
+            val tokens = s.split(" ")
+            return TimeSpec.otherReading(tokens, TimeSpec.parseWhen(tokens, now)!!.consumed, now)
+        }
+        assertEquals(TimeSpec.Reading(LocalDateTime.of(2026, 10, 18, 9, 0), "2 tickets"), other("tomorrow 2 tickets"))
+        assertEquals(TimeSpec.Reading(LocalDateTime.of(2026, 10, 23, 9, 0), "3 things to buy"), other("fri 3 things to buy"))
+        assertEquals(TimeSpec.Reading(LocalDateTime.of(2026, 10, 18, 9, 0), "2 tickets"), other("on tomorrow 2 tickets"))
+        // It says what it means: there's no other way to read these.
+        assertNull(other("tomorrow at 2 tickets"))
+        assertNull(other("tomorrow 2am tickets"))
+        assertNull(other("tomorrow 2:00 tickets"))
+        assertNull(other("at 5 tickets"))
+        assertNull(other("5:30 tickets"))
+    }
+
+    /** What a tap on the question sets is what it said, even after midnight. */
+    @Test fun exactWordsReadBackAsTheSameTime() {
+        val at = LocalDateTime.of(2026, 10, 18, 2, 0)
+        assertEquals("2026-10-18 02:00 2 tickets", TimeSpec.exactWords(at, "2 tickets"))
+        val tokens = TimeSpec.exactWords(at, "2 tickets").split(" ")
+        val parsed = TimeSpec.parseWhen(tokens, now.withHour(23))!!
+        assertEquals(at, parsed.at)
+        assertEquals(listOf("2", "tickets"), tokens.drop(parsed.consumed))
+    }
+
     @Test fun minutes() = assertEquals(TimeSpec.Parsed(now.plusMinutes(10), 1), parse("10m tea"))
     @Test fun hours() = assertEquals(now.plusHours(2), parse("2h call")?.at)
     @Test fun combined() = assertEquals(TimeSpec.Parsed(now.plusMinutes(90), 1), parse("1h30m stretch"))
@@ -55,6 +89,28 @@ class TimeSpecTest {
         assertNull(every("every day at nonsense"))
         assertNull(every("daily x"))
     }
+    /** 29 February is a yearly date, the 28th in other years. */
+    @Test fun aYearlyReminderOnTheTwentyNinth() {
+        assertEquals(TimeSpec.Repeating("year:02-29", LocalDateTime.of(2027, 2, 28, 9, 0), 4), every("every year feb 29 leap day"))
+        assertEquals(TimeSpec.Repeating("year:02-29", LocalDateTime.of(2027, 2, 28, 9, 0), 4), every("every year 29 feb leap day"))
+    }
+
+    /** Meant as a date but not one: not today's date, with the date as the reminder's words. */
+    @Test fun aYearlyDateThatCantBeIsRefused() {
+        for (line in listOf("every year feb 30 x", "every year 31 apr x", "every year mar 40 x", "every year mar 14 2027 x", "every year 2027-03-14 x")) {
+            assertNull(line, every(line))
+        }
+    }
+
+    /** No date at all still means today's, every year. */
+    @Test fun aYearlyReminderWithoutADateIsToday() {
+        for (line in listOf("every year march madness", "every year may 5k run")) {
+            val r = every(line)!!
+            assertEquals(line, "year:%02d-%02d".format(now.monthValue, now.dayOfMonth), r.rule)
+            assertEquals(line, 2, r.consumed)
+        }
+    }
+
     @Test fun todayPassedIsRejected() = assertNull(parse("today 9:00 x"))
     @Test fun bareNumberIsNotATime() = assertNull(parse("2 tickets"))
     @Test fun wordsAreNotATime() = assertNull(parse("buy milk"))
@@ -86,6 +142,13 @@ class TimeSpecTest {
         assertEquals("45s", TimeSpec.formatDuration(45))
         assertEquals("1d 1h", TimeSpec.formatDuration(90_000))
         assertEquals("5m", TimeSpec.formatDuration(300))
+        assertEquals("30s", TimeSpec.formatDuration(30))
+        assertEquals("2m", TimeSpec.formatDuration(120))
+        assertEquals("1m 30s", TimeSpec.formatDuration(90))
+        assertEquals("1h 30m", TimeSpec.formatDuration(5_400))
+        assertEquals("2h", TimeSpec.formatDuration(7_200))
+        // Past ten minutes the seconds don't matter, and past a day the minutes don't.
+        assertEquals("12m", TimeSpec.formatDuration(750))
     }
 
     @Test fun refs() {

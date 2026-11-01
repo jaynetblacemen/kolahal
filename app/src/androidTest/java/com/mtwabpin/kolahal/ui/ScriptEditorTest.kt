@@ -55,6 +55,29 @@ class ScriptEditorTest {
 
     private fun line(kind: LogKind, text: String) = LogEntry(1, System.currentTimeMillis(), kind, "edtest", text, LogContext.EMPTY)
 
+    /** The colours the editor drew its code in. */
+    private fun codeColours(): Set<androidx.compose.ui.graphics.Color> {
+        val results = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        compose.onNodeWithTag("editor").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult].action!!.invoke(results)
+        return results.single().layoutInput.text.spanStyles.map { it.item.color }.toSet()
+    }
+
+    /** The phone turning dark with the editor open: the code changes colour along with everything else. */
+    @Test fun codeFollowsTheThemeWhileOpen() {
+        val before = Term.palette
+        try {
+            Term.palette = Palettes.green
+            show()
+            compose.waitForIdle()
+            assertEquals(setOf(Palettes.green.script), codeColours())
+            compose.runOnIdle { Term.palette = Palettes.dracula }
+            compose.waitForIdle()
+            assertEquals(setOf(Palettes.dracula.script), codeColours())
+        } finally {
+            Term.palette = before
+        }
+    }
+
     /** Saving says what it changed beyond the code, and the first thing worth a look, with its line. */
     @Test fun savingSaysWhatItFound() {
         show(changed = "runs every 1h")

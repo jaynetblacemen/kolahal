@@ -3,15 +3,12 @@ package com.mtwabpin.kolahal.terminal
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.provider.AlarmClock
 import android.provider.CalendarContract
 import android.provider.Settings
 import com.mtwabpin.kolahal.data.Config
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.data.LogContext
-import com.mtwabpin.kolahal.data.LogKind
-import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.notify.Notifier
 import com.mtwabpin.kolahal.productivity.Agenda
 import com.mtwabpin.kolahal.productivity.NoteStore
@@ -34,8 +31,7 @@ import java.util.Locale
  * todo, note / notes, remind / reminders, timer, alarm / alarms, stopwatch and agenda.
  * Kept out of [CommandProcessor] so the dispatcher only needs one line per command.
  */
-class ProductivityCommands(private val context: Context, private val ui: TerminalUi) {
-    private val logs = LogRepository.get(context)
+class ProductivityCommands(context: Context, private val ui: TerminalUi) : CommandGroup(context) {
     private val conf = Config.get(context)
     private val todos = TodoStore.get(context)
     private val notes = NoteStore.get(context)
@@ -63,13 +59,6 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
         return true
     }
 
-    private fun out(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.OUTPUT, text, ctx = ctx) }
-    private fun info(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.INFO, text, ctx = ctx) }
-    private fun error(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.ERROR, text, ctx = ctx) }
-
-    private fun startActivity(intent: Intent) {
-        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
 
     private fun words(s: String) = s.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
 
@@ -125,7 +114,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
         val id = todos.add(text)
         val open = todos.open()
         val pos = open.indexOfFirst { it.id == id } + 1
-        todoLine(Todo(id, text, false, System.currentTimeMillis(), null), pos, info = true)
+        todoLine(Todo(id, text, false), pos, info = true)
         info("${open.size} open")
     }
 
@@ -211,7 +200,10 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
     // ---- reminders -----------------------------------------------------------------------------
 
     private fun remind(rest: String) {
-        val w = words(rest)
+        var w = words(rest)
+        // A tap on the question below, or someone who means it.
+        val confirmed = w.firstOrNull()?.lowercase() == "--yes"
+        if (confirmed) w = w.drop(1)
         when (w.firstOrNull()?.lowercase()) {
             null, "ls", "list" -> return listReminders()
             "rm", "cancel", "remove" -> {
@@ -222,7 +214,7 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
                 return info("Cancelled reminder: ${r.text}")
             }
             "exact" -> {
-                if (Build.VERSION.SDK_INT < 31 || ReminderScheduler.canBeExact(context)) return info("Reminders already fire on time")
+                if (ReminderScheduler.canBeExact(context)) return info("Reminders already fire on time")
                 return startActivity(
                     Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.fromParts("package", context.packageName, null))
                 )
@@ -238,8 +230,12 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
             ?: return error("Usage: remind <10m|2h|18:30|tomorrow 9:00|fri 8am|dec 3 10:00|every mon 19:00> <text>")
         val text = w.drop(parsed.consumed).joinToString(" ")
         if (text.isBlank()) return error("What should I remind you of? remind ${w.take(parsed.consumed).joinToString(" ")} <text>")
-        val at = (if (repeating == null) TimeSpec.relativeSeconds(w) else null)?.let { System.currentTimeMillis() + it * 1000 }
-            ?: parsed.at.atZone(zone).toInstant().toEpochMilli()
+        val relative = if (repeating == null) TimeSpec.relativeSeconds(w) else null
+        // A time typed for the small hours asks first; a duration is plainly meant.
+        if (!confirmed && relative == null && TimeSpec.inTheSmallHours(parsed.at)) return askAboutTheSmallHours(w, parsed, repeating, text, now)
+        val at = relative?.let { System.currentTimeMillis() + it * 1000 } ?: parsed.at.atZone(zone).toInstant().toEpochMilli()
+        // The question can be tapped twice.
+        if (confirmed && reminders.all().any { it.at == at && it.text == text && it.repeat == repeating?.rule }) return info("Already set: $text")
         val r = reminders.add(at, text, repeating?.rule)
         ReminderScheduler.schedule(context, r)
         val then = repeating?.let { ", then ${Repeat.label(it.rule)}" }.orEmpty()
@@ -252,6 +248,18 @@ class ProductivityCommands(private val context: Context, private val ui: Termina
         }
         if (!ReminderScheduler.canBeExact(context)) {
             info("Exact alarms are off, so it may be up to an hour late — tap to allow them", LogContext.of(LogContext.RUN to "remind exact"))
+        }
+    }
+
+    /** Says what was read and sets nothing: a tap does, on this reading or on the other one, if there is one. */
+    private fun askAboutTheSmallHours(w: List<String>, parsed: TimeSpec.Parsed, repeating: TimeSpec.Repeating?, text: String, now: LocalDateTime) {
+        fun label(at: LocalDateTime) = whenLabel(at.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
+        val then = repeating?.let { ", then ${Repeat.label(it.rule)}" }.orEmpty()
+        info("Not set yet, as ${label(parsed.at)} is before 6 AM: $text")
+        val words = if (repeating != null) w.joinToString(" ") else TimeSpec.exactWords(parsed.at, text)
+        info("Tap to set it for ${label(parsed.at)}$then", LogContext.of(LogContext.RUN to "remind --yes $words"))
+        TimeSpec.otherReading(w, parsed.consumed, now)?.let {
+            info("Or tap to set it for ${label(it.at)}: ${it.text}", LogContext.of(LogContext.RUN to "remind --yes ${TimeSpec.exactWords(it.at, it.text)}"))
         }
     }
 

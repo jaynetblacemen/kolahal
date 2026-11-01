@@ -2,7 +2,6 @@ package com.mtwabpin.kolahal.terminal
 
 import android.app.WallpaperManager
 import android.content.Intent
-import android.os.Build
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mtwabpin.kolahal.apps.AppPrefs
@@ -123,6 +122,61 @@ class CommandFamiliesTest {
         assertTrue(run("remind someday x").single().startsWith("Usage: remind"))
     }
 
+    /** A time typed for before 6 AM sets nothing until it's tapped, and says what else it could mean. */
+    @Test fun aTimeBeforeSixAsksFirst() {
+        val store = com.mtwabpin.kolahal.productivity.ReminderStore.get(context)
+        fun mine() = store.all().filter { "cptest" in it.text }
+        fun time(r: com.mtwabpin.kolahal.productivity.Reminder) =
+            java.time.Instant.ofEpochMilli(r.at).atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+        fun cancelAll() = mine().forEach {
+            com.mtwabpin.kolahal.productivity.ReminderScheduler.cancel(context, it.id)
+            store.remove(it.id)
+        }
+        /** What tapping the newest line starting with [start] runs. */
+        fun tap(start: String) = run(logs.recent(20).last { it.text.startsWith(start) }.ctx.values.getValue(com.mtwabpin.kolahal.data.LogContext.RUN))
+        try {
+            val asked = run("remind tomorrow 2 cptest tickets")
+            assertEquals(asked.toString(), 3, asked.size)
+            assertTrue(asked[0], asked[0].startsWith("Not set yet, as tomorrow ") && asked[0].endsWith(" is before 6 AM: cptest tickets"))
+            assertTrue(asked[1], asked[1].startsWith("Tap to set it for tomorrow "))
+            assertTrue(asked[2], asked[2].startsWith("Or tap to set it for tomorrow ") && asked[2].endsWith(": 2 cptest tickets"))
+            assertEquals(emptyList<Any>(), mine())
+
+            // Either reading, and tapped twice it's still one reminder.
+            assertTrue(tap("Tap to set it").first().startsWith("Reminder set for tomorrow "))
+            assertEquals("cptest tickets", mine().single().text)
+            assertEquals(java.time.LocalTime.of(2, 0), time(mine().single()))
+            assertEquals(listOf("Already set: cptest tickets"), tap("Tap to set it"))
+            assertEquals(1, mine().size)
+            cancelAll()
+            assertTrue(tap("Or tap to set it").first().startsWith("Reminder set for tomorrow "))
+            assertEquals("2 cptest tickets", mine().single().text)
+            assertEquals(java.time.LocalTime.of(9, 0), time(mine().single()))
+            cancelAll()
+
+            // Any time typed for then, with nothing else to offer when it says what it means.
+            for (typed in listOf("5:59", "at 2", "tomorrow at 2", "12am", "tomorrow 5am")) {
+                assertEquals(typed, 2, run("remind $typed cptest x").size)
+                assertEquals(typed, emptyList<Any>(), mine())
+            }
+            run("remind every day 2:30 cptest pills").let { assertTrue(it.toString(), it[1].endsWith(", then every day")) }
+            assertEquals(emptyList<Any>(), mine())
+            assertTrue(tap("Tap to set it").first().contains("then every day: cptest pills"))
+            assertEquals("day", mine().single().repeat)
+            assertEquals(listOf("Already set: cptest pills"), tap("Tap to set it"))
+            cancelAll()
+
+            // From 6 on, a duration, or --yes: it's set at once.
+            for (typed in listOf("6:00", "tomorrow 9", "10m", "in 2h", "--yes 5:00", "--yes tomorrow 2")) {
+                assertTrue(typed, run("remind $typed cptest x").first().startsWith("Reminder set for"))
+                assertEquals(typed, 1, mine().size)
+                cancelAll()
+            }
+        } finally {
+            cancelAll()
+        }
+    }
+
     /** A repeating reminder is set again for its next time when it fires; Snooze adds a one-off copy. */
     @Test fun aRepeatingReminderComesBack() {
         val store = com.mtwabpin.kolahal.productivity.ReminderStore.get(context)
@@ -180,17 +234,26 @@ class CommandFamiliesTest {
     @Test fun backupEverySchedulesBackups() {
         val wm = androidx.work.WorkManager.getInstance(context)
         fun state() = wm.getWorkInfosForUniqueWork("auto-backup").get().lastOrNull()?.state
+        fun waitFor(ms: Long = 5_000, check: () -> Boolean): Boolean {
+            val until = System.currentTimeMillis() + ms
+            while (!check() && System.currentTimeMillis() < until) Thread.sleep(50)
+            return check()
+        }
+        // The first backup starts by itself, at any moment from here on. With no folder it fails, and says
+        // so in the log: not a line of the command this test ran.
+        val failed = "Automatic backup failed"
+        fun said(line: String) = run(line).filterNot { it.startsWith(failed) }
+        val before = logs.maxId()
         try {
-            assertTrue(run("backup every weekly").first().startsWith("Backups weekly to "))
+            assertTrue(said("backup every weekly").first().startsWith("Backups weekly to "))
             assertEquals("weekly", config[Keys.BACKUP_AUTO])
-            val until = System.currentTimeMillis() + 5_000
-            while (state() != androidx.work.WorkInfo.State.ENQUEUED && System.currentTimeMillis() < until) Thread.sleep(100)
-            assertEquals(androidx.work.WorkInfo.State.ENQUEUED, state())
-            assertEquals(listOf("Usage: backup every daily|weekly|off"), run("backup every hourly"))
-            assertEquals(listOf("Automatic backups off"), run("backup every off"))
-            val off = System.currentTimeMillis() + 5_000
-            while (state() == androidx.work.WorkInfo.State.ENQUEUED && System.currentTimeMillis() < off) Thread.sleep(100)
-            assertEquals(androidx.work.WorkInfo.State.CANCELLED, state())
+            val scheduled = setOf(androidx.work.WorkInfo.State.ENQUEUED, androidx.work.WorkInfo.State.RUNNING)
+            assertTrue("scheduled: ${state()}", waitFor { state() in scheduled })
+            // Over and done with, so its line can't turn up in the next test's output.
+            waitFor(ms = 3_000) { logs.recent(50).any { it.id > before && it.text.startsWith(failed) } }
+            assertEquals(listOf("Usage: backup every daily|weekly|off"), said("backup every hourly"))
+            assertEquals(listOf("Automatic backups off"), said("backup every off"))
+            assertTrue("cancelled: ${state()}", waitFor { state() == androidx.work.WorkInfo.State.CANCELLED })
         } finally {
             config.reset(Keys.BACKUP_AUTO)
         }
@@ -241,6 +304,25 @@ class CommandFamiliesTest {
         } finally {
             WallpaperMatch.forget(context)
             wallpapers.clear(system or WallpaperManager.FLAG_LOCK)
+        }
+    }
+
+    /** `calls` prints call lines, as the ones logged by themselves are, so they stay out of backups. */
+    @Test fun callsPrintsCallLines() {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        fun shell(command: String) = android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command)).use { it.readBytes() }
+        val number = "5550142"
+        shell("pm grant ${context.packageName} android.permission.READ_CALL_LOG")
+        shell("content insert --uri content://call_log/calls --bind number:s:$number --bind type:i:1 --bind date:l:${System.currentTimeMillis()} --bind duration:l:5")
+        val before = logs.maxId()
+        try {
+            processor.run("calls 5")
+            val lines = logs.recent(50).filter { it.id > before && it.kind != LogKind.COMMAND }
+            assertTrue(lines.toString(), lines.any { it.ctx.values[LogContext.PHONE] == number })
+            assertTrue(lines.toString(), lines.all { it.source == com.mtwabpin.kolahal.calls.CallEvents.SOURCE })
+        } finally {
+            logs.recent(50).filter { it.id > before }.forEach { logs.delete(it.id) }
+            shell("content delete --uri content://call_log/calls --where \"number='$number'\"")
         }
     }
 
@@ -306,7 +388,6 @@ class CommandFamiliesTest {
     @Test fun setupTextAndDeviceCommands() {
         val setup = run("setup text")
         assertTrue(setup.toString(), setup.first().startsWith("Setup") && setup.size > 1 && setup.drop(1).all { it.startsWith("[") })
-        if (Build.VERSION.SDK_INT < 37) assertTrue(run("local-network").single().contains("no permission"))
         assertTrue(run("date").single().isNotBlank())
         // The time elsewhere: each place on a line of its own, the detail in its second column.
         assertEquals(listOf("Tokyo", "New York"), run("date tokyo new york"))

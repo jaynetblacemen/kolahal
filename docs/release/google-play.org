@@ -1,10 +1,11 @@
 #+TITLE: Kolahal on Google Play
 #+STARTUP: showall
 
-Kolahal is in internal testing on Google Play: the first bundle (0.4.6-dev, versionCode 15, the
-Play build with notification access) was approved there on 26 October 2026. It isn't in closed
-testing or production yet. This is what is ready, what Play's policy asked for, and the steps
-left. The next bundle needs versionCode 16 or higher.
+Kolahal is in testing on Google Play: the first bundle (0.4.6-dev, versionCode 15, the Play build
+with notification access) was approved in internal testing on 26 October 2026, and the Release
+workflow has uploaded to the closed test since 0.4.8. It isn't in production yet. This is what is
+ready, what Play's policy asked for, and the steps left. Each bundle needs a higher versionCode
+than the last.
 
 * Before production
 
@@ -23,8 +24,13 @@ Google Play gets the Play build, the full app without three things, packaged as 
 | the accessibility service (=LockService=) | double-tap to lock, =lock=                         | Play says launchers are not accessibility tools, so it would need a declaration, an in-app disclosure with consent, and a video of it                  |
 | =READ_CONTACTS=                           | contacts read by name; the picker instead (below)  | Play's Contacts policy (apps targeting Android 17, from 27 January 2027): broad access only where Android's contact picker can't do the job, with a declaration |
 
-The maintainer chose (26 October 2026) to leave both out for good rather than risk the
-declaration.
+The maintainer chose (26 October 2026) to leave the call log and the accessibility service out
+for good rather than risk the declaration.
+
+Neither build has =ACCESS_LOCAL_NETWORK=. The maintainer removed it (1 November 2026), with
+=@uses lan= and =local-network=: from 25 August 2027, Play lets an app targeting Android 17 ask for
+it only with a declaration, for core functionality a device picker can't serve. Kolahal doesn't check
+where a request goes: on Android 17, Android blocks the local network itself.
 
 Notification access is in (since 0.4.6): notifications in the log, =notifs=, media controls and
 =@on notification= scripts. Play has no declaration form for a notification listener; its User
@@ -59,7 +65,7 @@ seconds, started by an exact alarm the user allowed.
 
 =tools/check-play-build.sh= checks the Play APK: it fails if any of these appear: the
 call log, SMS or contacts permissions, =QUERY_ALL_PACKAGES=, =USE_EXACT_ALARM=, =REQUEST_INSTALL_PACKAGES=,
-=MANAGE_EXTERNAL_STORAGE=, =ACCESS_BACKGROUND_LOCATION= or an accessibility service. Both
+=MANAGE_EXTERNAL_STORAGE=, =ACCESS_BACKGROUND_LOCATION=, =ACCESS_LOCAL_NETWORK= or an accessibility service. Both
 workflows run it, so a library that adds one is caught.
 
 Policy pages (opened 22 October 2026):
@@ -125,7 +131,7 @@ TYPE, ENTER, DONE
 • Instant launch opens an app as soon as the letters match only that app.
 • With an empty prompt, your most-used apps are one tap away; pin favourites to keep them at the front.
 • Aliases for anything you type often, app shortcuts, and every past command one ↑ away.
-• An app selector on the right edge: slide your thumb along it to glide through all your apps, no keyboard needed.
+• An app selector on an edge of the screen: slide your thumb along it to glide through all your apps, no keyboard needed.
 
 A LOG YOU CAN ACT ON
 • Every command and its output is a block with a coloured line beside it.
@@ -149,7 +155,7 @@ SCRIPTS IN LUA OR JAVASCRIPT
 • Run a script on a timer, at set times, or when something happens, such as unlocking the phone or plugging it in.
 • Make a script into a command of your own that takes arguments.
 • Pin a status line in the header, post a notification, fetch from the web.
-• Start from 15 ready-made scripts (weather, Hacker News, a battery log and more) in an editor with completion.
+• Start from 16 ready-made scripts (weather, Hacker News, a charge reminder and more) in an editor with completion.
 • Scripts run sandboxed, in a separate process.
 
 MAKE IT YOURS
@@ -201,7 +207,7 @@ They must show the Play build: nothing about the screen lock or the call log.
    emulator in dark mode, so the keyboard is dark too (=adb shell cmd uimode night yes=).
    Three feeds (Hacker News, LWN, and NASA's Image of the Day:
    https://www.nasa.gov/feeds/iotd-feed/), three to-dos, and the =weather= script from the library
-   on a 30-minute timer, with =weather --default Pune=.
+   on a 30-minute timer, with =script set weather city Pune=.
 3. Each capture: =adb exec-out screencap -p > docs/release/graphics/raw/<name>.png=.
    | Capture     | What is on screen                                                                                          |
    |-------------+------------------------------------------------------------------------------------------------------------|
@@ -230,8 +236,8 @@ step, after the GitHub release is out):
    asks for a symbol file: a zip of the bundle's own =base/lib/<abi>/*.so= files, as =<abi>/*.so=,
    uploaded in the App bundle explorer, serves.
 3. Paste =docs/release/notes/X.Y.Z-play.txt= (500 characters at most) as the release notes.
-   0.4.4 is the first release on Play (internal testing), so its text introduces Kolahal and how
-   to start instead of listing changes; later ones list what changed since the last one on Play.
+   The first ones on Play introduced Kolahal and how to start; later ones list what changed since
+   the last one on Play.
 4. Roll out.
 
 * Uploads from the workflow

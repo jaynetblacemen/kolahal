@@ -46,11 +46,11 @@ class ScriptFolder(private val context: Context) {
         // folder can hold scripts another phone exported that this one doesn't have.
         val current = all.map { "${it.name}.${it.lang.ext}" }.toSet()
         prefs.getStringSet(KEY_EXPORTED, emptySet()).orEmpty().filter { it !in current }.forEach { files[it]?.delete() }
-        for (s in all) {
-            val fileName = "${s.name}.${s.lang.ext}"
+        for ((_, name, lang, code) in all) {
+            val fileName = "$name.${lang.ext}"
             val file = files[fileName] ?: dir.createFile(MIME_TEXT, fileName)
                 ?: throw IllegalStateException("can't create $fileName")
-            context.contentResolver.openOutputStream(file.uri, "wt")!!.use { it.write(s.code.toByteArray()) }
+            context.contentResolver.openOutputStream(file.uri, "wt")!!.use { it.write(code.toByteArray()) }
         }
         val manifest = mapOf(
             "version" to 1,
@@ -78,8 +78,9 @@ class ScriptFolder(private val context: Context) {
     data class ImportResult(val created: Int, val updated: Int, val skipped: List<String>)
 
     /** Reads `*.lua` / `*.js` from the folder, creating or updating scripts; applies the manifest. */
-    fun import(): ImportResult {
-        val dir = folder()
+    fun import(): ImportResult = import(folder())
+
+    internal fun import(dir: DocumentFile): ImportResult {
         val files = dir.listFiles()
         val settings = files.firstOrNull { it.name == MANIFEST }?.let { readManifest(it.uri) }.orEmpty()
 
@@ -92,7 +93,7 @@ class ScriptFolder(private val context: Context) {
             if (file.isDirectory) continue
             val name = fileName.substringBeforeLast('.').lowercase()
             // Same rules as a backup: no names of built-in commands.
-            if (!NAME.matches(name) || name in com.mtwabpin.kolahal.terminal.CommandProcessor.RESERVED_NAMES) {
+            if (!ScriptNames.NAME.matches(name) || name in com.mtwabpin.kolahal.terminal.CommandProcessor.RESERVED_NAMES) {
                 skipped += fileName
                 continue
             }
@@ -134,8 +135,16 @@ class ScriptFolder(private val context: Context) {
                     if (on) scripts.byId(script.id)?.let { ScriptAccess.askForNew(context, it) }
                 }
             }
-            // A new script without settings in kolahal.json gets the timers its code suggests.
-            if (isNew && settings[name] == null) scripts.applySuggested(script.id, code)
+            // A new script without settings in kolahal.json gets the timers its code suggests; a changed
+            // one keeps its own, unless its `@every` or `@at` lines changed, as when it's edited.
+            if (isNew && settings[name] == null) {
+                if (existing == null) {
+                    scripts.applySuggested(script.id, code)
+                } else {
+                    scripts.setInterval(script.id, ScriptMeta.intervalAfter(existing.code, code, existing.intervalMin))
+                    scripts.setAtTimes(script.id, ScriptMeta.timesAfter(existing.code, code, existing.atTimes))
+                }
+            }
             // New scripts from a folder arrive switched off, like from a backup: review them before
             // they run on a timer.
             if (isNew) scripts.setEnabled(script.id, false)
@@ -158,6 +167,5 @@ class ScriptFolder(private val context: Context) {
         private const val KEY_EXPORTED = "exported"
         const val MANIFEST = "kolahal.json"
         const val MIME_TEXT = "application/octet-stream"
-        val NAME = Regex("^[a-z0-9_-]{1,40}$")
     }
 }

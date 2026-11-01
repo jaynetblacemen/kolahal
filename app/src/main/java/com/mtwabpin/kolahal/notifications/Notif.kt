@@ -10,13 +10,11 @@ data class Notif(
     val pkg: String,
     /** Profile serial (UserManager.getSerialNumberForUser) of the posting app. */
     val userSerial: Long,
-    /** App label, or the package name when the app isn't in the launcher's list. */
+    /** App label, or the package name when Android has no label for it. */
     val app: String,
     val title: String?,
     val text: String?,
     val postTime: Long,
-    /** True when tapping would open something (the notification has a contentIntent). */
-    val hasIntent: Boolean,
     /** Dismissed by the user or cancelled by the app; kept in the feed until it ages out. */
     val removed: Boolean = false,
     /** Its status-bar icon's [NotifIcons] key (saved in the background), or null. */

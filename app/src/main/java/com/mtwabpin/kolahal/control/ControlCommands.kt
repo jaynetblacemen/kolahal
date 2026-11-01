@@ -15,7 +15,8 @@ import android.provider.Settings
 import androidx.core.net.toUri
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
-import com.mtwabpin.kolahal.data.LogRepository
+import com.mtwabpin.kolahal.productivity.TimeSpec
+import com.mtwabpin.kolahal.terminal.CommandGroup
 import com.mtwabpin.kolahal.terminal.CommandSpec
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -25,15 +26,11 @@ import java.util.concurrent.TimeUnit
  * `rotate`, `wifi`, `bt`, `nfc`, `data`, `screen-timeout`, `toggles`). Kept out of
  * CommandProcessor so it stays a one-line dispatch there.
  */
-class ControlCommands(private val context: Context) {
-    private val logs = LogRepository.get(context)
+class ControlCommands(context: Context) : CommandGroup(context) {
     private val media = MediaRepository.get(context)
     private val audio by lazy { context.getSystemService(AudioManager::class.java) }
     private val notifications by lazy { context.getSystemService(NotificationManager::class.java) }
 
-    private fun out(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.OUTPUT, text, ctx = ctx) }
-    private fun info(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.INFO, text, ctx = ctx) }
-    private fun error(text: String) { logs.add(LogKind.ERROR, text) }
     private fun fix(text: String, command: String) { logs.add(LogKind.ERROR, text, ctx = LogContext.of(LogContext.RUN to command)) }
 
     fun run(name: String, args: List<String>) {
@@ -143,9 +140,9 @@ class ControlCommands(private val context: Context) {
         val cameraId: String? = runCatching {
             camera.cameraIdList.filter {
                 camera.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
-            }.sortedBy {
+            }.minByOrNull {
                 if (camera.getCameraCharacteristics(it).get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK) 0 else 1
-            }.firstOrNull()
+            }
         }.getOrNull()
 
         @Volatile private var on: Boolean? = null
@@ -209,7 +206,7 @@ class ControlCommands(private val context: Context) {
         out(volumeLine(), LogContext.of(LogContext.COMMAND to "volume "))
     }
 
-    private fun ringLabel(mode: Int = audio.ringerMode) = when (mode) {
+    private fun ringLabel() = when (audio.ringerMode) {
         AudioManager.RINGER_MODE_SILENT -> "silent"
         AudioManager.RINGER_MODE_VIBRATE -> "vibrate"
         else -> "normal"
@@ -329,11 +326,11 @@ class ControlCommands(private val context: Context) {
     private fun timeoutMs() = Settings.System.getLong(resolver, Settings.System.SCREEN_OFF_TIMEOUT, 30_000L)
 
     private fun screenTimeout(arg: String?) {
-        if (arg == null) return out("Screen timeout ${ControlArgs.formatDuration(timeoutMs())}", LogContext.of(LogContext.COMMAND to "screen-timeout "))
+        if (arg == null) return out("Screen timeout ${TimeSpec.formatDuration(timeoutMs() / 1000)}", LogContext.of(LogContext.COMMAND to "screen-timeout "))
         val ms = ControlArgs.duration(arg) ?: return error("Usage: screen-timeout <15s|30s|1m|2m|5m|10m|30m>")
         if (needWrite("screen-timeout")) return
         Settings.System.putLong(resolver, Settings.System.SCREEN_OFF_TIMEOUT, ms.coerceAtMost(Int.MAX_VALUE.toLong()))
-        info("Screen timeout ${ControlArgs.formatDuration(ms)}")
+        info("Screen timeout ${TimeSpec.formatDuration(ms / 1000)}")
     }
 
     // ---- radios: Android only lets apps open the panel / settings page ---------------------
@@ -390,7 +387,7 @@ class ControlCommands(private val context: Context) {
             if (write) "Tap to toggle" else "Tap to allow modifying system settings",
         )
         row("Brightness", brightnessShort(), if (write) "brightness auto" else "brightness access", "Tap for auto · brightness <0-100>")
-        row("Screen timeout", ControlArgs.formatDuration(timeoutMs()), "screen-timeout", "Set with screen-timeout <30s|1m|…>")
+        row("Screen timeout", TimeSpec.formatDuration(timeoutMs() / 1000), "screen-timeout", "Set with screen-timeout <30s|1m|…>")
         media.nowPlaying.value?.let { row("Media", "${it.stateLabel} · ${it.line}", "media toggle", "Tap to play / pause") }
     }
 
@@ -417,7 +414,7 @@ class ControlCommands(private val context: Context) {
         /** Names this class handles (including aliases not listed in help). */
         val NAMES = SPECS.map { it.name }.toSet() + setOf("vol", "bluetooth")
 
-        /** Change device or media state: never run without Enter (InstantRun). */
+        /** Change device or media state: never run by a prefix, only as a whole line such as `torch on` (InstantRun). */
         val SENSITIVE = setOf("media", "mp", "next", "prev", "torch", "volume", "vol", "ring", "dnd", "brightness", "rotate", "screen-timeout")
 
         private val ARGS = mapOf(

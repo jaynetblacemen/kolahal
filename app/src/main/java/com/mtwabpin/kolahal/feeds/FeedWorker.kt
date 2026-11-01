@@ -9,7 +9,7 @@ import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
 import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.notify.Notifier
-import java.util.Date
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Fetches due feeds (or the requested one when forced) and reports new items to the terminal log
@@ -40,7 +40,7 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         // stored but never reported: report what is done before that; the rest is due again.
         val fetcher = FeedFetcher(ctx)
         val results = ArrayList<FeedFetcher.Result>()
-        kotlinx.coroutines.withTimeoutOrNull(FETCH_DEADLINE_MS) { for (feed in targets) results += fetcher.fetchOne(feed) }
+        kotlinx.coroutines.withTimeoutOrNull(FETCH_DEADLINE_MS.milliseconds) { for (feed in targets) results += fetcher.fetchOne(feed) }
         report(ctx, results, explicit = force || feedId >= 0, from = inputData.getLong(KEY_FROM, -1L).takeIf { it >= 0 })
         return Result.success()
     }
@@ -54,45 +54,44 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val shownRead = config[Keys.FEEDS_READ_SHOWN]
         val lines = ArrayList<LogRepository.Pending>()
         val ts = System.currentTimeMillis()
-        for (r in results) {
+        for ((fetched, newItems, error, first) in results) {
             // Re-read so a title learned during this fetch is used.
-            val feed = repo.byId(r.feed.id) ?: r.feed
+            val feed = repo.byId(fetched.id) ?: fetched
             val source = feed.shortName
             val feedCtx = mapOf(CTX_FEED to feed.id.toString()) + (from?.let { mapOf(LogContext.FROM to it.toString()) } ?: emptyMap())
-            if (r.error != null) {
+            if (error != null) {
                 // Scheduled failures stay in last_status; only a fetch the user asked for is logged.
                 if (explicit) {
                     lines += LogRepository.Pending(
-                        LogKind.ERROR, "$source: ${r.error}", source,
-                        // A blocked home-server feed: the tap asks for the permission rather than opening the feed.
-                        LogContext(feedCtx + (if (r.lanBlocked) LogContext.RUN to "local-network" else LogContext.URL to feed.url)), ts,
+                        LogKind.ERROR, "$source: $error", source,
+                        LogContext(feedCtx + (LogContext.URL to feed.url)), ts,
                     )
                 }
                 continue
             }
-            if (r.newItems.isEmpty()) continue
+            if (newItems.isEmpty()) continue
             // feeds.backlog-read: what a feed already had when you subscribed is not "new" to you.
-            if (r.first && config[Keys.FEEDS_BACKLOG_READ]) {
-                repo.markRead(r.newItems.map { it.id })
+            if (first && config[Keys.FEEDS_BACKLOG_READ]) {
+                repo.markRead(newItems.map { it.id })
                 if (toLog) lines += LogRepository.Pending(
-                    LogKind.INFO, "$source: subscribed · ${r.newItems.size} earlier posts marked read", source,
+                    LogKind.INFO, "$source: subscribed · ${newItems.size} earlier posts marked read", source,
                     LogContext.of(LogContext.COMMAND to "feed all ${feed.id}") + feedCtx, ts,
                 )
                 continue
             }
             if (toLog) {
-                val shown = r.newItems.take(maxLines)
-                for (item in shown) {
+                val shown = newItems.take(maxLines)
+                for ((id, _, _, title, link) in shown) {
                     lines += LogRepository.Pending(
                         LogKind.SCRIPT,
-                        item.title,
+                        title,
                         source,
-                        LogContext.of(LogContext.URL to item.link, LogContext.COPY to item.title, CTX_ITEM to item.id.toString()) + feedCtx,
+                        LogContext.of(LogContext.URL to link, LogContext.COPY to title, CTX_ITEM to id.toString()) + feedCtx,
                         ts,
                     )
                 }
                 if (shownRead) repo.markRead(shown.map { it.id })
-                val more = r.newItems.size - shown.size
+                val more = newItems.size - shown.size
                 if (more > 0) {
                     lines += LogRepository.Pending(
                         LogKind.SCRIPT, "+$more more", source,
@@ -101,7 +100,7 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                 }
             }
             // A notification problem (bad link, system refusal) must not lose the log lines.
-            if (feed.notify) runCatching { notify(ctx, feed, r.newItems) }
+            if (feed.notify) runCatching { notify(ctx, feed, newItems) }
         }
         if (lines.isEmpty()) return
         val logs = LogRepository.get(ctx)

@@ -38,7 +38,7 @@ class ScriptPermissionsTest {
             val error = luaError(call, script())
             assertTrue("$call: $error", error.orEmpty().contains("needs `@uses $what`"))
             // Declaring something else doesn't help.
-            assertTrue(call, luaError(call, script("lan")).orEmpty().contains("needs `@uses $what`"))
+            assertTrue(call, luaError(call, script("dnd")).orEmpty().contains("needs `@uses $what`"))
         }
         assertTrue(jsError("clipboard.set('x')", script()).orEmpty().contains("needs `@uses clipboard`"))
         assertTrue(jsError("notifications.recent(5)", script()).orEmpty().contains("needs `@uses notifications`"))
@@ -50,10 +50,11 @@ class ScriptPermissionsTest {
         assertNull(luaError("apps.list()", prompt()))
     }
 
-    /** A web server on this phone that counts the connections it gets. */
+    /** A web server on this phone that counts the connections it gets, and keeps the Content-Type of each. */
     private class TinyServer : AutoCloseable {
         private val socket = ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
         val accepted = AtomicInteger()
+        val contentTypes = java.util.concurrent.CopyOnWriteArrayList<String?>()
         val url = "http://127.0.0.1:${socket.localPort}/"
 
         init {
@@ -63,7 +64,11 @@ class ScriptPermissionsTest {
                     accepted.incrementAndGet()
                     client.use { c ->
                         val reader = c.getInputStream().bufferedReader()
-                        while (reader.readLine()?.isNotEmpty() == true) Unit
+                        val head = generateSequence { reader.readLine()?.takeIf { it.isNotEmpty() } }.toList()
+                        fun header(name: String) = head.firstOrNull { it.startsWith("$name:", ignoreCase = true) }?.substringAfter(':')?.trim()
+                        contentTypes += header("Content-Type")
+                        // Its body too: closing with one unread would reset the connection under the answer.
+                        repeat(header("Content-Length")?.toIntOrNull() ?: 0) { reader.read() }
                         c.getOutputStream().write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok".toByteArray())
                     }
                 }
@@ -73,15 +78,26 @@ class ScriptPermissionsTest {
         override fun close() = socket.close()
     }
 
-    @Test fun thisPhoneNeedsUsesLan() {
+    /** A Content-Type header gets through as given: on a body, or by itself when there's no body to carry it. */
+    @Test fun aContentTypeHeaderIsSentWithOrWithoutABody() {
         TinyServer().use { server ->
-            val refused = luaError("http.get('${server.url}')", script())
-            assertTrue(refused, refused.orEmpty().contains("not allowed"))
-            // Not even a connection: it would tell the script which ports are open.
-            assertEquals(0, server.accepted.get())
-            // With `@uses lan`, or at the prompt, the request goes through.
-            for (host in listOf(script("lan"), prompt())) assertNull(luaError("http.get('${server.url}')", host))
-            assertEquals(2, server.accepted.get())
+            val json = "headers = { [\"Content-Type\"] = \"application/json\" }"
+            val cases = listOf(
+                "http.get('${server.url}', { [\"content-type\"] = \"application/json\" })",
+                "http.request{ url = '${server.url}', method = 'POST', $json }",
+                "http.request{ url = '${server.url}', method = 'POST', body = 'x', $json }",
+                "http.request{ url = '${server.url}', method = 'POST', body = 'x', contentType = 'text/csv', $json }",
+            )
+            for (call in cases) assertNull(call, luaError(call, script()))
+            assertEquals(listOf("application/json", "application/json", "application/json", "text/csv"), server.contentTypes.map { it?.substringBefore(';') })
+        }
+    }
+
+    /** Every address is a request like any other, with nothing to declare, and an old `@uses lan` changes nothing. */
+    @Test fun aRequestGoesWhereItIsSent() {
+        TinyServer().use { server ->
+            for (host in listOf(script(), script("lan"), prompt())) assertNull(luaError("http.get('${server.url}')", host))
+            assertEquals(3, server.accepted.get())
         }
     }
 }

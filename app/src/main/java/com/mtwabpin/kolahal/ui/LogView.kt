@@ -7,6 +7,7 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.produceState
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
@@ -18,7 +19,6 @@ import androidx.compose.ui.unit.em
 import com.mtwabpin.kolahal.notifications.NotifIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -27,7 +27,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -36,7 +35,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -95,12 +93,10 @@ import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Date
-import java.util.Locale
 
 /** How a line shows its time, from `log.time`: `groups` on a group's first line and when the minute changes. */
 enum class TimeMode { OFF, COMMANDS, GROUPS, ALL }
 
-/** What the long-press sheet shows: the line (for context) and its actions. */
 /**
  * A long-press menu. Its actions are in the system's font, as a menu; its [title] (the line pressed)
  * in the terminal's, as in the log, unless [systemFont] (quick actions, whose title is a heading).
@@ -122,7 +118,7 @@ fun DayDivider(row: LogRow.Day) {
     // under a launcher that stays composed for days; and the dividers follow a change of language.
     val label =
         if (row.day == LocalDate.now().minusDays(1)) "Yesterday"
-        else row.day.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault()))
+        else row.day.format(DateTimeFormatter.ofPattern("EEE d MMM", LocalConfiguration.current.locales[0]))
     Text(
         "── $label ──",
         style = Term.text.copy(color = Term.dim, fontSize = (Term.fontSize - 1).sp),
@@ -152,7 +148,6 @@ fun scriptColor(name: String?): Color {
  * One log entry. A thin gutter bar groups command blocks (prompt colour), timer output (script
  * colour) and errors; old output is dimmed; the time sits right-aligned so it never shifts text.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LogLine(
     row: LogRow.Entry,
@@ -357,7 +352,6 @@ fun markMatches(text: AnnotatedString, words: List<String>): AnnotatedString {
 }
 
 /** `apps` output: one line of chips instead of one line per app. */
-@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun AppGrid(apps: List<AppEntry>, onTap: (AppEntry) -> Unit, onLongPress: (AppEntry) -> Unit) {
     val haptics = LocalHapticFeedback.current
@@ -404,22 +398,18 @@ private fun AppGrid(apps: List<AppEntry>, onTap: (AppEntry) -> Unit, onLongPress
 private val profileTag = Regex(" \\[([PWSC])](?= \\S*$|$)")
 
 /** Appends [text] in [color], with a trailing profile tag in its profile colour. */
-private fun androidx.compose.ui.text.AnnotatedString.Builder.appendTagged(text: String, color: Color, weight: FontWeight? = null) {
+private fun AnnotatedString.Builder.appendTagged(text: String, color: Color) {
     val tag = profileTag.find(text)
     if (tag == null) {
-        withStyle(SpanStyle(color = color, fontWeight = weight)) { append(text) }
+        withStyle(SpanStyle(color = color)) { append(text) }
         return
     }
     val kind = ProfileKind.entries.first { it.tag == tag.groupValues[1] }
-    withStyle(SpanStyle(color = color, fontWeight = weight)) { append(text.substring(0, tag.range.first)) }
+    withStyle(SpanStyle(color = color)) { append(text.substring(0, tag.range.first)) }
     withStyle(SpanStyle(color = Term.profileColor(kind), fontWeight = FontWeight.Bold)) { append(tag.value) }
-    withStyle(SpanStyle(color = color, fontWeight = weight)) { append(text.substring(tag.range.last + 1)) }
+    withStyle(SpanStyle(color = color)) { append(text.substring(tag.range.last + 1)) }
 }
 
-/**
- * Styles one log line. Wrapped continuation lines are indented past the prefix (`$ `, `• `) so
- * each item reads as one block; the widths are measured ([LineIndents]), so this holds in any font.
- */
 private const val NOTIF_ICON = "notif-icon"
 
 /** The status-bar icon at the end of a notification line, tinted like the muted name it replaces. */
@@ -451,7 +441,12 @@ private fun LogEntry.style() = if (ctx.values.containsKey(LogContext.MONO)) Term
 @androidx.compose.runtime.Immutable
 data class LineIndents(val text: TextUnit, val code: TextUnit, val bullet: TextUnit)
 
-/** [icon]: end a script line with its notification icon instead of `· app`; [source]: name it at all (the first line of a run). */
+/**
+ * Styles one log line. Wrapped continuation lines are indented past the prefix (`$ `, `• `) so
+ * each item reads as one block; the widths are measured ([LineIndents]), so this holds in any font.
+ * [icon]: end a script line with its notification icon instead of `· app`; [source]: name it at all
+ * (the first line of a run).
+ */
 private fun renderLine(entry: LogEntry, indents: LineIndents, unread: Boolean, icon: Boolean = false, source: Boolean = true) = buildAnnotatedString {
     val indent = when (entry.kind) {
         LogKind.SCRIPT -> if (unread) indents.bullet else 0.sp
@@ -467,7 +462,7 @@ private fun renderLine(entry: LogEntry, indents: LineIndents, unread: Boolean, i
             LogKind.INFO -> {
                 // Lines after the first are details (e.g. a package name under an app event): dimmed.
                 val first = entry.text.substringBefore('\n')
-                appendTagged(first, Term.info, null)
+                appendTagged(first, Term.info)
             }
             LogKind.SCRIPT -> {
                 if (unread) withStyle(SpanStyle(color = Term.prompt, fontWeight = FontWeight.Bold)) { append("• ") }
@@ -532,9 +527,9 @@ private fun AnnotatedString.Builder.appendStyled(text: String, base: SpanStyle, 
 }
 
 private fun AnnotatedString.Builder.appendSpans(spans: List<StyledText.Span>, base: SpanStyle, strong: Color?) {
-    for (span in spans) {
-        if (span.styles.isEmpty() && span.colour == null) withStyle(base) { append(span.text) }
-        else withStyle(base.merge(styleOf(span.styles, strong)).merge(SpanStyle(color = colourOf(span.colour)))) { append(span.text) }
+    for ((text, styles, colour) in spans) {
+        if (styles.isEmpty() && colour == null) withStyle(base) { append(text) }
+        else withStyle(base.merge(styleOf(styles, strong)).merge(SpanStyle(color = colourOf(colour)))) { append(text) }
     }
 }
 

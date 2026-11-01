@@ -71,7 +71,7 @@ class KvStore(context: Context, private val scope: String) {
 
         /**
          * Trims or drops rows too big to read back (the 2 MB cursor window), left over from before
-         * values were capped. Otherwise one such row breaks the log, a script key, or backup export.
+         * values were capped. Otherwise, one such row breaks the log, a script key, or backup export.
          */
         fun repairOversized(context: Context) {
             val w = Db.get(context).writableDatabase

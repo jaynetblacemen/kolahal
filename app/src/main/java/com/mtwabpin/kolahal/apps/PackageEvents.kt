@@ -18,11 +18,11 @@ import java.util.concurrent.Executors
  * Install / update / uninstall log.
  *
  * Android reports an update in several ways (removed + added with "replacing", changed, or a real
- * uninstall followed by a reinstall), so events are never logged as they arrive. Instead every
+ * uninstall followed by a reinstall), so events are never logged as they arrive. Instead, every
  * signal schedules a settle-and-diff: the installed apps (per profile: version, update time,
  * label) are compared with the last snapshot. A package that is still there with a new version or
- * update time is one "updated" line; one that disappeared and came back inside the settle window
- * is also an update. The snapshot persists, so changes made while the launcher wasn't running
+ * update time is one "updated" line; one that disappeared and came back within [GRACE_MS] is also
+ * an update. The snapshot persists, so changes made while the launcher wasn't running
  * show up on the next start.
  */
 class PackageEvents private constructor(private val context: Context) {
@@ -98,7 +98,7 @@ class PackageEvents private constructor(private val context: Context) {
                 continue
             }
             val serial = userManager.getSerialNumberForUser(user)
-            val profile = if (user == me) "" else profileTag(user)
+            val profile = if (user == me) "" else AppRepository.kindOf(launcherApps, user, me).tag
             val activities = runCatching { launcherApps.getActivityList(null, user) }.getOrDefault(emptyList())
             for (a in activities) {
                 val key = "${a.componentName.packageName}#$serial"
@@ -127,17 +127,6 @@ class PackageEvents private constructor(private val context: Context) {
     private fun installedWithoutIcon(key: String): Boolean {
         val user = key.substringAfter('#').toLongOrNull()?.let(userManager::getUserForSerialNumber) ?: return false
         return runCatching { launcherApps.getApplicationInfo(key.substringBefore('#'), 0, user) != null }.getOrDefault(false)
-    }
-
-    private fun profileTag(user: UserHandle): String {
-        val type = if (android.os.Build.VERSION.SDK_INT >= 35) {
-            runCatching { launcherApps.getLauncherUserInfo(user)?.userType }.getOrNull()
-        } else null
-        return when (type) {
-            UserManager.USER_TYPE_PROFILE_PRIVATE -> "S"
-            "android.os.usertype.profile.CLONE" -> "C"
-            else -> "W"
-        }
     }
 
     @Synchronized

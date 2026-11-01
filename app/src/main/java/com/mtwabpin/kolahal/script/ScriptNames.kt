@@ -4,7 +4,7 @@ import android.content.Context
 import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.terminal.CommandProcessor
 
-/** Names a script from outside (a file, a folder, a backup) may not take. */
+/** Names a script from a file or the shared catalog may not take. */
 object ScriptNames {
     private val PUNCTUATION = Regex("[^a-z0-9]")
 
@@ -19,7 +19,8 @@ object ScriptNames {
         return app?.let { "'$name' is the name of the app ${it.label}" }
     }
 
-    private val NAME = Regex("^[a-z0-9_-]{1,40}$")
+    /** What a script can be called. */
+    val NAME = Regex("^[a-z0-9_-]{1,40}$")
 
     /** Why [name] can't name a script of yours, or null; [taken]: whether a script already has it. */
     fun invalid(name: String, taken: (String) -> Boolean): String? = when {

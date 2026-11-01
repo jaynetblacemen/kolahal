@@ -104,16 +104,16 @@ class Db private constructor(context: Context) :
         if (oldVersion < 6 && !hasColumn(db, "reminders", "repeat_rule")) db.execSQL("ALTER TABLE reminders ADD COLUMN repeat_rule TEXT")
     }
 
-    /**
-     * Per-script access switches (schema version 4, [com.mtwabpin.kolahal.script.ScriptAccess]).
-     * Before, switching a script on allowed everything it declared with `@uses`: switched-on
-     * scripts keep that; switched-off ones ask when they are switched on.
-     */
     private fun hasColumn(db: SQLiteDatabase, table: String, column: String): Boolean =
         db.rawQuery("PRAGMA table_info($table)", null).use { c ->
             generateSequence { if (c.moveToNext()) c.getString(c.getColumnIndexOrThrow("name")) else null }.any { it == column }
         }
 
+    /**
+     * Per-script access switches (schema version 4, [com.mtwabpin.kolahal.script.ScriptAccess]).
+     * Before, switching a script on allowed everything it declared with `@uses`: switched-on
+     * scripts keep that; switched-off ones ask when they are switched on.
+     */
     private fun addScriptAccess(db: SQLiteDatabase) {
         if (!hasColumn(db, "scripts", "access")) db.execSQL("ALTER TABLE scripts ADD COLUMN access TEXT")
         db.query("scripts", arrayOf("id", "code"), "enabled = 1", null, null, null, null).use { c ->

@@ -102,10 +102,10 @@ object ScriptScheduler {
 
     private fun dailyTag(id: Long) = "script-$id-daily"
 
-    /** "8:00" / "08:00" -> "08:00"; null for anything that isn't a valid clock time. */
+    /** "8:00" / "08:00" -> "08:00", for an `@at` line and `script at` alike; null for anything that isn't a valid clock time. */
     fun normalizeTime(raw: String): String? = runCatching {
-        val (h, m) = raw.trim().split(':').map { it.toInt() }
-        LocalTime.of(h, m).toString()
+        val parts = raw.trim().split(':').map { it.toInt() }
+        if (parts.size == 2) LocalTime.of(parts[0], parts[1]).toString() else null
     }.getOrNull()
 
     /** Milliseconds from now until the next local [hhmm] ("HH:mm"), DST-aware. */
@@ -117,8 +117,8 @@ object ScriptScheduler {
     }
 
     /**
-     * [syncAll] if the last was over [RECHECK_MS] ago: a launcher that runs for days would
-     * otherwise leave daily times drifting, and an hour off after a daylight-saving change.
+     * [syncAll] if the last was over [RECHECK_MS] ago: sets each script's timers again, in case any
+     * went while the launcher ran for days.
      */
     fun syncAllIfDue(context: Context) {
         val last = context.getSharedPreferences("daily_schedule", Context.MODE_PRIVATE).getLong(KEY_SYNCED_AT, 0L)
@@ -146,12 +146,12 @@ object ScriptScheduler {
         prefs.edit { remove("script:$scriptId") }
     }
 
-    fun runNow(context: Context, script: Script, args: List<String> = emptyList(), interactive: Boolean = true, event: Map<String, Any?>? = null) {
+    fun runNow(context: Context, script: Script, args: List<String> = emptyList(), event: Map<String, Any?>? = null) {
         WorkManager.getInstance(context).enqueue(
             OneTimeWorkRequestBuilder<ScriptWorker>()
                 .setInputData(remoteData(context) {
                     putLong(ScriptWorker.KEY_SCRIPT_ID, script.id)
-                    putBoolean(ScriptWorker.KEY_INTERACTIVE, interactive)
+                    putBoolean(ScriptWorker.KEY_INTERACTIVE, true)
                     if (args.isNotEmpty()) putStringArray(ScriptWorker.KEY_ARGS, args.toTypedArray())
                     // A sample event, run from the editor.
                     if (event != null) putString(ScriptWorker.KEY_EVENT, Json.stringify(event))
@@ -242,7 +242,7 @@ object ScriptScheduler {
     /** Whether this thread is running a command a script sent ([sentByScript]). */
     internal val runningSentCommand: Boolean get() = byScript.get() == true
 
-    /** A run a typed command starts: its lines are that command's output ([LogContext.FROM]). */
+    /** A run a typed command starts: its lines are that command's output ([com.mtwabpin.kolahal.data.LogContext.FROM]). */
     private fun Data.Builder.fromCommand(context: Context) {
         LogRepository.get(context).currentCause?.let { putLong(ScriptWorker.KEY_FROM, it) }
     }

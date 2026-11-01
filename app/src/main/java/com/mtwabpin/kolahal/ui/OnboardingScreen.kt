@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -289,7 +288,7 @@ private fun Keyboard(vm: TerminalViewModel) {
     Page("Above the keyboard", preview = { KeyboardPreview(vm) }) {
         SwitchRow(
             "Key bar",
-            "Arrows, Tab, Esc and more under the prompt, for editing what you type",
+            "History, arrows and a few symbols under the prompt, for what the keyboard leaves out",
             remember(version) { vm.config[Keys.KEYBAR_SHOW] },
         ) { vm.setConfig(Keys.KEYBAR_SHOW, if (it) "on" else "off") }
         SwitchRow(
@@ -349,7 +348,6 @@ private fun Access(vm: TerminalViewModel) = Page("Let Kolahal in") {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Done(vm: TerminalViewModel) = Page("You're set") {
     BodyCode("`help` lists every command, `tour` brings this back, and Settings has all you set here and much more.")

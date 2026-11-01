@@ -17,7 +17,7 @@ import com.mtwabpin.kolahal.data.Script
  *   so the switches shown are all it may do.
  * - Each `@on` event: on unless switched off.
  * Switched off, a script gets an empty answer where that is honest (no apps, no notifications, no
- * clipboard, its header line ignored) and stops where it isn't (internet, the local network).
+ * clipboard, its header line ignored) and stops where it isn't (internet).
  * Posting notifications keeps its own switch ([com.mtwabpin.kolahal.data.Script.notify]), shown
  * for a script that calls `notify` ([ScriptMeta.postsNotifications]).
  */
@@ -38,7 +38,6 @@ object ScriptAccess {
         "notifications" -> "Your notifications"
         "apps" -> "Your app list"
         "clipboard" -> "Clipboard"
-        "lan" -> "Local network"
         "commands" -> "Run commands"
         "dnd" -> "Do Not Disturb"
         "work" -> "Work profile"
@@ -46,12 +45,11 @@ object ScriptAccess {
     }
 
     fun help(item: String): String = when (item) {
-        INTERNET -> "Web requests and feeds, and the links and pictures its lines carry; switched off, a run that needs a request stops"
+        INTERNET -> "Web requests and feeds to any address, your local network too, and the links and pictures its lines carry; switched off, a run that needs a request stops"
         HEADER -> "Its line at the top of home; switched off, the script still runs"
         "notifications" -> "Reads your recent notifications; switched off, it sees none"
         "apps" -> "Lists your installed apps; switched off, it sees none"
         "clipboard" -> "Reads and sets the clipboard; switched off, it reads and sets nothing"
-        "lan" -> "Reaches this phone and your local network; switched off, those requests stop the run"
         "commands" -> "Runs terminal commands and other scripts when you start it from the prompt; switched off, it can't"
         "dnd" -> "Sees and turns Do Not Disturb on and off; switched off, it sees nothing and changes nothing"
         "work" -> "Sees, pauses and resumes the work profile; switched off, it sees nothing and changes nothing"

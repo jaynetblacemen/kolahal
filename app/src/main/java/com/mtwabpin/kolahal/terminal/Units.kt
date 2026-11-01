@@ -12,7 +12,8 @@ object Units {
 
     private val units: Map<String, Unit> = buildMap {
         fun add(dimension: String, factor: Double, label: String, vararg names: String) {
-            names.forEach { put(it, Unit(dimension, factor, label)) }
+            // What an answer prints has to read back, so the label is a name too.
+            (names.asList() + label.lowercase()).forEach { put(it, Unit(dimension, factor, label)) }
         }
         // length (m)
         add("length", 1e-3, "mm", "mm", "millimeter", "millimeters", "millimetre")
@@ -78,17 +79,23 @@ object Units {
     private val pattern = Regex("""^\s*(-?[\d.,]+)\s*([^\s\d][^\s]*)\s+(?:in|to|as|->)\s+([^\s]+)\s*$""", RegexOption.IGNORE_CASE)
 
     /**
-     * `1,000` and `1,000.5` are thousands; `1,5` (a comma not followed by exactly three digits,
-     * and no dot) is a decimal comma. Anything else ambiguous is rejected rather than misread.
+     * Commas group digits in Western (`1,000,000`) or Indian style (`12,34,567`), and a dot may
+     * follow (`1,000.5`). A number can't start with a zero that way, so `0,500` has a decimal comma,
+     * as has any other single comma with no dot (`1,5`, `2,50`). Anything else ambiguous (`01,500`,
+     * `1,5,3`) is rejected rather than misread.
      */
     internal fun number(s: String): Double? = when {
         ',' !in s -> s.toDoubleOrNull()
-        Regex("""^-?\d{1,3}(,\d{3})+(\.\d+)?$""").matches(s) -> s.replace(",", "").toDoubleOrNull()
-        Regex("""^-?\d+,\d+$""").matches(s) -> s.replace(',', '.').toDoubleOrNull()
+        Regex("""^-?[1-9](\d{0,2}(,\d{3})+|\d?(,\d{2})+,\d{3})(\.\d+)?$""").matches(s) -> s.replace(",", "").toDoubleOrNull()
+        Regex("""^-?(0|[1-9]\d*),\d+$""").matches(s) -> s.replace(',', '.').toDoubleOrNull()
         else -> null
     }
 
-    /** Parsed `amount from to` if [text] looks like a conversion (units may be unknown, e.g. currencies). */
+    /**
+     * Parsed `amount from to` if [text] looks like a conversion (units may be unknown, e.g. currencies).
+     * A word's place says what it is, so `in` can be the unit and the connector (`5 in in cm`). `5 in`
+     * alone has nothing to convert to, like `5 km`, so it isn't one.
+     */
     fun parse(text: String): Triple<Double, String, String>? {
         val m = pattern.find(text) ?: return null
         val amount = number(m.groupValues[1]) ?: return null
@@ -119,7 +126,7 @@ object Units {
 
     fun format(v: Double): String = when {
         v == 0.0 -> "0"
-        abs(v) >= 1e9 || abs(v) < 1e-4 -> String.format(Locale.ROOT, "%.4g", v)
+        abs(v) !in 1e-4..<1e9 -> String.format(Locale.ROOT, "%.4g", v)
         v % 1.0 == 0.0 -> String.format(Locale.ROOT, "%,.0f", v)
         else -> String.format(Locale.ROOT, "%,.4f", v).trimEnd('0').trimEnd('.')
     }

@@ -82,7 +82,7 @@ object WidgetLayout {
         return m.coerceIn(MIN_DP, MAX_DP)
     }
 
-    /** Height for a freshly added widget: the provider's minimum, never below one step. */
+    /** Height for a freshly added widget: the provider's minimum or its target cells at 90 dp each, whichever is more, and at least 72 dp. */
     fun defaultHeight(minHeightDp: Int, targetCellHeight: Int = 0): Int {
         val fromCells = if (targetCellHeight > 0) targetCellHeight * 90 else 0
         return maxOf(minHeightDp, fromCells, 72).coerceIn(MIN_DP, MAX_DP)

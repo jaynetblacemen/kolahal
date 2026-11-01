@@ -72,13 +72,17 @@ class ReminderReceiver : BroadcastReceiver() {
                 val store = ReminderStore.get(context)
                 val r = store.byId(id) ?: return@Thread // cancelled meanwhile
                 val rule = r.repeat
-                if (rule == null) {
-                    store.remove(id)
-                } else {
-                    // The same wall-clock time on its next day; a phone off for days skips to the next one ahead.
+                // The same wall-clock time on its next day; a phone off for days skips to the next one ahead.
+                val next = rule?.let {
                     val zone = ZoneId.systemDefault()
                     val fired = Instant.ofEpochMilli(r.at).atZone(zone).toLocalDateTime()
-                    val next = Repeat.next(rule, fired.toLocalTime(), maxOf(fired, LocalDateTime.now(zone))).atZone(zone).toInstant().toEpochMilli()
+                    // A rule it can't read fires this once: thrown from here, it would stop the app at every start.
+                    runCatching { Repeat.next(it, fired.toLocalTime(), maxOf(fired, LocalDateTime.now(zone))).atZone(zone).toInstant().toEpochMilli() }.getOrNull()
+                }
+                if (next == null) {
+                    store.remove(id)
+                    if (rule != null) LogRepository.get(context).add(LogKind.ERROR, "Reminder '${r.text}' had a repeat Kolahal can't read, so it won't come again")
+                } else {
                     store.setAt(id, next)
                     ReminderScheduler.schedule(context, r.copy(at = next))
                 }
@@ -87,7 +91,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 Notifier.postReminder(context, id, r.text)
                 LogRepository.get(context).add(
                     LogKind.SCRIPT, "Reminder: ${r.text}", "remind",
-                    // Tap puts a 10 minute snooze in the prompt.
+                    // Tap puts a 10-minute snooze in the prompt.
                     LogContext.of(LogContext.COMMAND to "remind 10m ${r.text}", LogContext.COPY to r.text),
                 )
             } finally {
@@ -136,7 +140,7 @@ class ReminderBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED,
-            android.app.AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED -> {
+            AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED -> {
                 val result = goAsync()
                 Thread {
                     try {

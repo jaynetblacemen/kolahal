@@ -37,7 +37,7 @@ looking at (the run's *Artifacts*), not for installing over a release.
 5. *Checks the signatures*: both APKs must be signed, with the release key when the
    =RELEASE_CERT_SHA256= variable is set ([[file:signing.org][signing.org]]); the bundle must be signed, and not with
    a debug key. The run's summary lists each file's certificate.
-6. *Packages*: =kolahal-X.Y.Z.apk=, =kolahal-X.Y.Z-mapping.zip= (R8's names for both builds, for
+6. *Packages*: =kolahal-X.Y.Z.apk=, =kolahal-X.Y.Z-play.apk=, =kolahal-X.Y.Z-mapping.zip= (R8's names for both builds, for
    reading crash traces with =retrace=) and the notes, with a last line naming the commit both
    APKs and the bundle are built from.
 7. *Publishes the GitHub release* with both APKs and the mapping zip, marked as the latest.
@@ -46,9 +46,22 @@ looking at (the run's *Artifacts*), not for installing over a release.
    bundle on the testing track: a draft to roll out in Play Console, or sent for review with
    =PLAY_SEND_FOR_REVIEW= =true= ([[file:google-play.org][google-play.org]] → Uploads from the workflow). With them set, step 1 also wants =docs/release/notes/X.Y.Z-play.txt=.
 
+* Who can release
+
+Only the repository's owner.
+
+- A ruleset, /Only the owner makes tags/ (Settings → Rules → Rulesets), stops anyone else creating,
+  moving or deleting a tag, however they try: a push, or a new release on GitHub. Repository admin
+  is the one role that bypasses it.
+- The signing keys are secrets of the =release= environment (Settings → Environments), which only a
+  run on a =v*= tag can use. A workflow pushed on a branch can't read them.
+- Google lets only =release.yml= on a =v*= tag upload to Play ([[file:google-play.org][google-play.org]] → Uploads from the
+  workflow).
+
 * Secrets and variables
 
-Repository → Settings → Secrets and variables → Actions.
+The secrets are in Settings → Environments → =release=. The variables are the repository's: Settings
+→ Secrets and variables → Actions.
 
 | Name                      | Kind     | Holds                                                |
 |---------------------------+----------+------------------------------------------------------|

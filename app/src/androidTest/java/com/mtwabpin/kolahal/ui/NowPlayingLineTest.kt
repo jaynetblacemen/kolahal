@@ -333,8 +333,10 @@ class NowPlayingLineTest {
             play(100)
             assertTrue("after a seek: ${filled()}", filled() >= 0.49f)
 
+            val pausing = System.currentTimeMillis()
             state(PlaybackState.STATE_PAUSED, DURATION * 3 / 4)
             compose.waitUntil(5_000) { repository.nowPlaying.value?.state == PlaybackState.STATE_PAUSED }
+            assertTrue("idle since the pause, not since it last said it was playing", repository.nowPlaying.value!!.idleSince >= pausing)
             compose.waitForIdle()
             assertEquals("paused", 0.75f, filled(), 0.02f)
         } finally {

@@ -8,8 +8,9 @@ name: Release
 #   once the PLAY_ variables are set, uploaded to Google Play on a testing track: a draft, or sent
 #   for review with PLAY_SEND_FOR_REVIEW true.
 #
-# Secrets (tools/make-keys.sh --secrets stores them): RELEASE_KEYSTORE_BASE64,
-# RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD, and the same four for UPLOAD_.
+# Secrets, in the release environment (tools/make-keys.sh --secrets stores them):
+# RELEASE_KEYSTORE_BASE64, RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD, and the
+# same four for UPLOAD_.
 # How it all fits together: docs/release/README.org.
 # Variable, optional but recommended: RELEASE_CERT_SHA256, the release key's certificate digest;
 # when set, both APKs must carry it, so a release can never go out under another key.
@@ -33,6 +34,8 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # Holds the signing keys, for a run on a v* tag alone: docs/release/github-actions.org → Who can release.
+    environment: release
     steps:
       - uses: actions/checkout@v7
 

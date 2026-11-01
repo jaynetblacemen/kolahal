@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.core.graphics.drawable.toDrawable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import com.mtwabpin.kolahal.terminal.Screen
@@ -61,9 +62,6 @@ class MainActivity : ComponentActivity() {
 
     private val callLogPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { vm.onCallLogPermission(it) }
-
-    private val localNetworkPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { vm.onLocalNetworkPermission(it) }
 
     private val pickFolder =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { vm.onScriptFolderPicked(it) }
@@ -113,7 +111,7 @@ class MainActivity : ComponentActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
-        widgetBinder.onActivityResult(requestCode, resultCode, data)
+        widgetBinder.onActivityResult(requestCode, resultCode)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -133,6 +131,8 @@ class MainActivity : ComponentActivity() {
         // Theme follows settings without reading config state in composition (which would recompose
         // the whole tree on every settings change).
         lifecycleScope.launch { vm.config.version.collect { applyTheme() } }
+        lifecycleScope.launch { androidx.compose.runtime.snapshotFlow { vm.previewed }.collect { applyTheme() } }
+        lifecycleScope.launch { vm.screen.collect { if (vm.livePreview != null) applyTheme() } }
         lifecycleScope.launch {
             vm.events.collect {
                 when (it) {
@@ -142,8 +142,6 @@ class MainActivity : ComponentActivity() {
                         try { contactPicker.launch(Unit) } catch (_: android.content.ActivityNotFoundException) { vm.onContactPickerMissing() }
                     UiEvent.RequestCalendarPermission -> calendarPermission.launch(Manifest.permission.READ_CALENDAR)
                     UiEvent.RequestCallLogPermission -> callLogPermission.launch(Manifest.permission.READ_CALL_LOG)
-                    UiEvent.RequestLocalNetworkPermission ->
-                        if (Build.VERSION.SDK_INT >= 37) localNetworkPermission.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
                     UiEvent.PickFont -> launchFontPicker()
                     UiEvent.PickBackupFolder -> pickBackupFolder.launch(null)
                     else -> Unit
@@ -186,7 +184,6 @@ class MainActivity : ComponentActivity() {
                     if (screen == Screen.TERMINAL) HomePager(vm) {
                         TerminalScreen(
                             vm,
-                            onRequestNotifications = ::requestNotifications,
                             onPickFolder = { pickFolder.launch(null) },
                         )
                     } else saved.SaveableStateProvider(screen.name) { androidx.compose.foundation.layout.Box(
@@ -257,14 +254,14 @@ class MainActivity : ComponentActivity() {
         if (intent.hasCategory(Intent.CATEGORY_HOME) && alreadyHome) vm.onHomePressed()
     }
 
-    /** `statusbar`: show, hide (status bar only) or immersive (status and navigation bars). */
+    /** `screen.bars`: show, hide (status bar only) or immersive (status and navigation bars). */
     private fun applyBars() {
         val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
         val status = androidx.core.view.WindowInsetsCompat.Type.statusBars()
         val nav = androidx.core.view.WindowInsetsCompat.Type.navigationBars()
         // A swipe from the edge shows hidden bars for a moment, then they hide again.
         controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        // Dark icons on a light theme (one people made: the built-in ones are dark).
+        // Dark icons on a light theme.
         val light = Term.bg.luminance() > 0.5f
         controller.isAppearanceLightStatusBars = light
         controller.isAppearanceLightNavigationBars = light
@@ -293,10 +290,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun applyTheme() {
-        Term.palette = Palettes.named(vm.config[Keys.THEME], darkTheme())
-        com.mtwabpin.kolahal.ui.WallpaperMatch.follow(this, com.mtwabpin.kolahal.ui.WallpaperMatch.themeColour())
-        Term.fontSize = vm.config[Keys.FONT_SIZE]
-        val font = vm.config[Keys.FONT]
+        val live = vm.previewed
+        Term.palette = Palettes.named(live?.theme ?: vm.config[Keys.THEME], darkTheme())
+        // Not for a preview: the wallpaper changes only once it's kept.
+        if (live == null) com.mtwabpin.kolahal.ui.WallpaperMatch.follow(this, com.mtwabpin.kolahal.ui.WallpaperMatch.themeColour())
+        Term.fontSize = live?.fontSize ?: vm.config[Keys.FONT_SIZE]
+        val font = live?.font ?: vm.config[Keys.FONT]
         val family = TermFonts.family(this, font)
         if (family == null) vm.onFontUnavailable(font)
         Term.fontFamily = family ?: FontFamily.Monospace
@@ -310,10 +309,10 @@ class MainActivity : ComponentActivity() {
             (vm.config[Keys.WIDGETS_PAGE] != "off" && vm.config[Keys.WIDGETS_WALLPAPER] > 0)
         if (wallpaper) {
             window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
-            window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+            window.setBackgroundDrawable(android.graphics.Color.TRANSPARENT.toDrawable())
         } else {
             window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
-            window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Term.bg.toArgb()))
+            window.setBackgroundDrawable(Term.bg.toArgb().toDrawable())
         }
         applyBars()
     }

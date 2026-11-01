@@ -36,8 +36,7 @@ import java.util.Date
  * Parses and runs commands typed at the prompt. Everything it prints goes into the
  * persistent log with a [LogContext] so lines stay actionable later (tap / long-press).
  */
-class CommandProcessor(private val context: Context, private val ui: TerminalUi) {
-    private val logs = LogRepository.get(context)
+class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGroup(context) {
     private val apps = AppRepository.get(context)
     private val scripts = ScriptRepository.get(context)
     private val unlocks = UnlockCounter.get(context)
@@ -160,7 +159,6 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
                 "sms", "text" -> people.sms(args)
                 "contacts", "contact" -> people.listContacts(rest)
                 "notifications" -> notifications(args)
-                "local-network" -> localNetwork(args)
                 "crashes" -> crashes(args)
                 "setup" -> if (args.firstOrNull() == "text") setupText() else ui.openScreen(Screen.SETUP)
                 "tour" -> ui.openScreen(Screen.ONBOARDING)
@@ -195,7 +193,8 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
 
     /** Expands the first word through user aliases (up to a few levels, no cycles). */
     private fun expandAliases(line: String): String {
-        var current = line
+        // Spaced, so `hf|head 5` is the alias `hf` and a filter.
+        var current = Pipes.spaced(line)
         val seen = HashSet<String>()
         repeat(5) {
             val head = current.substringBefore(' ')
@@ -203,7 +202,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             if (head.lowercase() in RESERVED_NAMES) return current
             if (!seen.add(head)) return current
             val expansion = prefs.alias(head) ?: return current
-            current = (expansion + " " + current.substringAfter(' ', "")).trim()
+            current = Pipes.spaced(expansion + " " + current.substringAfter(' ', ""))
         }
         return current
     }
@@ -238,9 +237,6 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
 
     // ---- output helpers -------------------------------------------------------------------
 
-    private fun out(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.OUTPUT, text, ctx = ctx) }
-    private fun info(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.INFO, text, ctx = ctx) }
-    private fun error(text: String) { logs.add(LogKind.ERROR, text) }
 
     /** `cal [dec [2027]]`: the month as a calendar, today in bold, weeks starting on the locale's day. */
     private fun cal(rest: String) {
@@ -297,7 +293,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         if (best == null) {
             error("Command not found: $text  (try 'help')")
         } else {
-            val corrected = (best + " " + rest).trim()
+            val corrected = "$best $rest".trim()
             logs.add(
                 LogKind.ERROR,
                 "Command not found: $head — did you mean '$corrected'? (tap to put it in the prompt)",
@@ -452,17 +448,6 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         }
     }
 
-    /** `local-network`: Android 17's permission for scripts with `@uses lan` and feeds on your network. */
-    private fun localNetwork(args: List<String>) {
-        when {
-            Build.VERSION.SDK_INT < 37 -> info("Reaching your local network needs no permission before Android 17")
-            args.firstOrNull() == "--settings" ->
-                startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
-            Net.localNetworkAllowed() -> info("Local network access is allowed")
-            else -> ui.requestLocalNetworkPermission()
-        }
-    }
-
     /**
      * `wallpaper`: whether the home screen's wallpaper is Kolahal's; `wallpaper match` makes it so
      * ([com.mtwabpin.kolahal.ui.WallpaperMatch]). It asks first: Android doesn't let an app read the
@@ -488,7 +473,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
         }
     }
 
-    /** `crashes [share|clear] [n]`: the crash reports kept on this phone ([CrashReports]). */
+    /** `crashes [share|clear] [n]`: the crash reports kept on this phone ([com.mtwabpin.kolahal.CrashReports]). */
     private fun crashes(args: List<String>) {
         val reports = com.mtwabpin.kolahal.CrashReports.list(context)
         when (args.firstOrNull()?.lowercase()) {
@@ -617,10 +602,6 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
 
     private fun startSettings(action: String) = startActivity(Intent(action))
 
-    private fun startActivity(intent: Intent) {
-        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
-
     private fun help() {
         val offered = COMMANDS.filter { it.name !in UNAVAILABLE }
         val byName = offered.associateBy { it.name }
@@ -719,7 +700,6 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             CommandSpec("tour", "tour", "How Kolahal works, a page at a time, with a few first settings"),
             CommandSpec("notifications", "notifications [settings]", "Allow script notifications"),
             CommandSpec("usage-access", "usage-access", "Grant usage access (unlock count)"),
-            CommandSpec("local-network", "local-network [--settings]", "Let scripts (@uses lan) and feeds reach your local network (Android 17+)"),
             CommandSpec("crashes", "crashes [share|clear] [<n>]", "Crash reports kept on this phone; share one to report a bug"),
             CommandSpec("battery", "battery", "Battery optimization settings"),
             CommandSpec("home", "home", "Choose the default launcher"),
@@ -794,7 +774,7 @@ class CommandProcessor(private val context: Context, private val ui: TerminalUi)
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
             "terminal" to listOf("help", "history", "clear", "fresh", "restart", "alias", "unalias", "config", "theme", "font", "backup", "echo", "date", "cal", "update"),
             "widgets" to listOf("widgets", "widget"),
-            "device" to listOf("settings", "setup", "tour", "source", "wallpaper", "unlocks", "notifications", "usage-access", "local-network", "crashes", "battery", "home", "lock", "shade", "accessibility", "system"),
+            "device" to listOf("settings", "setup", "tour", "source", "wallpaper", "unlocks", "notifications", "usage-access", "crashes", "battery", "home", "lock", "shade", "accessibility", "system"),
         )
     }
 }

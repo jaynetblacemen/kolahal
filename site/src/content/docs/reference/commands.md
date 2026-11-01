@@ -3,7 +3,7 @@ title: Commands
 description: Every built-in Kolahal command with its usage, aliases and subcommands.
 ---
 
-This is the full list from `help`, in the same groups. Anything that isn't a command, an
+This is the full list, in about the same groups as `help`. Anything that isn't a command, an
 [alias](/guides/apps/#aliases) or a [script command](/scripting/overview/#command-scripts)
 is matched against app names. Arguments in `<angle brackets>` are required, `[square brackets]`
 optional, and `a|b` means one of.
@@ -63,7 +63,7 @@ optional, and `a|b` means one of.
 | `feed rm <id>` | unsubscribe and delete its items |
 | `feed fetch [id]` | refresh now (alias `refresh`) |
 | `feed read [id]` | show unread items, then mark them read |
-| `feed all [id]` | show all stored items |
+| `feed all [id]` | show the 40 newest stored items, read or not |
 | `feed open [id]` | open up to 5 unread items in the browser and mark them read |
 | `feed notify <id> on\|off` | notifications for new items |
 | `feed every <id> <30m\|2h\|…>` | check interval (minimum 15m) |
@@ -110,7 +110,7 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `todo all` / `todo clear` | | include finished items / delete finished items |
 | `note <text>` | | save a quick note |
 | `notes [grep <text>\|rm <n>]` | | notes, newest first; tap copies |
-| `remind <when> <text>` | | notification later: `10m`, `2h`, `1h30m`, `18:30`, `6pm`, `tomorrow 9:00`, `fri 8am`, `dec 3 10:00`; again and again: `every day 8:00`, `every weekday`, `every mon,thu 19:00`, `every month 1st`, `every year mar 14` |
+| `remind <when> <text>` | | notification later: `10m`, `2h`, `1h30m`, `18:30`, `6pm`, `tomorrow 9:00`, `fri 8am`, `dec 3 10:00`; again and again: `every day 8:00`, `every weekday`, `every mon,thu 19:00`, `every month 1st`, `every year mar 14`. A time before 6 AM asks first; `remind --yes <when> <text>` doesn't |
 | `reminders` / `remind rm <n>` | | pending reminders / cancel one |
 | `remind exact` | | allow exact alarms, so reminders fire on time |
 | `timer <5m\|1h30m\|25> [<label>]` | | start a timer in the clock app (no args: show timers) |
@@ -118,13 +118,6 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `alarms` / `stopwatch` | | open the clock app |
 | `agenda [<days>]` | | upcoming calendar events (3 days by default, up to 31); tap opens one |
 | `agenda --allow` / `agenda --settings` | | ask for calendar access / open Kolahal's app settings |
-
-## Profiles
-
-| Usage | Description |
-| --- | --- |
-| `work [on\|off\|status]` | pause / resume the work profile |
-| `private [on\|off\|status]` | lock / unlock private space |
 
 ## Scripts
 
@@ -210,7 +203,6 @@ See [Widgets](/guides/widgets/).
 | `fetch` | `neofetch`, `fastfetch` | this phone and Kolahal at a glance, fastfetch style, under `name@device` (`user.name`): Kolahal's icon beside the Android version, device, kernel, uptime, Kolahal's version, apps, scripts, feeds, theme, font, display, CPU, memory, storage, battery, network and today's unlocks, then the theme's colours |
 | `notifications [settings]` | | allow script notifications |
 | `usage-access` | | grant usage access (unlock count) |
-| `local-network [--settings]` | | let scripts (`@uses lan`) and feeds reach your local network (Android 17+); `--settings` opens app settings after a denial |
 | `crashes [share\|clear] [<n>]` | | crash reports kept on this phone, newest first (tap one to share it); `share` opens the share sheet with report `n` (default: the newest), `clear` deletes them all. See [Privacy](/reference/privacy/#crash-reports) |
 | `battery` | | battery optimization settings |
 | `home` | | choose the default launcher |
@@ -218,6 +210,13 @@ See [Widgets](/guides/widgets/).
 | `shade` | | pull down the notification shade |
 | `accessibility` | | enable the screen-lock service for double-tap |
 | `system` | | Android system settings |
+
+## Profiles
+
+| Usage | Description |
+| --- | --- |
+| `work [on\|off\|status]` | pause / resume the work profile |
+| `private [on\|off\|status]` | lock / unlock private space |
 
 ## Profile flags
 

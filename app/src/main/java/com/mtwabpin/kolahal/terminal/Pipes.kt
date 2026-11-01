@@ -3,21 +3,49 @@ package com.mtwabpin.kolahal.terminal
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
 import com.mtwabpin.kolahal.data.LogRepository.Pending
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.FutureTask
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Shell-style filters over a command's output: `help | grep app`, `history | tail 5`,
  * `feed read | grep -v sponsored | head 3`, `contacts | count`.
  *
  * Only a `|` followed by a known filter starts a stage, so `lua a or b`, `js x || y` and `=` maths
- * are never split. Error lines always pass through; output a command prints later (network
- * replies, scripts) isn't captured.
+ * are never split. One with no space before it belongs to a stage that keeps its words as typed
+ * ([keepsItsWords]): `grep head|tail` is one pattern. Error lines always pass through; output a
+ * command prints later (network replies, scripts) isn't captured.
  */
 object Pipes {
     val FILTERS = listOf("grep", "head", "tail", "count", "wc", "sort", "uniq")
 
-    private val SPLIT = Regex("""\s\|\s*(?=(?:${FILTERS.joinToString("|")})\b)""")
+    private val SPLIT = Regex("""(?<!\|)(\s*)\|\s*(?=(?:${FILTERS.joinToString("|")})\b)""")
 
-    fun split(line: String): List<String> = line.split(SPLIT).map { it.trim() }.filter { it.isNotEmpty() }
+    /** A regex, code, or words kept or sent as they are. */
+    private val KEEP_WORDS = setOf("grep", "lua", "js", "alias", "config", "echo", "todo", "note", "remind", "timer", "alarm", "sms", "url", "rename")
+
+    private fun keepsItsWords(stage: String): Boolean {
+        val t = stage.trimStart()
+        return t.startsWith("=") || InstantRun.canonical(t.substringBefore(' ')) in KEEP_WORDS || t.count { it == '"' } % 2 == 1 || t.count { it == '\'' } % 2 == 1
+    }
+
+    fun split(line: String): List<String> {
+        val stages = ArrayList<String>()
+        var start = 0
+        for (pipe in SPLIT.findAll(line)) {
+            val stage = line.substring(start, pipe.range.first)
+            if (pipe.groupValues[1].isEmpty() && keepsItsWords(stage)) continue
+            stages += stage
+            start = pipe.range.last + 1
+        }
+        stages += line.substring(start)
+        return stages.map { it.trim() }.filter { it.isNotEmpty() }
+    }
+
+    /** [line] with a space around each filter's `|`, so its first word is the command: checks and aliases read it that way. */
+    fun spaced(line: String): String = split(line).joinToString(" | ")
 
     fun apply(lines: List<Pending>, stages: List<String>): Result<List<Pending>> = runCatching {
         var out = lines
@@ -38,10 +66,7 @@ object Pipes {
                 require(pattern.isNotEmpty()) { "Usage: … | grep [-v] <pattern>" }
                 val regex = runCatching { Regex(pattern, RegexOption.IGNORE_CASE) }
                     .getOrElse { Regex(Regex.escape(pattern), RegexOption.IGNORE_CASE) }
-                // A pattern that backtracks without end (`(.*.*)*x`) stops after a second
-                // instead of holding up every command after it.
-                val until = System.nanoTime() + GREP_BUDGET_MS * 1_000_000
-                data.filter { regex.containsMatchIn(Budget(searchable(it), until)) != invert }
+                GREP_LIMIT.run { data.filter { regex.containsMatchIn(searchable(it)) != invert } }
             }
             "head" -> data.take(count(args))
             "tail" -> data.takeLast(count(args))
@@ -64,15 +89,34 @@ object Pipes {
     }
 }
 
-private const val GREP_BUDGET_MS = 1_000L
+private val GREP_LIMIT = MatchLimit(ms = 1_000, maxThreads = 2)
 
-/** Text that gives up being read after [until] (System.nanoTime), so a regex over it can't run for ever. */
-private class Budget(private val s: CharSequence, private val until: Long) : CharSequence {
-    override val length: Int get() = s.length
-    override fun get(index: Int): Char {
-        if (System.nanoTime() > until) throw IllegalArgumentException("grep: pattern too slow, try a simpler one")
-        return s[index]
+/**
+ * Runs a match on a thread of its own and waits [ms] for it, so a pattern that backtracks without
+ * end (`(.*.*)*x`) can't hold up the commands after it. Android's regex engine is native and can't
+ * be stopped: such a match runs on, at the lowest priority, until it ends or Kolahal restarts, and
+ * at most [maxThreads] matches run at once.
+ */
+internal class MatchLimit(private val ms: Long, private val maxThreads: Int) {
+    private val running = AtomicInteger()
+
+    fun <T> run(match: () -> T): T {
+        if (running.incrementAndGet() > maxThreads) {
+            running.decrementAndGet()
+            throw IllegalArgumentException("grep: earlier patterns are still running; restart stops them")
+        }
+        val task = FutureTask(match)
+        val thread = Thread {
+            task.run()
+            running.decrementAndGet()
+        }.apply { isDaemon = true; start() }
+        return try {
+            task.get(ms, TimeUnit.MILLISECONDS)
+        } catch (e: TimeoutException) {
+            thread.priority = Thread.MIN_PRIORITY
+            throw IllegalArgumentException("grep: pattern too slow, try a simpler one; restart stops it")
+        } catch (e: ExecutionException) {
+            throw e.cause ?: e
+        }
     }
-    override fun subSequence(startIndex: Int, endIndex: Int): CharSequence = Budget(s.subSequence(startIndex, endIndex), until)
-    override fun toString(): String = s.toString()
 }

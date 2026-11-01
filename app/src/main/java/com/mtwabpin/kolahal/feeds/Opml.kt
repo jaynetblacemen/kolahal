@@ -8,7 +8,8 @@ package com.mtwabpin.kolahal.feeds
 object Opml {
     data class Entry(val title: String?, val url: String)
 
-    private val OUTLINE = Regex("<outline\\b([^>]*?)/?>", RegexOption.IGNORE_CASE)
+    // Quoted values whole, as a `>` needn't be escaped in one. Possessive: it can't go back over a long value.
+    private val OUTLINE = Regex("<outline\\b((?:[^>\"']++|\"[^\"]*+\"|'[^']*+')*+)>", RegexOption.IGNORE_CASE)
     private val ATTR = Regex("([A-Za-z_:][-A-Za-z0-9_:.]*)\\s*=\\s*(\"([^\"]*)\"|'([^']*)')")
     private val COMMENT = Regex("<!--.*?-->", RegexOption.DOT_MATCHES_ALL)
 
@@ -32,11 +33,11 @@ object Opml {
         append("<opml version=\"2.0\">\n")
         append("  <head><title>").append(escape(title)).append("</title></head>\n")
         append("  <body>\n")
-        for (f in feeds) {
-            val name = escape(f.title ?: f.url)
+        for ((feedTitle, url) in feeds) {
+            val name = escape(feedTitle ?: url)
             append("    <outline type=\"rss\" text=\"").append(name)
                 .append("\" title=\"").append(name)
-                .append("\" xmlUrl=\"").append(escape(f.url)).append("\"/>\n")
+                .append("\" xmlUrl=\"").append(escape(url)).append("\"/>\n")
         }
         append("  </body>\n")
         append("</opml>\n")
@@ -80,7 +81,7 @@ object Opml {
 /** Subscribes to every feed in an OPML document; returns how many were new. Invalid URLs are skipped. */
 fun FeedRepository.importOpml(xml: String): Int {
     val before = feeds().size
-    for (e in Opml.parse(xml)) runCatching { add(e.url, e.title) }
+    for ((title, url) in Opml.parse(xml)) runCatching { add(url, title) }
     return feeds().size - before
 }
 

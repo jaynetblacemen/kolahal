@@ -25,7 +25,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -33,7 +32,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -42,7 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.mtwabpin.kolahal.R
-import kotlinx.coroutines.withTimeoutOrNull
 
 /** Named keys the touch key bar understands; anything else in the spec is inserted literally. */
 enum class KeyBarKey(val label: String) {
@@ -78,7 +75,7 @@ private object CANCELLED
 private val REPEATING = setOf(KeyBarKey.UP, KeyBarKey.DOWN, KeyBarKey.LEFT, KeyBarKey.RIGHT, KeyBarKey.BKSP)
 
 /**
- * On-screen keys that touch keyboards lack: history, cursor, completion, and a few symbols.
+ * On-screen keys that touch keyboards lack: history, the cursor and a few symbols.
  * Up to [FILL_MAX] keys share the width; more scroll, with a fade marking the overflow.
  * Arrows and backspace repeat while held; dragging sideways across the bar moves the cursor.
  */

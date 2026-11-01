@@ -37,18 +37,18 @@ Type a command, or any part of an app name, and press Enter.
   that halves every week, so an app you stopped using drops back even if you open it once more.
 - **Instant launch** (`launch.instant`, default `all`): as soon as what you typed
   can only mean one app, it opens without Enter. With apps *Calculator* and *Calendar*, `calc` opens Calculator
-  and `cale` opens Calendar. The same app in several profiles counts as one match (the copy you use most opens),
-  unless two of those profiles are on: with the work profile running, `gm` opens nothing and
-  suggests both Gmails (Gmail and Gmail [W]) for you to pick.
+  and `cale` opens Calendar.
   `launch.instant all` also runs commands that take no arguments, and aliases, this way (`setti`
   opens settings; `contacts` waits for Enter so you can still type `contacts bob`), and makes a
   tapped history line run immediately. A line with arguments runs too once there is
   nothing left to choose, whether typed, picked from the suggestions or tapped in the log: `torch on`, `dnd off`, `ring silent`, `media pause`. `torch o`, `volume up`
   (a number could go there instead) and `apps work` (`-l` could follow) wait for Enter.
   Sensitive commands never run without Enter: `call`, `sms`,
-  `uninstall`, `work`, `private`, `clear`, `restart`, `lock`, `script`, `config`, `alias` and similar.
+  `uninstall`, `clear`, `restart`, `lock`, `script`, `config`, `alias`, `work`, `private` and similar.
   Calls always open the dialer, so you confirm there. `launch.instant-letters` (default 2) is how many
-  letters to type first; `launch.instant off` turns it off.
+  letters to type first; `launch.instant off` turns it off. The same app in several profiles counts
+  as one match (the copy you use most opens), unless two of those profiles are on: with the work
+  profile running, `gm` opens nothing and suggests both Gmails (Gmail and Gmail [W]) for you to pick.
 - A mistyped command gets a tappable **"did you mean"** that puts the corrected command in the prompt.
 - `= <expression>` is a [calculator and unit converter](/guides/web-and-calculator/).
 
@@ -75,13 +75,13 @@ The strip above the prompt changes as you type:
     that number. In the Play build, the people you've picked ([People](/guides/people/#in-the-play-build)).
   - Script names after `script run|edit|…`, keys and values after `config`, theme and font names,
     feeds after `feed read|rm|…`, aliases after `unalias`, status lines after `status clear`.
-  - The options a command's usage lists, such as `apps work|personal|…`, `clear history|all`,
-    `torch on|off` or `dnd alarms`.
+  - The options a command's usage lists, such as `clear history|all`, `torch on|off`,
+    `dnd alarms` or `apps work|personal|…`.
   - Your earlier commands that start with what you typed, so `search ` or `yt ` offers your past
     queries.
 
 Command chips start with `$` (`$ maps`), app chips show the app name, and a ✕ at the end of the
-prompt clears it. Tap a chip to use it. Tab (on the key bar or a hardware keyboard) takes the first one; it is
+prompt clears it. Tap a chip to use it. Tab (on a hardware keyboard, or on the key bar if you add it) takes the first one; it is
 filled when Enter acts on it too. The number of chips is `suggestions.max` (default 30).
 
 By default (`suggestions.style list`) the suggestions are a **list** stacked directly above the
@@ -93,8 +93,8 @@ description, cut to one line (`suggestions.wrap on` shows all of it, over more l
 never more than the room above the prompt, so the prompt stays in view; it scrolls beyond that. Long-press an app row for its actions. `config set suggestions.style chips`
 brings back the chip strip (`suggestions.rows` applies to chips only). In both styles each app's
 icon sits in front of its name, and commands get a terminal icon in the same place, so every name
-lines up; work and private apps carry the system's profile badge. **Show app icons**
-(`suggestions.icons`) turns the icons off.
+lines up. **Show app icons** (`suggestions.icons`) turns the icons off. Work and private apps carry
+the system's profile badge.
 
 ### App selector
 
@@ -125,8 +125,8 @@ Once your thumb is down, it slides over the whole length.
   icon if you turn on the selector's **Show app icons** (`selector.icons`). Its **Row height**
   (`selector.row-height`, 38 dp) spaces the list out. Its **Phone's font**
   (`selector.system-font`) shows the list and the letters in the phone's own font instead of the
-  terminal font. Work and private apps carry their `[W]` / `[S]` tags, paused profiles are faded
-  and hidden apps are left out. About 20 apps fit on screen at once. With the selector at the bottom of the edge (the
+  terminal font. Hidden apps are left out, work and private apps carry their `[W]` / `[S]` tags and
+  paused profiles are faded. About 20 apps fit on screen at once. With the selector at the bottom of the edge (the
   default), your favourites come last, at the bottom where your thumb rests; at the middle or the
   top they come first.
 - **Slide along the edge to a letter.** It goes a letter at a time, with a tick for each: every
@@ -256,10 +256,13 @@ config | sort
 ```
 
 Filters: `grep [-v] <pattern>` (case-insensitive regex; an invalid regex is matched literally),
-`head [n]`, `tail [n]` (default 10), `sort [-r]`, `uniq`, `count` (or `wc`). Error lines always come
-through. Only output the command prints right away is filtered; replies that arrive later (network
+`head [n]`, `tail [n]` (default 10), `sort [-r]`, `uniq`, `count` (or `wc`). `grep` stops waiting for
+a pattern after a second, with an error; if the pattern is still working, `restart` ends it. Error
+lines always come through. Only output the command prints right away is filtered; replies that arrive later (network
 requests, scripts) are written as usual. A `|` only starts a filter when a filter name follows it,
-so `js a || b` and Lua code are left alone.
+so `js a || b` and Lua code are left alone. The spaces around it are optional, but with no space
+before it, it stays in a `grep` pattern, code, quotes and text you're saving: `grep head|tail` finds
+either word, and `grep feed |head 3` is a second filter.
 
 ### Tap and long-press
 
@@ -277,16 +280,16 @@ so `js a || b` and Lua code are left alone.
 | A script error | opens the editor at the failing line |
 
 **Long-press** opens an action sheet with everything that applies: run again, edit in prompt, copy
-output, open, share or copy a link, call, message or copy a number, launch in another profile, app
-shortcuts, app info, hide, uninstall, run or edit a script, dismiss a notification or mute its app,
-copy text, and delete the line, or a command with all its output: a script's lines too, which can
-land later, under other lines.
+output, open, share or copy a link, call, message or copy a number, app shortcuts, app info, hide,
+uninstall, run or edit a script, dismiss a notification or mute its app, copy text, delete the line,
+or a command with all its output (a script's lines too, which can land later, under other lines),
+and launch in another profile.
 
 ### One-handed use
 
 - **Quick actions:** tap the `$` at the start of the prompt for everything the header offers —
-  settings, notifications, alarms, battery, network, unlocks, pause / resume the work or private
-  profile, apps, widgets, feeds, scripts and lock, with the header's icons (battery and network
+  settings, notifications, alarms, battery, network, unlocks, apps, widgets, feeds, scripts, lock
+  and pause / resume the work or private profile, with the header's icons (battery and network
   as they are now). Any gesture can open it too (`quick`).
 - **Swipe a log line:** right copies it, left deletes it (with UNDO for a few seconds).
 - **Long-press output** to run or edit the command that printed it.
@@ -294,7 +297,7 @@ land later, under other lines.
 
 ## The header
 
-A large clock and date, then unlocks, battery, network, next alarm, profile state and ⚙︎, shown
+A large clock and date, then unlocks, battery, network, next alarm, ⚙︎ and profile state, shown
 as icons: the battery is drawn to its charge level (green with a bolt while charging, red when
 low), and the network icon shows Wi-Fi, mobile or offline. `header.icons off` brings back the
 text labels (`bat`, `net`, …). Every item is tappable:
@@ -305,9 +308,9 @@ text labels (`bat`, `net`, …). Every item is tappable:
 | `unlocks` | runs `unlocks 7` | `header.unlocks` |
 | `bat` | battery usage | `header.battery` |
 | `net` | network settings | `header.network` |
-| `work` / `private` | resumes a paused profile; pausing asks for a second tap | `header.profiles` |
 | ⚙︎ | the [settings screen](/guides/themes-and-settings/) | |
 | Script status lines | runs that script | `header.status` |
+| `work` / `private` | resumes a paused profile; pausing asks for a second tap | `header.profiles` |
 
 **Auto-hide** (`header.autohide`, on by default): while you scroll back through older output the header
 disappears entirely; scrolling toward the newest lines (or running a command) brings it back as one
@@ -340,22 +343,22 @@ phone's text size, as the text does. **Taller tappable
 lines** (`log.taller-taps`) makes the lines you can tap a little taller than the others, easier to
 hit, and `chips.height` sets the height of suggestion and app-grid chips.
 
-Touch keyboards lack the keys a terminal needs, so Kolahal adds a two-row bar:
+A touch keyboard's letters page leaves out what a terminal needs, so Kolahal adds a row with just that:
 
 ```
-ESC  /  -  ⇤  ↑  ⇥  ⌫
-TAB  |  .  ←  ↓  →  ⏎
+/  |  =  ←  ↑  ↓  →
 ```
 
-- `↑` / `↓` walk the command history; `TAB` completes; `ESC` clears the prompt; `⇤` / `⇥` jump to
-  the start or end.
+- `/` starts a [log search](#searching-the-log), `|` a [pipe](#pipes) and `=` the calculator.
+- `←` / `→` move the cursor; `↑` / `↓` walk the command history.
 - Arrows and backspace repeat while held, and dragging sideways across the bar moves the cursor.
-- Both rows are configurable: `keybar.row1` and `keybar.row2` take comma-separated keys from `ESC TAB UP DOWN
+- The bar is yours to change: `keybar.row1` and `keybar.row2` take comma-separated keys from `ESC TAB UP DOWN
   LEFT RIGHT HOME END BKSP ENTER SPACE KBD`, or any literal text. `KBD` shows the soft keyboard.
-  Clear **Key bar, row 2** in Settings for a single row, or hide the bar with `keybar.show off`.
+  Row 2 is empty until you fill it, under Settings too. Hide the bar with `keybar.show off`.
 
 ```sh
 config set keybar.row1 ESC,TAB,UP,DOWN,|,~,KBD
+config set keybar.row2 HOME,END,-,BKSP
 config reset keybar.row1      # back to the default row
 ```
 

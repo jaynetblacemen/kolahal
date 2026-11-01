@@ -141,7 +141,7 @@ new comic is out.
 
 ## quote
 
-**Quote of the day** from ZenQuotes; long-press to copy. On a timer it arrives as a notification.
+**Quote of the day** from ZenQuotes; long-press to copy. At its daily time it also arrives as a notification.
 
 ## countdown
 

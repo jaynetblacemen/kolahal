@@ -20,7 +20,7 @@ the system file picker. It contains:
   with their items and read state, each script's `store` values, the whole log and ↑ history,
   app launch history (frecency), unlock history, notification and trigger settings.
 
-It's plain JSON, so you can edit it on a computer. **Import from file** loads it on any phone.
+It's plain JSON, so you can edit it on a computer. **Import a backup** loads it on any phone.
 
 ```json
 { "kolahal": 2,
@@ -44,7 +44,7 @@ On import:
 - **New scripts arrive switched off**, so you can review them before they run on a timer. Scripts
   that already exist (same name and language) keep their `enabled` flag only if their code is
   unchanged: new code arrives switched off too. Scripts named like a built-in
-  command or one of your apps are skipped.
+  command are skipped.
 - Restored log lines keep their text but can't run commands or app shortcuts
   when tapped, and keep only web, map and store links.
 - The result names the settings worth a look: a custom search address and
@@ -57,9 +57,11 @@ where those match.
 
 Not included, because they can't move between phones: the folder picked with `script dir` (a
 storage permission you grant again) and home-screen widgets' live ids (widgets are listed so
-they can be added again). Notification and call lines, the copy of recent notifications kept
-for scripts, and what this phone has seen of its calls and apps stay on the phone (a restore
-keeps the new phone's, so it doesn't log every app as installed). The file can still contain private things
+they can be added again). Notification and call lines, lines with someone's number, the `call` and
+`sms` lines you type, a private space's lines and its apps' pins, labels, hidden flags and launch
+history, responses scripts have cached, the copy of recent notifications kept for scripts, and what
+this phone has seen of its calls and apps stay on the phone (a restore keeps the new phone's, so it
+doesn't log every app as installed). The file can still contain private things
 (notes, the rest of the log), so keep it somewhere safe.
 
 ## Automatic backups
@@ -104,6 +106,9 @@ script dir       # pick a folder (any Storage Access Framework location)
 script export    # write every script plus kolahal.json (timers and flags) there
 script import    # read them back: new scripts are created, changed ones updated
 ```
+
+`kolahal.json` sets the timers and flags it lists, over any you changed since the export. A changed
+script it doesn't list keeps yours, unless its `@every` or `@at` line changed.
 
 This is handy for keeping scripts in a synced folder or a git repository on your computer. An
 export deletes only the files of scripts you deleted on this phone since its last export, never

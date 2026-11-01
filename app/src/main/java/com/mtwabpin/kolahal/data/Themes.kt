@@ -74,12 +74,12 @@ object CustomThemes {
         val kept = complete(colors)
         require(NAME.matches(name) && kept != null) { "not a theme: $name" }
         File(dir(context).apply { mkdirs() }, "$name.json").writeText(encode(kept))
-        _themes.value = _themes.value + (name to kept)
+        _themes.value += (name to kept)
     }
 
     fun delete(context: Context, name: String) {
         File(dir(context), "$name.json").delete()
-        _themes.value = _themes.value - name
+        _themes.value -= name
     }
 
     /**

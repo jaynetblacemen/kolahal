@@ -47,7 +47,7 @@ sealed class ConfigKey<T>(val key: String, val default: T, val help: String) {
 object Keys {
     val HEADER_SHOW = ConfigKey.Bool("header.show", true, "Show the header: clock, header items and script status lines (off: the log takes the whole screen; open settings with the settings command)")
     val HEADER_DEVICE = ConfigKey.Bool("header.device", false, "Show name@device in the header (the name is user.name)")
-    // A name in name@device: no @ of its own, and no spaces, as user names go.
+    // A name in name@device: no @ of its own, and no spaces, as usernames go.
     val USER_NAME = ConfigKey.Text(
         "user.name", "kolahal",
         "Your name in name@device, in the header and in fetch (up to 32 characters, no spaces or @)",
@@ -68,7 +68,7 @@ object Keys {
         "keybar.row1", DEFAULT_KEYBAR,
         "Touch keys, comma separated: ESC TAB UP DOWN LEFT RIGHT HOME END BKSP ENTER SPACE KBD or literal text",
     )
-    val KEYBAR2 = ConfigKey.Text("keybar.row2", DEFAULT_KEYBAR2, "Second key bar row (same syntax; empty for one row)")
+    val KEYBAR2 = ConfigKey.Text("keybar.row2", DEFAULT_KEYBAR2, "Second key bar row (same syntax; empty by default)")
     val KEYBAR_SHOW = ConfigKey.Bool("keybar.show", false, "Show the touch key bar")
     val KEYBAR_AUTO = ConfigKey.Bool("keybar.auto", true, "Show the key bar only while the on-screen keyboard is up for the prompt (off: always)")
     val KEYBAR_HEIGHT = ConfigKey.Num("keybar.height", 40, 20..64, "Key bar row height (dp); smaller leaves more room for the log")
@@ -156,9 +156,9 @@ object Keys {
     val WIDGETS_PAGE = ConfigKey.Choice("widgets.page", "left", listOf("left", "right", "off"), "A widgets page beside the terminal: swipe sideways on home to reach it")
     val WIDGETS_WALLPAPER = ConfigKey.Num("widgets.wallpaper", 0, 0..100, "How much of the phone's wallpaper shows behind the widgets page (%): 0 none; the higher, the less of the theme's colour over it")
 
-    val GESTURE_DOUBLE_TAP = ConfigKey.Text("gesture.double-tap", if (com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE) "lock" else "none", "Double-tap empty log space: a command, lock, shade, quick (quick actions) or none")
-    val GESTURE_SWIPE_DOWN = ConfigKey.Text("gesture.swipe-down", "shade", "Swipe down on the header: a command, lock, shade, quick or none")
-    val GESTURE_SWIPE_UP = ConfigKey.Text("gesture.swipe-up", "none", "Swipe up on the prompt: a command, lock, shade, quick or none (none by default: it fires by accident easily; apps opens the app grid)")
+    val GESTURE_DOUBLE_TAP = ConfigKey.Text("gesture.double-tap", if (com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE) "lock" else "none", "Double-tap empty log space: $GESTURE_ACTIONS, quick (quick actions) or none")
+    val GESTURE_SWIPE_DOWN = ConfigKey.Text("gesture.swipe-down", "shade", "Swipe down on the header: $GESTURE_ACTIONS, quick or none")
+    val GESTURE_SWIPE_UP = ConfigKey.Text("gesture.swipe-up", "none", "Swipe up on the prompt: $GESTURE_ACTIONS, quick or none (none by default: it fires by accident easily; apps opens the app grid)")
 
     val ALL: List<ConfigKey<*>> = listOf(
         HEADER_SHOW, HEADER_DEVICE, USER_NAME, HEADER_DATE, HEADER_UNLOCKS, HEADER_BATTERY, HEADER_NETWORK, HEADER_ALARM,
@@ -238,8 +238,12 @@ object Keys {
     }
 }
 
-private const val DEFAULT_KEYBAR = "ESC,/,-,HOME,UP,END,BKSP"
-private const val DEFAULT_KEYBAR2 = "TAB,|,.,LEFT,DOWN,RIGHT,ENTER"
+// What a keyboard's letters page doesn't have: the rest (`.`, backspace, Enter) sits right below the bar.
+private const val DEFAULT_KEYBAR = "/,|,=,LEFT,UP,DOWN,RIGHT"
+private const val DEFAULT_KEYBAR2 = ""
+
+// The Play build has no screen lock to offer.
+private val GESTURE_ACTIONS = if (com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE) "a command, lock, shade" else "a command, shade"
 
 /** Snapshot of all settings; recomposes the UI when anything changes. */
 class Config private constructor(private val prefs: SharedPreferences) {

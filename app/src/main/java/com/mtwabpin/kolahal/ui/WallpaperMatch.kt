@@ -2,9 +2,9 @@ package com.mtwabpin.kolahal.ui
 
 import android.app.WallpaperManager
 import android.content.Context
-import android.graphics.Bitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.edit
+import androidx.core.graphics.createBitmap
 
 /**
  * `wallpaper match`: the home screen's wallpaper in the theme's colour, following the theme for as
@@ -37,7 +37,7 @@ object WallpaperMatch {
     fun set(context: Context, colour: Int): Boolean {
         val wallpapers = WallpaperManager.getInstance(context)
         if (!wallpapers.isWallpaperSupported || !wallpapers.isSetWallpaperAllowed) return false
-        val solid = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888).apply { eraseColor(colour) }
+        val solid = createBitmap(64, 64).apply { eraseColor(colour) }
         val id = runCatching { wallpapers.setBitmap(solid, null, true, WallpaperManager.FLAG_SYSTEM) }.getOrDefault(0)
         if (id == 0) return false
         prefs(context).edit { putInt(KEY_ID, id); putInt(KEY_COLOUR, colour) }

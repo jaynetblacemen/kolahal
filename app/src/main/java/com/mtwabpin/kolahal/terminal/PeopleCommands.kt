@@ -10,25 +10,16 @@ import com.mtwabpin.kolahal.contacts.ContactsRepository
 import com.mtwabpin.kolahal.data.Config
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.data.LogKind
-import com.mtwabpin.kolahal.data.LogRepository
 
 /**
  * `call`, `sms`, `contacts` and `calls`. Kept out of [CommandProcessor] like the other command groups.
  * The Play build has no READ_CONTACTS ([ContactsRepository.picker]): a name is looked up among the
  * contacts picked before, and no name, or one it doesn't know, opens Android's contact picker.
  */
-class PeopleCommands(private val context: Context, private val ui: TerminalUi) {
-    private val logs = LogRepository.get(context)
+class PeopleCommands(context: Context, private val ui: TerminalUi) : CommandGroup(context) {
     private val conf = Config.get(context)
     private val contacts = ContactsRepository.get(context)
 
-    private fun out(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.OUTPUT, text, ctx = ctx) }
-    private fun info(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.INFO, text, ctx = ctx) }
-    private fun error(text: String) { logs.add(LogKind.ERROR, text) }
-
-    private fun startActivity(intent: Intent) {
-        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
 
     /** `calls [n]`: the newest calls from Android's call log, in the same form as the live lines. */
     fun calls(args: List<String>) {
@@ -44,7 +35,8 @@ class PeopleCommands(private val context: Context, private val ui: TerminalUi) {
         val n = args.firstOrNull()?.toIntOrNull()?.coerceIn(1, 200) ?: 20
         val list = CallEvents.recent(context, n)
         if (list.isEmpty()) return info("No calls in the call log")
-        list.reversed().forEach { out(CallEvents.line(it, conf, withDay = true), CallEvents.ctx(it)) }
+        // Call lines, as the ones logged by themselves are: they stay out of backups, and copy as sensitive.
+        list.reversed().forEach { logs.add(LogKind.OUTPUT, CallEvents.line(it, conf, withDay = true), CallEvents.SOURCE, CallEvents.ctx(it)) }
     }
 
     /** Finds [query]'s contact and runs [then] with it; when several match, they're listed instead. */

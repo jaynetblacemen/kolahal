@@ -24,10 +24,11 @@ import kotlin.coroutines.resumeWithException
 class FeedFetcher(context: Context) {
     private val repo = FeedRepository.get(context)
 
-    /** Outcome of one feed in [fetchAll]; [error] is null on success (including 304). */
-    /** [first]: this was the feed's first successful fetch, so [newItems] is its backlog, not news. */
-    /** [lanBlocked]: the feed is on the local network and Kolahal may not reach it yet. */
-    data class Result(val feed: Feed, val newItems: List<FeedItem>, val error: String?, val first: Boolean = false, val lanBlocked: Boolean = false)
+    /**
+     * Outcome of one feed; [error] is null on success (including 304). [first]: this was the feed's
+     * first successful fetch, so [newItems] is its backlog, not news.
+     */
+    data class Result(val feed: Feed, val newItems: List<FeedItem>, val error: String?, val first: Boolean = false)
 
     /**
      * Fetches [feed] and stores unseen items. Returns them newest first (empty on 304).
@@ -44,9 +45,6 @@ class FeedFetcher(context: Context) {
         }
     }
 
-    /** Fetches each feed in turn; one failing feed never stops the rest, and this never throws (bar cancellation). */
-    suspend fun fetchAll(feeds: List<Feed>): List<Result> = feeds.map { fetchOne(it) }
-
     /** One feed: its new items, or why it failed. A cancellation passes through. */
     suspend fun fetchOne(feed: Feed): Result =
         try {
@@ -57,12 +55,11 @@ class FeedFetcher(context: Context) {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
-            Result(feed, emptyList(), describe(e), lanBlocked = e is Net.LocalNetworkBlocked)
+            Result(feed, emptyList(), describe(e))
         }
 
     private suspend fun fetchInternal(feed: Feed): List<FeedItem> {
-        // A feed on a home server may stay home; a public feed can't redirect into the local network.
-        val request = Net.reach(Request.Builder(), Net.Reach.SAME_SIDE)
+        val request = Request.Builder()
             .url(feed.url)
             .header("User-Agent", Net.USER_AGENT)
             .header("Accept", "application/rss+xml, application/atom+xml, application/rdf+xml, application/xml;q=0.9, text/xml;q=0.9, */*;q=0.5")

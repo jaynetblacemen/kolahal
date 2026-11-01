@@ -3,11 +3,9 @@ package com.mtwabpin.kolahal.ui
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -22,7 +20,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
@@ -31,11 +29,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import com.mtwabpin.kolahal.BuildConfig
 import com.mtwabpin.kolahal.CrashReports
 import com.mtwabpin.kolahal.R
 
-/** Settings → About: the guide, crash reports and a way to write to the developer. */
+// Settings → About: the guide, crash reports and a way to write to the developer.
+
+/** The website, which holds the guide. */
 internal const val GUIDE_URL = "https://mtwabpin.github.io/kolahal/"
 /** The community's Discord server: questions, ideas and help from other people using Kolahal. */
 internal const val DISCORD_URL = "https://discord.gg/3D25w6gXR5"
@@ -46,7 +47,7 @@ internal const val DEVELOPER_EMAIL = "mtwabpin@gmail.com"
 /** The page id (in [com.mtwabpin.kolahal.terminal.TerminalViewModel.settingsCategory]) of the crash list. */
 internal const val CRASHES_PAGE = "crashes"
 
-internal val VERSION_TEXT = "Kolahal ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+internal const val VERSION_TEXT = "Kolahal ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
 
 /** A crash report as the list shows it; the full text is read only when it is sent. */
 internal class CrashRow(val report: CrashReports.Report, val title: String, val summary: String)
@@ -62,14 +63,14 @@ internal fun openGuide(context: Context): Boolean = openLink(context, GUIDE_URL)
 
 /** Opens [url] in the browser (or the app that takes it); false when no app can open it. */
 internal fun openLink(context: Context, url: String): Boolean =
-    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }.isSuccess
+    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }.isSuccess
 
 /**
  * A draft to [DEVELOPER_EMAIL] in the user's mail app, which they read and send themselves. Without
  * a mail app, any app that can send text; false when there is none.
  */
 internal fun emailDeveloper(context: Context, subject: String, body: String): Boolean {
-    val mail = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:"))
+    val mail = Intent(Intent.ACTION_SENDTO, "mailto:".toUri())
         .putExtra(Intent.EXTRA_EMAIL, arrayOf(DEVELOPER_EMAIL))
         .putExtra(Intent.EXTRA_SUBJECT, subject)
         .putExtra(Intent.EXTRA_TEXT, body)
@@ -99,7 +100,7 @@ internal fun aboutThisPhone(): String =
     "\n\n--\n$VERSION_TEXT · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.MANUFACTURER} ${Build.MODEL}"
 
 /** A tapped crash report: email it to the developer, share it, or delete it. */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun CrashSheet(crash: CrashRow, onDismiss: () -> Unit, onEmail: () -> Unit, onShare: () -> Unit, onDelete: () -> Unit) {
     val state = rememberBottomSheetState(SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
@@ -119,7 +120,7 @@ internal fun CrashSheet(crash: CrashRow, onDismiss: () -> Unit, onEmail: () -> U
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "Email and Share hold the whole report: the app and Android versions, the phone model and the error. " +
+                "Emailing or sharing it hands over the whole report: the app and Android versions, the phone model and the error. " +
                     "The other app opens with it, and nothing is sent until you send it.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
@@ -129,17 +130,13 @@ internal fun CrashSheet(crash: CrashRow, onDismiss: () -> Unit, onEmail: () -> U
                 Button(onClick = onEmail) {
                     Icon(painterResource(R.drawable.ic_mail), null, Modifier.size(ButtonDefaults.IconSize))
                     Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Email the developer")
+                    Text("Email to Us")
                 }
-                OutlinedButton(onClick = onShare) {
-                    Icon(painterResource(R.drawable.ic_share), null, Modifier.size(ButtonDefaults.IconSize))
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Share")
+                OutlinedIconButton(onClick = onShare) {
+                    Icon(painterResource(R.drawable.ic_share), "Share", Modifier.size(ButtonDefaults.IconSize))
                 }
-                OutlinedButton(onClick = onDelete) {
-                    Icon(painterResource(R.drawable.ic_delete), null, Modifier.size(ButtonDefaults.IconSize))
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Delete")
+                OutlinedIconButton(onClick = onDelete) {
+                    Icon(painterResource(R.drawable.ic_delete), "Delete", Modifier.size(ButtonDefaults.IconSize))
                 }
             }
         }

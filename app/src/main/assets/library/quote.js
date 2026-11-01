@@ -6,7 +6,7 @@
 // @at 08:00
 // @notify
 //
-// On a timer (e.g. every morning) it also sends the quote as a notification.
+// At its daily time it also sends the quote as a notification.
 
 // A failure: what didn't work, in the theme's bad colour, and why under it.
 const fail = (what, why) => log(fmt.color("bad", what), why);
@@ -31,5 +31,5 @@ const author = q.a || "Unknown";
 const text = `“${q.q.trim()}” — ${author}`;
 log(fmt.italic(`“${q.q.trim()}”`), `— ${author}`, { copy: text });
 
-// When run in the background (no arguments) the notification is the point.
-if (args.length === 0) notify(author, q.q.trim());
+// Typed, the quote is on screen; at its daily time, the notification is the point.
+if (event) notify(author, q.q.trim());

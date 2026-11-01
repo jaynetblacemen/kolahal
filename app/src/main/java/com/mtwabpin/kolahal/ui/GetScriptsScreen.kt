@@ -3,7 +3,6 @@ package com.mtwabpin.kolahal.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -82,7 +81,7 @@ fun GetScriptsScreen(vm: TerminalViewModel) {
     BackHandler { vm.closeScreen() }
 
     // Whether each is installed, edited or has an update; the name checks read the app list.
-    val states by produceState(emptyMap<String, ScriptCatalog.State>(), shared.entries, scripts) {
+    val states by produceState(emptyMap(), shared.entries, scripts) {
         value = withContext(Dispatchers.IO) { shared.entries.associate { it.name to vm.scriptCatalog.state(it, scripts) } }
     }
     val shown = remember(shared.entries, query) {
@@ -226,7 +225,7 @@ private fun SharedRow(e: ScriptCatalog.Entry, state: ScriptCatalog.State?, index
 }
 
 /** One shared script: what it is, how it runs, what it uses, its code, and Install or Update. */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SharedSheet(vm: TerminalViewModel, e: ScriptCatalog.Entry, state: ScriptCatalog.State?, onDismiss: () -> Unit) {
     val sheet = rememberBottomSheetState(SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
@@ -335,12 +334,3 @@ private fun SharedSheet(vm: TerminalViewModel, e: ScriptCatalog.Entry, state: Sc
     }
 }
 
-@Composable
-private fun Fact(label: String, value: String) {
-    Text(
-        "$label: $value",
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(vertical = 2.dp),
-    )
-}

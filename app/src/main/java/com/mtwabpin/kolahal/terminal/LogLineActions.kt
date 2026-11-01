@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.core.net.toUri
-import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.apps.AppEntry
 import com.mtwabpin.kolahal.apps.AppPrefs
 import com.mtwabpin.kolahal.apps.AppRepository
@@ -23,9 +22,6 @@ import com.mtwabpin.kolahal.notifications.NotificationActions
 import com.mtwabpin.kolahal.script.Json
 import com.mtwabpin.kolahal.script.ScriptScheduler
 import com.mtwabpin.kolahal.script.ScriptAccess
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 
 /**
  * What a tap or a long-press on a log line does; the line's saved [LogContext] decides. The view

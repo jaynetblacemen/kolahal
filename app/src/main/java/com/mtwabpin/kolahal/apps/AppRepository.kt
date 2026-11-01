@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 /** Which profile an app lives in. [tag] is the short indicator printed in the terminal. */
 enum class ProfileKind(val tag: String, val label: String) {
@@ -127,7 +128,7 @@ class AppRepository private constructor(private val context: Context) {
         _packageChanges.update { it + 1 }
         soon?.cancel()
         soon = scope.launch {
-            kotlinx.coroutines.delay(300)
+            kotlinx.coroutines.delay(300.milliseconds)
             refresh()
         }
     }
@@ -180,7 +181,6 @@ class AppRepository private constructor(private val context: Context) {
     fun search(query: String, kind: ProfileKind? = null, includeHidden: Boolean = false): List<AppEntry> =
         searchRanked(query, kind, includeHidden).map { it.first }
 
-    /** Matches with their tier: 0 exact, 1 prefix, 2 word prefix, 3 substring, 4 subsequence, 5 a slip. */
     /** The last search: instant run and the suggestions ask the same question on every keystroke. */
     private class Memo(
         val q: String, val kind: ProfileKind?, val hidden: Boolean, val apps: List<AppEntry>, val version: Int,
@@ -188,6 +188,7 @@ class AppRepository private constructor(private val context: Context) {
     )
     @Volatile private var memo: Memo? = null
 
+    /** Matches with their tier: 0 exact, 1 prefix, 2 word prefix, 3 substring, 4 subsequence, 5 a slip. */
     fun searchRanked(query: String, kind: ProfileKind? = null, includeHidden: Boolean = false): List<Pair<AppEntry, Int>> {
         val q = Fuzzy.fold(query.trim())
         if (q.isEmpty()) return emptyList()
@@ -209,7 +210,7 @@ class AppRepository private constructor(private val context: Context) {
             // Frecency is read once per match, not on every comparison.
             .onEach { it.frecency = prefs.frecency(it.app.key, now) }
             .sortedWith(
-                compareBy<Ranked>({ it.tier })
+                compareBy<Ranked> { it.tier }
                     .thenByDescending { it.frecency }
                     .thenBy { it.app.label.length }
                     .thenBy { it.app.profile.kind.ordinal }
@@ -247,9 +248,6 @@ class AppRepository private constructor(private val context: Context) {
         isSubsequence(q, app.lower) -> 4
         else -> null
     }
-
-    /** The tier of a match that is only a slip of the thumb ([Fuzzy.slip]). */
-    private val SLIP = 5
 
     private fun isSubsequence(q: String, s: String): Boolean {
         var i = 0
@@ -306,14 +304,16 @@ class AppRepository private constructor(private val context: Context) {
      * Returns false when unsupported (needs API 29+ and being the default launcher).
      */
     fun setQuietMode(profile: Profile, quiet: Boolean): Boolean {
-        if (Build.VERSION.SDK_INT < 29) return false
-        return runCatching {
+        return Build.VERSION.SDK_INT >= 29 && runCatching {
             userManager.requestQuietModeEnabled(quiet, profile.user)
             true
         }.getOrDefault(false).also { refresh() }
     }
 
     companion object {
+        /** The tier of a match that is only a slip of the thumb ([Fuzzy.slip]). */
+        private const val SLIP = 5
+
         /** Which kind of profile [user] is, seen from [me] (this app's user): anything not personal, a private space or a clone is work. */
         fun kindOf(launcherApps: LauncherApps, user: UserHandle, me: UserHandle): ProfileKind {
             if (user == me) return ProfileKind.PERSONAL

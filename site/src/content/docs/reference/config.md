@@ -45,13 +45,13 @@ The `theme` and `font` commands are unchanged.
 | `header.battery` | bool | `on` | show battery level |
 | `header.network` | bool | `off` | show network type |
 | `header.alarm` | bool | `on` | show the next alarm |
-| `header.profiles` | bool | `on` | show work/private profile state |
 | `header.status` | bool | `on` | show status lines pinned by scripts |
 | `header.media` | bool | `on` | show what's playing under the clock, with a bar for how far along it is: tap plays / pauses, long-press skips (needs notification access; see [Media](/guides/media-and-controls/#in-the-header)) |
 | `header.todo` | bool | `on` | show the open todo count (tap runs `todo`) |
 | `header.autohide` | bool | `on` | scrolling back through older output hides the header; scrolling toward the newest shows it as one line (also after a command); Home or a tap brings the full header back |
 | `header.icons` | bool | `on` | icons for battery, network, unlocks, alarm and profiles in the header (off: text labels) |
 | `clock.24h` | bool | `off` | use 24-hour time in the header and log |
+| `header.profiles` | bool | `on` | show work/private profile state |
 
 ## Appearance
 
@@ -147,8 +147,8 @@ See [Widgets](/guides/widgets/).
 | `keybar.auto` | bool | `on` | show the key bar only while the on-screen keyboard is up for the prompt (off: always) |
 | `keybar.height` | number 20–64 | `40` | key bar row height (dp); smaller leaves more room for the log |
 | `prompt.height` | number 20–72 | `40` | prompt line height (dp), with the keyboard up or down; it never gets shorter than its text |
-| `keybar.row1` | text | `ESC,/,-,HOME,UP,END,BKSP` | touch keys, comma separated: `ESC` `TAB` `UP` `DOWN` `LEFT` `RIGHT` `HOME` `END` `BKSP` `ENTER` `SPACE` `KBD` or literal text |
-| `keybar.row2` | text | `TAB,\|,.,LEFT,DOWN,RIGHT,ENTER` | second key bar row (same syntax; empty for one row) |
+| `keybar.row1` | text | `/,\|,=,LEFT,UP,DOWN,RIGHT` | touch keys, comma separated: `ESC` `TAB` `UP` `DOWN` `LEFT` `RIGHT` `HOME` `END` `BKSP` `ENTER` `SPACE` `KBD` or literal text |
+| `keybar.row2` | text | empty | second key bar row (same syntax; empty by default) |
 | `keyboard.on-home` | bool | `off` | open the soft keyboard whenever home is shown |
 | `keyboard.suggestions` | bool | `off` | prompt keyboard suggestions. Off uses a password-type field: no autocorrect, but Latin-only on some keyboards |
 

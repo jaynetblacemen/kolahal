@@ -9,7 +9,7 @@ enum class LogKind {
     OUTPUT,
     INFO,
     ERROR,
-    /** Output produced by a timer script. */
+    /** Output from a script's run, a feed or a notification, not from a typed command. */
     SCRIPT;
 
     val key: String get() = name.lowercase()
@@ -23,7 +23,7 @@ enum class LogKind {
  * Structured context saved alongside a log line. The terminal uses it to decide what a
  * tap does and which actions to offer on long-press (open link, launch app, rerun script, ...).
  *
- * Well-known keys are exposed as properties; scripts may attach any extra string keys.
+ * Well-known keys are exposed as properties. A script may set only url, image, copy and mono.
  */
 @Immutable
 data class LogContext(val values: Map<String, String> = emptyMap()) {

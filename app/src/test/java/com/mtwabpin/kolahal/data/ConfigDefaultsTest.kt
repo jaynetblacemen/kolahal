@@ -16,15 +16,18 @@ class ConfigDefaultsTest {
         assertEquals(5, Keys.LOG_SPACING.default)
         assertEquals(22, Keys.LOG_LINE_HEIGHT.default)
         assertEquals(false, Keys.LOG_TALLER_TAPS.default)
+        // From 0.4.10: one row, of what the keyboard's letters page doesn't have.
+        assertEquals("/,|,=,LEFT,UP,DOWN,RIGHT", Keys.KEYBAR.default)
+        assertEquals("", Keys.KEYBAR2.default)
     }
 
     /** kolahal@device until you set your own name: one word, without an @ of its own. */
     @Test fun yourNameIsOneWord() {
         assertEquals("kolahal", Keys.USER_NAME.default)
-        assertEquals("ravi", Keys.USER_NAME.parse("  ravi "))
+        assertEquals("alex", Keys.USER_NAME.parse("  alex "))
         assertEquals("रवि_1", Keys.USER_NAME.parse("रवि_1"))
         assertEquals("a".repeat(32), Keys.USER_NAME.parse("a".repeat(32)))
-        for (bad in listOf("", "   ", "ravi k", "ravi@home", "a".repeat(33))) assertEquals(bad, null, Keys.USER_NAME.parse(bad))
+        for (bad in listOf("", "   ", "alex k", "alex@home", "a".repeat(33))) assertEquals(bad, null, Keys.USER_NAME.parse(bad))
         // Other text settings take anything, an empty value too.
         assertEquals("", Keys.KEYBAR2.parse(""))
     }

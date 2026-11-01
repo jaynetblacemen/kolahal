@@ -28,6 +28,26 @@ class ScriptLinksTest {
 
     @After fun tearDown() = lines().forEach { logs.delete(it.id) }
 
+    /** "Copy text" copies what the line shows: it can't show one address and copy another. */
+    @Test fun aLineCantCopyWhatItDoesntShow() {
+        val h = host(internet = true)
+        h.log("Send to bc1qGOOD", null, mapOf("copy" to "bc1qEVIL"))
+        h.log("Send to bc1qGOOD", null, mapOf("copy" to "bc1qGOOD"))
+        h.log("Send to bc1qGOOD", null, mapOf("copy" to "https://evil.example/"))
+        h.log("Send to bc1qGOOD", null, mapOf("url" to "https://example.com/a", "copy" to "bc1qEVIL"))
+        h.log("Open it", null, mapOf("url" to "https://example.com/a", "copy" to "https://example.com/a"))
+        h.flush()
+        assertEquals(listOf(null, "bc1qGOOD", null, null, "https://example.com/a"), lines().sortedBy { it.id }.map { it.ctx.copy })
+    }
+
+    /** With its internet off the link goes, and a copy it doesn't show goes with it. */
+    @Test fun aLineWithoutItsLinkCantEither() {
+        val off = host(internet = false)
+        off.log("Send to bc1qGOOD", null, mapOf("url" to "https://example.com/a", "copy" to "bc1qEVIL"))
+        off.flush()
+        assertNull(lines().single().ctx.copy)
+    }
+
     /** A line keeps only the keys a script may set: anything else, a command to run on a tap included, is dropped. */
     @Test fun aLineKeepsOnlyTheKeysAScriptMaySet() {
         val h = host(internet = true)

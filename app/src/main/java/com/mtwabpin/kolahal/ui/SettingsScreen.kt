@@ -10,7 +10,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -93,6 +92,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Settings, with home drawn underneath while a look setting is being changed (a slider dragged,
@@ -120,7 +120,7 @@ fun SettingsOverHome(
                 Box(Modifier.fillMaxSize()) {
                     // widgets.wallpaper is about the widgets page: that page shows, not the terminal.
                     if (p.key == Keys.WIDGETS_WALLPAPER.key) WidgetPanel(vm)
-                    else TerminalScreen(vm, onRequestNotifications = {}, onPickFolder = {}, preview = p)
+                    else TerminalScreen(vm, onPickFolder = {}, preview = p)
                     Box(
                         Modifier.fillMaxSize().pointerInput(Unit) {
                             awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
@@ -173,7 +173,7 @@ fun SettingsScreen(
     // Showing home through Settings (a slider dragged, the eye held): all but that slider fades away.
     val peek by vm.peek.collectAsStateWithLifecycle()
     val shown by androidx.compose.animation.core.animateFloatAsState(
-        if (peek == null) 1f else 0f, androidx.compose.animation.core.tween(PEEK_FADE_MS), label = "peek",
+        if (peek == null) 1f else 0f, tween(PEEK_FADE_MS), label = "peek",
     )
     val tapScope = rememberCoroutineScope()
     val importTheme = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument(), vm::importTheme)
@@ -372,7 +372,7 @@ fun SettingsScreen(
                                 if (!openLink(context, SOURCE_URL)) tapScope.launch { snackbar.showSnackbar("No browser to open $SOURCE_URL") }
                             },
                             Action(R.drawable.ic_bug, "Crash reports", kept, chevron = true) { openId = CRASHES_PAGE },
-                            Action(R.drawable.ic_mail, "Email the developer", DEVELOPER_EMAIL) {
+                            Action(R.drawable.ic_mail, "Email to Us", DEVELOPER_EMAIL) {
                                 if (!emailDeveloper(context, VERSION_TEXT, aboutThisPhone())) {
                                     tapScope.launch { snackbar.showSnackbar("No app on this phone can send email") }
                                 }
@@ -420,12 +420,12 @@ fun SettingsScreen(
 @Composable
 private fun PeekFade(
     peek: TerminalViewModel.Peek?,
-    keep: Boolean = false,
     modifier: Modifier = Modifier,
+    keep: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val alpha by androidx.compose.animation.core.animateFloatAsState(
-        if (peek == null || keep) 1f else 0f, androidx.compose.animation.core.tween(PEEK_FADE_MS), label = "fade",
+        if (peek == null || keep) 1f else 0f, tween(PEEK_FADE_MS), label = "fade",
     )
     Box(modifier.graphicsLayer { this.alpha = alpha }) { content() }
 }
@@ -449,7 +449,7 @@ private fun PeekButton(onHold: (Boolean) -> Unit, onTap: () -> Unit) {
             .pointerInput(Unit) {
                 detectTapGestures(onPress = {
                     val hold = scope.launch {
-                        kotlinx.coroutines.delay(PEEK_HOLD_MS)
+                        kotlinx.coroutines.delay(PEEK_HOLD_MS.milliseconds)
                         onHold(true)
                     }
                     val released = tryAwaitRelease()
@@ -642,7 +642,6 @@ internal fun SettingItem(
 }
 
 /** Many options: wrapping single-select filter chips. */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun ChipChoices(choices: List<String>, selected: String, onPick: (String) -> Unit) {
     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -60,9 +60,9 @@ gh variable set RELEASE_CERT_SHA256 --body 21223ad4312a871e4a1dd16440efccac84f46
   refuses debug-signed bundles, so it is never debug-signed).
   - A release build made here now carries the release key, so it won't install over the
     debug-signed Kolahal on a phone until that phone has moved (below).
-- *On GitHub Actions*: eight repository secrets hold both keys (=RELEASE_KEYSTORE_BASE64=,
-  =RELEASE_STORE_PASSWORD=, =RELEASE_KEY_ALIAS=, =RELEASE_KEY_PASSWORD=, and the same four for
-  =UPLOAD_=). =tools/make-keys.sh --secrets= stored them on 22 October 2026, from
+- *On GitHub Actions*: eight secrets of the =release= environment hold both keys
+  (=RELEASE_KEYSTORE_BASE64=, =RELEASE_STORE_PASSWORD=, =RELEASE_KEY_ALIAS=, =RELEASE_KEY_PASSWORD=,
+  and the same four for =UPLOAD_=). =tools/make-keys.sh --secrets= stores them, from
   =keystore.properties=. The Release workflow writes the two keystores into the runner's
   temporary folder for one run; [[file:github-actions.org][github-actions.org]] has the rest.
 - The build reads =keystore.properties= first, then the =KOLAHAL_RELEASE_*= and

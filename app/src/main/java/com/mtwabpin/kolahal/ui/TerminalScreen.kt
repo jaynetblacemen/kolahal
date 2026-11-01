@@ -18,14 +18,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -45,10 +43,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -68,10 +64,9 @@ import com.mtwabpin.kolahal.terminal.LogAction
 import com.mtwabpin.kolahal.terminal.LogRow
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
 import com.mtwabpin.kolahal.terminal.UiEvent
-import java.text.SimpleDateFormat
-import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 /** What the prompt shows when home is seen from Settings as if typing: one letter matches plenty. */
 private const val PREVIEW_INPUT = "s"
@@ -85,7 +80,7 @@ val LocalTerminalShown = androidx.compose.runtime.compositionLocalOf { true }
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, onPickFolder: () -> Unit, preview: TerminalViewModel.Peek? = null) {
+fun TerminalScreen(vm: TerminalViewModel, onPickFolder: () -> Unit, preview: TerminalViewModel.Peek? = null) {
     val apps by vm.apps.collectAsStateWithLifecycle()
     // An install or update may change icons: suggestions.icons loads them again.
     val packageChanges by com.mtwabpin.kolahal.apps.AppRepository.get(androidx.compose.ui.platform.LocalContext.current).packageChanges.collectAsStateWithLifecycle()
@@ -125,7 +120,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
                 UiEvent.ScrollToBottom -> { pinned = true; listState.scrollToItem(0) }
                 // Handled by MainActivity so it works from every page (setup, script manager).
                 UiEvent.RequestNotificationPermission, UiEvent.RequestContactsPermission, UiEvent.PickContact, UiEvent.RequestCalendarPermission, UiEvent.RequestCallLogPermission,
-                UiEvent.RequestLocalNetworkPermission, UiEvent.PickFont, UiEvent.PickBackupFolder -> Unit
+                UiEvent.PickFont, UiEvent.PickBackupFolder -> Unit
                 UiEvent.ShowQuick -> Unit // opened by the collector below, where the menu lives
                 UiEvent.FocusPrompt -> {
                     runCatching { focus.requestFocus() }
@@ -187,7 +182,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     }
     LaunchedEffect(flash) {
         if (flash != null) {
-            kotlinx.coroutines.delay(2_500)
+            kotlinx.coroutines.delay(2_500.milliseconds)
             flash = null
         }
     }
@@ -238,9 +233,12 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         }
         LineIndents(text = width("$ ", Term.text), code = width("$ ", Term.code), bullet = width("• ", Term.text))
     }
-    val lineTimeFormat = remember(configVersion) {
-        SimpleDateFormat(if (config[Keys.CLOCK_24H]) "HH:mm" else "h:mm", Locale.getDefault())
+    val zone = rememberZoneChanges()
+    val lineTimeFormat = remember(configVersion, zone) {
+        com.mtwabpin.kolahal.terminal.lineTimeFormat(config[Keys.CLOCK_24H])
     }
+    // The day dividers depend on the zone too: the rows are built again, also for a change while another screen was up.
+    if (preview == null) LaunchedEffect(zone) { vm.onZoneChanged(told = zone > 0) }
     val fontSizeToast = rememberFontSizeToast()
     val doubleTapOn = remember(configVersion) {
         config[Keys.GESTURE_DOUBLE_TAP].trim().let { it.isNotEmpty() && it != com.mtwabpin.kolahal.gesture.Gestures.NONE }
@@ -256,14 +254,14 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
     ) {
         val headerCollapsed by vm.headerCollapsed.collectAsStateWithLifecycle()
         // A hardware keyboard already has these keys: the bar follows the on-screen keyboard.
-        val typing = if (preview != null) preview.typing else promptFocused && WindowInsets.isImeVisible
+        val typing = preview?.typing ?: (promptFocused && WindowInsets.isImeVisible)
         // While searching, the header shrinks to one line: suggestions can't use the room it takes.
         // Only shown smaller; it returns as it was when the search ends.
         val searching = typing || inputText.isNotEmpty()
         val headerHidden by vm.headerHidden.collectAsStateWithLifecycle()
         // header.show off: no header at all, and the log takes its room.
         val showHeader = remember(configVersion) { config[Keys.HEADER_SHOW] }
-        val density = androidx.compose.ui.platform.LocalDensity.current
+        val density = LocalDensity.current
         val headerScroll = remember(vm, density) {
             val threshold = with(density) { 24.dp.toPx() }
             object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
@@ -509,6 +507,7 @@ fun TerminalScreen(vm: TerminalViewModel, onRequestNotifications: () -> Unit, on
         val keyBarAuto = remember(configVersion) { config[Keys.KEYBAR_AUTO] }
         val promptTypingHeight = remember(configVersion) { config[Keys.PROMPT_HEIGHT_TYPING].dp }
         val keyBarOn = remember(configVersion) { config[Keys.KEYBAR_SHOW] }
+        LivePreviewBand(if (preview == null) vm.livePreview else null)
         Prompt(
             vm = vm,
             focus = focus,

@@ -25,7 +25,7 @@ object Tips {
         Tip("toggles", "torch, dnd, ring silent and volume 50 change the phone from here; toggles lists them", "toggles", setOf("toggles", "torch", "dnd", "ring", "volume", "brightness")),
     )
 
-    /** Days after installing that tips are shown: from the second day to the fourteenth. */
+    /** Whole days since installing on which tips are shown. */
     val DAYS = 1..14
 
     /** The first tip not shown yet whose commands are nowhere in [history]; null when none is left. */

@@ -62,18 +62,60 @@ object AutoBackup {
         val tree = folder(context) ?: throw IllegalStateException("no backup folder: run 'backup dir'")
         val dir = DocumentFile.fromTreeUri(context, tree)
         if (dir == null || !dir.canWrite()) throw IllegalStateException("the backup folder can't be written: run 'backup dir'")
-        val name = "kolahal-backup-${LocalDate.now()}.json"
-        val file = dir.findFile(name) ?: dir.createFile("application/json", name) ?: throw IllegalStateException("can't create $name")
-        Backup(context).export(file.uri)
+        // Before any file exists: a backup too big to save leaves nothing behind.
+        val text = Backup(context).text()
+        val saved = saveTo(dir, "kolahal-backup-${LocalDate.now()}.json", Config.get(context)[Keys.BACKUP_KEEP]) { uri ->
+            com.mtwabpin.kolahal.script.Files.writeText(context, uri, text)
+        }
         prefs(context).edit { putLong(KEY_LAST, System.currentTimeMillis()) }
-        val old = expired(dir.listFiles().mapNotNull { it.name }, Config.get(context)[Keys.BACKUP_KEEP]).toSet()
-        dir.listFiles().filter { it.name in old }.forEach { runCatching { it.delete() } }
-        return file.name ?: name
+        return saved
     }
 
-    /** Of the files in the folder, the automatic backups past the newest [keep] (their names sort by date); nothing else. */
-    internal fun expired(names: List<String>, keep: Int): List<String> =
-        names.filter(NAME::matches).sortedDescending().drop(keep)
+    /**
+     * Writes [name] in [dir] with [write], then drops the oldest past [keep]. It goes to a file of
+     * its own first, so a failure leaves nothing new and costs nothing: writing over the day's
+     * earlier backup would empty that before the first byte.
+     */
+    internal fun saveTo(dir: DocumentFile, name: String, keep: Int, write: (Uri) -> Unit): String {
+        val tempName = name.removeSuffix(".json") + ".tmp.json"
+        dir.findFile(tempName)?.delete()
+        val temp = dir.createFile("application/json", tempName) ?: throw IllegalStateException("can't create $name")
+        try {
+            write(temp.uri)
+        } catch (e: Exception) {
+            runCatching { temp.delete() }
+            throw e
+        }
+        val earlier = dir.findFile(name)
+        if ((earlier != null && !earlier.delete()) || !temp.renameTo(name)) {
+            // A provider that can't delete or rename: written again under its name, the copy kept until that's done.
+            val file = dir.findFile(name) ?: dir.createFile("application/json", name) ?: throw IllegalStateException("can't create $name")
+            write(file.uri)
+            temp.delete()
+        }
+        val files = dir.listFiles().filter { NAME.matches(it.name.orEmpty()) }.associateBy { it.name.orEmpty() }
+        expired(files.mapValues { it.value.length() }, name, keep).forEach { old -> runCatching { files[old]?.delete() } }
+        return name
+    }
+
+    /**
+     * Of the automatic backups in a folder, by name with the size each reads as (their names sort
+     * by date), those past the newest [keep], [written] being one of those kept. One that reads as
+     * empty doesn't count, as an earlier failure could have left it and it would push a real one
+     * out. It doesn't go for that alone: a provider that reports no size makes every file read so.
+     */
+    internal fun expired(sizes: Map<String, Long>, written: String, keep: Int): List<String> {
+        var counted = 0
+        return buildList {
+            for (name in sizes.keys.filter(NAME::matches).sortedDescending()) {
+                when {
+                    name == written -> counted++
+                    counted >= keep -> add(name)
+                    sizes.getValue(name) > 0 -> counted++
+                }
+            }
+        }
+    }
 }
 
 /** Writes an automatic backup; a failure is a line in the log that says how to fix it. */

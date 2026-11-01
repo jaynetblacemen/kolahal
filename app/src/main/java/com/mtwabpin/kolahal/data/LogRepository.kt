@@ -173,7 +173,7 @@ class LogRepository private constructor(private val context: Context) {
 
     /**
      * Bumped by a change in the middle of the log that home can't apply to its page by itself (a
-     * restore, a hide, a clear): it then reads the page again. Lines removed ([takeRemoved]) and
+     * restore, a hide, a clear): it then reads the page again. Lines removed ([removedSince]) and
      * trims ([trimmedUpTo]) are told apart, so the page is only read again when they reach into it.
      */
     @Volatile var structure = 0L
@@ -510,7 +510,7 @@ class LogRepository private constructor(private val context: Context) {
 
     /**
      * Keeps the newest [keep] lines and, counted apart, the newest [keep] typed commands, so a script
-     * that logs a lot can't push out ↑ history. Drops anything older than [maxAgeDays], which only
+     * that logs a lot can't push out ↑ history. Drops output older than [maxAgeDays], which only
      * the UI process passes (the :script process has a stale settings copy).
      */
     fun trim(keep: Int = keepLines, maxAgeDays: Int? = null) {
@@ -625,6 +625,10 @@ class LogRepository private constructor(private val context: Context) {
         private const val KEY_SEEN_UP_TO = "seen_up_to"
         private const val KEY_HISTORY_FROM = "history_from"
         private const val KEY_FILTER = "filter"
+
+        /** The preferences that hold a line's id, which a backup carries along with the lines ([FullBackup]). */
+        internal val ID_KEYS = setOf(KEY_CLEARED_UP_TO, KEY_HIDDEN_UP_TO, KEY_PURGE_UP_TO, KEY_SEEN_UP_TO, KEY_HISTORY_FROM)
+
         const val ACTION_LOGS_CHANGED = "com.mtwabpin.kolahal.LOGS_CHANGED"
         const val EXTRA_RESTRUCTURE = "restructure"
         const val EXTRA_TRIMMED_UP_TO = "trimmed_up_to"

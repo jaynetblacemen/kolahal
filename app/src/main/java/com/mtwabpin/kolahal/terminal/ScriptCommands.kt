@@ -30,18 +30,14 @@ import java.util.Date
  * the dispatcher only needs one line per command.
  */
 class ScriptCommands(
-    private val context: Context,
+    context: Context,
     private val ui: TerminalUi,
     /** Runs slow work (folder sync) off the serial command queue; failures are logged. */
     private val background: (label: String, block: () -> Unit) -> Unit,
-) {
-    private val logs = LogRepository.get(context)
+) : CommandGroup(context) {
     private val scripts = ScriptRepository.get(context)
     private val folder = ScriptFolder(context)
 
-    private fun out(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.OUTPUT, text, ctx = ctx) }
-    private fun info(text: String, ctx: LogContext = LogContext.EMPTY) { logs.add(LogKind.INFO, text, ctx = ctx) }
-    private fun error(text: String) { logs.add(LogKind.ERROR, text) }
 
     /** Runs a `@command` script named [name]; returns null if there is none. */
     fun runCommand(name: String, args: List<String>): Unit? {
@@ -87,7 +83,6 @@ class ScriptCommands(
                 folder.uri?.let { info("Script folder: ${it.lastPathSegment}") }
                 ui.pickScriptFolder()
             }
-            // Folder sync can be slow on SAF providers; run it off the serial command queue.
             "lib", "library" -> {
                 val lib = ScriptLibrary(context)
                 val installed = scripts.all()
@@ -119,6 +114,7 @@ class ScriptCommands(
                 info("Installed ${s.name}.${s.lang.ext}" + (if (entry.command) " — run it as '${s.name}'" else "") +
                     (if (s.intervalMin > 0) " · every ${CommandParsing.formatInterval(s.intervalMin)}" else ""), scriptCtx(s))
             }
+            // Folder sync can be slow on SAF providers; run it off the serial command queue.
             "export" -> background("export") { info("Exported ${folder.export()} scripts + kolahal.json") }
             "import" -> background("import") {
                 val r = folder.import()
@@ -126,7 +122,7 @@ class ScriptCommands(
             }
             "new" -> {
                 val (name, lang) = parseName(target ?: return error("Usage: script new <name>[.lua|.js] [lua|js] [--cmd]"))
-                if (!Regex("^[a-z0-9_-]{1,40}$").matches(name)) return error("Script names: lowercase letters, digits, - and _ only")
+                if (!ScriptNames.NAME.matches(name)) return error("Script names: lowercase letters, digits, - and _ only")
                 if (name in CommandProcessor.RESERVED_NAMES) return error("'$name' is a built-in command, pick another name")
                 val asCommand = "--cmd" in args || "cmd" in args
                 val chosen = args.drop(2).firstNotNullOfOrNull(ScriptLang::of) ?: lang ?: ScriptLang.LUA
@@ -159,8 +155,9 @@ class ScriptCommands(
                 )
             }
             "at" -> withScript(target) { s ->
-                val spec = args.getOrNull(2) ?: return error("Usage: script at <name> <HH:mm[,HH:mm…]|off>")
-                val times = if (spec == "off") emptyList() else spec.split(',').map { CommandParsing.parseClock(it) ?: return error("Bad time '$it' — use HH:mm") }
+                val specs = CommandParsing.clockWords(args.drop(2))
+                if (specs.isEmpty()) return error("Usage: script at <name> <HH:mm[,HH:mm…]|off>")
+                val times = if (specs[0] == "off") emptyList() else specs.map { ScriptScheduler.normalizeTime(it) ?: return error("Bad time '$it' — use HH:mm") }
                 scripts.setAtTimes(s.id, times.distinct().sorted())
                 if (times.isNotEmpty() && !s.enabled) {
                     scripts.setEnabled(s.id, true)
@@ -519,11 +516,11 @@ class ScriptCommands(
                 ", " + StyledText.colour(StyledText.Colour.ACCENT, "+ $added only in yours"),
             LogContext.of(LogContext.COPY to plain) + scriptCtx(s).values,
         )
-        for (h in hunks) {
-            if (h.skipped > 0) add(StyledText.colour(StyledText.Colour.MUTED, "⋯ ${lines(h.skipped)} the same"))
-            for (line in h.lines) {
-                val text = "${sign.getValue(line.kind)} ${line.text.replace("\t", "    ")}"
-                add(when (line.kind) {
+        for ((skipped, hunkLines) in hunks) {
+            if (skipped > 0) add(StyledText.colour(StyledText.Colour.MUTED, "⋯ ${lines(skipped)} the same"))
+            for ((kind, line) in hunkLines) {
+                val text = "${sign.getValue(kind)} ${line.replace("\t", "    ")}"
+                add(when (kind) {
                     LineDiff.Kind.REMOVED -> StyledText.colour(StyledText.Colour.BAD, text)
                     LineDiff.Kind.ADDED -> StyledText.colour(StyledText.Colour.ACCENT, text)
                     LineDiff.Kind.SAME -> StyledText.colour(StyledText.Colour.MUTED, text)

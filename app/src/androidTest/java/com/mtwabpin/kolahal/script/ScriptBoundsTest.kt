@@ -87,6 +87,27 @@ class ScriptBoundsTest {
         assertTrue(LogRepository.get(context).recent(50).any { "sends words to a website" in it.text })
     }
 
+    /** Nor to a `@command` script that goes online: it runs with its own switches, so it could send them on. */
+    @Test fun wordsDontGoOutThroughAnotherScript() {
+        val online = scripts.create("bounds-online", ScriptLang.LUA, "-- @command\nhttp.get('https://example.com/' .. argline)")
+        val local = scripts.create("bounds-local", ScriptLang.LUA, "-- @command\nlog(argline)")
+        val off = HostApi(
+            context, "bounds", scriptId = null, notifyEnabled = false, interactive = true,
+            grants = ScriptAccess.Grants(setOf("commands"), mapOf("commands" to true, ScriptAccess.INTERNET to false)),
+        )
+        try {
+            assertTrue(!off.runCommand("bounds-online my clipboard"))
+            off.flush()
+            assertTrue(LogRepository.get(context).recent(50).any { "refused 'bounds-online'" in it.text })
+            // No words to carry, or a script that stays on the phone: nothing goes out.
+            assertTrue(off.runCommand("bounds-online"))
+            assertTrue(off.runCommand("bounds-local my clipboard"))
+        } finally {
+            scripts.delete(online.id)
+            scripts.delete(local.id)
+        }
+    }
+
     /** setWork takes true or false, or "on" or "off", alike in Lua and JavaScript. */
     @Test fun setWorkReadsItsArgumentOneWay() {
         val host = HostApi(context, "bounds", scriptId = null, notifyEnabled = false)

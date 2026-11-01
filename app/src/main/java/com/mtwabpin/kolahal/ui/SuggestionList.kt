@@ -1,6 +1,5 @@
 package com.mtwabpin.kolahal.ui
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,9 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -72,7 +69,6 @@ internal fun completionHelp(label: String, replacement: String): String? {
  * thumb (TAB takes it; it is highlighted when Enter acts on it too). At most ~40% of the screen tall,
  * and no taller than the room above the prompt; more scroll. Tap picks; long-press an app for its actions.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SuggestionList(items: List<Suggestion>, onPick: (Suggestion) -> Unit, onAppLongPress: (AppEntry) -> Unit, icons: Boolean = false, wrapHelp: Boolean = false) {
     if (items.isEmpty()) return

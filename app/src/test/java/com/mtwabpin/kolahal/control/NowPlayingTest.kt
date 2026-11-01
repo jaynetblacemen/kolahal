@@ -82,6 +82,27 @@ class NowPlayingTest {
         assertTrue(np(state = PlaybackState.STATE_BUFFERING).showInHeader(at + NowPlaying.HIDE_AFTER_MS * 10))
     }
 
+    /** A player can say nothing for all of a long track: the half hour starts at the pause. */
+    @Test fun aLongTrackPausedStaysInTheHeader() {
+        val last = LastPlaying()
+        last.update(setOf("player"), at)
+        val paused = at + 45 * 60_000
+        last.update(emptySet(), paused)
+        assertEquals(paused, last["player"])
+        // Looking again later doesn't move it.
+        last.update(emptySet(), paused + 60_000)
+        assertEquals(paused, last["player"])
+        val np = np(state = PlaybackState.STATE_PAUSED, idleSince = last["player"]!!)
+        assertTrue(np.showInHeader(paused + NowPlaying.HIDE_AFTER_MS - 1))
+        assertFalse(np.showInHeader(paused + NowPlaying.HIDE_AFTER_MS))
+    }
+
+    @Test fun aSessionNeverSeenPlayingHasNoTime() {
+        val last = LastPlaying()
+        last.update(setOf("player"), at)
+        assertEquals(null, last["other"])
+    }
+
     @Test fun theHeaderLeavesOutASessionWithNothingToShow() {
         assertFalse(np(state = PlaybackState.STATE_NONE).showInHeader(at))
         assertFalse(np(state = PlaybackState.STATE_ERROR).showInHeader(at))

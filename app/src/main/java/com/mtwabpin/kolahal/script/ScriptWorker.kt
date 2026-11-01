@@ -13,6 +13,7 @@ import com.mtwabpin.kolahal.data.ScriptRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Runs one script (by id) or an inline REPL snippet. Executes inside the `:script` process via
@@ -32,7 +33,7 @@ class ScriptWorker(context: Context, params: WorkerParameters) : RemoteCoroutine
         const val KEY_INTERACTIVE = "interactive"
         /** Started by a command another script sent with launcher.run. */
         const val KEY_BY_SCRIPT = "by_script"
-        /** JSON object for the script's `event` global (event-triggered runs only). */
+        /** JSON object for the script's `event` global (event and daily-time runs only). */
         const val KEY_EVENT = "event"
         /** The typed command's line that started this run ([LogContext.FROM]). */
         const val KEY_FROM = "from"
@@ -89,7 +90,7 @@ internal object ScriptRun {
                 (from?.let { mapOf(LogContext.FROM to it.toString()) } ?: emptyMap())
         )
         val status = try {
-            val result = withTimeout(ScriptWorker.TIMEOUT_MS + 2_000) {
+            val result = withTimeout((ScriptWorker.TIMEOUT_MS + 2_000).milliseconds) {
                 engine.run(code, name, host, ScriptWorker.TIMEOUT_MS, repl, args, event)
             }
             host.flush()
@@ -149,7 +150,6 @@ internal object ScriptRun {
             logs.touch()
         }
         if (host.notifyBlocked) reportBlocked(ctx, logs, name, "notify-blocked", "notifications are blocked", "notifications")
-        if (host.lanBlocked) reportBlocked(ctx, logs, name, "lan-blocked", "Kolahal may not reach your local network yet", "local-network")
         logs.trim()
         return true
     }

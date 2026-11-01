@@ -4,14 +4,15 @@ package com.mtwabpin.kolahal.terminal
  * `launch.instant`: run what the user is typing as soon as it can only mean one thing, without
  * Enter. `apps` limits this to app names; `all` also covers commands, aliases, and whole lines
  * whose arguments leave nothing to choose (`torch on`). Sensitive commands (calls, messages,
- * uninstall, profile switches, clearing, …) never run this way.
+ * uninstall, profile switches, clearing, …) never run this way, with one exception: device and media
+ * state runs as such a whole line ([wholeLine]).
  */
 object InstantRun {
     const val OFF = "off"
     const val APPS = "apps"
     const val ALL = "all"
 
-    /** Never run without Enter: they cost money, change state, or are hard to undo. */
+    /** Never run without Enter, but for [WHOLE_LINE_OK]: they cost money, change state, or are hard to undo. */
     val SENSITIVE = setOf(
         "call", "sms", "uninstall", "work", "private", "clear", "restart", "lock", "script", "alias", "unalias",
         "config", "hide", "unhide", "rename", "feed", "feeds", "notifs", "lua", "js", "=", "url", "echo",
@@ -20,7 +21,7 @@ object InstantRun {
         "rss", "crashes",
         // These leave the launcher or change the phone: typing `sy` on the way to something else
         // mustn't open Android's settings.
-        "battery", "home", "system", "accessibility", "usage-access", "shade", "local-network", "notifications", "source",
+        "battery", "home", "system", "accessibility", "usage-access", "shade", "notifications", "source",
         // Replaces the wallpaper, which can't be brought back.
         "wallpaper",
         // `scripts rm|off|import …` reaches the same handler as `script`; `status clear` wipes lines.
@@ -50,14 +51,14 @@ object InstantRun {
      * Android's settings).
      */
     fun isSensitive(line: String): Boolean {
-        val t = CommandParsing.spaces(line).trim()
+        // Spaced: `torch|head` runs `torch`, and it's that a script may not send.
+        val t = Pipes.spaced(CommandParsing.spaces(line)).trim()
         // `=…` runs code in the calculator (`=notify(…)` has no space after the `=`).
         if (t.startsWith("=")) return true
         val head = canonical(t.substringBefore(' '))
         if (head in SENSITIVE) return true
         val args = t.substringAfter(' ', "").split(' ')
-        if (head == "open" && (args.any { ':' in it } || "--resume" in args)) return true
-        return args.any { it == "--allow" || it == "--settings" }
+        return (head == "open" && (args.any { ':' in it } || "--resume" in args)) || args.any { it == "--allow" || it == "--settings" }
     }
 
     /**
@@ -65,12 +66,12 @@ object InstantRun {
      * levels), so an alias such as `c = clear` can't carry a sensitive command past the check.
      */
     fun isSensitive(line: String, aliases: Map<String, String>): Boolean {
-        var current = CommandParsing.spaces(line).trim()
+        var current = Pipes.spaced(CommandParsing.spaces(line))
         repeat(6) {
             if (isSensitive(current)) return true
             val head = current.substringBefore(' ')
             val body = aliases[head] ?: aliases[head.lowercase()] ?: return false
-            current = (body + " " + current.substringAfter(' ', "")).trim()
+            current = Pipes.spaced(body + " " + current.substringAfter(' ', ""))
         }
         return true // deeper than the dispatcher expands: refuse rather than guess
     }
@@ -84,7 +85,7 @@ object InstantRun {
      * What [text] uniquely refers to, or null. [rankedApps] is the app search (tier 0 exact,
      * 1 prefix, 2 word prefix, 3+ looser); only prefix tiers count, so "grov" picks Grove even
      * though looser matches exist. A command and an app with the same name resolve to the command
-     * in `all` mode (`system` opens Android settings). [isOn]: the app's profile is on (personal
+     * in `all` mode (`settings` opens Kolahal's, not an app called Settings). [isOn]: the app's profile is on (personal
      * always is; a paused work profile or private space isn't).
      */
     fun <A> target(
@@ -139,8 +140,7 @@ object InstantRun {
         // An alias may stand for anything: it waits for Enter.
         if (word in aliases) return false
         val head = canonical(word)
-        if (head in SENSITIVE && head !in WHOLE_LINE_OK) return false
-        return commands[head]?.let { UsageLine.complete(line, it) } == true
+        return (head !in SENSITIVE || head in WHOLE_LINE_OK) && commands[head]?.let { UsageLine.complete(line, it) } == true
     }
 
     /**

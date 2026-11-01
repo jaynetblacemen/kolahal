@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.FlowRow
@@ -85,6 +84,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Widgets page (Material 3 Expressive): every placed widget, live, laid out as on the widgets page
@@ -374,10 +374,10 @@ private fun RepeatingButton(icon: Int, description: String, enabled: Boolean, on
             return@LaunchedEffect
         }
         heldSince = SystemClock.uptimeMillis()
-        delay(400)
+        delay(400.milliseconds)
         while (true) {
             step()
-            delay(70)
+            delay(70.milliseconds)
         }
     }
     IconButton(

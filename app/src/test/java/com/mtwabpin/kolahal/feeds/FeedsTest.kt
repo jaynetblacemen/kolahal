@@ -7,6 +7,34 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OpmlTest {
+    /** Valid XML, and other apps write it: only `<` and `&` have to be escaped in an attribute. */
+    @Test fun aGreaterThanInAnAttributeIsntTheTagsEnd() {
+        val xml = """
+            <opml version="2.0"><body>
+              <outline text="A > B" xmlUrl="https://a.example/feed"/>
+              <outline title='C -> D' xmlUrl='https://b.example/feed' />
+              <outline text="Folder > stuff">
+                <outline xmlUrl="https://c.example/feed?a>b" text="E/>F"></outline>
+              </outline>
+              <outline text='It said "x > y"' xmlUrl="https://d.example/feed"/>
+            </body></opml>
+        """.trimIndent()
+        assertEquals(
+            listOf(
+                Opml.Entry("A > B", "https://a.example/feed"),
+                Opml.Entry("C -> D", "https://b.example/feed"),
+                Opml.Entry("E/>F", "https://c.example/feed?a>b"),
+                Opml.Entry("It said \"x > y\"", "https://d.example/feed"),
+            ),
+            Opml.parse(xml),
+        )
+    }
+
+    @Test fun aVeryLongAttributeDoesntStopTheRest() {
+        val xml = "<outline text=\"" + "x > ".repeat(50_000) + "\" xmlUrl=\"https://a.example/\"/><outline xmlUrl=\"https://b.example/\"/>"
+        assertEquals(listOf("https://a.example/", "https://b.example/"), Opml.parse(xml).map { it.url })
+    }
+
     @Test
     fun parsesNestedOutlinesAndAttributeVariants() {
         val xml = """

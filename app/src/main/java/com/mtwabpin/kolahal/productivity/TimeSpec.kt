@@ -80,7 +80,18 @@ object TimeSpec {
     private val ISO_DATE = Regex("^\\d{4}-\\d{2}-\\d{2}$")
     private val YEAR = Regex("^\\d{4}$")
 
-    /** A date at [tokens] from [i], how many tokens it took, and whether it named its year. */
+    private val LEAP_YEAR: LocalDate = LocalDate.of(2028, 1, 1)
+    private val DAY_NUMBER = Regex("^\\d+(st|nd|rd|th)?$", RegexOption.IGNORE_CASE)
+
+    /** From the third token, a month and a number, either way round, or `2027-12-03`: meant as a date, valid or not. */
+    private fun looksLikeDate(tokens: List<String>): Boolean {
+        val a = tokens.getOrNull(2) ?: return false
+        if (ISO_DATE.matches(a)) return true
+        val b = tokens.getOrNull(3) ?: return false
+        return (month(a) != null && DAY_NUMBER.matches(b)) || (DAY_NUMBER.matches(a) && month(b) != null)
+    }
+
+    /** A date read from the tokens, how many of them it took, and whether it named its year. */
     private data class Day(val date: LocalDate, val used: Int, val yearGiven: Boolean)
 
     /** `dec 3`, `3 dec`, `december 3rd`, either with a year after it (`dec 3 2027`), or `2027-12-03`. */
@@ -127,9 +138,9 @@ object TimeSpec {
         }
 
         val weekday = weekday(head)
-        val day: LocalDate? = when {
-            head == "today" -> now.toLocalDate()
-            head == "tomorrow" || head == "tmrw" || head == "tmr" -> now.toLocalDate().plusDays(1)
+        val day: LocalDate? = when (head) {
+            "today" -> now.toLocalDate()
+            "tomorrow", "tmrw", "tmr" -> now.toLocalDate().plusDays(1)
             // Today's own name is today, if its time is still ahead.
             else -> weekday?.let { dow ->
                 var d = now.toLocalDate()
@@ -177,7 +188,10 @@ object TimeSpec {
                 "month:${n ?: today.dayOfMonth}"
             }
             "year" -> {
-                val day = parseDate(tokens, 2, today)?.takeIf { !it.yearGiven }
+                // In a leap year, so 29 February is a date: it's the 28th in other years ([Repeat]).
+                val day = parseDate(tokens, 2, LEAP_YEAR)
+                // Meant as a date but not one (`feb 30`, or `mar 14 2027`, as it repeats every year): a mistake, not the reminder's words.
+                if (day?.yearGiven == true || (day == null && looksLikeDate(tokens))) return null
                 if (day != null) j = 2 + day.used
                 val d = day?.date ?: today
                 "year:%02d-%02d".format(d.monthValue, d.dayOfMonth)
@@ -191,6 +205,27 @@ object TimeSpec {
         if (time != null) j++ else if (at) return null
         return Repeating(rule, Repeat.next(rule, time ?: DEFAULT_TIME, now), j)
     }
+
+    private val SMALL_HOURS_END: LocalTime = LocalTime.of(6, 0)
+
+    /** Worth asking about, when the time was typed: `remind tomorrow 2 tickets` is more likely two tickets than 2 AM. */
+    fun inTheSmallHours(at: LocalDateTime): Boolean = at.toLocalTime().isBefore(SMALL_HOURS_END)
+
+    data class Reading(val at: LocalDateTime, val text: String)
+
+    /**
+     * The other way to read [tokens], whose first [consumed] said when: a bare hour after a day word
+     * as the text's first word, at the default time. Null for any other time.
+     */
+    fun otherReading(tokens: List<String>, consumed: Int, now: LocalDateTime): Reading? {
+        val hour = tokens.getOrNull(consumed - 1) ?: return null
+        if (!hour.all(Char::isDigit) || tokens.getOrNull(consumed - 2)?.lowercase() == "at") return null
+        val at = parseWhen(tokens.take(consumed - 1) + DEFAULT_TIME.toString(), now)?.at ?: return null
+        return Reading(at, tokens.drop(consumed - 1).joinToString(" "))
+    }
+
+    /** Words for [at] and [text] that mean the same whenever they're run: a "tomorrow" would move on at midnight. */
+    fun exactWords(at: LocalDateTime, text: String): String = "${at.toLocalDate()} ${at.toLocalTime()} $text"
 
     /** 7800 -> "2h 10m"; 45 -> "45s"; 90000 -> "1d 1h". */
     fun formatDuration(seconds: Long): String {
