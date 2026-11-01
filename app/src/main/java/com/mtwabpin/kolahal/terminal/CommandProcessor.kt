@@ -53,8 +53,23 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
 
     // Called only behind BuildConfig.SELF_UPDATE, so R8 leaves the updater out of the Play build: Play
     // allows no update but its own (tools/check-play-build.sh checks).
-    private fun updateCommands() = UpdateCommands(context, ::background, { text, ctx -> info(text, ctx) }) { message ->
-        logs.add(LogKind.ERROR, message, ctx = LogContext.of(LogContext.URL to UpdateCommands.RELEASE_PAGE))
+    private fun updateCommands() =
+    if (com.mtwabpin.kolahal.BuildConfig.SELF_UPDATE) {
+        UpdateCommands(
+            context,
+            ::background,
+            { text, ctx -> info(text, ctx) },
+        ) { message ->
+            logs.add(
+                LogKind.ERROR,
+                message,
+                ctx = LogContext.of(
+                    LogContext.URL to UpdateCommands.RELEASE_PAGE
+                )
+            )
+        }
+    } else {
+        null
     }
 
     private fun background(label: String, block: () -> Unit) {
@@ -126,7 +141,8 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
                 "script" -> scriptCommands.script(args)
                 "lua" -> eval(ScriptLang.LUA, rest)
                 "js" -> eval(ScriptLang.JS, rest)
-                "update" -> if (com.mtwabpin.kolahal.BuildConfig.SELF_UPDATE) updateCommands().run(args) else error("This build updates through Google Play")
+                "update" -> updateCommands?.run(args)
+    ?: error("Self-updates aren't available in the Play build")
                 "rss" -> feedCommands.rss(rest)
                 "feeds" -> if (args.isEmpty()) ui.openScreen(Screen.FEEDS) else feedCommands.feeds(args).also { runCatching { com.mtwabpin.kolahal.feeds.FeedScheduler.sync(context) } }
                 // A feed added, removed, switched or given a new interval changes the schedule.
