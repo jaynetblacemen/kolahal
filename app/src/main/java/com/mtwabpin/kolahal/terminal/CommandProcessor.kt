@@ -175,7 +175,8 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
 
     /** Expands the first word through user aliases (up to a few levels, no cycles). */
     private fun expandAliases(line: String): String {
-        var current = line
+        // Spaced, so `hf|head 5` is the alias `hf` and a filter.
+        var current = Pipes.spaced(line)
         val seen = HashSet<String>()
         repeat(5) {
             val head = current.substringBefore(' ')
@@ -183,7 +184,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
             if (head.lowercase() in RESERVED_NAMES) return current
             if (!seen.add(head)) return current
             val expansion = prefs.alias(head) ?: return current
-            current = (expansion + " " + current.substringAfter(' ', "")).trim()
+            current = Pipes.spaced(expansion + " " + current.substringAfter(' ', ""))
         }
         return current
     }

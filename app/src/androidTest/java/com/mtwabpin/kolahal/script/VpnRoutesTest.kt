@@ -29,6 +29,7 @@ import org.junit.runner.RunWith
 /**
  * With a real VPN up whose routes split the internet in two, as VPNs that leave the local network
  * alone do. A user's scripts all failed with one on: "zenquotes.io is this phone or the local network".
+ * And with narrower ones, whose networks must stay out of a script's reach.
  */
 @RunWith(AndroidJUnit4::class)
 class VpnRoutesTest {
@@ -104,5 +105,25 @@ class VpnRoutesTest {
         for (link in under) {
             assertTrue("${link.address} isn't among the phone's networks", Net.links.any { (prefix, length) -> Net.inPrefix(link.address.address, prefix, length) })
         }
+    }
+
+    /** Its own address is this phone, on public addresses too, whatever it carries. */
+    @Test fun aVpnsOwnAddressIsLocal() {
+        assertTrue(vpn!!.up("0.0.0.0" to 1, "128.0.0.0" to 1, address = "203.0.113.7"))
+        waitFor("its own address isn't local") { Net.isLocal(InetAddress.getByName("203.0.113.7")) }
+        assertFalse("its neighbour counts as local", Net.isLocal(InetAddress.getByName("203.0.113.8")))
+        assertFalse("the internet counts as local", Net.isLocal(InetAddress.getByName("8.8.8.8")))
+    }
+
+    /** Back home or to work on public addresses: what's on it is as local as a private range would be. */
+    @Test fun aNarrowVpnsNetworkIsLocal() {
+        assertTrue(vpn!!.up("198.51.100.0" to 24, "2001:db8:1:2::" to 64, address = "203.0.113.7"))
+        for (ip in listOf("198.51.100.9", "2001:db8:1:2::10", "203.0.113.7")) {
+            waitFor("$ip isn't local") { Net.isLocal(InetAddress.getByName(ip)) }
+        }
+        assertFalse("the internet counts as local", Net.isLocal(InetAddress.getByName("8.8.8.8")))
+        // Gone with the VPN.
+        vpn!!.down()
+        waitFor("198.51.100.9 stayed local") { !Net.isLocal(InetAddress.getByName("198.51.100.9")) }
     }
 }

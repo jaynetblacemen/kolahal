@@ -14,11 +14,13 @@ class TestVpn : VpnService() {
 
     private var tun: ParcelFileDescriptor? = null
 
-    /** Whether it came up. */
-    fun up(vararg routes: Pair<String, Int>): Boolean {
-        val builder = Builder().setSession("test").addAddress("10.111.222.1", 32)
-        routes.forEach { (address, length) -> builder.addRoute(address, length) }
+    /** Whether it came up. Called again, it takes the new routes and address. */
+    fun up(vararg routes: Pair<String, Int>, address: String = "10.111.222.1"): Boolean {
+        val builder = Builder().setSession("test").addAddress(address, 32)
+        routes.forEach { (to, length) -> builder.addRoute(to, length) }
+        val before = tun
         tun = builder.establish()
+        before?.close()
         return tun != null
     }
 

@@ -124,6 +124,14 @@ class TerminalFixesTest {
         assertTrue(first != second)
     }
 
+    /** `tfhf|count` is the alias and a filter: no spaces needed, and the alias's own pipe still applies. */
+    @Test fun anAliasTakesAPipeWithNoSpace() {
+        run("alias tfhf = help | grep feed")
+        val some = run("tfhf").size
+        assertTrue(some > 0)
+        assertEquals(listOf("$some"), run("tfhf|count").map { it.text })
+    }
+
     /** `alias hf = help | grep feed`: the pipe is the alias's, for when hf runs. */
     @Test fun anAliasKeepsItsPipe() {
         run("alias tfhf = help | grep feed")

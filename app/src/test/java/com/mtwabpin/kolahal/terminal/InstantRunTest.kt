@@ -180,6 +180,20 @@ class InstantRunTest {
         assertTrue(!InstantRun.isSensitive("search how to resume"))
     }
 
+    /** `torch|head` runs `torch`, spaces or not. */
+    @Test fun aPipeCantCarryASensitiveCommandPastTheCheck() {
+        for (line in listOf("torch|head", "dnd|head", "restart|head", "wifi|head", "lock|head", "TORCH|head", "clear all|head")) {
+            assertTrue(line, InstantRun.isSensitive(line))
+        }
+        for (line in listOf("contacts --allow|head", "calls --settings|head", "open maps -w --resume|head", "open phone:mom|head")) {
+            assertTrue(line, InstantRun.isSensitive(line))
+        }
+        assertTrue(InstantRun.isSensitive("c|head", mapOf("c" to "clear")))
+        assertTrue(InstantRun.isSensitive("a", mapOf("a" to "c|head", "c" to "clear")))
+        assertFalse(InstantRun.isSensitive("help|grep feed"))
+        assertFalse(InstantRun.isSensitive("w|head", mapOf("w" to "weather")))
+    }
+
     @Test fun aliasesCantCarrySensitiveCommandsPastTheCheck() {
         val aliases = mapOf("c" to "clear", "x" to "c all", "w" to "weather")
         assertTrue(InstantRun.isSensitive("c", aliases))

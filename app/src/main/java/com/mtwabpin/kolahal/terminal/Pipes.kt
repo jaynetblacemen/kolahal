@@ -14,15 +14,38 @@ import java.util.concurrent.atomic.AtomicInteger
  * `feed read | grep -v sponsored | head 3`, `contacts | count`.
  *
  * Only a `|` followed by a known filter starts a stage, so `lua a or b`, `js x || y` and `=` maths
- * are never split. Error lines always pass through; output a command prints later (network
- * replies, scripts) isn't captured.
+ * are never split. One with no space before it belongs to a stage that keeps its words as typed
+ * ([keepsItsWords]): `grep head|tail` is one pattern. Error lines always pass through; output a
+ * command prints later (network replies, scripts) isn't captured.
  */
 object Pipes {
     val FILTERS = listOf("grep", "head", "tail", "count", "wc", "sort", "uniq")
 
-    private val SPLIT = Regex("""(?<!\|)\s*\|\s*(?=(?:${FILTERS.joinToString("|")})\b)""")
+    private val SPLIT = Regex("""(?<!\|)(\s*)\|\s*(?=(?:${FILTERS.joinToString("|")})\b)""")
 
-    fun split(line: String): List<String> = line.split(SPLIT).map { it.trim() }.filter { it.isNotEmpty() }
+    /** A regex, code, or words kept or sent as they are. */
+    private val KEEP_WORDS = setOf("grep", "lua", "js", "alias", "config", "echo", "todo", "note", "remind", "timer", "alarm", "sms", "url", "rename")
+
+    private fun keepsItsWords(stage: String): Boolean {
+        val t = stage.trimStart()
+        return t.startsWith("=") || InstantRun.canonical(t.substringBefore(' ')) in KEEP_WORDS || t.count { it == '"' } % 2 == 1 || t.count { it == '\'' } % 2 == 1
+    }
+
+    fun split(line: String): List<String> {
+        val stages = ArrayList<String>()
+        var start = 0
+        for (pipe in SPLIT.findAll(line)) {
+            val stage = line.substring(start, pipe.range.first)
+            if (pipe.groupValues[1].isEmpty() && keepsItsWords(stage)) continue
+            stages += stage
+            start = pipe.range.last + 1
+        }
+        stages += line.substring(start)
+        return stages.map { it.trim() }.filter { it.isNotEmpty() }
+    }
+
+    /** [line] with a space around each filter's `|`, so its first word is the command: checks and aliases read it that way. */
+    fun spaced(line: String): String = split(line).joinToString(" | ")
 
     fun apply(lines: List<Pending>, stages: List<String>): Result<List<Pending>> = runCatching {
         var out = lines

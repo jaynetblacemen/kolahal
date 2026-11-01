@@ -51,7 +51,8 @@ object InstantRun {
      * Android's settings).
      */
     fun isSensitive(line: String): Boolean {
-        val t = CommandParsing.spaces(line).trim()
+        // Spaced: `torch|head` runs `torch`, and it's that a script may not send.
+        val t = Pipes.spaced(CommandParsing.spaces(line)).trim()
         // `=…` runs code in the calculator (`=notify(…)` has no space after the `=`).
         if (t.startsWith("=")) return true
         val head = canonical(t.substringBefore(' '))
@@ -65,12 +66,12 @@ object InstantRun {
      * levels), so an alias such as `c = clear` can't carry a sensitive command past the check.
      */
     fun isSensitive(line: String, aliases: Map<String, String>): Boolean {
-        var current = CommandParsing.spaces(line).trim()
+        var current = Pipes.spaced(CommandParsing.spaces(line))
         repeat(6) {
             if (isSensitive(current)) return true
             val head = current.substringBefore(' ')
             val body = aliases[head] ?: aliases[head.lowercase()] ?: return false
-            current = (body + " " + current.substringAfter(' ', "")).trim()
+            current = Pipes.spaced(body + " " + current.substringAfter(' ', ""))
         }
         return true // deeper than the dispatcher expands: refuse rather than guess
     }

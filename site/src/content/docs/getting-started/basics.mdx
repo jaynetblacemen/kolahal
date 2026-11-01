@@ -260,7 +260,9 @@ Filters: `grep [-v] <pattern>` (case-insensitive regex; an invalid regex is matc
 a pattern after a second, with an error; if the pattern is still working, `restart` ends it. Error
 lines always come through. Only output the command prints right away is filtered; replies that arrive later (network
 requests, scripts) are written as usual. A `|` only starts a filter when a filter name follows it,
-so `js a || b` and Lua code are left alone. The spaces around it are optional.
+so `js a || b` and Lua code are left alone. The spaces around it are optional, but with no space
+before it, it stays in a `grep` pattern, code, quotes and text you're saving: `grep head|tail` finds
+either word, and `grep feed |head 3` is a second filter.
 
 ### Tap and long-press
 
@@ -356,7 +358,7 @@ A touch keyboard's letters page leaves out what a terminal needs, so Kolahal add
 
 ```sh
 config set keybar.row1 ESC,TAB,UP,DOWN,|,~,KBD
-config set keybar.row2 HOME,END,-,BKSP    # a second row
+config set keybar.row2 HOME,END,-,BKSP
 config reset keybar.row1      # back to the default row
 ```
 

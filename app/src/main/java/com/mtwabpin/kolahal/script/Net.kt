@@ -8,6 +8,7 @@ import java.net.Socket
 import java.net.SocketAddress
 import java.util.concurrent.TimeUnit
 import javax.net.SocketFactory
+import kotlin.math.pow
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -44,27 +45,30 @@ object Net {
     /**
      * The networks this phone is on (its addresses and each link's prefix length): on an IPv6 home
      * network, or one on public IPv4, the router and the other devices have public addresses that
-     * are just as local. A VPN isn't one of them: its routes are what it carries, often the internet
-     * itself in parts (`0.0.0.0/1`), and the networks under it stay local. Kept by [watchLinks], in
-     * each process.
+     * are just as local. So are a VPN's own addresses and, unless they carry the internet
+     * ([narrowRoutes]), its routes; the networks under it stay local. Kept by [watchLinks], in each
+     * process.
      */
     @Volatile internal var links: List<Pair<ByteArray, Int>> = emptyList()
 
-    /** Follows the links of every network but a VPN ([links]), from now on. */
+    /**
+     * [routes] but for an address family a VPN carries the internet over: half of IPv4 or more, or
+     * half of IPv6's public range (2000::/3). That's often in parts (`0.0.0.0/1`, or all but the
+     * private ranges), and none of it is local; a narrower VPN's routes are a network of its own.
+     */
+    internal fun narrowRoutes(routes: List<Pair<ByteArray, Int>>): List<Pair<ByteArray, Int>> =
+        routes.groupBy { it.first.size }.filter { (size, family) -> family.sumOf { 0.5.pow(it.second) } < if (size == 4) 0.5 else 1.0 / 16 }.values.flatten()
+
+    /** Follows the links of every network ([links]), from now on. */
     fun watchLinks(context: android.content.Context) {
         val cm = context.getSystemService(android.net.ConnectivityManager::class.java) ?: return
-        val request = android.net.NetworkRequest.Builder()
-            .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
-            .build()
-        // Callbacks come one at a time.
+        // Callbacks come one at a time, both watches' too.
         val byNetwork = HashMap<android.net.Network, List<Pair<ByteArray, Int>>>()
-        runCatching {
+        fun watch(request: android.net.NetworkRequest, linksOf: (android.net.LinkProperties, List<Pair<ByteArray, Int>>) -> List<Pair<ByteArray, Int>>) = runCatching {
             cm.registerNetworkCallback(request, object : android.net.ConnectivityManager.NetworkCallback() {
                 override fun onLinkPropertiesChanged(network: android.net.Network, lp: android.net.LinkProperties) {
-                    // Its own addresses' prefixes, and routes it reaches without a gateway (directly connected).
-                    byNetwork[network] = lp.linkAddresses.map { it.address.address to it.prefixLength } +
-                        lp.routes.filter { it.gateway?.isAnyLocalAddress != false && it.destination.prefixLength > 0 }.map { it.destination.address.address to it.destination.prefixLength }
+                    // Routes it reaches without a gateway (directly connected).
+                    byNetwork[network] = linksOf(lp, lp.routes.filter { it.gateway?.isAnyLocalAddress != false }.map { it.destination.address.address to it.destination.prefixLength })
                     links = byNetwork.values.flatten()
                 }
 
@@ -74,6 +78,19 @@ object Net {
                 }
             })
         }
+        watch(
+            android.net.NetworkRequest.Builder()
+                .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+                .build(),
+        ) { lp, routes -> lp.linkAddresses.map { it.address.address to it.prefixLength } + routes.filter { it.second > 0 } }
+        // A VPN that applies to this app: only the phone's own address on it, not its neighbours by prefix.
+        watch(
+            android.net.NetworkRequest.Builder()
+                .addTransportType(android.net.NetworkCapabilities.TRANSPORT_VPN)
+                .removeCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+                .build(),
+        ) { lp, routes -> lp.linkAddresses.map { it.address.address.let { a -> a to a.size * 8 } } + narrowRoutes(routes) }
     }
 
     /** Whether [address] is in the network [prefix]/[length]: the same family, and the first [length] bits alike. */

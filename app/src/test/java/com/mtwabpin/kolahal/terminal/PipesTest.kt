@@ -29,6 +29,28 @@ class PipesTest {
         assertEquals(listOf("js a || grep"), Pipes.split("js a || grep"))
     }
 
+    /** What worked before the spaces were optional means what it meant. */
+    @Test fun aPipeWithNoSpaceBeforeItStaysInWordsKeptAsTyped() {
+        assertEquals(listOf("help", "grep head|tail"), Pipes.split("help | grep head|tail"))
+        assertEquals(listOf("help", "grep sort|count", "head 3"), Pipes.split("help | grep sort|count | head 3"))
+        for (line in listOf(
+            "lua print(x|count)", "js a|head", "=1|count", "echo \"a|head\"", "echo 'a|head'", "todo buy milk|sort stuff", "note a|head",
+            "url https://x.test/?q=a|sort", "web https://x.test/?q=a|sort", "alias x = lua a|count", "config set keybar.row1 a|head",
+        )) {
+            assertEquals(line, listOf(line), Pipes.split(line))
+        }
+        // With a space before it, it's a filter, as it always was.
+        assertEquals(listOf("help", "grep head", "tail"), Pipes.split("help | grep head |tail"))
+        assertEquals(listOf("todo", "sort"), Pipes.split("todo |sort"))
+    }
+
+    @Test fun spacedPutsASpaceAroundEachFiltersPipe() {
+        assertEquals("hf | head 5", Pipes.spaced("hf|head 5"))
+        assertEquals("help | grep head|tail | sort", Pipes.spaced("help|grep head|tail | sort"))
+        assertEquals("lua a|count", Pipes.spaced("lua a|count"))
+        assertEquals("help", Pipes.spaced(" help "))
+    }
+
     @Test fun grepIsCaseInsensitiveAndInvertible() {
         assertEquals(listOf("Apple", "pineapple"), run("grep apple", "Apple", "pear", "pineapple"))
         assertEquals(listOf("pear"), run("grep -v apple", "Apple", "pear", "pineapple"))
