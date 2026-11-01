@@ -22,6 +22,14 @@ class UpdateCommandsTest {
         assertTrue(UpdateCommands.isNewer("0.4.11-dev", "0.4.10"))
     }
 
+    @Test fun progressIsInWholePercents() {
+        assertEquals(0, UpdateCommands.Progress(0, 1000).percent)
+        assertEquals(49, UpdateCommands.Progress(499, 1000).percent)
+        assertEquals(100, UpdateCommands.Progress(1000, 1000).percent)
+        // The largest APK it accepts: this would overflow in an Int.
+        assertEquals(50, UpdateCommands.Progress(50L * 1024 * 1024, 100L * 1024 * 1024).percent)
+    }
+
     /** Play allows no update but its own. */
     @Test fun thePlayBuildDoesntOfferIt() {
         assertEquals(!BuildConfig.SELF_UPDATE, "update" in CommandCatalog.UNAVAILABLE)

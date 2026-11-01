@@ -168,10 +168,6 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
 
     private val _entries = MutableStateFlow<List<LogEntry>>(emptyList())
     val entries: StateFlow<List<LogEntry>> = _entries.asStateFlow()
-    private val _updateProgress = MutableStateFlow<UpdateProgress?>(null)
-
-val updateProgress: StateFlow<UpdateProgress?> =
-    _updateProgress.asStateFlow()
 
     private val _filter = MutableStateFlow(logs.filter?.let(LogFilter::parse))
     /** `log only …`: the log shows only these lines until ✕, Back, `log all` or another command. */
@@ -199,9 +195,6 @@ val updateProgress: StateFlow<UpdateProgress?> =
         // Kept until cleared, through leaving home and a restart.
         logs.filter = filter?.let { if (it is LogFilter.OfKind) it.word else it.label }
         requestReload()
-    }
-    override fun setUpdateProgress(progress: UpdateProgress?) {
-    _updateProgress.value = progress
     }
 
     private val _headerCollapsed = MutableStateFlow(false)

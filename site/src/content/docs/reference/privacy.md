@@ -58,9 +58,10 @@ may include Kolahal's data in it, as it does for other apps. Kolahal's own
 
 The Play build (the Google Play version, also an APK on GitHub) leaves four of these out:
 `READ_CALL_LOG`, `READ_CONTACTS`, `REQUEST_INSTALL_PACKAGES` and the accessibility service. The calls
-in the log, `update` and the screen lock are only in the full build. Instead of reading your contacts, the Play build opens Android's
-contact picker, which shows Kolahal only the person you pick; it keeps their name and numbers on
-the phone, out of Android's cloud backup, until `contacts --forget` ([People](/guides/people/#in-the-play-build)).
+in the log, `update` and the screen lock are only in the full build. Instead of reading your contacts,
+the Play build opens Android's contact picker, which shows Kolahal only the person you pick; it keeps
+their name and numbers on the phone, out of Android's cloud backup, until `contacts --forget`
+([People](/guides/people/#in-the-play-build)).
 
 Declared in the manifest:
 

@@ -57,6 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mtwabpin.kolahal.BuildConfig
 import com.mtwabpin.kolahal.R
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.script.ScriptMeta
@@ -68,10 +69,6 @@ import com.mtwabpin.kolahal.terminal.UiEvent
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.height
-import androidx.compose.ui.draw.clip
-import com.mtwabpin.kolahal.terminal.UpdateProgress
 
 /** What the prompt shows when home is seen from Settings as if typing: one letter matches plenty. */
 private const val PREVIEW_INPUT = "s"
@@ -198,7 +195,6 @@ fun TerminalScreen(vm: TerminalViewModel, onPickFolder: () -> Unit, preview: Ter
 
     val maxSuggestions = remember(configVersion) { config[Keys.SUGGESTIONS] }
     val commandNames by vm.commandNames.collectAsStateWithLifecycle()
-    val updateProgress by vm.updateProgress.collectAsStateWithLifecycle()
     val prefsVersion by vm.appPrefsVersion.collectAsStateWithLifecycle()
     val contacts by vm.contacts.collectAsStateWithLifecycle()
     val inputText = if (preview?.typing == true) PREVIEW_INPUT else vm.input.text
@@ -473,11 +469,8 @@ fun TerminalScreen(vm: TerminalViewModel, onPickFolder: () -> Unit, preview: Ter
         }
         // [/selector]
         }
-        if (preview == null) {
-    updateProgress?.let { progress ->
-        UpdateDownloadProgress(progress)
-    }
-        }
+        // Behind the build's switch, so R8 leaves the updater out of the Play build.
+        if (BuildConfig.SELF_UPDATE && preview == null) UpdateProgressLine()
         search?.let { LogSearchSummary(it) } ?: filter?.let { LogFilterBar(it, filterCount, onClear = { vm.filterLog(null) }) }
         // suggestions.auto: hidden on an idle home; shown while typing, or whenever there is input
         // (so hardware-keyboard typing still gets them).
@@ -634,52 +627,6 @@ private fun TerminalSecretPrompt(vm: TerminalViewModel, prompt: ScriptActions.Se
         SecretDialog(prompt.script, secret, isSet, onDismiss = vm.scriptActions::closeSecretPrompt) { value ->
             vm.scriptActions.closeSecretPrompt()
             vm.scriptActions.setSecret(prompt.script, secret, value)
-        }
-    }
-}
-@Composable
-private fun UpdateDownloadProgress(progress: UpdateProgress) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 5.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                "Downloading update",
-                style = Term.text.copy(color = Term.dim),
-                modifier = Modifier.weight(1f),
-            )
-
-            Text(
-                "${(progress.fraction * 100).toInt()}%",
-                style = Term.text.copy(color = Term.dim),
-            )
-        }
-
-        Text(
-            "${progress.downloadedBytes / (1024 * 1024)} MB / " +
-                "${progress.totalBytes / (1024 * 1024)} MB",
-            style = Term.text.copy(color = Term.dim),
-        )
-
-        // Same design as NowPlayingLine's music progress bar.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .clip(RoundedCornerShape(50))
-                .background(Term.dim.copy(alpha = 0.25f))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(progress.fraction)
-                    .fillMaxHeight()
-                    .background(Term.prompt)
-            )
         }
     }
 }

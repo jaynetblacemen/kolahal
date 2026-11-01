@@ -25,7 +25,6 @@ interface TerminalUi {
     fun requestCalendarPermission() {}
     /** READ_CALL_LOG for calls in the log and `calls`. */
     fun requestCallLogPermission() {}
-    fun setUpdateProgress(progress: UpdateProgress?) {}
     /**
      * `notifs enable` with access off: what notification access reads and what for, with a choice,
      * before Android's Notification access screen opens.
@@ -40,11 +39,3 @@ interface TerminalUi {
 }
 
 data class CommandSpec(val name: String, val usage: String, val help: String)
-data class UpdateProgress(
-    val downloadedBytes: Long,
-    val totalBytes: Long,
-) {
-    val fraction: Float
-        get() = (downloadedBytes.toFloat() / totalBytes.coerceAtLeast(1))
-            .coerceIn(0f, 1f)
-}

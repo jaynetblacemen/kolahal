@@ -22,7 +22,7 @@ Google Play gets the Play build, the full app without four things, packaged as a
 |-------------------------------------------+----------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------|
 | =READ_CALL_LOG=                           | calls in the log, =calls=                          | not allowed: Play's SMS and Call Log policy names "calls appearing in wallpaper, launcher, and other tools" as invalid, and launchers get no exception |
 | the accessibility service (=LockService=) | double-tap to lock, =lock=                         | Play says launchers are not accessibility tools, so it would need a declaration, an in-app disclosure with consent, and a video of it                  |
-| =REQUEST_INSTALL_PACKAGES=                | =update= and its code                              | Device and Network Abuse: an app updates only through Play |
+| =REQUEST_INSTALL_PACKAGES=                | =update= and its code                              | Device and Network Abuse: an app updates only through Play                                                                                             |
 | =READ_CONTACTS=                           | contacts read by name; the picker instead (below)  | Play's Contacts policy (apps targeting Android 17, from 27 January 2027): broad access only where Android's contact picker can't do the job, with a declaration |
 
 The maintainer chose (26 October 2026) to leave the call log and the accessibility service out

@@ -34,8 +34,8 @@ One commit makes three files:
 - *Play* leaves out the accessibility service, the call log, reading contacts and =update=: Google Play's
   policy doesn't let a launcher read the call log at all, wants a declaration, consent screens and a
   video for an accessibility service, wants the contact picker where it's enough, and lets an app
-  update only through Play. Leaving the
-  first two out was decided on 22 October 2026, for good on 26 October.
+  update only through Play. Leaving the first two out was decided on 22 October 2026, for good on
+  26 October.
   It has notification access since 0.4.6, asked for with an in-app disclosure first.
   [[file:google-play.org][google-play.org]] has the policy. The bundle is signed with the upload key, and Play turns it into
   APKs signed with the release key ([[file:signing.org][signing.org]]).

@@ -10,7 +10,7 @@ publishing.
 #+begin_src sh
 ./gradlew :app:assembleDebug              # debug APK ("Kolahal debug", package suffix .debug)
 ./gradlew :app:assembleRelease            # R8-optimised; signed with keystore.properties or the debug key
-./gradlew :app:bundlePlay                 # Google Play: release without accessibility, the call log and reading contacts
+./gradlew :app:bundlePlay                 # Google Play: release without accessibility, the call log, reading contacts and update
 ./gradlew -PplayApk :app:assemblePlay     # the same as an APK, signed with the release key (GitHub releases)
 ./gradlew :app:testDebugUnitTest          # JVM tests
 ./gradlew :app:connectedDebugAndroidTest  # engines, sandbox, timeouts, :script process, commands
@@ -118,7 +118,7 @@ kolahal/
 │       │   ├── assets/licenses/      OFL licences of the bundled fonts
 │       │   ├── java/…/launcher/      Kotlin sources, by package (table below)
 │       │   └── res/                  icons, fonts, XML config (accessibility service, backup rules, network security)
-│       ├── play/AndroidManifest.xml   the Play build: removes the accessibility service, the call log and reading contacts
+│       ├── play/AndroidManifest.xml   the Play build: removes the accessibility service, the call log, reading contacts and update
 │       ├── release/generated/baselineProfiles/   AOT profile for fast start (generated, committed)
 │       ├── test/               JVM unit tests (pure logic: parsing, ranking, layout math, formats)
 │       └── androidTest/        on-device tests (script engines, sandbox, commands, backup, home and settings screens)
