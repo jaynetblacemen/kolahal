@@ -39,3 +39,11 @@ interface TerminalUi {
 }
 
 data class CommandSpec(val name: String, val usage: String, val help: String)
+data class UpdateProgress(
+    val downloadedBytes: Long,
+    val totalBytes: Long,
+) {
+    val fraction: Float
+        get() = (downloadedBytes.toFloat() / totalBytes.coerceAtLeast(1))
+            .coerceIn(0f, 1f)
+}
