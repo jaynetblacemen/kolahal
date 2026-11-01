@@ -1,9 +1,9 @@
 -- night-dnd.lua — Do Not Disturb for the night: on at 11 PM, off at 7 AM. No network.
--- @desc Do Not Disturb on at 11 PM and off at 7 AM; if you turned it on yourself, it leaves it be
+-- @desc Do Not Disturb on at 11 PM and off at 7 AM; if you turned it on yourself, it does nothing
 -- @title Night Do Not Disturb
 -- @at 23:00, 07:00
 -- @uses dnd
--- @option mode priority|alarms|none How quiet: your priority people and apps, alarms only, or nothing
+-- @option mode priority|alarms|none Priority only, alarms only, or total silence
 --
 -- At ON it turns Do Not Disturb on, unless it's on already: then it's yours, and it leaves it be,
 -- at OFF too. At OFF it turns off only what it turned on. (Since Android 15 that's Kolahal's own

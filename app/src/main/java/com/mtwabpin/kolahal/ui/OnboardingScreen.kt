@@ -203,7 +203,7 @@ private fun Choices(vm: TerminalViewModel, key: ConfigKey<*>, choices: List<Pair
 private fun Welcome() = Page("") {
     Text("Kolahal", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(top = 8.dp))
     Text("A home screen you type into.", style = MaterialTheme.typography.titleLarge)
-    Body("Open apps, run commands and see what your phone is up to, all from one line at the bottom of the screen. This tour takes a minute, and sets up a few things on the way: each page shows what a choice does as you make it.")
+    Body("Open apps, run commands and see what's happening on your phone, all from one line at the bottom of the screen. This tour takes a minute, and sets up a few things on the way: each page shows what a choice does as you make it.")
     val shape = RoundedCornerShape(16.dp)
     Column(
         verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -232,7 +232,7 @@ private fun Welcome() = Page("") {
 
 @Composable
 private fun Typing(vm: TerminalViewModel) = Page("Type to open", preview = { TypingPreview(vm) }) {
-    Setting("Open without Enter", "Once the letters can only mean one thing. Calls and other sensitive commands always wait for Enter.") {
+    Setting("Open without Enter", "Once only one match is left. Calls and other sensitive commands always require Enter.") {
         Choices(vm, Keys.LAUNCH_INSTANT, listOf("Off" to "off", "Apps" to "apps", "All" to "all"))
     }
     Setting("Suggestions", "A list above the prompt, the best one nearest your thumb, or a strip of chips.") {
@@ -242,12 +242,12 @@ private fun Typing(vm: TerminalViewModel) = Page("Type to open", preview = { Typ
 }
 
 @Composable
-private fun TheLog() = Page("Everything lands in the log", preview = { LogTryPreview() }) {
-    Body("What you run and what it says, your notifications and your scripts' lines: all in one log, the newest at the bottom.")
+private fun TheLog() = Page("Everything goes in the log", preview = { LogTryPreview() }) {
+    Body("Commands and their output, your notifications and your scripts' output: all in one log, the newest at the bottom.")
     val gestures = buildList {
         add(Triple(R.drawable.ic_search, "Type /word", "Searches the whole log"))
         add(Triple(R.drawable.ic_tune, "Pinch", "Makes the text bigger or smaller"))
-        if (BuildConfig.LOCK_SERVICE) add(Triple(R.drawable.ic_lock, "Double-tap empty space", "Locks the screen, once you allow it on Let Kolahal in"))
+        if (BuildConfig.LOCK_SERVICE) add(Triple(R.drawable.ic_lock, "Double-tap empty space", "Locks the screen, once you allow it on the Permissions page"))
         add(Triple(R.drawable.ic_arrow_down, "Swipe down on the header", "Pulls down the notifications"))
     }
     Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
@@ -269,7 +269,7 @@ private fun TheLog() = Page("Everything lands in the log", preview = { LogTryPre
 private fun Look(vm: TerminalViewModel) {
     val version by vm.config.version.collectAsStateWithLifecycle()
     Page("Make it yours", preview = { LookPreview(vm) }) {
-        Setting("Theme", "Each has a dark and a light version; the phone's dark mode picks one.") {
+        Setting("Theme", "Each has a dark and a light version, chosen by the phone's dark mode.") {
             val dark = isSystemInDarkTheme() || remember(version) { vm.config[Keys.THEME_ALWAYS_DARK] }
             ThemeSwatches(remember(version) { vm.config.display(Keys.THEME) }, dark) { vm.setConfig(Keys.THEME, it) }
         }
@@ -288,7 +288,7 @@ private fun Keyboard(vm: TerminalViewModel) {
     Page("Above the keyboard", preview = { KeyboardPreview(vm) }) {
         SwitchRow(
             "Key bar",
-            "History, arrows and a few symbols under the prompt, for what the keyboard leaves out",
+            "History, arrows and a few symbols under the prompt, for keys the keyboard lacks",
             remember(version) { vm.config[Keys.KEYBAR_SHOW] },
         ) { vm.setConfig(Keys.KEYBAR_SHOW, if (it) "on" else "off") }
         SwitchRow(
@@ -302,8 +302,8 @@ private fun Keyboard(vm: TerminalViewModel) {
 @Composable
 private fun Selector(vm: TerminalViewModel) {
     val version by vm.config.version.collectAsStateWithLifecycle()
-    Page("Every app at your thumb", preview = { SelectorPreview(vm) }) {
-        Setting("App selector", "Every app along the screen's edge, to glide through with your thumb.") {
+    Page("The app selector", preview = { SelectorPreview(vm) }) {
+        Setting("App selector", "Every app along the screen's edge, to scroll through with your thumb.") {
             val on = remember(version) { vm.config[Keys.SELECTOR_RAIL] }
             val side = remember(version) { vm.config[Keys.SELECTOR_SIDE] }
             val selected = if (!on) "Off" else if (side == "left") "Left edge" else "Right edge"
@@ -321,11 +321,11 @@ private fun Selector(vm: TerminalViewModel) {
 }
 
 @Composable
-private fun Access(vm: TerminalViewModel) = Page("Let Kolahal in") {
+private fun Access(vm: TerminalViewModel) = Page("Permissions") {
     val all by vm.setupChecks.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.refreshSetup() }
     val checks = TOUR_CHECKS.mapNotNull { fix -> all.firstOrNull { it.fix == fix } }
-    BodyCode("Kolahal asks only for what you turn on. These are the ones most people want; the rest are in Settings → Setup checklist, or type `setup`.")
+    BodyCode("Kolahal requests only what you turn on. These are the ones most people want; the rest are in Settings → Setup checklist, or type `setup`.")
     Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
         checks.forEachIndexed { i, c ->
             SegmentedListItem(
@@ -349,9 +349,9 @@ private fun Access(vm: TerminalViewModel) = Page("Let Kolahal in") {
 }
 
 @Composable
-private fun Done(vm: TerminalViewModel) = Page("You're set") {
-    BodyCode("`help` lists every command, `tour` brings this back, and Settings has all you set here and much more.")
-    Text("Try one, at home:", style = MaterialTheme.typography.titleMedium)
+private fun Done(vm: TerminalViewModel) = Page("You're all set") {
+    BodyCode("`help` lists every command, `tour` reopens this, and Settings has everything you set here and more.")
+    Text("Try one on the home screen:", style = MaterialTheme.typography.titleMedium)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("fetch", "cal", "date tokyo", "help").forEach { cmd ->
             AssistChip(

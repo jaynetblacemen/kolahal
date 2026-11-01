@@ -208,7 +208,7 @@ fun SettingsScreen(
                                 onTap = {
                                     tapScope.launch {
                                         snackbar.currentSnackbarData?.dismiss()
-                                        snackbar.showSnackbar("Tap and hold the eye to see home")
+                                        snackbar.showSnackbar("Tap and hold the eye to see the home screen")
                                     }
                                 },
                             )
@@ -260,7 +260,7 @@ fun SettingsScreen(
                                         }
                                     } + Action(R.drawable.ic_add, "Create a theme", "Start from the theme in use and pick any colour", chevron = true) {
                                         vm.openThemeBuilder(null)
-                                    } + Action(R.drawable.ic_upload, "Import a theme", "A theme's file someone shared, or one you exported") {
+                                    } + Action(R.drawable.ic_upload, "Import a theme", "A theme file someone shared, or one you exported") {
                                         importTheme.launch(arrayOf("application/json", "text/*", "application/octet-stream"))
                                     },
                                 )
@@ -333,7 +333,7 @@ fun SettingsScreen(
                         listOf(
                             Action(R.drawable.ic_widgets, "Widgets", "Add, resize and arrange widgets", chevron = true) { vm.openScreen(Screen.WIDGETS) },
                             Action(R.drawable.ic_check, "Setup checklist", "Default launcher, permissions, battery", chevron = true) { vm.openScreen(Screen.SETUP) },
-                            Action(R.drawable.ic_info, "Tour", "How Kolahal works, and a few first settings", chevron = true) { vm.openScreen(Screen.ONBOARDING) },
+                            Action(R.drawable.ic_info, "Tour", "How Kolahal works, and a few initial settings", chevron = true) { vm.openScreen(Screen.ONBOARDING) },
                         )
                     )
                 }
@@ -445,7 +445,7 @@ private fun PeekButton(onHold: (Boolean) -> Unit, onTap: () -> Unit) {
         modifier = Modifier
             .size(48.dp)
             .clip(CircleShape)
-            .semantics { contentDescription = "Hold to see home" }
+            .semantics { contentDescription = "Hold to see the home screen" }
             .pointerInput(Unit) {
                 detectTapGestures(onPress = {
                     val hold = scope.launch {
@@ -470,7 +470,7 @@ private fun PeekButton(onHold: (Boolean) -> Unit, onTap: () -> Unit) {
 @Composable
 private fun PeekHint(modifier: Modifier) {
     Text(
-        "Let go to come back",
+        "Release to return",
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = modifier

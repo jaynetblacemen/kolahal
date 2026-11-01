@@ -148,14 +148,14 @@ class LogLineActions(private val context: Context, private val processor: Comman
                     actions += LogAction("Edit $name at line $line") { host.io { scripts.byId(s.id)?.let { host.openEditorAt(it, line) } } }
                 }
                 actions += LogAction("Edit $name.${s.lang.ext}") { host.io { scripts.byId(s.id)?.let { host.openEditorAt(it, null) } } }
-                actions += LogAction(if (s.enabled) "Disable $name" else "Enable $name") {
+                actions += LogAction(if (s.enabled) "Turn off $name" else "Turn on $name") {
                     host.io {
                         scripts.setEnabled(s.id, !s.enabled)
                         scripts.byId(s.id)?.let {
                             ScriptScheduler.sync(context, it)
                             if (it.enabled) ScriptAccess.askForNew(context, it)
                         }
-                        logs.add(LogKind.INFO, "$name: ${if (s.enabled) "disabled" else "enabled"}", ctx = LogContext.of(LogContext.SCRIPT to name))
+                        logs.add(LogKind.INFO, "$name: ${if (s.enabled) "turned off" else "turned on"}", ctx = LogContext.of(LogContext.SCRIPT to name))
                     }
                 }
                 actions += LogAction(if (s.notify) "Mute notifications" else "Notify on new items") {
@@ -178,7 +178,7 @@ class LogLineActions(private val context: Context, private val processor: Comman
             }
         }
         // Only this line's script, feed or app (or its kind), until the bar's ✕.
-        LogFilter.forLine(entry)?.let { f -> actions += LogAction("Only ${f.label}") { host.filterLog(f) } }
+        LogFilter.forLine(entry)?.let { f -> actions += LogAction("Show only ${f.label}") { host.filterLog(f) } }
         actions += LogAction("Copy text") { copy(ctx.copy?.let(StyledText::plain) ?: entry.shownText, sensitive(entry)) }
         danger += LogAction("Delete line", destructive = true) { host.io { logs.delete(entry.id) } }
         return actions + danger

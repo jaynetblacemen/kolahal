@@ -145,7 +145,7 @@ fun LogSearchSummary(search: TerminalViewModel.LogSearch, modifier: Modifier = M
         search.isEmpty -> "Search the log: type words after / to find lines, commands, sources and links · @ and a name searches one source's lines"
         search.total == 0 -> "No line$from" + (if (search.words.isEmpty()) "" else " has “${search.words.joinToString(" ")}”") + " · Esc or back to close"
         else -> "${search.total} of ${search.searched} lines$from" +
-            (if (shown < search.total) " · the newest $shown here" else "") +
+            (if (shown < search.total) " · showing the newest $shown" else "") +
             " · tap one to see it in the log"
     }
     Text(

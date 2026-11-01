@@ -611,7 +611,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         val tip = Tips.next(logs.commandHistory(), shown) ?: return
         prefs.edit { putString("day", today).putStringSet("shown", shown + tip.id) }
         // The first one says how they stop.
-        val off = if (shown.isEmpty()) " (config set log.tips off: no more tips)" else ""
+        val off = if (shown.isEmpty()) " (config set log.tips off to stop them)" else ""
         logs.add(LogKind.INFO, "Tip: ${tip.text} · tap to try it$off", ctx = LogContext.of(LogContext.COMMAND to tip.example.trimEnd() + " "))
     }
 
@@ -942,7 +942,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             notes += if (times.isEmpty()) "no daily times" else "daily at ${times.joinToString(", ")}"
         }
         scripts.byId(script.id)?.let { ScriptScheduler.sync(context, it) }
-        if (notes.isNotEmpty() && !before.enabled) notes += "once it's switched on"
+        if (notes.isNotEmpty() && !before.enabled) notes += "once it's on"
         return notes.joinToString(" · ").ifEmpty { null }
     }
 
@@ -1187,7 +1187,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             LogAction("Run $name now") { io { ScriptScheduler.runNow(context, s) } },
             LogAction("Hide from header") {
                 setScriptAccess(s, ScriptAccess.HEADER, false)
-                io { logs.add(LogKind.INFO, "$name: header line off — 'script allow $name header' brings it back", ctx = LogContext.of(LogContext.SCRIPT to name)) }
+                io { logs.add(LogKind.INFO, "$name: header line off — 'script allow $name header' restores it", ctx = LogContext.of(LogContext.SCRIPT to name)) }
             },
             LogAction("Edit $name.${s.lang.ext}") { openEditor(s) },
         )
@@ -1282,7 +1282,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
                 buildList {
                     if (r.created.isNotEmpty()) add("added ${r.created.joinToString()}")
                     if (r.updated.isNotEmpty()) add("updated ${r.updated.joinToString()}")
-                    if (r.created.isNotEmpty() || r.updated.isNotEmpty()) add("switched off until you turn them on (script on <name>)")
+                    if (r.created.isNotEmpty() || r.updated.isNotEmpty()) add("off until you turn them on (script on <name>)")
                     if (r.skipped.isNotEmpty()) add("skipped ${r.skipped.joinToString()}")
                 }.joinToString(" · ").ifEmpty { "nothing imported" }.replaceFirstChar { it.uppercase() },
                 error = r.created.isEmpty() && r.updated.isEmpty(),
@@ -1321,8 +1321,8 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             notice(
                 "Imported ${count(r.settings, "setting")}, ${count(r.aliases, "alias", "aliases")}, ${count(r.scripts, "script")}" +
                     (if (r.full) ", ${r.restored} saved items (todos, notes, reminders, feeds, log…)" else "") +
-                    (if (r.disabled == 1) " (1 new script is off — switch it on in Scripts)" else "") +
-                    (if (r.disabled > 1) " (${r.disabled} new scripts are off — switch them on in Scripts)" else "") +
+                    (if (r.disabled == 1) " (1 new script is off — turn it on in Scripts)" else "") +
+                    (if (r.disabled > 1) " (${r.disabled} new scripts are off — turn them on in Scripts)" else "") +
                     (if (r.skipped.isNotEmpty()) " · skipped ${r.skipped.joinToString()}" else "") +
                     (if (r.review.isNotEmpty()) " · check these settings from the file: ${r.review.joinToString()}" else "") +
                     if (r.full) " — restarting to load it all" else ""
@@ -1386,7 +1386,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
     fun setOption(script: String, option: String, value: String?) = io {
         com.mtwabpin.kolahal.script.ScriptOptions(context).set(script, option, value)
         _optionsVersion.value++
-        logs.add(LogKind.INFO, "$script: $option " + if (value == null) "back to its default" else "= $value", ctx = LogContext.of(LogContext.SCRIPT to script))
+        logs.add(LogKind.INFO, "$script: $option " + if (value == null) "reset to default" else "= $value", ctx = LogContext.of(LogContext.SCRIPT to script))
     }
 
     /** A secret to ask for from the terminal (`script secret`), shown over home. */
@@ -1481,7 +1481,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         fileOp("backup folder") {
             com.mtwabpin.kolahal.data.AutoBackup.setFolder(context, uri)
             _backupVersion.value++
-            notice("Backups go to ${com.mtwabpin.kolahal.data.AutoBackup.folderName(context) ?: "that folder"}")
+            notice("Backups now save to ${com.mtwabpin.kolahal.data.AutoBackup.folderName(context) ?: "that folder"}")
             if (thenBackUp) backUp()
         }
     }
@@ -1696,7 +1696,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         if (allow) {
             startActivity(com.mtwabpin.kolahal.notifications.NotificationActions.settingsIntent(context))
         } else {
-            logs.add(LogKind.INFO, "Notification access stays off · tap to turn it on", ctx = LogContext.of(LogContext.RUN to "notifs enable"))
+            logs.add(LogKind.INFO, "Notification access is off · tap to turn it on", ctx = LogContext.of(LogContext.RUN to "notifs enable"))
         }
     }
 
@@ -1788,7 +1788,7 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             val firstRun = !prefs.getBoolean("intro_shown", false) && logs.recent(1).isEmpty()
             prefs.edit { putBoolean("intro_shown", true) }
             if (firstRun) {
-                logs.add(LogKind.INFO, "Kolahal — a terminal launcher. type 'help' or start typing an app name.")
+                logs.add(LogKind.INFO, "Kolahal — a terminal launcher. Type 'help' or start typing an app name.")
                 logs.add(LogKind.INFO, "↑/↓ recall commands · tap a line to reuse/open it · long-press for actions")
                 openScreen(Screen.ONBOARDING) // first run: the tour, which sets up the first few things
             }

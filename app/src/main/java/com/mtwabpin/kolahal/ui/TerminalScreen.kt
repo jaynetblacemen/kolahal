@@ -372,7 +372,7 @@ fun TerminalScreen(vm: TerminalViewModel, onPickFolder: () -> Unit, preview: Ter
                 item(key = "empty-hint") {
                     Text(
                         "Type an app name or a command · help lists everything · ↑ recalls history · " +
-                            "/ searches the log · tap a line to act, long-press for more · ⚙ settings",
+                            "/ searches the log · tap a line to use it, long-press for more · ⚙ settings",
                         style = Term.text.copy(color = Term.dim),
                         modifier = Modifier.padding(vertical = 12.dp),
                     )

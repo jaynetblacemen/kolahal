@@ -74,7 +74,7 @@ class ThemeBuilderTest {
     private val shared = File(app.cacheDir, "shared theme.json")
 
     private fun name(text: String) = compose.onNodeWithTag("theme-name").performTextReplacement(text)
-    private val save get() = compose.onNodeWithText("Save and use")
+    private val save get() = compose.onNodeWithText("Save and apply")
 
     @Test fun aNewThemeStartsFromTheOneInUseAndIsUsedWhenSaved() {
         config.set(Keys.THEME, "dracula")

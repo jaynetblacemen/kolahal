@@ -97,7 +97,7 @@ internal fun RunWithDialog(code: String, onDismiss: () -> Unit, onRun: (List<Str
                     modifier = Modifier.fillMaxWidth().testTag("run-args"),
                 )
                 if (events.isNotEmpty()) {
-                    Text("as the event", style = Term.code.copy(color = Term.dim), modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+                    Text("simulate event", style = Term.code.copy(color = Term.dim), modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
                     (listOf<Pair<String, String?>?>(null) + events).forEach { e ->
                         Text(
                             (if (e == chosen) "● " else "○ ") + when {

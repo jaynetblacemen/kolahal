@@ -216,7 +216,7 @@ class TerminalFixesTest {
             assertTrue(lines.toString(), "+ -- mine" in lines)
             assertTrue(lines.last(), "script install countdown --replace" in lines.last())
             library.install(entry)
-            assertEquals(listOf("countdown.lua is the library version"), plain("script diff countdown"))
+            assertEquals(listOf("countdown.lua matches the library version"), plain("script diff countdown"))
             scripts.create("tfcat", ScriptLang.LUA, "return 1")
             assertTrue(plain("script diff tfcat").single().contains("isn't from the library"))
         } finally {

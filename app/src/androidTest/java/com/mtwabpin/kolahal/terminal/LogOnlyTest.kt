@@ -77,7 +77,7 @@ class LogOnlyTest {
     @Test fun aLinesLongPressFiltersToItsScript() {
         val vm = viewModel()
         waitUntil("the lines load") { vm.entries.value.any { it.text == "lo a release" } }
-        val only = vm.actionsFor(vm.entries.value.last { it.text == "lo a release" }).single { it.label == "Only loreleases" }
+        val only = vm.actionsFor(vm.entries.value.last { it.text == "lo a release" }).single { it.label == "Show only loreleases" }
         instrumentation.runOnMainSync { only.run() }
         waitUntil("only the release") { vm.entries.value.map { it.text } == listOf("lo a release") }
         vm.runCommand("log all")

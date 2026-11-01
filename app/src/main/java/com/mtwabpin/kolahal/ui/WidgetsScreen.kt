@@ -158,7 +158,7 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
                 } else if (editing) {
                     Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            "Tap a widget to size or move it",
+                            "Tap a widget to resize or move it",
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.navigationBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp),
                         )
@@ -188,7 +188,7 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
                 val inset = Modifier.padding(horizontal = 16.dp - WidgetLayout.GAP_DP.dp)
                 if (panel.isEmpty() && pending.isEmpty()) {
                     Text(
-                        "No widgets yet. They live on the widgets page beside the terminal: swipe sideways on home to reach it.",
+                        "No widgets yet. They appear on the widgets page beside the terminal: swipe sideways on the home screen to reach it.",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -238,7 +238,7 @@ fun WidgetsScreen(vm: TerminalViewModel, onReAdd: (ProviderEntry, PlacedWidget) 
                 }
                 if (panel.isNotEmpty()) {
                     Text(
-                        "Long-press a widget, or tap ✎ and then a widget, to size and move it. Terminal: widgets ls · widget add",
+                        "Long-press a widget, or tap ✎ and then a widget, to resize and move it. Terminal: widgets ls · widget add",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
                         modifier = inset.padding(start = 16.dp, top = 16.dp, end = 16.dp),
@@ -348,14 +348,14 @@ private fun WidgetToolbar(
 private fun Stepper(label: String, value: String, canLess: Boolean, canMore: Boolean, onStep: (Int) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp))
-        RepeatingButton(R.drawable.ic_remove, "Less ${label.lowercase()}", canLess) { onStep(-1) }
+        RepeatingButton(R.drawable.ic_remove, "Decrease ${label.lowercase()}", canLess) { onStep(-1) }
         Text(
             value,
             style = MaterialTheme.typography.labelLarge,
             textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(min = 36.dp).semantics { liveRegion = LiveRegionMode.Polite },
         )
-        RepeatingButton(R.drawable.ic_add, "More ${label.lowercase()}", canMore) { onStep(1) }
+        RepeatingButton(R.drawable.ic_add, "Increase ${label.lowercase()}", canMore) { onStep(1) }
     }
 }
 

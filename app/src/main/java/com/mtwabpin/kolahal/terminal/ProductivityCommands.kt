@@ -51,7 +51,7 @@ class ProductivityCommands(context: Context, private val ui: TerminalUi) : Comma
             "stopwatch" -> {
                 // Android has no stopwatch intent; the clock app is one tab away.
                 startActivity(Intent(AlarmClock.ACTION_SHOW_TIMERS))
-                info("Opened the clock app (there's no stopwatch intent)")
+                info("Opened the clock app (Android can't open its stopwatch directly)")
             }
             "agenda" -> agenda(rest)
             else -> return false
@@ -130,7 +130,7 @@ class ProductivityCommands(context: Context, private val ui: TerminalUi) : Comma
         shown.forEach { t -> todoLine(t, all.indexOf(t) + 1) }
         info(
             "${all.size - doneCount} open" + (if (doneCount > 0) " · $doneCount done" else "") +
-                " — tap toggles · long-press to edit or delete" + if (doneCount > 0 && includeDone) " · 'todo clear' removes done" else ""
+                " — tap to toggle · long-press to edit or delete" + if (doneCount > 0 && includeDone) " · 'todo clear' removes done" else ""
         )
     }
 
@@ -151,7 +151,7 @@ class ProductivityCommands(context: Context, private val ui: TerminalUi) : Comma
     private fun addNote(text: String) {
         if (text.isBlank()) return error("Usage: note <text>")
         val id = notes.add(text.trim())
-        info("Noted", noteCtx(id, text.trim()))
+        info("Note saved", noteCtx(id, text.trim()))
     }
 
     private fun notes(rest: String) {
@@ -191,7 +191,7 @@ class ProductivityCommands(context: Context, private val ui: TerminalUi) : Comma
         }
         info(
             if (query != null && shown == 0) "No note contains '$query'"
-            else "$shown note${if (shown == 1) "" else "s"} — tap copies · 'notes rm <n>'"
+            else "$shown note${if (shown == 1) "" else "s"} — tap to copy · 'notes rm <n>'"
         )
     }
 
@@ -214,7 +214,7 @@ class ProductivityCommands(context: Context, private val ui: TerminalUi) : Comma
                 return info("Cancelled reminder: ${r.text}")
             }
             "exact" -> {
-                if (ReminderScheduler.canBeExact(context)) return info("Reminders already fire on time")
+                if (ReminderScheduler.canBeExact(context)) return info("Exact alarms are already allowed")
                 return startActivity(
                     Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.fromParts("package", context.packageName, null))
                 )
@@ -229,7 +229,7 @@ class ProductivityCommands(context: Context, private val ui: TerminalUi) : Comma
         val parsed = repeating?.let { TimeSpec.Parsed(it.at, it.consumed) } ?: TimeSpec.parseWhen(w, now)
             ?: return error("Usage: remind <10m|2h|18:30|tomorrow 9:00|fri 8am|dec 3 10:00|every mon 19:00> <text>")
         val text = w.drop(parsed.consumed).joinToString(" ")
-        if (text.isBlank()) return error("What should I remind you of? remind ${w.take(parsed.consumed).joinToString(" ")} <text>")
+        if (text.isBlank()) return error("Reminder text missing: remind ${w.take(parsed.consumed).joinToString(" ")} <text>")
         val relative = if (repeating == null) TimeSpec.relativeSeconds(w) else null
         // A time typed for the small hours asks first; a duration is plainly meant.
         if (!confirmed && relative == null && TimeSpec.inTheSmallHours(parsed.at)) return askAboutTheSmallHours(w, parsed, repeating, text, now)

@@ -84,7 +84,7 @@ class ScriptBoundsTest {
         )
         for (cmd in listOf("search my clipboard", "g words", "yt words", "maps a place", "wiki words")) assertTrue(cmd, !off.runCommand(cmd))
         off.flush()
-        assertTrue(LogRepository.get(context).recent(50).any { "sends words to a website" in it.text })
+        assertTrue(LogRepository.get(context).recent(50).any { "sends text to a website" in it.text })
     }
 
     /** Nor to a `@command` script that goes online: it runs with its own switches, so it could send them on. */

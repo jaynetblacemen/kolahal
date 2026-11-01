@@ -147,7 +147,7 @@ class Completer(private val context: Context, private val data: Data) {
         val answer = converted?.let { it to it.substringAfter("= ").substringBefore(' ').replace(",", "") }
             ?: runCatching { Calc.answer(expr) }.getOrNull()?.let { "= $it" to it }
         val row = answer?.takeIf { it.second != expr }?.let { (label, value) ->
-            Suggestion.Completion(label, "= $value", help = "the answer · tap to go on from it")
+            Suggestion.Completion(label, "= $value", help = "the answer · tap to continue from it")
         }
         return (listOfNotNull(row) + historySuggestions(text)).distinctBy { it.key }
     }

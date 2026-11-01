@@ -338,7 +338,7 @@ fun ScriptsScreen(
                     scripts.isEmpty() -> item(key = "empty") {
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             Text(
-                                "No scripts yet. Write one, take one from the library, get one people shared, or import a file.",
+                                "No scripts yet. Write one, add one from the library, get a shared one, or import a file.",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
@@ -450,7 +450,7 @@ private fun schedule(s: Script, isCommand: Boolean, events: List<String>): Strin
     if (s.intervalMin > 0) add("every ${CommandParsing.formatInterval(s.intervalMin)}")
     if (s.atTimes.isNotEmpty()) add("daily ${s.atTimes.joinToString(", ")}")
     if (events.isNotEmpty()) add("on ${events.joinToString(", ")}")
-}.joinToString(" · ").ifEmpty { "run by hand" }
+}.joinToString(" · ").ifEmpty { "manual" }
 
 private fun Script.failed() = lastStatus?.let { it.startsWith("error") || it.startsWith("stopped") || it == "timeout" } == true
 
@@ -721,7 +721,7 @@ private fun CompareDialog(vm: TerminalViewModel, s: Script, lib: LibRow, onDismi
                     hunks.orEmpty().forEach { hunk ->
                         if (hunk.skipped > 0) item {
                             Text(
-                                "⋯ ${lines(hunk.skipped)} the same",
+                                "⋯ ${lines(hunk.skipped)} unchanged",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = colors.outline,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -1002,7 +1002,7 @@ private fun ScriptSheet(
                 Spacer(Modifier.height(16.dp))
                 Text("Options", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 Text(
-                    "Settings it reads as it runs. Changed here, not in its code, they stay through its updates.",
+                    "Settings it reads as it runs. Values set here are kept when the script updates.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
@@ -1140,7 +1140,7 @@ private fun ResetDialog(lib: LibRow, onDismiss: () -> Unit, onReset: () -> Unit)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Reset ${lib.entry.file}?") },
-        text = { Text("Your copy differs from the library version. Its code becomes the library version's and your changes are lost; its timers and switches stay. Export it first to keep a copy.") },
+        text = { Text("Your copy differs from the library version. Its code is replaced by the library version and your changes are lost; its timers and switches are kept. Export it first to keep a copy.") },
         confirmButton = {
             TextButton(onClick = onReset, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Reset") }
         },
@@ -1161,7 +1161,7 @@ internal fun AccessDialog(title: String, items: List<String>, confirm: String, o
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("It asks to use:", style = MaterialTheme.typography.bodyMedium)
+                Text("It requests:", style = MaterialTheme.typography.bodyMedium)
                 items.forEach { item ->
                     SwitchRow(ScriptAccess.label(item), ScriptAccess.help(item), choices[item] == true, color = Color.Transparent) { choices[item] = it }
                 }
@@ -1254,7 +1254,7 @@ internal fun OptionDialog(script: String, option: ScriptMeta.Option, current: St
                     )
                 }
                 Text(
-                    "Default: " + option.default.ifEmpty { "nothing" },
+                    "Default: " + option.default.ifEmpty { "empty" },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1263,7 +1263,7 @@ internal fun OptionDialog(script: String, option: ScriptMeta.Option, current: St
         confirmButton = { TextButton(onClick = { onSave(value.text.trim()) }) { Text("Save") } },
         dismissButton = {
             Row {
-                if (changed) TextButton(onClick = { onSave(null) }) { Text("Default") }
+                if (changed) TextButton(onClick = { onSave(null) }) { Text("Reset") }
                 TextButton(onClick = onDismiss) { Text("Cancel") }
             }
         },
@@ -1340,7 +1340,7 @@ private fun RenameDialog(s: Script, existing: Set<String>, onDismiss: () -> Unit
                 singleLine = true,
                 isError = problem != null,
                 supportingText = {
-                    Text(problem ?: "Its keys, timers and header line stay with it. A copy from the library or Get more scripts becomes yours, without their updates.")
+                    Text(problem ?: "Its keys, timers and header line are kept. A copy from the library or Get more scripts becomes yours and no longer gets updates.")
                 },
                 keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, capitalization = KeyboardCapitalization.None, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { if (valid) onRename(clean) }),

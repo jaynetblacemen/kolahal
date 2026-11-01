@@ -157,8 +157,8 @@ fun GetScriptsScreen(vm: TerminalViewModel) {
                 }
                 item(key = "about") {
                     Text(
-                        "Every script here is checked and read before it is added. A script you install asks about what " +
-                            "it uses first, and its Access switches change that later. Share your own at " +
+                        "Every script here is reviewed before it is added. When you install one, you choose what it can " +
+                            "use; its Access switches change that later. Share your own at " +
                             "github.com/mtwabpin/${ScriptCatalog.SOURCE}.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
@@ -253,7 +253,7 @@ private fun SharedSheet(vm: TerminalViewModel, e: ScriptCatalog.Entry, state: Sc
             // From the file once it is here (checked against the list): that is what installing grants.
             val text = code?.getOrNull()
             val uses = remember(text) { text?.let { ScriptMeta.uses(it).toList() } ?: e.uses }
-            Fact("Runs", remember(text) { text?.let { runs(it) } ?: runs(e) }.ifEmpty { "when you run it" })
+            Fact("Runs", remember(text) { text?.let { runs(it) } ?: runs(e) }.ifEmpty { "manually" })
             Fact("Uses", if (uses.isEmpty()) "nothing private" else uses.joinToString(", ") { ScriptAccess.label(it).lowercase() })
             code?.getOrNull()?.let(ScriptMeta::secrets)?.takeIf { it.isNotEmpty() }?.let { keys ->
                 Fact("Keys", keys.joinToString(", ") { "${it.name} (you set it; sent only to ${it.hosts.joinToString()})" })

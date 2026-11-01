@@ -177,7 +177,7 @@ class EditorLogicTest {
             EditorLogic.runResult("error: etest:13: attempt to perform arithmetic on a nil value (line 13)", 60),
         )
         assertEquals(EditorLogic.RunResult("Error: boom", failed = true), EditorLogic.runResult("error: boom", 60))
-        assertEquals(EditorLogic.RunResult("Stopped: internet switched off", failed = true), EditorLogic.runResult("stopped: internet switched off", 60))
+        assertEquals(EditorLogic.RunResult("Stopped: internet off", failed = true), EditorLogic.runResult("stopped: internet off", 60))
         assertEquals("Line 7: boom", EditorLogic.runResult("error: boom (line 7)", 60, tapHint = false).text)
         // A status recorded before lines were kept, or one whose message mentions a line itself.
         assertEquals(EditorLogic.RunResult("Error: x (line 2) y", failed = true), EditorLogic.runResult("error: x (line 2) y", 60))

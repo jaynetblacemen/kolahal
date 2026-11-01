@@ -94,14 +94,14 @@ class CommandProcessorTest {
         run("config reset theme")
         assertTrue(config.isDefault(Keys.THEME))
         // The swipe-up switch has no new name: it became gesture.swipe-up's none.
-        assertTrue(run("config set gesture.swipeup.on on").single().startsWith("gesture.swipeup.on is gone"))
+        assertTrue(run("config set gesture.swipeup.on on").single().startsWith("gesture.swipeup.on was removed"))
         assertTrue(config.isDefault(Keys.GESTURE_SWIPE_UP))
     }
 
     /** Settings that are gone (0.3.1) say where their job went. */
     @Test fun removedSettingsSayWhereTheyWent() {
-        assertTrue(run("config set widgets.home on").single().startsWith("widgets.home is gone: widgets live on the widgets page"))
-        assertTrue(run("config set theme.settings-colors system").single().startsWith("theme.settings-colors is gone: Settings always use"))
+        assertTrue(run("config set widgets.home on").single().startsWith("widgets.home was removed: widgets are on the widgets page"))
+        assertTrue(run("config set theme.settings-colors system").single().startsWith("theme.settings-colors was removed: Settings always use"))
     }
 
     @Test fun themeTakesAThemeYouMade() {
@@ -124,7 +124,7 @@ class CommandProcessorTest {
         assertEquals(15, ScriptRepository.get(context).byName("cptest")!!.intervalMin)
         run("script at cptest 7:05,19:00")
         assertEquals(listOf("07:05", "19:00"), ScriptRepository.get(context).byName("cptest")!!.atTimes)
-        assertTrue(run("script at cptest 25:00").single().startsWith("Bad time"))
+        assertTrue(run("script at cptest 25:00").single().startsWith("Invalid time"))
         run("script rm cptest")
         assertEquals(null, ScriptRepository.get(context).byName("cptest"))
         assertTrue(run("script new help").single().contains("built-in"))
@@ -141,7 +141,7 @@ class CommandProcessorTest {
         run("script at cptest 7:05,19:00")
         assertEquals(listOf("07:05", "19:00"), times())
         // A line that's wrong changes nothing: not one good time of it, and a comma alone isn't `off`.
-        assertTrue(run("script at cptest 8:00, 25:00").single().startsWith("Bad time"))
+        assertTrue(run("script at cptest 8:00, 25:00").single().startsWith("Invalid time"))
         assertTrue(run("script at cptest ,").single().startsWith("Usage"))
         assertTrue(run("script at cptest").single().startsWith("Usage"))
         assertEquals(listOf("07:05", "19:00"), times())

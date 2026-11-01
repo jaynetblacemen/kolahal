@@ -120,8 +120,8 @@ internal fun CrashSheet(crash: CrashRow, onDismiss: () -> Unit, onEmail: () -> U
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "Emailing or sharing it hands over the whole report: the app and Android versions, the phone model and the error. " +
-                    "The other app opens with it, and nothing is sent until you send it.",
+                "Emailing or sharing it includes the whole report: the app and Android versions, the phone model and the error. " +
+                    "It opens in the other app, and nothing is sent until you send it.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
             )
@@ -162,7 +162,7 @@ internal fun LazyListScope.crashReportsPage(
     if (crashes.isEmpty()) {
         item(key = "crashes:none") {
             Text(
-                "No crash reports. If Kolahal stops unexpectedly, its report waits here.",
+                "No crash reports. If Kolahal stops unexpectedly, a report is kept here.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(16.dp),
             )

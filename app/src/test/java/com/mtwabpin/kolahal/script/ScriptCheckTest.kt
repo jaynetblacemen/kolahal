@@ -34,11 +34,11 @@ class ScriptCheckTest {
             -- @uses clipbord
         """)
         assertEquals(listOf(1, 2, 3, 4, 5), issues.map { it.line })
-        assertEquals("@evrey isn't one Kolahal reads: @every?", issues[0].text)
+        assertEquals("Unknown directive @evrey: @every?", issues[0].text)
         assertTrue(issues[1].text.startsWith("@every 5x isn't an interval"))
         assertTrue(issues[2].text.startsWith("@at 25:00 isn't a time"))
         assertTrue(issues[3].text.startsWith("@on unlok isn't an event"))
-        assertTrue(issues[4].text.startsWith("@uses clipbord isn't one"))
+        assertTrue(issues[4].text.startsWith("@uses clipbord isn't valid"))
     }
 
     /** A comment isn't a call, and a table of the script's own by that name is its own. */

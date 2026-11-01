@@ -333,7 +333,7 @@ class HostApi(
         flush() // show what was logged before a slow request
         // No made-up empty response: a script would take it for real data.
         if (grants != null && !grants.allows(ScriptAccess.INTERNET)) {
-            deny(ScriptAccess.INTERNET, "internet is switched off for this script")
+            deny(ScriptAccess.INTERNET, "internet is off for this script")
         }
         // A script names the site, not where it lives: a Host header of its own could send a request
         // (and a secret meant for the site) to another one behind the same address.
@@ -492,7 +492,7 @@ class HostApi(
         // A clip crosses to Android in one transaction: a huge one would fail it, and the process with it.
         require(text.length <= MAX_CLIP) { "clipboard.set: text over ${MAX_CLIP / 1000}K characters" }
         // Keyboards keep clipboard history, and Android shows a preview: never a secret.
-        require(redact(text) == text) { "clipboard.set: the text holds one of this script's secrets" }
+        require(redact(text) == text) { "clipboard.set: the text contains one of this script's secrets" }
         val cm = context.getSystemService(android.content.ClipboardManager::class.java)
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             runCatching { cm.setPrimaryClip(android.content.ClipData.newPlainText(scriptName, text)) }
@@ -544,7 +544,7 @@ class HostApi(
      */
     fun setDnd(mode: String): Boolean {
         val filter = DND_MODES[mode.trim().lowercase().let { if (it == "on") "priority" else it }]
-            ?: throw IllegalArgumentException("device.setDnd: the mode is off, on, priority, alarms or none")
+            ?: throw IllegalArgumentException("device.setDnd: mode must be off, on, priority, alarms or none")
         live()
         if (!may("dnd", "device.setDnd")) return false
         val nm = context.getSystemService(android.app.NotificationManager::class.java)
@@ -642,7 +642,7 @@ class HostApi(
         }
         // A command goes to the terminal, its log and its history, and on to apps and sites: never a secret.
         if (redact(command) != command) {
-            logError("launcher.run refused: the command holds one of this script's secrets")
+            logError("launcher.run refused: the command contains one of this script's secrets")
             return false
         }
         // State-changing commands (clear, uninstall, notifs clear, config, …) stay with the user.
@@ -655,13 +655,13 @@ class HostApi(
             val verb = com.mtwabpin.kolahal.terminal.InstantRun.canonical(command.substringBefore(' '))
             // A search or a place hands its words to a site through another app: only with the internet.
             if (verb in WEB_COMMANDS) {
-                logError("launcher.run refused '$verb': it sends words to a website, and this script has no internet")
+                logError("launcher.run refused '$verb': it sends text to a website, and this script has no internet access")
                 return false
             }
             // A `@command` script runs with its own switches, so it could send them on itself.
             val other = com.mtwabpin.kolahal.data.ScriptRepository.get(context).byName(verb)
             if (other != null && ScriptMeta.isCommand(other.code) && ScriptMeta.goesOnline(other.code)) {
-                logError("launcher.run refused '$verb': it goes online, and this script has no internet to give it words")
+                logError("launcher.run refused '$verb': it goes online, and this script has no internet access")
                 return false
             }
         }
@@ -705,7 +705,7 @@ class HostApi(
     fun storeSet(key: String, value: String?) {
         live()
         // A store goes into backups: never a secret.
-        require(redact(key) == key && (value == null || redact(value) == value)) { "store.set: the key or value holds one of this script's secrets" }
+        require(redact(key) == key && (value == null || redact(value) == value)) { "store.set: the key or value contains one of this script's secrets" }
         store.set(key, value)
     }
 

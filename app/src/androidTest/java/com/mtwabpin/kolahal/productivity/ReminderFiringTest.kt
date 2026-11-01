@@ -41,7 +41,7 @@ class ReminderFiringTest {
         fire(r.id)
         waitFor("gone") { store.byId(r.id) == null }
         waitFor("and it says so") {
-            logs.recent(50).any { it.id > before && it.kind == LogKind.ERROR && "firing-bad" in it.text && "won't come again" in it.text }
+            logs.recent(50).any { it.id > before && it.kind == LogKind.ERROR && "firing-bad" in it.text && "won't repeat" in it.text }
         }
         assertTrue("it still reminds", logs.recent(50).any { it.id > before && it.text == "Reminder: firing-bad" })
     }

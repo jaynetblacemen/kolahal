@@ -46,7 +46,7 @@ internal fun LivePreviewBand(live: LivePreview?) {
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                "Preview: ${shown[0]?.label}  ·  Enter keeps it",
+                "Preview: ${shown[0]?.label}  ·  Enter to apply",
                 color = Term.bg,
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                 maxLines = 1,

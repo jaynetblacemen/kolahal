@@ -62,7 +62,7 @@ class FeedCommands(
             }
             "add" -> {
                 val url = args.getOrNull(1) ?: return error("Usage: feed add <url>")
-                val feed = runCatching { repo.add(url) }.getOrElse { return error(it.message ?: "Bad URL") }
+                val feed = runCatching { repo.add(url) }.getOrElse { return error(it.message ?: "Invalid URL") }
                 scheduler.sync(context)
                 scheduler.fetchNow(context, feed.id)
                 info("Subscribed #${feed.id} ${feed.url} — fetching…", LogContext.of(LogContext.URL to feed.url))
@@ -137,7 +137,7 @@ class FeedCommands(
         val store = com.mtwabpin.kolahal.notifications.NotificationStore
         val prefs = com.mtwabpin.kolahal.notifications.NotifPrefs.get(context)
         if (!actions.isEnabled(context) && args.firstOrNull() != "enable") {
-            logs.add(LogKind.ERROR, "Notification access is off — tap to enable it", ctx = LogContext.of(LogContext.RUN to "notifs enable"))
+            logs.add(LogKind.ERROR, "Notification access is off — tap to allow it", ctx = LogContext.of(LogContext.RUN to "notifs enable"))
             return
         }
         when (args.firstOrNull()) {

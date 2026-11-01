@@ -74,7 +74,7 @@ class OnboardingTest {
     @Test fun theTourGoesPageByPageAndEndsAtHome() {
         show()
         shows("A home screen you type into.")
-        for (title in listOf("Type to open", "Everything lands in the log", "Make it yours", "Above the keyboard", "Every app at your thumb", "Let Kolahal in", "You're set")) {
+        for (title in listOf("Type to open", "Everything goes in the log", "Make it yours", "Above the keyboard", "The app selector", "Permissions", "You're all set")) {
             next()
             shows(title)
         }
@@ -134,7 +134,7 @@ class OnboardingTest {
         tap("Off")
         caption("Off: nothing runs until you press Enter or tap a suggestion.")
         tap("Apps")
-        caption("Apps: an app opens once the letters can only mean it; commands wait for Enter.")
+        caption("Apps: an app opens once only one match is left; commands require Enter.")
     }
 
     /** The log's lines answer a tap and a long-press in the caption. */
@@ -186,7 +186,7 @@ class OnboardingTest {
     @Test fun thePermissionsPageOffersTheHomeApp() {
         show()
         repeat(6) { next() }
-        shows("Let Kolahal in")
+        shows("Permissions")
         compose.waitUntil(5_000) { vm.setupChecks.value.isNotEmpty() }
         compose.onNodeWithText("Default home app").performScrollTo().assertIsDisplayed()
     }

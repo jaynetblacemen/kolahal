@@ -137,7 +137,7 @@ fun WidgetPickerScreen(vm: TerminalViewModel, onPick: (ProviderEntry) -> Unit) {
             topBar = {
                 LargeFlexibleTopAppBar(
                     title = { Text("Add widget") },
-                    subtitle = { Text("Goes on the widgets page") },
+                    subtitle = { Text("Added to the widgets page") },
                     navigationIcon = { BackButton { vm.closeScreen() } },
                     scrollBehavior = scroll,
                 )

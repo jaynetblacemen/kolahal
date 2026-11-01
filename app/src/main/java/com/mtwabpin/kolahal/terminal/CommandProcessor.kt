@@ -88,7 +88,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
             val (_, captured) = logs.capture { execute(stages[0], expand = false) }
             Pipes.apply(captured, stages.drop(1)).fold(
                 onSuccess = { logs.addAll(it) },
-                onFailure = { logs.addAll(captured); error(it.message ?: "Bad pipe") },
+                onFailure = { logs.addAll(captured); error(it.message ?: "Invalid pipe") },
             )
             return@batched
         }
@@ -154,7 +154,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
                 } else if (name == "accessibility") {
                     startActivity(com.mtwabpin.kolahal.gesture.LockService.settingsIntent())
                 } else if (!com.mtwabpin.kolahal.gesture.LockService.lock()) {
-                    logs.add(LogKind.ERROR, "Locking needs the Kolahal screen lock accessibility service — tap to enable it", ctx = LogContext.of(LogContext.RUN to "accessibility"))
+                    logs.add(LogKind.ERROR, "Locking needs the Kolahal screen lock accessibility service — tap to allow it", ctx = LogContext.of(LogContext.RUN to "accessibility"))
                 }
                 "shade" -> com.mtwabpin.kolahal.gesture.Gestures.expandShade(context)
                 "date", "time" -> if (args.isEmpty()) out(DateFormat.getDateTimeInstance().format(Date())) else date(args)
@@ -223,7 +223,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
     private fun cal(rest: String) {
         val today = java.time.LocalDate.now()
         val month = MonthCalendar.parse(rest, today)
-            ?: return error("No month called '$rest'. cal, cal dec, cal dec 2027 or cal 2027-12")
+            ?: return error("Unknown month '$rest'. Use cal, cal dec, cal dec 2027 or cal 2027-12")
         val lines = MonthCalendar.lines(month, today) { com.mtwabpin.kolahal.data.StyledText.wrap(com.mtwabpin.kolahal.data.StyledText.Style.BOLD, it) }
         // One line each, in the terminal font, so the columns hold.
         lines.forEach { out(it, LogContext(LogContext.ALIGNED)) }
@@ -232,7 +232,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
     /** `date tokyo new york`: the time in each place, one line each, and how far ahead or behind it is. */
     private fun date(words: List<String>) {
         val places = WorldClock.parse(words)
-            ?: return error("No place called '${words.joinToString(" ")}'. A city (tokyo, new york), a zone (Asia/Tokyo), utc, or an offset like +5:30")
+            ?: return error("Unknown place '${words.joinToString(" ")}'. Use a city (tokyo, new york), a zone (Asia/Tokyo), utc, or an offset like +5:30")
         val now = java.time.Instant.now()
         val clock24 = Config.get(context)[Keys.CLOCK_24H]
         for (place in places) {
@@ -289,8 +289,8 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
     private fun unlocks(args: List<String>) {
         val days = args.firstOrNull()?.toIntOrNull()?.coerceIn(1, 30) ?: 1
         if (!unlocks.hasUsageAccess()) {
-            info("Counting via unlock receiver (misses unlocks while launcher isn't running)")
-            info("Tap here to grant usage access for accurate counts", LogContext.of(LogContext.RUN to "usage-access"))
+            info("Counting unlocks only while the launcher is running")
+            info("Tap here to allow usage access for accurate counts", LogContext.of(LogContext.RUN to "usage-access"))
         }
         val today = java.time.LocalDate.now()
         val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE d MMM", java.util.Locale.getDefault())
@@ -385,7 +385,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
             cached["rates"] as? Map<*, *>
         } else {
             val body = Json.parse(Net.get("https://open.er-api.com/v6/latest/$from")) as? Map<*, *>
-                ?: throw IllegalStateException("bad response")
+                ?: throw IllegalStateException("invalid response")
             if (body["result"] != "success") throw IllegalStateException("unknown currency $from")
             (body["rates"] as? Map<*, *>)?.also {
                 cache.set(from, Json.stringify(mapOf("at" to System.currentTimeMillis(), "rates" to it)))
@@ -439,16 +439,16 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
         when (args.firstOrNull()?.lowercase()) {
             null -> info(
                 if (match.isMatched(context)) "Your home screen wallpaper is in the theme's colour, and follows the theme"
-                else "Your home screen wallpaper is your own, and Kolahal leaves it alone (wallpaper match puts it in the theme's colour)",
+                else "Your home screen wallpaper is your own; Kolahal doesn't change it (wallpaper match sets it to the theme's colour)",
             )
             "match" -> when {
                 match.isMatched(context) -> info("Your home screen wallpaper already follows the theme")
                 args.getOrNull(1) != "--yes" -> {
-                    info("This replaces your home screen wallpaper with this theme's colour, so it doesn't flash on the way home by gesture. It follows the theme until you set another wallpaper. Kolahal can't bring the old one back, and log.wallpaper and widgets.wallpaper will show only this colour.")
+                    info("This replaces your home screen wallpaper with this theme's colour, so it doesn't flash when you swipe home. It follows the theme until you set another wallpaper. Kolahal can't restore the old one, and log.wallpaper and widgets.wallpaper will show only this colour.")
                     info("Tap to replace it", LogContext.of(LogContext.RUN to "wallpaper match --yes"))
                 }
-                match.set(context, match.themeColour()) -> info("Home screen wallpaper set to this theme's colour. It follows the theme until you set another wallpaper; the lock screen keeps its own")
-                else -> error("This phone didn't let Kolahal change the wallpaper")
+                match.set(context, match.themeColour()) -> info("Home screen wallpaper set to this theme's colour. It follows the theme until you set another wallpaper; the lock screen wallpaper isn't changed")
+                else -> error("Couldn't change the wallpaper on this phone")
             }
             else -> error("Usage: wallpaper [match]")
         }
@@ -459,7 +459,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
         val reports = com.mtwabpin.kolahal.CrashReports.list(context)
         when (args.firstOrNull()?.lowercase()) {
             null, "ls" -> {
-                if (reports.isEmpty()) return info("No crash reports. If Kolahal stops unexpectedly, its report waits here until you share or clear it")
+                if (reports.isEmpty()) return info("No crash reports. If Kolahal stops unexpectedly, a report is kept here until you share or clear it")
                 reports.forEachIndexed { i, r ->
                     out(
                         "#${i + 1} ${r.kind.label} ${com.mtwabpin.kolahal.CrashReports.whenText(context, r.time)}\n${r.summary.take(160)}",
@@ -525,7 +525,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
                 ui.askBackupFolder(thenBackUp = true)
             } else background("backup") {
                 val name = auto.backUp(context)
-                val every = conf[Keys.BACKUP_AUTO].takeIf { it != "off" }?.let { " · automatic: $it" } ?: " · 'backup every daily' does it on its own"
+                val every = conf[Keys.BACKUP_AUTO].takeIf { it != "off" }?.let { " · automatic: $it" } ?: " · 'backup every daily' automates it"
                 info("Backed up: $name in ${auto.folderName(context) ?: "the backup folder"}$every")
             }
             "every", "auto" -> {
@@ -533,7 +533,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
                 if (value == null || value !in Keys.BACKUP_AUTO.choices) return error("Usage: backup every daily|weekly|off")
                 conf.set(Keys.BACKUP_AUTO, value)
                 if (value == "off") return info("Automatic backups off")
-                info("Backups $value to ${auto.folderName(context) ?: "a folder you pick"}, the newest ${conf[Keys.BACKUP_KEEP]} kept (backup.keep)")
+                info("Backing up $value to ${auto.folderName(context) ?: "a folder you pick"}, keeping the newest ${conf[Keys.BACKUP_KEEP]} (backup.keep)")
                 if (auto.folder(context) == null) ui.askBackupFolder(thenBackUp = false)
             }
             "dir", "folder" -> ui.askBackupFolder(thenBackUp = false)
@@ -603,7 +603,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
             val desc = ScriptMeta.description(s.code) ?: "${s.lang.ext} script"
             out(ScriptMeta.usage(s.code, s.name) ?: s.name, LogContext.of(LogContext.COMMAND to s.name + " ", LogContext.SCRIPT to s.name, LogContext.DESC to desc))
         }
-        info("Anything else is matched against app names · tap a line to act · long-press for more")
+        info("Anything else is matched against app names · tap a line to use it · long-press for more")
         info("Pipes: help | grep feed · history | tail 5 · contacts | count  (grep [-v], head, tail, sort, uniq, count)")
     }
 
@@ -615,7 +615,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
         offered.firstOrNull { it.name == InstantRun.canonical(typed) }?.let { spec ->
             line(spec)
             val also = InstantRun.SYNONYMS.filterValues { it == spec.name }.keys
-            if (also.isNotEmpty()) info("Also typed as ${also.joinToString(", ")}")
+            if (also.isNotEmpty()) info("Also known as ${also.joinToString(", ")}")
             info("More in the guide's command list", LogContext.of(LogContext.URL to com.mtwabpin.kolahal.ui.GUIDE_URL + "reference/commands/"))
             return
         }
@@ -645,7 +645,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
             CommandSpec("unlocks", "unlocks [<days>]", "Unlock counts"),
             CommandSpec("fetch", "fetch", "This phone and Kolahal at a glance, fastfetch style"),
             CommandSpec("source", "source", "Open Kolahal's source code on GitHub"),
-            CommandSpec("wallpaper", "wallpaper [match]", "match: the home screen's wallpaper in this theme's colour, following the theme, so it doesn't flash on the way home by gesture"),
+            CommandSpec("wallpaper", "wallpaper [match]", "match: set the home screen wallpaper to this theme's colour, following the theme, so it doesn't flash when you swipe home"),
             CommandSpec("script", "script <sub> <name>", "Subcommands: ls lib install get new edit run every at notify on off access allow deny secret set triggers mv rm cat diff dir export import"),
             CommandSpec("=", "= <expr>", "Calculator · = 15% of 80 · = 5 km in mi · = 100 usd in eur"),
             CommandSpec("lua", "lua <code>", "Evaluate Lua 5.4"),
@@ -673,12 +673,12 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
             CommandSpec("history", "history", "Recent commands (tap to reuse)"),
             CommandSpec("clear", "clear [history|all]", "Clear the screen, the ↑ history, or both"),
             CommandSpec("backup", "backup [now|every <daily|weekly|off>|dir]", "Back up everything to a folder now, or every day or week"),
-            CommandSpec("log", "log [only <name|kind>|all]", "Only one script's, feed's or app's lines, or one kind's"),
+            CommandSpec("log", "log [only <name|kind>|all]", "Show only one script's, feed's or app's lines, or one kind of line"),
             CommandSpec("fresh", "fresh", "Start a clean screen now, like log.fresh; earlier lines are one tap away (not logged)"),
             CommandSpec("restart", "restart [scripts]", "Restart the launcher, or stop running scripts"),
             CommandSpec("status", "status [clear <name|all>]", "Header lines pinned by scripts"),
             CommandSpec("setup", "setup [text]", "Setup checklist page (text: print it in the log)"),
-            CommandSpec("tour", "tour", "How Kolahal works, a page at a time, with a few first settings"),
+            CommandSpec("tour", "tour", "How Kolahal works, a page at a time, with a few initial settings"),
             CommandSpec("notifications", "notifications [settings]", "Allow script notifications"),
             CommandSpec("usage-access", "usage-access", "Grant usage access (unlock count)"),
             CommandSpec("crashes", "crashes [share|clear] [<n>]", "Crash reports kept on this phone; share one to report a bug"),
@@ -692,7 +692,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
             CommandSpec("system", "system", "Android system settings"),
             CommandSpec("config", "config [ls|set|get|reset] <key> <v>", "Settings (no args opens the settings page)"),
             CommandSpec("theme", "theme <name>", "Themes: green amber mono dracula solarized gruvbox gruvbox-material"),
-            CommandSpec("font", "font [<name>|import|sans [off|prompt|all]]", "Terminal font: system jetbrains-mono fira-code ibm-plex-mono source-code-pro custom (no args: list); sans: the phone's font for the prompt or everything"),
+            CommandSpec("font", "font [<name>|import|sans [off|prompt|all]]", "Terminal font: system jetbrains-mono fira-code ibm-plex-mono source-code-pro custom (no args: list); sans: the system font for the prompt or everything"),
             CommandSpec("date", "date [<place>...]", "Current date and time, or the time in a city, a zone, utc or an offset"),
             CommandSpec("echo", "echo <text>", "Print text"),
             CommandSpec("cal", "cal [<month>] [<year>]", "The month as a calendar, today in bold · cal dec · cal dec 2027 · cal 2027-12"),
@@ -705,14 +705,14 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
             CommandSpec("rename", "rename <app> = <name>", "Custom label (empty restores)"),
             CommandSpec("todo", "todo [<text>|add|done|undo|edit|rm <n>|all|clear]", "Todo list (tap an item to tick it)"),
             CommandSpec("note", "note <text>", "Save a quick note"),
-            CommandSpec("notes", "notes [grep <text>|rm <n>]", "Your notes, newest first (tap copies)"),
+            CommandSpec("notes", "notes [grep <text>|rm <n>]", "Your notes, newest first (tap to copy)"),
             CommandSpec("remind", "remind <when> <text>", "Notify later · 10m · 18:30 · tomorrow 9:00 · fri 8am · dec 3 10:00 · every mon 19:00 · rm <n>"),
             CommandSpec("reminders", "reminders", "Pending reminders"),
             CommandSpec("timer", "timer <5m|1h30m> [<label>]", "Start a timer in the clock app (no args: show timers)"),
             CommandSpec("alarm", "alarm <HH:MM> [<label>]", "Set an alarm in the clock app"),
             CommandSpec("alarms", "alarms", "Show the clock app's alarms"),
             CommandSpec("stopwatch", "stopwatch", "Open the clock app"),
-            CommandSpec("agenda", "agenda [<days>|--allow|--settings]", "Upcoming calendar events (tap opens one)"),
+            CommandSpec("agenda", "agenda [<days>|--allow|--settings]", "Upcoming calendar events (tap to open one)"),
         )
 
         /** Every built-in command name, for alias, script-name and typo checks. */

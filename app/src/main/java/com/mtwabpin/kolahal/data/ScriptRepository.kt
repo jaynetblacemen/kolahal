@@ -93,7 +93,7 @@ class ScriptRepository private constructor(private val context: Context) {
             put("access", ScriptAccess.encode(access))
         }
         forgetRemovedSecrets(s.name, code)
-        if (!byUser && s.enabled) ScriptAccess.askToAllow(context, s.name, newUses.toList() + newEvents + newInternet, "now asks for")
+        if (!byUser && s.enabled) ScriptAccess.askToAllow(context, s.name, newUses.toList() + newEvents + newInternet, "now requests")
     }
 
     /**

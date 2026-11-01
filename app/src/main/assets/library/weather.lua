@@ -1,10 +1,10 @@
 -- weather.lua — current weather in one line from wttr.in (no API key).
 -- @command
--- @desc Current weather: weather [city] (without one: its city option, or where you are)
+-- @desc Current weather: weather [city] (default: its city option, or your location)
 -- @usage [<city>]
 -- @title Weather
 -- @every 1h
--- @option city "" The city when you type none; empty: where your IP address is
+-- @option city "" Default city; empty: your IP address's location
 --
 -- Usage:
 --   weather                 weather for its city option (or your IP location)

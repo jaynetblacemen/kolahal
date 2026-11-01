@@ -287,8 +287,8 @@ internal fun TypingPreview(vm: TerminalViewModel) {
     PreviewCaption(
         when (mode) {
             InstantRun.OFF -> "Off: nothing runs until you press Enter or tap a suggestion."
-            InstantRun.APPS -> "Apps: an app opens once the letters can only mean it; commands wait for Enter."
-            else -> "All: an app or a command runs once the letters can only mean it."
+            InstantRun.APPS -> "Apps: an app opens once only one match is left; commands require Enter."
+            else -> "All: an app or a command runs once only one match is left."
         }
     )
 }
@@ -427,7 +427,7 @@ internal fun SelectorPreview(vm: TerminalViewModel) {
     PreviewCaption(
         if (!on) "Off: the edge is free, and you type to open apps."
         else if (browse == "letters") "Try it: touch the ${if (left) "left" else "right"} edge and slide along it to a letter; slide off it onto the list and let go."
-        else "Try it: touch the ${if (left) "left" else "right"} edge and slide along it, slowly to aim; slide off it toward the list and let go."
+        else "Try it: touch the ${if (left) "left" else "right"} edge and slide along it, slowly for one app at a time; slide off it toward the list and let go."
     )
 }
 

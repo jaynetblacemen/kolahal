@@ -89,12 +89,12 @@ object SetupChecks {
             // Android 12+ lets you turn exact alarms off (and 14+ starts with them off).
             if (Build.VERSION.SDK_INT < 31) null else SetupCheck(
                 "Alarms & reminders (remind, script times)",
-                "Optional: reminders and scripts' daily times on the minute; night-work needs it to pause the work profile",
+                "Optional: reminders and scripts' daily times at the exact time; night-work needs it to pause the work profile",
                 com.mtwabpin.kolahal.productivity.ReminderScheduler.canBeExact(context),
                 "remind exact",
             ),
             SetupCheck(
-                "Battery unrestricted",
+                "Unrestricted battery",
                 "Timer scripts run on schedule instead of being deferred",
                 power.isIgnoringBatteryOptimizations(context.packageName),
                 "battery",

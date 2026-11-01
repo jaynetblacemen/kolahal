@@ -31,9 +31,9 @@ class AppCommands(
     private fun pinnedWhere(): String {
         val conf = com.mtwabpin.kolahal.data.Config.get(context)
         return listOfNotNull(
-            "it leads the suggestions on an empty prompt".takeIf { conf[com.mtwabpin.kolahal.data.Keys.SUGGEST_IDLE] },
+            "it comes first in suggestions on an empty prompt".takeIf { conf[com.mtwabpin.kolahal.data.Keys.SUGGEST_IDLE] },
             "it is a ★ favourite in the app selector".takeIf { conf[com.mtwabpin.kolahal.data.Keys.SELECTOR_RAIL] },
-        ).joinToString(", and ").ifEmpty { "pinned apps lead the suggestions on an empty prompt once they are on (config set suggestions.idle on)" }
+        ).joinToString(", and ").ifEmpty { "pinned apps come first on an empty prompt with config set suggestions.idle on" }
     }
 
     /** Runs one of [NAMES]. */
@@ -218,7 +218,7 @@ class AppCommands(
                     return@background
                 }
             }
-            error("${app.profile.kind.label} profile didn't come back in time — try again")
+            error("${app.profile.kind.label} profile didn't resume in time — try again")
         }
     }
 
@@ -272,7 +272,7 @@ class AppCommands(
     /** `usage [days]`: foreground time per app from UsageStats (needs Usage Access). */
     private fun usage(args: List<String>) {
         if (!unlocks.hasUsageAccess()) {
-            logs.add(LogKind.ERROR, "Screen time needs usage access — tap to grant it", ctx = LogContext.of(LogContext.RUN to "usage-access"))
+            logs.add(LogKind.ERROR, "Screen time needs usage access — tap to allow it", ctx = LogContext.of(LogContext.RUN to "usage-access"))
             return
         }
         val days = args.firstOrNull()?.toIntOrNull()?.coerceIn(1, 30) ?: 1
