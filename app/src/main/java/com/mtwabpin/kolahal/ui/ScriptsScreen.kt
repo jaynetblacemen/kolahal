@@ -148,7 +148,7 @@ private class ScriptState(val inHeader: Boolean, val needsKey: Boolean, val diff
 private class ScriptFilter(val id: String, val label: String, val keeps: (info: ScriptInfo, state: ScriptState) -> Boolean)
 
 /** Short names for what scripts use, in chips. */
-private val USES_SHORT = mapOf("notifications" to "notifications", "clipboard" to "clipboard", "apps" to "apps", "lan" to "local network", "commands" to "commands", "dnd" to "Do Not Disturb", "work" to "work profile")
+private val USES_SHORT = mapOf("notifications" to "notifications", "clipboard" to "clipboard", "apps" to "apps", "commands" to "commands", "dnd" to "Do Not Disturb", "work" to "work profile")
 
 private val SCRIPT_FILTERS = listOf(
     ScriptFilter("commands", "Commands") { s, _ -> s.isCommand },

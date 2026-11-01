@@ -50,7 +50,7 @@ object ApiDocs {
         ApiDoc("fmt.plain", "fmt.plain(text) -> string", "The text without its styles, for anything other than the log"),
         ApiDoc("notify", "notify(title, body, ctx?) -> bool", "Post a notification if enabled for the script; ctx.url opens on tap"),
         ApiDoc("status", "status(text)", "Pin one header line for this script; status(nil) clears it"),
-        ApiDoc("allowed", "allowed(what) -> bool", "Whether you let this script use what: internet, header, notifications, apps, clipboard, lan, commands, dnd, work or an @on event"),
+        ApiDoc("allowed", "allowed(what) -> bool", "Whether you let this script use what: internet, header, notifications, apps, clipboard, commands, dnd, work or an @on event"),
         ApiDoc("sleep", "sleep(ms)", "Pause up to 5000 ms", LUA),
         ApiDoc("sleep", "await sleep(ms)", "Pause up to 5000 ms (async)", JS),
         ApiDoc("print", "print(...)", "Log the values joined by tabs", LUA),

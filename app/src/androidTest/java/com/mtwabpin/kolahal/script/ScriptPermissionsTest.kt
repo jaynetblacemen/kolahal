@@ -3,6 +3,7 @@ package com.mtwabpin.kolahal.script
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
@@ -38,7 +39,7 @@ class ScriptPermissionsTest {
             val error = luaError(call, script())
             assertTrue("$call: $error", error.orEmpty().contains("needs `@uses $what`"))
             // Declaring something else doesn't help.
-            assertTrue(call, luaError(call, script("lan")).orEmpty().contains("needs `@uses $what`"))
+            assertTrue(call, luaError(call, script("dnd")).orEmpty().contains("needs `@uses $what`"))
         }
         assertTrue(jsError("clipboard.set('x')", script()).orEmpty().contains("needs `@uses clipboard`"))
         assertTrue(jsError("notifications.recent(5)", script()).orEmpty().contains("needs `@uses notifications`"))
@@ -56,6 +57,11 @@ class ScriptPermissionsTest {
         val accepted = AtomicInteger()
         val contentTypes = java.util.concurrent.CopyOnWriteArrayList<String?>()
         val url = "http://127.0.0.1:${socket.localPort}/"
+
+        /** Nothing reaches this phone, so a test of what a request carries has to let this one through. */
+        fun letThrough() {
+            Net.testServer = InetSocketAddress(socket.inetAddress, socket.localPort)
+        }
 
         init {
             thread(isDaemon = true) {
@@ -75,12 +81,16 @@ class ScriptPermissionsTest {
             }
         }
 
-        override fun close() = socket.close()
+        override fun close() {
+            Net.testServer = null
+            socket.close()
+        }
     }
 
     /** A Content-Type header gets through as given: on a body, or by itself when there's no body to carry it. */
     @Test fun aContentTypeHeaderIsSentWithOrWithoutABody() {
         TinyServer().use { server ->
+            server.letThrough()
             val json = "headers = { [\"Content-Type\"] = \"application/json\" }"
             val cases = listOf(
                 "http.get('${server.url}', { [\"content-type\"] = \"application/json\" })",
@@ -88,20 +98,30 @@ class ScriptPermissionsTest {
                 "http.request{ url = '${server.url}', method = 'POST', body = 'x', $json }",
                 "http.request{ url = '${server.url}', method = 'POST', body = 'x', contentType = 'text/csv', $json }",
             )
-            for (call in cases) assertNull(call, luaError(call, script("lan")))
+            for (call in cases) assertNull(call, luaError(call, script()))
             assertEquals(listOf("application/json", "application/json", "application/json", "text/csv"), server.contentTypes.map { it?.substringBefore(';') })
         }
     }
 
-    @Test fun thisPhoneNeedsUsesLan() {
+    /** Whatever a script says, and at the prompt too. */
+    @Test fun noScriptReachesThisPhone() {
         TinyServer().use { server ->
-            val refused = luaError("http.get('${server.url}')", script())
-            assertTrue(refused, refused.orEmpty().contains("not allowed"))
+            for (host in listOf(script(), script("lan"), prompt())) {
+                val refused = luaError("http.get('${server.url}')", host)
+                assertTrue(refused, refused.orEmpty().contains("not allowed"))
+            }
             // Not even a connection: it would tell the script which ports are open.
             assertEquals(0, server.accepted.get())
-            // With `@uses lan`, or at the prompt, the request goes through.
-            for (host in listOf(script("lan"), prompt())) assertNull(luaError("http.get('${server.url}')", host))
-            assertEquals(2, server.accepted.get())
+        }
+    }
+
+    /** Feeds, pictures in the log and the rest make their requests with this client too. */
+    @Test fun noRequestReachesThisPhone() {
+        TinyServer().use { server ->
+            val call = Net.client.newCall(okhttp3.Request.Builder().url(server.url).build())
+            val refused = runCatching { call.execute().close() }.exceptionOrNull()?.message.orEmpty()
+            assertTrue(refused, refused.contains("not allowed"))
+            assertEquals(0, server.accepted.get())
         }
     }
 }

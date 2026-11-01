@@ -14,7 +14,6 @@ sealed interface UiEvent {
     data object PickContact : UiEvent
     data object RequestCalendarPermission : UiEvent
     data object RequestCallLogPermission : UiEvent
-    data object RequestLocalNetworkPermission : UiEvent
     data object PickFont : UiEvent
     data object PickBackupFolder : UiEvent
     data object ShowQuick : UiEvent

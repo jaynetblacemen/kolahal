@@ -213,7 +213,7 @@ Scripts run in a separate `:script` process, so a crashing engine can't take dow
 
 ## What a script may use
 
-Your notifications, the clipboard, the list of your apps, your local network, running
+Your notifications, the clipboard, the list of your apps, running
 commands, Do Not Disturb and the work profile are only for scripts that ask, with a `@uses` line at
 the top:
 
@@ -226,15 +226,13 @@ the top:
 | `notifications` | [`notifications.recent`](/scripting/api/#notificationsrecentn) and the `@on notification` trigger |
 | `clipboard` | [`clipboard.get` and `clipboard.set`](/scripting/api/#clipboardget--clipboardsettext) |
 | `apps` | [`apps.list`](/scripting/api/#appslist) |
-| `lan` | `http` requests to this phone or your local network (192.168.…, router pages, a home server) |
 | `commands` | [`launcher.run`](/scripting/api/#launcherruncommand): terminal commands, and other scripts by their names, when you start it from the prompt |
 | `dnd` | [`device.dnd` and `device.setDnd`](/scripting/api/#devicednd--devicesetdndmode): seeing and setting Do Not Disturb |
 | `work` | [`device.work` and `device.setWork`](/scripting/api/#devicework--devicesetworkon): seeing, pausing and resuming the work profile |
 
 Calling one of these without its `@uses` line stops the script with an error saying what to add.
-On Android 17 and newer, reaching your local network also needs Android's
-local network permission: run `local-network` once, or tap the line a blocked request leaves in the
-log. Code you type at the prompt (`lua`, `js`, `=`) may use everything.
+Code you type at the prompt (`lua`, `js`, `=`) may use all of these. Nothing reaches this phone or your
+local network, not even code at the prompt: [those requests](/scripting/api/#http) fail.
 
 ### Switching access off
 
@@ -252,7 +250,7 @@ stops where it isn't:
 | Internet | stops at its first `http` or `rss` call, with a line to tap to allow it again; its lines carry no links or pictures |
 | Header line | runs as before, but its `status()` line doesn't show |
 | Post notifications | runs as before; `notify()` returns false |
-| An `@uses` item | gets nothing: `apps.list()` and `notifications.recent()` return empty lists, `clipboard.get()` returns nil and `clipboard.set()` does nothing. Switched-off `lan` requests stop the script, and `launcher.run` returns false |
+| An `@uses` item | gets nothing: `apps.list()` and `notifications.recent()` return empty lists, `clipboard.get()` returns nil and `clipboard.set()` does nothing, and `launcher.run` returns false |
 | An `@on` event | doesn't run on that event |
 
 Long-press a script's line in the header for **Hide from header**. In the terminal,

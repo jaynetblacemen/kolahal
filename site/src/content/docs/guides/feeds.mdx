@@ -16,10 +16,9 @@ feed add lwn.net/headlines/rss       # https:// is assumed; feed:// links work t
 ```
 
 Adding a feed fetches it right away. The address is normalised, so adding the same feed twice
-returns the existing subscription. `feed://` links open as `https://`. A feed on your own network
-(a home server) works (on Android 17 and newer, once you allow it with
-`local-network`); a public feed can't redirect into your network. The newest 300 items of a feed
-are read.
+returns the existing subscription. `feed://` links open as `https://`. A feed has to be on a public
+site: one on this phone or your own network (a home server) fails, and a public feed can't redirect
+there. The newest 300 items of a feed are read.
 
 ## Read
 

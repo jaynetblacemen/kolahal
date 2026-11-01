@@ -140,7 +140,6 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
                 "sms", "text" -> people.sms(args)
                 "contacts", "contact" -> people.listContacts(rest)
                 "notifications" -> notifications(args)
-                "local-network" -> localNetwork(args)
                 "crashes" -> crashes(args)
                 "setup" -> if (args.firstOrNull() == "text") setupText() else ui.openScreen(Screen.SETUP)
                 "tour" -> ui.openScreen(Screen.ONBOARDING)
@@ -430,17 +429,6 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
         }
     }
 
-    /** `local-network`: Android 17's permission for scripts with `@uses lan` and feeds on your network. */
-    private fun localNetwork(args: List<String>) {
-        when {
-            Build.VERSION.SDK_INT < 37 -> info("Reaching your local network needs no permission before Android 17")
-            args.firstOrNull() == "--settings" ->
-                startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
-            Net.localNetworkAllowed() -> info("Local network access is allowed")
-            else -> ui.requestLocalNetworkPermission()
-        }
-    }
-
     /**
      * `wallpaper`: whether the home screen's wallpaper is Kolahal's; `wallpaper match` makes it so
      * ([com.mtwabpin.kolahal.ui.WallpaperMatch]). It asks first: Android doesn't let an app read the
@@ -693,7 +681,6 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
             CommandSpec("tour", "tour", "How Kolahal works, a page at a time, with a few first settings"),
             CommandSpec("notifications", "notifications [settings]", "Allow script notifications"),
             CommandSpec("usage-access", "usage-access", "Grant usage access (unlock count)"),
-            CommandSpec("local-network", "local-network [--settings]", "Let scripts (@uses lan) and feeds reach your local network (Android 17+)"),
             CommandSpec("crashes", "crashes [share|clear] [<n>]", "Crash reports kept on this phone; share one to report a bug"),
             CommandSpec("battery", "battery", "Battery optimization settings"),
             CommandSpec("home", "home", "Choose the default launcher"),
@@ -767,7 +754,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
             "scripts" to listOf("scripts", "script", "lua", "js", "=", "status"),
             "terminal" to listOf("help", "history", "clear", "fresh", "restart", "alias", "unalias", "config", "theme", "font", "backup", "echo", "date", "cal"),
             "widgets" to listOf("widgets", "widget"),
-            "device" to listOf("settings", "setup", "tour", "source", "wallpaper", "unlocks", "notifications", "usage-access", "local-network", "crashes", "battery", "home", "lock", "shade", "accessibility", "system"),
+            "device" to listOf("settings", "setup", "tour", "source", "wallpaper", "unlocks", "notifications", "usage-access", "crashes", "battery", "home", "lock", "shade", "accessibility", "system"),
         )
     }
 }

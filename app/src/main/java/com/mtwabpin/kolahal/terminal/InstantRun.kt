@@ -21,7 +21,7 @@ object InstantRun {
         "rss", "crashes",
         // These leave the launcher or change the phone: typing `sy` on the way to something else
         // mustn't open Android's settings.
-        "battery", "home", "system", "accessibility", "usage-access", "shade", "local-network", "notifications", "source",
+        "battery", "home", "system", "accessibility", "usage-access", "shade", "notifications", "source",
         // Replaces the wallpaper, which can't be brought back.
         "wallpaper",
         // `scripts rm|off|import …` reaches the same handler as `script`; `status clear` wipes lines.

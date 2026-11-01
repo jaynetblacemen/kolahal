@@ -804,7 +804,7 @@ functions is the quickest way to learn what they promise.
 | profile        | Android user profile: personal =[P]=, work =[W]=, private space =[S]=, clone =[C]=                       |
 | quiet          | a paused work profile or a locked private space                                                          |
 | script command | a user script marked =@command=, runnable from the prompt by name                                        |
-| =@on=, =@uses= | script directives: run on a device event; declare access to private data or the local network            |
+| =@on=, =@uses= | script directives: run on a device event; declare access to private data                                 |
 | fresh screen   | =log.fresh=: home hides old output after a while away (hidden, not deleted)                              |
 | instant run    | =launch.instant=: run without Enter once the input can only mean one thing                               |
 | Play build     | the build for Google Play, without the accessibility service, the call log and reading contacts                            |

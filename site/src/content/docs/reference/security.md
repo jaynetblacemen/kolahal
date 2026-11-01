@@ -16,10 +16,12 @@ Kolahal is young, and its code is still under review. Treat it as beta software:
   leaves out the screen lock and the call log altogether.
 - **Scripts run apart.** They run in a process of their own, a minute at most, with their memory
   capped; one stuck in a loop the engine can't interrupt is stopped all the same.
-- **A script gets only what you allow.** Your notifications, clipboard, apps, local network, terminal
+- **A script gets only what you allow.** Your notifications, clipboard, apps, terminal
   commands, Do Not Disturb and work profile only with an `@uses` line and your yes; the internet and
   its header line only if its code uses them. Each has a switch, per script
   ([switching access off](/scripting/overview/#switching-access-off)).
+- **Your own network stays out of reach.** No script, feed or picture in the log reaches this phone
+  or your local network, even after a redirect.
 - **Scripts from outside start switched off.** One from a file, a folder or a backup asks before it
   runs, and an update that asks for more (the internet included) starts with that off.
 - **A script never holds your keys.** `secrets.get` gives it a stand-in; the value goes only to the

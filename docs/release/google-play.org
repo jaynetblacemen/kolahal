@@ -27,6 +27,10 @@ Google Play gets the Play build, the full app without three things, packaged as 
 The maintainer chose (26 October 2026) to leave the call log and the accessibility service out
 for good rather than risk the declaration.
 
+Neither build has =ACCESS_LOCAL_NETWORK=. The maintainer removed it (1 November 2026), with
+=@uses lan=, =local-network= and feeds on a home server: from 25 August 2027, Play lets an app
+targeting Android 17 ask for it only with a declaration, for core functionality a device picker can't serve.
+
 Notification access is in (since 0.4.6): notifications in the log, =notifs=, media controls and
 =@on notification= scripts. Play has no declaration form for a notification listener; its User
 Data policy wants an in-app disclosure with consent before the access, so =notifs enable= (from the
@@ -60,7 +64,7 @@ seconds, started by an exact alarm the user allowed.
 
 =tools/check-play-build.sh= checks the Play APK: it fails if any of these appear: the
 call log, SMS or contacts permissions, =QUERY_ALL_PACKAGES=, =USE_EXACT_ALARM=, =REQUEST_INSTALL_PACKAGES=,
-=MANAGE_EXTERNAL_STORAGE=, =ACCESS_BACKGROUND_LOCATION= or an accessibility service. Both
+=MANAGE_EXTERNAL_STORAGE=, =ACCESS_BACKGROUND_LOCATION=, =ACCESS_LOCAL_NETWORK= or an accessibility service. Both
 workflows run it, so a library that adds one is caught.
 
 Policy pages (opened 22 October 2026):

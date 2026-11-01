@@ -145,8 +145,8 @@ class HostApi(
     fun redact(text: String): String = secretForms.fold(marks.replace(text, "••••")) { t, v -> t.replace(v, "••••") }
 
     /**
-     * Private data and local-network reach are only for scripts that declare them: undeclared is a
-     * mistake in the script. Declared but switched off by the user is false: the caller answers empty.
+     * Private data is only for scripts that declare it: undeclared is a mistake in the script.
+     * Declared but switched off by the user is false: the caller answers empty.
      */
     private fun may(what: String, call: String): Boolean {
         val g = grants ?: return true
@@ -176,8 +176,6 @@ class HostApi(
         throw java.io.IOException(message)
     }
 
-    /** May reach this device or the local network over http. */
-    val allowsLan: Boolean get() = grants == null || grants.allows("lan")
     private val logs = LogRepository.get(context)
     private val store = KvStore(context, scriptId?.let(ScriptRepository::scopeOf) ?: "repl")
 
@@ -187,10 +185,6 @@ class HostApi(
 
     /** A notify() call was dropped because notifications are blocked (reported once by the worker). */
     var notifyBlocked = false
-        private set
-
-    /** A request was refused because Kolahal may not reach the local network yet (reported once by the worker). */
-    var lanBlocked = false
         private set
 
     private val baseCtx: Map<String, String> =
@@ -360,8 +354,7 @@ class HostApi(
         val type = contentType ?: typeHeader?.let { h.remove(it) } ?: if (bodyIsJson) "application/json; charset=utf-8" else "text/plain; charset=utf-8"
         val reqBody = realBody?.toRequestBody(type.toMediaTypeOrNull())
             ?: if (m in METHODS_REQUIRING_BODY) ByteArray(0).toRequestBody() else null
-        // This phone and the local network only with `@uses lan` (or code typed at the prompt).
-        val request = Net.reach(Request.Builder(), if (allowsLan) Net.Reach.ANY else Net.Reach.PUBLIC)
+        val request = Request.Builder()
             .url(realUrl)
             .headers(h.toHeaders())
             .method(m, if (m != "GET" && m != "HEAD") reqBody else null)
@@ -371,27 +364,16 @@ class HostApi(
             })
             .build()
         checkSecrets(request.url.host, listOf(request.url.toString(), realBody.orEmpty()) + h.values, request.url.isHttps)
-        try {
-            val call = (if (allowsLan) client else Net.publicClient).newCall(request)
-            // No longer than the run has left (the client's own limit is 30 s).
-            call.timeout().timeout(minOf(remainingMs(), Net.CALL_TIMEOUT_MS), TimeUnit.MILLISECONDS)
-            call.execute().use { resp ->
-                return mapOf(
-                    "status" to resp.code,
-                    "ok" to resp.isSuccessful,
-                    "body" to resp.peekBody(MAX_BODY).string(),
-                    "headers" to resp.headers.associate { (k, v) -> k.lowercase() to v },
-                )
-            }
-        } catch (e: Net.LocalNetworkBlocked) {
-            // Without `@uses lan` the address isn't allowed at all; switched off, the user said no;
-            // otherwise Android's permission is what's missing.
-            if (grants != null && "lan" in grants.declared && !grants.allows("lan")) {
-                deny("lan", "${e.host} is on your local network, switched off for this script")
-            }
-            if (!allowsLan) throw java.io.IOException("${e.host} points to this phone or the local network: not allowed here")
-            lanBlocked = true
-            throw e
+        val call = client.newCall(request)
+        // No longer than the run has left (the client's own limit is 30 s).
+        call.timeout().timeout(minOf(remainingMs(), Net.CALL_TIMEOUT_MS), TimeUnit.MILLISECONDS)
+        return call.execute().use { resp ->
+            mapOf(
+                "status" to resp.code,
+                "ok" to resp.isSuccessful,
+                "body" to resp.peekBody(MAX_BODY).string(),
+                "headers" to resp.headers.associate { (k, v) -> k.lowercase() to v },
+            )
         }
     }
 

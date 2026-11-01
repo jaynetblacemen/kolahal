@@ -80,7 +80,8 @@ class ScriptMetaTest {
 
     @Test fun usesDirective() {
         assertEquals(setOf("notifications", "clipboard"), ScriptMeta.uses("-- @uses notifications, clipboard\nlog(1)"))
-        assertEquals(setOf("lan"), ScriptMeta.uses("// @uses LAN camera\n"))
+        assertEquals(setOf("dnd"), ScriptMeta.uses("// @uses DND camera\n"))
+        assertTrue("gone: an old script's line means nothing", ScriptMeta.uses("-- @uses lan\nlog(1)").isEmpty())
         assertTrue("none declared", ScriptMeta.uses("-- @command\nlog(1)").isEmpty())
     }
 

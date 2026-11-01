@@ -89,7 +89,7 @@ class VpnRoutesTest {
 
     /** The VPN here carries nothing, so the request fails, but it's not refused as local. */
     @Test fun aScriptsRequestIsntRefusedAsLocal() {
-        val client = Net.publicClient.newBuilder().callTimeout(2, TimeUnit.SECONDS).build()
+        val client = Net.client.newBuilder().callTimeout(2, TimeUnit.SECONDS).build()
         val call = client.newCall(Request.Builder().url("https://164.90.138.201/").build())
         val message = runCatching { call.execute().close() }.exceptionOrNull()?.message.orEmpty()
         assertFalse(message, "local network" in message)
@@ -100,6 +100,8 @@ class VpnRoutesTest {
     @Test fun theNetworksUnderTheVpnStayLocal() {
         val under = cm.allNetworks.filter { cm.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == false }
             .filter { cm.getNetworkCapabilities(it)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true }
+            // Not mobile data kept ready behind Wi-Fi: Android tells this app nothing of it, and it can't use it.
+            .filter { cm.getNetworkCapabilities(it)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_FOREGROUND) == true }
             .flatMap { cm.getLinkProperties(it)?.linkAddresses.orEmpty() }
         assertTrue("no network under the VPN", under.isNotEmpty())
         for (link in under) {

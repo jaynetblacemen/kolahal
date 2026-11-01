@@ -54,7 +54,7 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val shownRead = config[Keys.FEEDS_READ_SHOWN]
         val lines = ArrayList<LogRepository.Pending>()
         val ts = System.currentTimeMillis()
-        for ((fetched, newItems, error, first, lanBlocked) in results) {
+        for ((fetched, newItems, error, first) in results) {
             // Re-read so a title learned during this fetch is used.
             val feed = repo.byId(fetched.id) ?: fetched
             val source = feed.shortName
@@ -64,8 +64,7 @@ class FeedWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                 if (explicit) {
                     lines += LogRepository.Pending(
                         LogKind.ERROR, "$source: $error", source,
-                        // A blocked home-server feed: the tap asks for the permission rather than opening the feed.
-                        LogContext(feedCtx + (if (lanBlocked) LogContext.RUN to "local-network" else LogContext.URL to feed.url)), ts,
+                        LogContext(feedCtx + (LogContext.URL to feed.url)), ts,
                     )
                 }
                 continue

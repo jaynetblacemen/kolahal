@@ -150,7 +150,6 @@ internal object ScriptRun {
             logs.touch()
         }
         if (host.notifyBlocked) reportBlocked(ctx, logs, name, "notify-blocked", "notifications are blocked", "notifications")
-        if (host.lanBlocked) reportBlocked(ctx, logs, name, "lan-blocked", "Kolahal may not reach your local network yet", "local-network")
         logs.trim()
         return true
     }

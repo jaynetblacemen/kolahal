@@ -1665,10 +1665,6 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
         _events.tryEmit(UiEvent.RequestCallLogPermission)
     }
 
-    override fun requestLocalNetworkPermission() {
-        _events.tryEmit(UiEvent.RequestLocalNetworkPermission)
-    }
-
     private val _notificationAccessAsk = MutableStateFlow(false)
     /** Kolahal is asking before Android's Notification access screen opens ([askNotificationAccess]). */
     val notificationAccessAsk: StateFlow<Boolean> = _notificationAccessAsk.asStateFlow()
@@ -1684,17 +1680,6 @@ class TerminalViewModel(app: Application, private val state: SavedStateHandle) :
             startActivity(com.mtwabpin.kolahal.notifications.NotificationActions.settingsIntent(context))
         } else {
             logs.add(LogKind.INFO, "Notification access stays off · tap to turn it on", ctx = LogContext.of(LogContext.RUN to "notifs enable"))
-        }
-    }
-
-    fun onLocalNetworkPermission(granted: Boolean) {
-        refreshSetup()
-        io {
-            if (granted) {
-                logs.add(LogKind.INFO, "Local network allowed — scripts with @uses lan and feeds on your network can reach it")
-            } else {
-                logs.add(LogKind.ERROR, "Local network permission denied — tap to open app settings", ctx = LogContext.of(LogContext.RUN to "local-network --settings"))
-            }
         }
     }
 

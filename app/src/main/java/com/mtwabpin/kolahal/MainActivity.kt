@@ -63,9 +63,6 @@ class MainActivity : ComponentActivity() {
     private val callLogPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { vm.onCallLogPermission(it) }
 
-    private val localNetworkPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { vm.onLocalNetworkPermission(it) }
-
     private val pickFolder =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { vm.onScriptFolderPicked(it) }
 
@@ -143,8 +140,6 @@ class MainActivity : ComponentActivity() {
                         try { contactPicker.launch(Unit) } catch (_: android.content.ActivityNotFoundException) { vm.onContactPickerMissing() }
                     UiEvent.RequestCalendarPermission -> calendarPermission.launch(Manifest.permission.READ_CALENDAR)
                     UiEvent.RequestCallLogPermission -> callLogPermission.launch(Manifest.permission.READ_CALL_LOG)
-                    UiEvent.RequestLocalNetworkPermission ->
-                        if (Build.VERSION.SDK_INT >= 37) localNetworkPermission.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
                     UiEvent.PickFont -> launchFontPicker()
                     UiEvent.PickBackupFolder -> pickBackupFolder.launch(null)
                     else -> Unit

@@ -1,13 +1,10 @@
 package com.mtwabpin.kolahal
 
-import android.Manifest
 import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.work.Configuration
@@ -41,11 +38,8 @@ class LauncherApp : Application(), Configuration.Provider {
         // Before anything else can fail: a crash in either process leaves a report (see `crashes`).
         CrashReports.install(this)
         Notifier.createChannels(this)
-        // Both processes make requests: scripts in :script, feeds and images here.
-        if (Build.VERSION.SDK_INT >= 37) {
-            Net.localNetworkAllowed = { checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED }
-        }
-        // Which addresses are this phone's own networks, for what may reach them.
+        // Both processes make requests (scripts in :script, feeds and images here), and none may reach
+        // this phone's own networks.
         Net.watchLinks(this)
         // The :script process only needs the database and notifications.
         if (getProcessName() != packageName) return

@@ -3,8 +3,6 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Android 17+: scripts with @uses lan and feeds on a home server (optional; local-network asks). -->
-    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <!-- call / sms / contacts commands (optional; asked for on first use). -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <!-- agenda command (optional; asked for on first use). -->

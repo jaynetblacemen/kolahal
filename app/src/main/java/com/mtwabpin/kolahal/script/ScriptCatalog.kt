@@ -165,7 +165,7 @@ class ScriptCatalog(private val context: Context) {
     /** Public addresses only, at most [max] bytes. */
     private fun get(url: String, max: Long): ByteArray {
         val request = Request.Builder().url(url).header("User-Agent", "Kolahal/${BuildConfig.VERSION_NAME}").build()
-        Net.publicClient.newCall(request).execute().use { resp ->
+        Net.client.newCall(request).execute().use { resp ->
             if (!resp.isSuccessful) throw IOException("HTTP ${resp.code} from ${request.url.host}")
             val bytes = resp.peekBody(max + 1).bytes()
             if (bytes.size > max) throw IOException("${request.url.encodedPath} is too large")

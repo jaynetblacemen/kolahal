@@ -22,10 +22,10 @@ manifest=$("$aapt2" dump xmltree --file AndroidManifest.xml "$apk")
 problems=0
 
 # Permissions Play keeps for default phone, SMS or assistant apps, or for a few declared uses
-# (contacts: where Android's contact picker won't do).
+# (contacts: where Android's contact picker won't do; the local network: where a device picker won't).
 for p in READ_CALL_LOG WRITE_CALL_LOG PROCESS_OUTGOING_CALLS READ_SMS SEND_SMS RECEIVE_SMS RECEIVE_MMS \
          READ_CONTACTS WRITE_CONTACTS QUERY_ALL_PACKAGES USE_EXACT_ALARM REQUEST_INSTALL_PACKAGES MANAGE_EXTERNAL_STORAGE \
-         ACCESS_BACKGROUND_LOCATION; do
+         ACCESS_BACKGROUND_LOCATION ACCESS_LOCAL_NETWORK; do
     if grep -q "name='android.permission.$p'" <<<"$permissions"; then
         echo "$(basename "$apk") asks for $p."
         problems=1

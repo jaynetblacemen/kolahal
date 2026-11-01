@@ -229,7 +229,7 @@ status(null);
 ### allowed(what)
 
 Whether this script may use `what`: `"internet"`, `"header"`, `"notifications"`, `"apps"`,
-`"clipboard"`, `"lan"`, `"commands"`, `"dnd"`, an `@on` event such as `"unlock"`, or `"work"`. You switch these per script
+`"clipboard"`, `"commands"`, `"dnd"`, an `@on` event such as `"unlock"`, or `"work"`. You switch these per script
 ([switching access off](/scripting/overview/#switching-access-off)); with one off, a script can do
 something else instead. A script has `"internet"` only if its code uses `http`, `rss`, `url`,
 `image` or `launcher.run`, and `"header"` only if it calls `status`. Code typed at the prompt gets `true` for everything.
@@ -259,7 +259,7 @@ Responses are `{ status, ok, body, headers }`: the numeric status, `ok` for 2xx,
 `Kolahal-Launcher/0.1 (+https://github.com/mtwabpin)` is sent unless you set your own. Network errors raise an error (Lua) or
 reject the promise (JS). An HTTP error status does **not**, so check `ok`. Plain `http://` URLs are
 allowed. Requests to this phone or your local network (a router, a home
-server, a VPN address like Tailscale's 100.x) need `@uses lan`; without it they fail, even after a
+server, a VPN address like Tailscale's 100.x) always fail, even after a
 redirect. A JavaScript run makes at most 4 requests at a time; more wait their turn, and with 64 requests and sleeps waiting at once, another call fails.
 
 ### http.get(url, headers?)

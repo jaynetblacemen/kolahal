@@ -8,7 +8,7 @@ package com.mtwabpin.kolahal.script
  *   -- @usage <args>       — the arguments, written like a built-in usage line (`[random|<number>]`);
  *                            empty when there are none. Drives suggestions and `launch.instant`
  *   -- @on <event>[, ...]  — run when a device event happens (see [EVENTS]); the payload is `event`
- *   -- @uses <what>[, ...] — private data or reach it needs (see [USES]); without it those calls fail
+ *   -- @uses <what>[, ...] — what it needs (see [USES]); without it those calls fail
  *   -- @secret <NAME> <site> <description> — a key you set, read with secrets.get, sent only to <site> ([Secret])
  *   -- @option <name> <default> <description> — a setting you change without editing it, read as options.<name> ([Option])
  *
@@ -30,12 +30,12 @@ object ScriptMeta {
 
     /**
      * What a script may ask for with `@uses`: `notifications` (notifications.recent and the
-     * `@on notification` trigger), `clipboard`, `apps` (apps.list), `lan` (http to the local
-     * network or this device), `commands` (launcher.run: terminal commands and other scripts),
+     * `@on notification` trigger), `clipboard`, `apps` (apps.list), `commands` (launcher.run:
+     * terminal commands and other scripts),
      * `dnd` (device.dnd and device.setDnd: Do Not Disturb) and `work` (device.work and
      * device.setWork: the work profile). The user allows each one ([ScriptAccess]).
      */
-    val USES = listOf("notifications", "clipboard", "apps", "lan", "commands", "dnd", "work")
+    val USES = listOf("notifications", "clipboard", "apps", "commands", "dnd", "work")
 
     /** Known names from every `@uses` line; unknown ones are ignored. */
     fun uses(code: String): Set<String> {
