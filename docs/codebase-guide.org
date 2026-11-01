@@ -187,7 +187,7 @@ ViewModel still earns its place:
 - it is the one place where screen state and screen logic live, apart from drawing code;
 - =viewModelScope= gives coroutines that are cancelled when the ViewModel is cleared;
 - =SavedStateHandle= survives /process death/: Kolahal stores the id of a script waiting for
-  the "save as" picker there ([[src:terminal/TerminalViewModel.kt::fun beginExportScript][beginExportScript]]), because the system may kill the app while
+  the "save as" picker there ([[src:terminal/ScriptActions.kt::fun beginExportScript][beginExportScript]]), because the system may kill the app while
   the picker is open.
 
 ** Vocabulary you'll meet constantly
@@ -324,7 +324,7 @@ is Kolahal's replacement for a dependency-injection framework.
 
 *** Settings, a small complete example
 
-[[src:data/Config.kt::sealed class ConfigKey][data/Config.kt]] is short and worth reading in full. Each setting is a typed =ConfigKey=
+[[src:data/Keys.kt::sealed class ConfigKey][data/Keys.kt]] is short and worth reading in full. Each setting is a typed =ConfigKey=
 (=Bool=, =Num= with a range, =Choice=, =Text=) declared once in =object Keys= with its name,
 default and help text. Reading is =config[Keys.THEME]=; writing is =config.set(key, raw)=,
 which validates, saves, and bumps =version=. The Settings screen, =config set ...= at the
@@ -392,6 +392,8 @@ declares exactly what it needs from the ViewModel as a small interface:
 | Helper           | Job                                                      | What it asks of the ViewModel                     |
 |------------------+----------------------------------------------------------+---------------------------------------------------|
 | [[src:terminal/CommandProcessor.kt::class CommandProcessor][CommandProcessor]] | parse and run a command line                             | =TerminalUi=: open a screen, ask for a permission |
+| [[src:terminal/ScriptActions.kt::class ScriptActions][ScriptActions]]    | what the script screens do to scripts                    | =ScriptActions.Host=: background work, notices, opening the editor |
+| [[src:terminal/BackupActions.kt::class BackupActions][BackupActions]]    | backup files and the folder automatic ones go to         | the same =Host=, and =ScriptActions= for after an import |
 | [[src:terminal/LogLineActions.kt::class LogLineActions][LogLineActions]]   | what a tap or long-press on a line does                  | =LogLineActions.Host=: set prompt text, run, emit |
 | [[src:terminal/Completer.kt::class Completer][Completer]]        | suggestions for what's typed                             | =Completer.Data=: history, scripts, todos, ...    |
 | [[src:terminal/InstantRun.kt::object InstantRun][InstantRun]]       | "is this input unambiguous enough to run without Enter?" | nothing: a pure =object=, unit-tested             |
@@ -430,7 +432,7 @@ and a Home press while already home (=onNewIntent=) → =vm.onHomePressed()=.
 | one log line              | [[src:ui/LogView.kt::fun LogLine][ui/LogView.kt]]                                                                   | =LogLine=, the app grid, the long-press =ActionSheet=                    |
 | prompt                    | [[src:ui/Prompt.kt::fun Prompt][ui/Prompt.kt]]                                                                    | the text field and hardware-key handling                                 |
 | header                    | [[src:ui/TerminalHeader.kt::internal fun Header(][ui/TerminalHeader.kt]]                                                            | =Header= and =CompactHeader=: clock, battery, unlocks, profiles          |
-| app selector on an edge   | [[src:ui/AppRail.kt::fun AppSelector(][ui/AppRail.kt]]                                                                   | =AppSelector=; pure maths split out and unit-tested (=SelectorMathTest=) |
+| app selector on an edge   | [[src:ui/AppSelector.kt::fun AppSelector(][ui/AppSelector.kt]]                                                                 | =AppSelector=; pure maths split out and unit-tested (=SelectorMathTest=) |
 | Settings                  | [[src:ui/SettingsScreen.kt::fun SettingsScreen][ui/SettingsScreen.kt]]                                                            | pages come from [[src:ui/SettingsCatalog.kt::private val CATEGORIES][ui/SettingsCatalog.kt]]                                    |
 | Script manager and editor | [[src:ui/ScriptsScreen.kt::fun ScriptsScreen][ui/ScriptsScreen.kt]], [[src:ui/ScriptEditor.kt::fun ScriptEditor][ui/ScriptEditor.kt]]                                         | editor logic in =EditorLogic.kt= (unit-tested)                           |
 | Feeds, widgets, setup     | =FeedsScreen.kt=, =WidgetsScreen.kt=, =WidgetPickerScreen.kt=, =SetupScreen.kt= |                                                                          |
@@ -463,7 +465,7 @@ that reads =Term.x= recomposes. This is a pragmatic shortcut (see Part 6).
 - =remember(configVersion) { config[Keys.X] }=: read a setting once per settings change, not
   on every frame.
 - =derivedStateOf { version.value; config.display(key) }= in the Settings rows: each row redraws
-  only when /its own/ value changes ([[src:ui/SettingsScreen.kt::val value by remember(key)][SettingItem]]).
+  only when /its own/ value changes ([[src:ui/SettingItem.kt::val value by remember(key)][SettingItem]]).
 - =@Immutable= on =LogEntry=, =LogContext= and =LogRow=, and stable =key= values for
   =LazyColumn= items, so Compose can skip lines that didn't change.
 - Expensive menus are built off the main thread: =showMenu(...)= in =TerminalScreen=.
@@ -609,7 +611,7 @@ Four layers took part, and none of them reached past its neighbour.
 
 ** Trace 5: changing a setting in the Settings screen
 
-1. A switch in [[src:ui/SettingsScreen.kt::onCheckedChange = { vm.setConfig][SettingItem]] calls =vm.setConfig(key, "on")=.
+1. A switch in [[src:ui/SettingItem.kt::onCheckedChange = { vm.setConfig][SettingItem]] calls =vm.setConfig(key, "on")=.
 2. [[src:terminal/TerminalViewModel.kt::fun setConfig][setConfig()]] calls =config.set()=, which validates the value, saves it to
    =SharedPreferences=, and bumps =Config.version=.
 3. Three observers react:
@@ -677,7 +679,7 @@ from "fixing" deliberate choices, and from copying shortcuts where they don't fi
    framework, but you can't easily swap a fake repository into a test. Kolahal's answer is to
    pull logic into pure functions and objects that need no Android at all (=buildRows=,
    =InstantRun=, =Pipes=, =Units=, =Calc=, =TimeSpec=, =Repeat=, =Fuzzy=, =ScriptCheck=, =Tips=,
-   =WidgetModel=, the =AppRail= maths) and test
+   =WidgetModel=, =SelectorMath=) and test
    those on the JVM, and to test the rest on a device with real singletons.
 
 4. *Commands write to the database instead of returning.* Unusual, but it's the design (Part 3),
@@ -732,7 +734,7 @@ with Android's contact picker (=ContactPicker=), remembered on the phone.
 Tick these off as you go (=C-c C-c= on a checkbox).
 
 - [ ] [[src:data/LogEntry.kt::enum class LogKind][data/LogEntry.kt]]: the data everything revolves around (5 min)
-- [ ] [[src:data/Config.kt::sealed class ConfigKey][data/Config.kt]]: a complete small Model (10 min)
+- [ ] [[src:data/Keys.kt::sealed class ConfigKey][data/Keys.kt]]: a complete small Model (10 min)
 - [ ] [[src:terminal/TerminalModels.kt::sealed interface UiEvent][terminal/TerminalModels.kt]] and [[src:terminal/TerminalUi.kt::enum class Screen][terminal/TerminalUi.kt]]: events, screens, the UI port
 - [ ] [[src:LauncherApp.kt::override fun onCreate][LauncherApp.onCreate]]: what starts when the process starts
 - [ ] [[src:MainActivity.kt::override fun onCreate][MainActivity.onCreate]]: the host, the router, the permission plumbing
@@ -755,8 +757,8 @@ into =buildRows= to see the rows being built.
 
 Add =hello [name]=, which prints =Hello, name!=.
 
-1. In =CommandProcessor='s =companion object=, add a =CommandSpec("hello", "hello [name]", "Say hello")=
-   to the [[src:terminal/CommandProcessor.kt::val COMMANDS = listOf(][COMMANDS]] list. That alone puts it in =help=, in suggestions (=Completer= reads
+1. In =CommandCatalog=, add a =CommandSpec("hello", "hello [name]", "Say hello")=
+   to the [[src:terminal/CommandCatalog.kt::val COMMANDS = listOf(][COMMANDS]] list. That alone puts it in =help=, in suggestions (=Completer= reads
    =COMMAND_NAMES= and =COMMAND_USAGES=), and protects the name from being used as an alias.
 2. In =execute()=, add a branch: ="hello" -> out("Hello, ${args.firstOrNull() ?: "world"}!")=.
 3. Build, install, type =hello=. Then ask: =hello= isn't in =InstantRun.SENSITIVE=, so with
