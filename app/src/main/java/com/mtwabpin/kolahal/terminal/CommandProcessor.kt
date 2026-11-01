@@ -50,19 +50,11 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
     private val people = PeopleCommands(context, ui)
     private val appCommands = AppCommands(context, ::background)
     private val feedCommands = FeedCommands(context, appCommands, ui)
-    private val updateCommands = UpdateCommands(
-    context,
-    ::background,
-    { text, ctx -> out(text, ctx) },
-    { text, ctx -> info(text, ctx) },
-) { message, url ->
-    logs.add(
-        LogKind.ERROR,
-        message,
-        ctx = LogContext.of(
-            LogContext.URL to (url ?: "https://github.com/mtwabpin/kolahal/releases/latest")
-        ),
-    )
+
+    // Called only behind BuildConfig.SELF_UPDATE, so R8 leaves the updater out of the Play build: Play
+    // allows no update but its own (tools/check-play-build.sh checks).
+    private fun updateCommands() = UpdateCommands(context, ::background, { text, ctx -> info(text, ctx) }) { message ->
+        logs.add(LogKind.ERROR, message, ctx = LogContext.of(LogContext.URL to UpdateCommands.RELEASE_PAGE))
     }
 
     private fun background(label: String, block: () -> Unit) {
@@ -134,11 +126,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
                 "script" -> scriptCommands.script(args)
                 "lua" -> eval(ScriptLang.LUA, rest)
                 "js" -> eval(ScriptLang.JS, rest)
-                "update" -> if (com.mtwabpin.kolahal.BuildConfig.SELF_UPDATE) {
-    updateCommands.run(args)
-} else {
-    error("Self-updates aren't available in the Play build")
-                }
+                "update" -> if (com.mtwabpin.kolahal.BuildConfig.SELF_UPDATE) updateCommands().run(args) else error("This build updates through Google Play")
                 "rss" -> feedCommands.rss(rest)
                 "feeds" -> if (args.isEmpty()) ui.openScreen(Screen.FEEDS) else feedCommands.feeds(args).also { runCatching { com.mtwabpin.kolahal.feeds.FeedScheduler.sync(context) } }
                 // A feed added, removed, switched or given a new interval changes the schedule.
@@ -748,6 +736,7 @@ class CommandProcessor(context: Context, private val ui: TerminalUi) : CommandGr
         internal val FEATURE_COMMANDS = listOf(
             com.mtwabpin.kolahal.BuildConfig.LOCK_SERVICE to setOf("lock", "accessibility"),
             com.mtwabpin.kolahal.BuildConfig.CALL_LOG to setOf("calls"),
+            com.mtwabpin.kolahal.BuildConfig.SELF_UPDATE to setOf("update"),
         )
 
         /**

@@ -40,5 +40,11 @@ for s in BIND_ACCESSIBILITY_SERVICE; do
     fi
 done
 
+# An app on Play may update itself only through Play: the updater's code must be gone, not just switched off.
+if [ "$(unzip -p "$apk" 'classes*.dex' | grep -ac 'repos/mtwabpin/kolahal/releases' || true)" != 0 ]; then
+    echo "$(basename "$apk") has the self-updater's code in it."
+    problems=1
+fi
+
 if [ "$problems" = 0 ]; then echo "$(basename "$apk") leaves out every restricted permission and service."; fi
 exit "$problems"

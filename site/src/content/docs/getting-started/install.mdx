@@ -37,6 +37,13 @@ Install with scanning turned off: **Play Store → profile → Play Protect → 
 Protect** while installing (and back on after), or with `adb install`. Once Kolahal is on Google
 Play, installing it from there avoids the block.
 
+### Updating
+
+With the full build, `update` says whether a newer release is out, and `update install` downloads it,
+checks it's signed with Kolahal's key and opens Android's installer. The first time, Android asks you
+to let Kolahal install apps. The Play build updates through Google Play; its APK from GitHub has no
+`update`, so install a new one by hand.
+
 ### Coming from 0.3.0 or earlier
 
 Versions up to 0.3.0 were signed with a different key, so later ones can't install over them.

@@ -29,8 +29,10 @@ object InstantRun {
         // Change how the launcher looks or what it puts first.
         "theme", "font", "pin", "unpin",
         // Open Android's panels and pages: typing `wi` on the way to something else mustn't open
-        // Wi-Fi, update and a script mustn't either.
-        "wifi", "bt", "nfc", "data", "info", "update",
+        // Wi-Fi, and a script mustn't either.
+        "wifi", "bt", "nfc", "data", "info",
+        // Downloads and installs a new version: only when you ask.
+        "update",
     ) + com.mtwabpin.kolahal.control.ControlCommands.SENSITIVE
 
     /** Other names the dispatcher accepts for a command; checks always use the canonical name. */
