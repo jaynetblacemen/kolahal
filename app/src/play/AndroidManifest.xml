@@ -7,6 +7,7 @@
   - No call log: Play allows it only to phone, SMS and assistant apps. No calls in the log, no `calls`.
   - No contacts: Play's Contacts policy wants the contact picker where it will do. `call`, `sms` and
     `contacts` open Android's contact picker and remember who you pick.
+  - No self-update: an app on Play updates only through Play. No `update`.
   The notification listener stays: `notifs enable` says what it reads and asks before Android's
   Notification access screen opens (Play's prominent disclosure).
 -->

@@ -1,5 +1,6 @@
 package com.mtwabpin.kolahal.terminal
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInfo
@@ -67,7 +68,9 @@ internal class UpdateCommands(
             val assets = data["assets"] as? List<*> ?: throw IllegalStateException("Release has no assets.")
             val asset = assets.filterIsInstance<Map<*, *>>().firstOrNull { it["name"] == "kolahal-$version.apk" }
                 ?: throw IllegalStateException("Release APK not found.")
-            val url = asset["browser_download_url"] as? String ?: throw IllegalStateException("Release APK has no download URL.")
+            // Normalised first: OkHttp resolves a ../ when it asks, which could lead out of Kolahal's releases.
+            val url = (asset["browser_download_url"] as? String)?.let(Net::webUrl)
+                ?: throw IllegalStateException("Release APK has no download URL.")
             if (!url.startsWith(DOWNLOAD_PREFIX)) throw IllegalStateException("Unexpected APK download address.")
             val size = (asset["size"] as? Number)?.toLong() ?: throw IllegalStateException("Release APK has no valid size.")
             if (size <= 0 || size > MAX_APK_SIZE) throw IllegalStateException("Release APK has an invalid size.")
@@ -75,12 +78,16 @@ internal class UpdateCommands(
             return Release(version, url, size, digest)
         }
 
-        /** An APK file with its signers: below Android 11, GET_SIGNING_CERTIFICATES gives none for a file. */
+        /** An APK file with its permissions and signers: below Android 11, GET_SIGNING_CERTIFICATES gives none for a file. */
         @Suppress("DEPRECATION")
         fun apkPackageInfo(context: Context, apk: File): PackageInfo? = context.packageManager.getPackageArchiveInfo(
             apk.absolutePath,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES,
+            PackageManager.GET_PERMISSIONS or
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES,
         )
+
+        /** Not the Play build, which has the same version and key: Play's policy keeps this permission out of it for good. */
+        fun isFullBuild(packageInfo: PackageInfo) = Manifest.permission.READ_CALL_LOG in packageInfo.requestedPermissions.orEmpty()
 
         fun installedPackage(context: Context): PackageInfo =
             context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
@@ -95,6 +102,35 @@ internal class UpdateCommands(
 
         /** Where the APK waits for the installer. */
         fun updatesDir(context: Context) = File(context.cacheDir, "updates")
+
+        /** Throws unless [apk] is the release's file: its size and checksum, Kolahal's full build of that version, newer than this, signed with the release key. */
+        fun verify(context: Context, apk: File, release: Release) {
+            if (apk.length() != release.size) throw IllegalStateException("Downloaded APK size does not match the release.")
+            if (release.digest != null && !sha256(apk).equals(release.digest, ignoreCase = true)) {
+                throw IllegalStateException("APK SHA-256 checksum verification failed.")
+            }
+
+            val archive = apkPackageInfo(context, apk) ?: throw IllegalStateException("Downloaded file is not a valid APK.")
+            if (archive.packageName != context.packageName) throw IllegalStateException("Downloaded APK has an unexpected package ID.")
+            if (archive.versionName != release.version) throw IllegalStateException("Downloaded APK isn't version ${release.version}.")
+            if (!isFullBuild(archive)) throw IllegalStateException("Downloaded APK isn't the full build.")
+
+            val installed = installedPackage(context)
+            if (archive.longVersionCode <= installed.longVersionCode) {
+                throw IllegalStateException("Downloaded APK is not newer than the installed version.")
+            }
+
+            val signers = signerDigests(archive)
+            if (signers != signerDigests(installed) || OFFICIAL_CERT !in signers) {
+                throw IllegalStateException("Downloaded APK has an unexpected signing certificate.")
+            }
+        }
+
+        private fun sha256(file: File): String {
+            val digest = MessageDigest.getInstance("SHA-256")
+            file.forEachBlock { buffer, count -> digest.update(buffer, 0, count) }
+            return hex(digest.digest())
+        }
 
         private fun hex(bytes: ByteArray) = bytes.joinToString("") { "%02x".format(Locale.ROOT, it) }
     }
@@ -155,7 +191,7 @@ internal class UpdateCommands(
 
         // Kept until the update is installed (UpdateCleanupReceiver), so trying again doesn't download it again.
         val apk = File(updatesDir(context), "kolahal-${release.version}.apk")
-        if (runCatching { verify(apk, release) }.isFailure) download(release, apk)
+        if (runCatching { verify(context, apk, release) }.isFailure) download(release, apk)
 
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", apk)
         startActivity(
@@ -178,7 +214,7 @@ internal class UpdateCommands(
         try {
             info("Downloading Kolahal ${release.version} (${release.size / (1024 * 1024)} MB)…")
             fetch(release, part)
-            verify(part, release)
+            verify(context, part, release)
             if (!part.renameTo(apk)) throw IllegalStateException("Could not keep the downloaded APK.")
         } finally {
             part.delete()
@@ -211,32 +247,5 @@ internal class UpdateCommands(
                 }
             }
         }
-    }
-
-    /** Throws unless [apk] is the release's file: its size and checksum, Kolahal's, newer than this, signed with the release key. */
-    private fun verify(apk: File, release: Release) {
-        if (apk.length() != release.size) throw IllegalStateException("Downloaded APK size does not match the release.")
-        if (release.digest != null && !sha256(apk).equals(release.digest, ignoreCase = true)) {
-            throw IllegalStateException("APK SHA-256 checksum verification failed.")
-        }
-
-        val archive = apkPackageInfo(context, apk) ?: throw IllegalStateException("Downloaded file is not a valid APK.")
-        if (archive.packageName != context.packageName) throw IllegalStateException("Downloaded APK has an unexpected package ID.")
-
-        val installed = installedPackage(context)
-        if (archive.longVersionCode <= installed.longVersionCode) {
-            throw IllegalStateException("Downloaded APK is not newer than the installed version.")
-        }
-
-        val signers = signerDigests(archive)
-        if (signers != signerDigests(installed) || OFFICIAL_CERT !in signers) {
-            throw IllegalStateException("Downloaded APK has an unexpected signing certificate.")
-        }
-    }
-
-    private fun sha256(file: File): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        file.forEachBlock { buffer, count -> digest.update(buffer, 0, count) }
-        return hex(digest.digest())
     }
 }

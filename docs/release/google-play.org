@@ -66,7 +66,7 @@ seconds, started by an exact alarm the user allowed.
 
 =tools/check-play-build.sh= checks the Play APK: it fails if any of these appear: the
 call log, SMS or contacts permissions, =QUERY_ALL_PACKAGES=, =USE_EXACT_ALARM=, =REQUEST_INSTALL_PACKAGES=,
-=MANAGE_EXTERNAL_STORAGE=, =ACCESS_BACKGROUND_LOCATION=, =ACCESS_LOCAL_NETWORK=, an accessibility service or the self-updater's code. Both
+=MANAGE_EXTERNAL_STORAGE=, =ACCESS_BACKGROUND_LOCATION=, =ACCESS_LOCAL_NETWORK=, an accessibility service, or the self-updater (its address in the code, its file provider or its receiver). Both
 workflows run it, so a library that adds one is caught.
 
 Policy pages (opened 22 October 2026):

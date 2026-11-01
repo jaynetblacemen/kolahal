@@ -21,6 +21,7 @@ object InstantRun {
         "private",
         "clear",
         "restart",
+        "update",
         "lock",
         "script",
         "alias",
@@ -75,8 +76,6 @@ object InstantRun {
         "nfc",
         "data",
         "info",
-        // Downloads and installs a new version: only when you ask.
-        "update",
     ) + com.mtwabpin.kolahal.control.ControlCommands.SENSITIVE
 
     /** Other names the dispatcher accepts for a command; checks always use the canonical name. */

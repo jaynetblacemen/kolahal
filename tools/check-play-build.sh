@@ -41,6 +41,12 @@ for s in BIND_ACCESSIBILITY_SERVICE; do
 done
 
 # An app on Play may update itself only through Play: the updater's code must be gone, not just switched off.
+for c in androidx.core.content.FileProvider com.mtwabpin.kolahal.terminal.UpdateCleanupReceiver; do
+    if grep -qF "\"$c\"" <<<"$manifest"; then
+        echo "$(basename "$apk") declares $c, part of the self-updater."
+        problems=1
+    fi
+done
 dex=$(mktemp)
 trap 'rm -f "$dex"' EXIT
 unzip -p "$apk" 'classes*.dex' > "$dex"

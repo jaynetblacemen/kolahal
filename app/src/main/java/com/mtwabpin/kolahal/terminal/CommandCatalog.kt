@@ -50,6 +50,7 @@ object CommandCatalog {
         CommandSpec("log", "log [only <name|kind>|all]", "Show only one script's, feed's or app's lines, or one kind of line"),
         CommandSpec("fresh", "fresh", "Start a clean screen now, like log.fresh; earlier lines are one tap away (not logged)"),
         CommandSpec("restart", "restart [scripts]", "Restart the launcher, or stop running scripts"),
+        CommandSpec("update", "update [install]", "Check for updates (install: download and install the latest)"),
         CommandSpec("status", "status [clear <name|all>]", "Header lines pinned by scripts"),
         CommandSpec("setup", "setup [text]", "Setup checklist page (text: print it in the log)"),
         CommandSpec("tour", "tour", "How Kolahal works, a page at a time, with a few initial settings"),
@@ -86,7 +87,6 @@ object CommandCatalog {
         CommandSpec("alarm", "alarm <HH:MM> [<label>]", "Set an alarm in the clock app"),
         CommandSpec("alarms", "alarms", "Show the clock app's alarms"),
         CommandSpec("stopwatch", "stopwatch", "Open the clock app"),
-        CommandSpec("update", "update [install]", "Check for updates (install: download and install the latest)"),
         CommandSpec("agenda", "agenda [<days>|--allow|--settings]", "Upcoming calendar events (tap to open one)"),
     )
 
@@ -196,6 +196,7 @@ object CommandCatalog {
             "clear",
             "fresh",
             "restart",
+            "update",
             "alias",
             "unalias",
             "config",
@@ -205,7 +206,6 @@ object CommandCatalog {
             "echo",
             "date",
             "cal",
-            "update",
         ),
         "widgets" to listOf(
             "widgets",

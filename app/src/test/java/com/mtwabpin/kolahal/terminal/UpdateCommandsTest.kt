@@ -33,6 +33,8 @@ class UpdateCommandsTest {
     /** Play allows no update but its own. */
     @Test fun thePlayBuildDoesntOfferIt() {
         assertEquals(!BuildConfig.SELF_UPDATE, "update" in CommandCatalog.UNAVAILABLE)
+        // Unit tests run on the debug build, so the line above can't see an entry that's gone.
+        assertTrue(CommandCatalog.FEATURE_COMMANDS.any { (on, names) -> on == BuildConfig.SELF_UPDATE && "update" in names })
     }
 
     /** Only when you ask: not by a prefix or from a script, with or without a pipe. */
