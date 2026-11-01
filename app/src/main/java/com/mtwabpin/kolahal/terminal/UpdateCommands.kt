@@ -8,11 +8,12 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
+import com.mtwabpin.kolahal.BuildConfig
 import com.mtwabpin.kolahal.data.LogContext
 import com.mtwabpin.kolahal.script.Json
 import com.mtwabpin.kolahal.script.Net
+import com.mtwabpin.kolahal.script.ScriptMeta
 import java.io.File
-import java.net.URI
 import java.security.MessageDigest
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -22,47 +23,37 @@ import okhttp3.Request
 /**
  * `update` says whether a newer release is out; `update install` downloads its APK and hands it to
  * Android's installer, once it's checked to be Kolahal's and signed with the release key. Not in the
- * Play build, which may update only through Google Play ([com.mtwabpin.kolahal.BuildConfig.SELF_UPDATE]).
+ * Play build, which may update only through Google Play ([BuildConfig.SELF_UPDATE]).
  */
 internal class UpdateCommands(
-    private val context: Context,
+    context: Context,
     private val background: (String, () -> Unit) -> Unit,
-    private val info: (String, LogContext) -> Unit,
-    private val onError: (String) -> Unit,
-) {
+) : CommandGroup(context) {
     data class Release(
         val version: String,
-        val versionParts: List<Int>,
         val url: String,
         val size: Long,
         val digest: String?,
     )
 
     companion object {
-        const val RELEASE_PAGE = "https://github.com/mtwabpin/kolahal/releases/latest"
+        private const val RELEASE_PAGE = "https://github.com/mtwabpin/kolahal/releases/latest"
 
         private const val API_URL = "https://api.github.com/repos/mtwabpin/kolahal/releases/latest"
+
+        private const val DOWNLOAD_PREFIX = "https://github.com/mtwabpin/kolahal/releases/download/"
 
         private const val OFFICIAL_CERT = "21223ad4312a871e4a1dd16440efccac84f4660c56fa1e80467631062938e210"
 
         private const val MAX_APK_SIZE = 100L * 1024 * 1024
 
+        private val VERSION = Regex("""\d+\.\d+\.\d+""")
+
         /** One at a time, whichever command started it. */
         private val running = AtomicBoolean(false)
 
-        /** The parts of a plain x.y.z version; null for anything else. */
-        fun parseVersion(version: String): List<Int>? {
-            if (!version.matches(Regex("""\d+\.\d+\.\d+"""))) return null
-            return version.split('.').map { it.toIntOrNull() ?: return null }
-        }
-
-        fun compareVersions(a: List<Int>, b: List<Int>): Int {
-            for (i in 0..2) {
-                val result = a[i].compareTo(b[i])
-                if (result != 0) return result
-            }
-            return 0
-        }
+        /** Whether version [a] comes after [b]. A release comes after its own -dev build, which [ScriptMeta.isNewer] counts as the same. */
+        fun isNewer(a: String, b: String): Boolean = ScriptMeta.isNewer(a, b) || b == "$a-dev"
 
         /** The latest release in GitHub's answer: the full build's APK, which is what `update` installs. */
         fun parseRelease(body: String): Release {
@@ -73,8 +64,9 @@ internal class UpdateCommands(
                 ?: throw IllegalStateException("Release has no version tag.")
 
             val version = tag.removePrefix("v")
-            val parts = parseVersion(version)
-                ?: throw IllegalStateException("Invalid release version: $tag")
+            if (!version.matches(VERSION)) {
+                throw IllegalStateException("Invalid release version: $tag")
+            }
 
             val assets = data["assets"] as? List<*>
                 ?: throw IllegalStateException("Release has no assets.")
@@ -87,9 +79,8 @@ internal class UpdateCommands(
             val url = asset["browser_download_url"] as? String
                 ?: throw IllegalStateException("Release APK has no download URL.")
 
-            val parsedUrl = runCatching { URI(url) }.getOrNull()
-            if (parsedUrl == null || parsedUrl.scheme != "https" || parsedUrl.host != "github.com") {
-                throw IllegalStateException("Unexpected APK download host.")
+            if (!url.startsWith(DOWNLOAD_PREFIX)) {
+                throw IllegalStateException("Unexpected APK download address.")
             }
 
             val size = (asset["size"] as? Number)?.toLong()
@@ -103,7 +94,7 @@ internal class UpdateCommands(
                 ?.takeIf { it.startsWith("sha256:") }
                 ?.substringAfter("sha256:")
 
-            return Release(version, parts, url, size, digest)
+            return Release(version, url, size, digest)
         }
 
         /** An APK file with its signers: below Android 11, GET_SIGNING_CERTIFICATES gives none for a file. */
@@ -123,24 +114,27 @@ internal class UpdateCommands(
                 ?: throw IllegalStateException("Could not read APK signing certificates.")
 
             return signatures.map { signature ->
-                MessageDigest.getInstance("SHA-256")
-                    .digest(signature.toByteArray())
-                    .joinToString("") { "%02x".format(Locale.ROOT, it) }
+                hex(MessageDigest.getInstance("SHA-256").digest(signature.toByteArray()))
             }.toSet()
         }
+
+        private fun hex(bytes: ByteArray) = bytes.joinToString("") { "%02x".format(Locale.ROOT, it) }
     }
 
     /** The APK can take longer than a request's limit on a slow connection; the read timeout still stops a stalled one. */
     private val downloadClient by lazy { Net.client.newBuilder().callTimeout(10, TimeUnit.MINUTES).build() }
 
+    private val releaseLink = LogContext.of(LogContext.URL to RELEASE_PAGE)
+    private val installLine = LogContext.of(LogContext.COMMAND to "update install")
+
     fun run(args: List<String>) {
         if (args.size > 1 || (args.isNotEmpty() && args[0] != "install")) {
-            onError("Usage: update [install]")
+            error("Usage: update [install]")
             return
         }
 
         if (!running.compareAndSet(false, true)) {
-            onError("An update operation is already running.")
+            error("An update operation is already running.")
             return
         }
 
@@ -148,71 +142,68 @@ internal class UpdateCommands(
 
         background("update") {
             try {
-                val release = fetchRelease()
-
-                if (install) {
-                    install(release)
-                } else {
-                    check(release)
-                }
+                report(parseRelease(Net.get(API_URL)), install)
             } catch (e: Exception) {
-                onError("Update failed: ${e.message ?: e.javaClass.simpleName}")
+                error("Update failed: ${e.message ?: e.javaClass.simpleName}", releaseLink)
             } finally {
                 running.set(false)
             }
         }
     }
 
-    private fun check(release: Release) {
-        val installed = installedVersion()
+    private fun report(release: Release, install: Boolean) {
+        val installed = BuildConfig.VERSION_NAME
 
         when {
-            release.versionParts == installed.first ->
-                info("Kolahal is already up to date (${release.version}).", LogContext.EMPTY)
+            isNewer(installed, release.version) -> info("Installed version is newer than the latest release.")
 
-            compareVersions(release.versionParts, installed.first) < 0 ->
-                info("Installed version is newer than the latest release.", LogContext.EMPTY)
+            !isNewer(release.version, installed) -> info("Kolahal is already up to date (${release.version}).")
 
             else -> {
-                info(
-                    "Update available: ${installed.second} → ${release.version}",
-                    LogContext.of(LogContext.URL to RELEASE_PAGE),
-                )
-                info(
-                    "Run 'update install' to download and install it.",
-                    LogContext.of(LogContext.COMMAND to "update install"),
-                )
+                info("Update available: $installed → ${release.version}", releaseLink)
+                when {
+                    // Android won't install a release over a build signed with another key: no point downloading it.
+                    OFFICIAL_CERT !in signerDigests(installedPackage(context)) -> info(
+                        "This build isn't signed with Kolahal's release key, so it can't update itself. Get the new version from the release page.",
+                        releaseLink,
+                    )
+
+                    install -> install(release)
+
+                    else -> info("Run 'update install' to download and install it.", installLine)
+                }
             }
         }
     }
 
     private fun install(release: Release) {
-        val installed = installedPackage(context)
-
-        // Check signing identity before spending data on the APK.
-        val installedSigners = signerDigests(installed)
-        if (OFFICIAL_CERT !in installedSigners) {
-            throw IllegalStateException(
-                "This installation is not signed with Kolahal's official release certificate.",
-            )
-        }
-
-        if (compareVersions(release.versionParts, installedVersion().first) <= 0) {
-            throw IllegalStateException("There is no newer release to install.")
-        }
-
         if (!context.packageManager.canRequestPackageInstalls()) {
-            val intent = Intent(
-                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                Uri.parse("package:${context.packageName}"),
-            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
-            context.startActivity(intent)
-            throw IllegalStateException(
-                "Allow Kolahal to install unknown apps in Android settings, then run 'update install' again.",
-            )
+            startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")))
+            info("Allow Kolahal to install unknown apps, then run 'update install' again.", installLine)
+            return
         }
 
+        // Kept until the update is installed (UpdateCleanupReceiver), so trying again doesn't download it again.
+        val apk = File(updatesDir(), "kolahal-${release.version}.apk")
+        if (runCatching { verify(apk, release) }.isFailure) download(release, apk)
+
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            apk,
+        )
+
+        startActivity(
+            Intent(Intent.ACTION_VIEW)
+                .setDataAndType(uri, "application/vnd.android.package-archive")
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
+        )
+        // Android may keep an installer from opening if you left Kolahal during the download.
+        info("Downloaded and verified Kolahal ${release.version}. If the installer doesn't open, run 'update install' again.", installLine)
+    }
+
+    /** Downloads the release to [apk] and verifies it. A failed or incomplete download is never kept. */
+    private fun download(release: Release, apk: File) {
         // An APK from an earlier try: only now, as an installer may still be reading the last one until then.
         val directory = updatesDir()
         directory.deleteRecursively()
@@ -220,73 +211,21 @@ internal class UpdateCommands(
             throw IllegalStateException("Could not create update cache directory.")
         }
 
-        val apk = File.createTempFile("kolahal-${release.version}-", ".apk", directory)
-        var keepApk = false
+        val part = File.createTempFile("kolahal-${release.version}-", ".apk", directory)
 
         try {
-            info("Downloading Kolahal ${release.version} (${release.size / (1024 * 1024)} MB)…", LogContext.EMPTY)
-            download(release, apk)
-
-            val archive = apkPackageInfo(context, apk)
-                ?: throw IllegalStateException("Downloaded file is not a valid APK.")
-            if (archive.packageName != context.packageName) {
-                throw IllegalStateException("Downloaded APK has an unexpected package ID.")
+            info("Downloading Kolahal ${release.version} (${release.size / (1024 * 1024)} MB)…")
+            fetch(release, part)
+            verify(part, release)
+            if (!part.renameTo(apk)) {
+                throw IllegalStateException("Could not keep the downloaded APK.")
             }
-
-            if (archive.longVersionCode <= installed.longVersionCode) {
-                throw IllegalStateException("Downloaded APK is not newer than the installed version.")
-            }
-
-            val downloadedSigners = signerDigests(archive)
-            if (downloadedSigners != installedSigners ||
-                OFFICIAL_CERT !in downloadedSigners
-            ) {
-                throw IllegalStateException("Downloaded APK has an unexpected signing certificate.")
-            }
-
-            val uri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                apk,
-            )
-
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/vnd.android.package-archive")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-
-            context.startActivity(intent)
-            keepApk = true
-            // Android may keep an installer from opening if you left Kolahal during the download.
-            info(
-                "Downloaded and verified Kolahal ${release.version}. If the installer doesn't open, run 'update install' again.",
-                LogContext.of(LogContext.COMMAND to "update install"),
-            )
         } finally {
-            // Keep the completed APK available to Android's installer.
-            // A failed or incomplete download is never retained.
-            if (!keepApk) apk.delete()
+            part.delete()
         }
     }
 
-    private fun fetchRelease(): Release {
-        val request = Request.Builder()
-            .url(API_URL)
-            .header("Accept", "application/vnd.github+json")
-            .header("User-Agent", Net.USER_AGENT)
-            .build()
-
-        Net.client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IllegalStateException("GitHub returned HTTP ${response.code}")
-            }
-
-            return parseRelease(response.body.string())
-        }
-    }
-
-    private fun download(release: Release, destination: File) {
+    private fun fetch(release: Release, destination: File) {
         val request = Request.Builder()
             .url(release.url)
             .header("User-Agent", Net.USER_AGENT)
@@ -298,11 +237,10 @@ internal class UpdateCommands(
             }
 
             val body = response.body
-            if (body.contentLength() > MAX_APK_SIZE) {
-                throw IllegalStateException("APK exceeds the allowed size.")
+            if (body.contentLength() > release.size) {
+                throw IllegalStateException("Downloaded APK is larger than expected.")
             }
 
-            val digest = MessageDigest.getInstance("SHA-256")
             var total = 0L
 
             body.byteStream().use { input ->
@@ -314,34 +252,48 @@ internal class UpdateCommands(
                         if (count == -1) break
 
                         total += count
-                        if (total > release.size || total > MAX_APK_SIZE) {
+                        if (total > release.size) {
                             throw IllegalStateException("Downloaded APK is larger than expected.")
                         }
 
-                        digest.update(buffer, 0, count)
                         output.write(buffer, 0, count)
                     }
                 }
             }
-
-            if (total != release.size) {
-                throw IllegalStateException("Downloaded APK size does not match the release.")
-            }
-
-            val actualDigest = digest.digest().joinToString("") { "%02x".format(Locale.ROOT, it) }
-            if (release.digest != null &&
-                !actualDigest.equals(release.digest, ignoreCase = true)
-            ) {
-                throw IllegalStateException("APK SHA-256 checksum verification failed.")
-            }
         }
     }
 
-    private fun installedVersion(): Pair<List<Int>, String> {
-        val version = installedPackage(context).versionName ?: "unknown"
-        val parts = parseVersion(version.removeSuffix("-dev"))
-            ?: throw IllegalStateException("Installed version is not supported: $version")
-        return parts to version
+    /** Throws unless [apk] is the release's file: its size and checksum, Kolahal's, newer than this, signed with the release key. */
+    private fun verify(apk: File, release: Release) {
+        if (apk.length() != release.size) {
+            throw IllegalStateException("Downloaded APK size does not match the release.")
+        }
+
+        if (release.digest != null && !sha256(apk).equals(release.digest, ignoreCase = true)) {
+            throw IllegalStateException("APK SHA-256 checksum verification failed.")
+        }
+
+        val archive = apkPackageInfo(context, apk)
+            ?: throw IllegalStateException("Downloaded file is not a valid APK.")
+        if (archive.packageName != context.packageName) {
+            throw IllegalStateException("Downloaded APK has an unexpected package ID.")
+        }
+
+        val installed = installedPackage(context)
+        if (archive.longVersionCode <= installed.longVersionCode) {
+            throw IllegalStateException("Downloaded APK is not newer than the installed version.")
+        }
+
+        val signers = signerDigests(archive)
+        if (signers != signerDigests(installed) || OFFICIAL_CERT !in signers) {
+            throw IllegalStateException("Downloaded APK has an unexpected signing certificate.")
+        }
+    }
+
+    private fun sha256(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.forEachBlock { buffer, count -> digest.update(buffer, 0, count) }
+        return hex(digest.digest())
     }
 
     private fun updatesDir() = File(context.cacheDir, "updates")

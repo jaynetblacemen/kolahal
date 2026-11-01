@@ -41,7 +41,13 @@ for s in BIND_ACCESSIBILITY_SERVICE; do
 done
 
 # An app on Play may update itself only through Play: the updater's code must be gone, not just switched off.
-if [ "$(unzip -p "$apk" 'classes*.dex' | grep -ac 'repos/mtwabpin/kolahal/releases' || true)" != 0 ]; then
+dex=$(mktemp)
+trap 'rm -f "$dex"' EXIT
+unzip -p "$apk" 'classes*.dex' > "$dex"
+if [ ! -s "$dex" ]; then
+    echo "$(basename "$apk") has no code to check."
+    problems=1
+elif grep -aq 'repos/mtwabpin/kolahal/releases' "$dex"; then
     echo "$(basename "$apk") has the self-updater's code in it."
     problems=1
 fi

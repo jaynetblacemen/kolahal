@@ -15,7 +15,7 @@ before day 14 don't count.
 
 * On Play: the Play build, and why it has less
 
-Google Play gets the Play build, the full app without three things, packaged as a bundle:
+Google Play gets the Play build, the full app without four things, packaged as a bundle:
 =./gradlew :app:bundlePlay= (the Release workflow too). What it leaves out:
 
 | Left out                                  | What goes with it                                  | Play's rule                                                                                                                                            |

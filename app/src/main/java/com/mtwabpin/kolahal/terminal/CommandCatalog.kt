@@ -86,7 +86,7 @@ object CommandCatalog {
         CommandSpec("alarm", "alarm <HH:MM> [<label>]", "Set an alarm in the clock app"),
         CommandSpec("alarms", "alarms", "Show the clock app's alarms"),
         CommandSpec("stopwatch", "stopwatch", "Open the clock app"),
-        CommandSpec("update", "update [install]", "Check for updates; install only when asked"),
+        CommandSpec("update", "update [install]", "Check for updates (install: download and install the latest)"),
         CommandSpec("agenda", "agenda [<days>|--allow|--settings]", "Upcoming calendar events (tap to open one)"),
     )
 
@@ -97,7 +97,7 @@ object CommandCatalog {
     val RESERVED_NAMES: Set<String> = COMMAND_NAMES + InstantRun.SYNONYMS.keys
 
     /**
-     * The commands of each feature the Play build leaves out (screen lock, call log), with whether
+     * The commands of each feature the Play build leaves out (screen lock, call log, self-update), with whether
      * this build has it.
      */
     internal val FEATURE_COMMANDS = listOf(

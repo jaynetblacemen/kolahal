@@ -2,24 +2,24 @@ package com.mtwabpin.kolahal.terminal
 
 import com.mtwabpin.kolahal.BuildConfig
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class UpdateCommandsTest {
-    @Test fun aVersionIsThreeNumbers() {
-        assertEquals(listOf(0, 4, 10), UpdateCommands.parseVersion("0.4.10"))
-        for (version in listOf("", "0.4", "0.4.10.1", "0.4.10-dev", "v0.4.10", "a.b.c", "0.4.99999999999")) {
-            assertNull(version, UpdateCommands.parseVersion(version))
-        }
+    @Test fun versionsCompareByNumberNotByText() {
+        assertTrue(UpdateCommands.isNewer("0.4.10", "0.4.9"))
+        assertFalse(UpdateCommands.isNewer("0.4.9", "0.4.10"))
+        assertTrue(UpdateCommands.isNewer("1.0.0", "0.99.99"))
+        assertFalse(UpdateCommands.isNewer("0.4.10", "0.4.10"))
     }
 
-    @Test fun versionsCompareByNumberNotByText() {
-        fun compare(a: String, b: String) = UpdateCommands.compareVersions(UpdateCommands.parseVersion(a)!!, UpdateCommands.parseVersion(b)!!)
-        assertTrue(compare("0.4.10", "0.4.9") > 0)
-        assertTrue(compare("0.4.9", "0.4.10") < 0)
-        assertTrue(compare("1.0.0", "0.99.99") > 0)
-        assertEquals(0, compare("0.4.10", "0.4.10"))
+    /** A release replaces the -dev build that led up to it, and a -dev build is ahead of the release before it. */
+    @Test fun aDevBuildComesBeforeItsRelease() {
+        assertTrue(UpdateCommands.isNewer("0.4.11", "0.4.11-dev"))
+        assertFalse(UpdateCommands.isNewer("0.4.11-dev", "0.4.11"))
+        assertFalse(UpdateCommands.isNewer("0.4.10", "0.4.11-dev"))
+        assertTrue(UpdateCommands.isNewer("0.4.11-dev", "0.4.10"))
     }
 
     /** Play allows no update but its own. */

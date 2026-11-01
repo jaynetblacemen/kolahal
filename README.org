@@ -28,7 +28,7 @@ Important: Google Play Protect blocks sideloaded apps (installed from a browser,
 To install, turn off Play Store → profile → Play Protect → ⚙︎ → Scan apps with Play Protect, then turn it back on. Or use adb install. Once Kolahal is on Google Play, installing it from there avoids the block.
 
 - *Google Play*: in a closed test; [[https://mtwabpin.github.io/kolahal/getting-started/play-testing/][join it]] to install Kolahal from the Play Store. The
-  Play build leaves out the screen lock, which needs an accessibility declaration on Play, and calls in the log, which Play's policy doesn't allow.
+  Play build leaves out the screen lock, which needs an accessibility declaration on Play, calls in the log, which Play's policy doesn't allow, and =update=, as apps on Play update only through Play.
 
 * Documentation
 
