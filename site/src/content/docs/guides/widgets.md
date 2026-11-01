@@ -17,7 +17,7 @@ the top. Back or Home returns to the terminal. `widgets.page` picks the side (`l
 ![The widgets page with a clock widget, + Add and Edit at the top](../../../assets/parts/widgets-page.png)
 
 The page can show the phone's wallpaper (the one you set in Android) behind the widgets:
-**Settings → Home screen → Wallpaper showing** (`widgets.wallpaper`) is how much of it shows, from
+**Settings → Home screen → Transparency** (`widgets.wallpaper`) is how much of it shows, from
 0 (none, the default) to 100 (all of it, with none of the theme's colour over it). The log has a
 setting of its own for the same (`log.wallpaper`, under **Settings → Log**), so each page can show
 more or less of it.
