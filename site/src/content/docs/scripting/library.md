@@ -3,7 +3,7 @@ title: Script library
 description: The 16 ready-made Lua and JavaScript scripts bundled with Kolahal.
 ---
 
-Kolahal ships 16 scripts you can install with one tap in the script manager (**Add script → From the
+Kolahal includes 16 scripts you can install with one tap in the script manager (**Add script → From the
 library**), or from the prompt:
 
 ```sh
@@ -19,13 +19,9 @@ change them with `script every`, `script at` and `script notify`, or in the scri
 
 Some have [options](/scripting/overview/#options): weather's city, the coins crypto shows, how
 many stories hn logs. Change them in the script's sheet (**Options**) or with
-`script set weather city Pune`; `script set weather` lists them. A copy whose options you changed
-is still the library's, and keeps following Kolahal.
+`script set weather city Pune`; `script set weather` lists them. Changing a script's options doesn't count as editing it, so it still updates with Kolahal.
 
-A copy you haven't edited follows Kolahal: when an update brings a newer one, it replaces yours by
-itself (its timers and switches stay, and anything new it asks for with `@uses` or `@on` stays off
-until you allow it, with a line in the log), and the log says which scripts it updated. A copy you
-edited stays yours, marked **(edited)** in `script lib` and "edited" in the script manager, whose
+A copy you haven't edited updates with Kolahal: when an update includes a newer version, it replaces yours automatically. Its timers and switches are kept, anything new it requests with `@uses` or `@on` stays off until you allow it (a line in the log lets you), and the log lists the updated scripts. A copy you edited isn't updated, and is marked **(edited)** in `script lib` and "edited" in the script manager, whose
 **Differs from the library** chip lists them all. **Compare**, in its card's details or its sheet,
 shows how it differs: lines only in the library version in red, lines only in yours in the theme's
 colour; `script diff weather` prints the same in the log. It is only replaced when you ask: `script install weather --replace`, or **Reset to library
@@ -61,7 +57,7 @@ to 10 lines. Notifies about the top new story and pins `HN: N new` in the header
 ## releases
 
 **GitHub releases**: watches repositories through their release Atom feeds and notifies about each
-new release: Kolahal, Neovim and Termux to start with. The first check of a repo only records what
+new release: Kolahal, Neovim and Termux by default. The first check of a repo only records what
 exists, so you aren't flooded.
 
 ```sh
@@ -74,8 +70,7 @@ releases list                # the watched repos; tap one for its releases
 ## reddit
 
 **Reddit top posts**: today's top 5 posts of a subreddit with scores and comment counts, falling
-back to the subreddit's RSS feed when Reddit blocks anonymous JSON requests. `reddit` (its
-`subreddit` option, r/android to start with) or `reddit linux`. The `posts` option shows up to 25.
+back to the subreddit's RSS feed when Reddit blocks anonymous JSON requests. `reddit` (its `subreddit` option, r/android by default) or `reddit linux`. The `posts` option shows up to 25.
 
 ## weather
 
@@ -108,12 +103,11 @@ crypto solana dogecoin       # CoinGecko ids
 crypto bitcoin --vs eur
 ```
 
-Its `coins` and `currency` options are what `crypto` shows on its own, and on its timer.
+Its `coins` and `currency` options set what `crypto` shows with no arguments and on its timer.
 
 ## exchange
 
-**Currency converter** with daily rates from open.er-api.com. On a timer, or typed on its own, it
-converts its `from` option to its `to` options (USD to EUR, GBP, INR and JPY to start with) and pins
+**Currency converter** with daily rates from open.er-api.com. On a timer, or run with no arguments, it converts its `from` option to its `to` options (USD to EUR, GBP, INR and JPY by default) and pins
 the rates. The built-in [`= 100 usd in eur`](/guides/web-and-calculator/#currency) covers simple
 cases.
 
@@ -141,7 +135,7 @@ new comic is out.
 
 ## quote
 
-**Quote of the day** from ZenQuotes; long-press to copy. At its daily time it also arrives as a notification.
+**Quote of the day** from ZenQuotes; long-press to copy. At its daily time it is also sent as a notification.
 
 ## countdown
 
@@ -159,24 +153,20 @@ countdown rm 2
 
 **Charge reminder**: runs when you plug the charger in and when you unplug it, with no timer and
 no network: logs how much a session added, and notifies when you unplug below 30% (its `low`
-option). Run by hand, it shows the last session.
+option). Run manually, it shows the last session.
 
 ## night-dnd
 
-**Night Do Not Disturb**: turns Do Not Disturb on at 11 PM and off at 7 AM. If it's on already at
-11 PM, you turned it on, so the script leaves it alone, then and at 7 AM: it only turns off what it
-turned on. Since Android 15, what it turns on is Kolahal's own Do Not Disturb mode, so one you turn on
+**Night Do Not Disturb**: turns Do Not Disturb on at 11 PM and off at 7 AM. If it's already on at 11 PM, you turned it on, so the script doesn't change it at 11 PM or 7 AM. It only turns off what it turned on. Since Android 15, what it turns on is Kolahal's own Do Not Disturb mode, so one you turn on
 yourself stays on in the morning. Kolahal needs Do Not Disturb access: run `dnd access` once. Its
 `mode` option is `alarms` for alarms only or `none` for total silence. To change the times, change
 `ON` and `OFF` at its top and
-its daily times to match (`script at night-dnd 22:30, 06:30`). Run by hand, it says what it will do.
+its daily times to match (`script at night-dnd 22:30, 06:30`). Run manually, it shows what it will do.
 Uses `@uses dnd`; no network.
 
 ## night-work
 
-**Night work profile**: pauses the work profile at 11 PM and resumes it at 7 AM, the same way: if
-it's paused already at 11 PM, you paused it, and the script leaves it alone at both times. Android
-lets only the default launcher pause and resume the work profile, and only while it's in front: at
-its daily times Kolahal runs it in the foreground, which needs **Alarms & reminders** allowed for
+**Night work profile**: pauses the work profile at 11 PM and resumes it at 7 AM, the same way: if it's already paused at 11 PM, you paused it, and the script doesn't change it at either time. Android
+lets only the default launcher pause and resume the work profile, and only while it's in the foreground, so at its daily times Kolahal runs it in the foreground, which needs **Alarms & reminders** allowed for
 Kolahal. If your work profile asks for its PIN to resume, Android asks you for it. Change the times
 as for night-dnd. Uses `@uses work`; no network.

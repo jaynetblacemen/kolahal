@@ -40,8 +40,8 @@ private on           # unlock it
 
 Toggling profiles needs **Android 10+** and Kolahal set as the **default home app** (`home`).
 
-- The header shows the work state. Tapping it resumes a paused profile. Pausing asks for a second
-  tap, so you can't turn work off by accident.
+- The header shows the work profile's status. Tapping it resumes a paused profile. Pausing asks for a second
+  tap, so you can't pause it by accident.
 - Apps in a paused profile are faded. Opening one prints a line offering to resume the profile and
   launch the app; tap it and Kolahal turns the profile on, waits for it (up to 20 s) and opens the app.
 - While the private space is locked, its lines in the log (launches, notifications)
@@ -50,5 +50,4 @@ Toggling profiles needs **Android 10+** and Kolahal set as the **default home ap
 ## Private space
 
 On Android 15+, the default launcher can see the private space profile (Kolahal declares
-`ACCESS_HIDDEN_PROFILES` for this). Its apps are tagged `[S]`, and `private on|off|status` unlocks,
-locks or reports it. The [setup checklist](/getting-started/setup/) lists the profiles it found.
+`ACCESS_HIDDEN_PROFILES` for this). Its apps are tagged `[S]`, and `private on|off|status` unlocks it, locks it or shows its status. The [setup checklist](/getting-started/setup/) lists the profiles it found.

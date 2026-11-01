@@ -3,7 +3,7 @@ title: Test on Google Play
 description: Help Kolahal reach Google Play by joining its closed test, installing it from the Play Store and keeping it for 14 days.
 ---
 
-Kolahal is coming to Google Play. Before Google lets it out to everyone, at least 12 people have to
+Kolahal is coming to Google Play. Before Google releases it to everyone, at least 12 people have to
 test it there for 14 days in a row. If you have an Android phone (Android 9 or newer) and a Google
 account, you can be one of them.
 
@@ -19,17 +19,16 @@ account, you can be one of them.
    [Play Store page](https://play.google.com/store/apps/details?id=com.mtwabpin.kolahal). It can
    take a few minutes after step 2 to show up there.
 4. **Keep it for 14 days**: stay in the test with Kolahal installed. Making it your home app and
-   using it helps most, but isn't needed to count.
+   using it helps most, but isn't required.
 
 ## What you get
 
-The version for Google Play: everything in Kolahal except the screen lock and calls in the log,
-and it finds people with Android's contact picker
+The Play build: everything in Kolahal except the screen lock and calls in the log. It finds people with Android's contact picker
 ([the Play build](/getting-started/install/#the-play-build)). Updates come through the Play Store
 like any app's. [First run & setup](/getting-started/setup/) walks you through the rest.
 
 Kolahal from GitHub and from Google Play are the same app, signed with the same key, so one
-installs over the other and your data stays. An update from Google Play brings the Play version;
+installs over the other and your data is kept. An update from Google Play installs the Play build;
 install the full APK from GitHub again to get the screen lock and calls in the log back.
 
 ## Tell us what you find

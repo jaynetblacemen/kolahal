@@ -9,9 +9,7 @@ description: The terminal themes in their dark and light versions, terminal font
 theme gruvbox-material
 ```
 
-Type a theme's whole name and home shows it right away, with a band above the prompt saying it's a
-preview. Enter keeps it; changing the line or tapping ✕ puts everything back, and your wallpaper
-stays as it is until Enter. `font <name>` and `config set font.size 18` work the same way.
+Type a theme's full name to preview it on the home screen, with a banner above the prompt. Press Enter to apply it. Change the line or tap ✕ to cancel. Your wallpaper doesn't change until you press Enter. `font <name>` and `config set font.size 18` work the same way.
 
 Seven themes, each with its own colours for the prompt, links, script output, errors and the
 work and private profile tags, in a dark and a light version:
@@ -52,8 +50,7 @@ theme's colours too.
 
 ### Light and dark
 
-The phone's dark mode picks the version: dark when it is on, light when it is off, switching as
-soon as the phone does. To keep the dark version whatever the phone says, turn on **Always dark**
+The version follows the phone's dark mode: dark when it is on, light when it is off, switching as soon as the phone does. To always use the dark version, turn on **Always dark**
 in **Settings → Look & feel**, or:
 
 ```sh
@@ -62,36 +59,30 @@ config set theme.always-dark on
 
 ### Your own themes
 
-**Settings → Look & feel → Your themes → Create a theme** opens the theme builder. It starts from
-the theme in use; **Start from** copies any other theme's colours. A small home screen at the top
+**Settings → Look & feel → Your themes → Create a theme** opens the theme builder. It starts from the current theme; **Start from** copies any other theme's colours. A small home screen at the top
 shows your colours as you change them. Tap a colour to change it: drag hue, saturation and
 lightness, type a hex code (`#8FD18A`), or tap a swatch (the same colour from the built-in themes,
 and the theme's other colours, so it is easy to match them).
 
 The colours, from the top of the builder:
 
-| Colour | Colours |
+| Colour | Used for |
 | --- | --- |
 | Background, Surface | behind everything; chips, the key bar and raised panels |
 | Text, Muted text | commands and their output; times, hints and older output |
 | Accent | the prompt, `$` and highlights (Settings use it too) |
-| Links, Info, Script output, Errors | links and feed items; notes from Kolahal; your scripts' lines; errors |
-| Good, Warning | what scripts mark as up or done, and as a warning ([`fmt.color`](/scripting/api/#styles-fmt)); a theme made before them takes them from its personal and work colours |
+| Links, Info, Script output, Errors | links and feed items; messages from Kolahal; your scripts' lines; errors |
+| Good, Warning | script success states and warnings ([`fmt.color`](/scripting/api/#styles-fmt)); a theme made before these existed uses its personal and work colours |
 | Personal apps, Work apps, Private space | apps in each profile, if you have them |
 
-**Dark** and **Light** at the top switch which version the colours change; the preview shows that
+**Dark** and **Light** at the top choose which version you're editing; the preview shows that
 version. A theme you made before themes had a light version looks the same in both modes until
 you change its light one.
 
-Give it a name (lowercase letters, digits and hyphens) and tap **Save and use**. It then sits with
-the built-in themes in the theme strip and in `theme <name>`. Tap it under **Your themes** to change
-or delete it. A light background works too: the status bar icons turn dark. Your themes are kept in
-[backups](/guides/backup/).
+Give it a name (lowercase letters, digits and hyphens) and tap **Save and apply**. It then appears with the built-in themes in the theme strip and in `theme <name>`. Tap it under **Your themes** to change
+or delete it. A light background works too: the status bar icons turn dark. Your themes are included in [backups](/guides/backup/).
 
-To share a theme, open it and tap the export icon at the top: it saves the theme, as last saved,
-in a `.json` file with its name and both versions. **Your themes → Import a theme** takes such a
-file. The theme joins yours under the name in the file, with a number added if you already have a
-different theme by that name, and is put in use.
+To share a theme, open it and tap the export icon at the top: it exports the theme, as last saved, to a `.json` file with its name and both versions. **Your themes → Import a theme** imports such a file. The theme is added to yours under the name in the file, with a number added if you already have a different theme by that name, and is applied.
 
 ## Fonts
 
@@ -99,7 +90,7 @@ different theme by that name, and is put in use.
 font                 # list the fonts; tap one to use it
 font jetbrains-mono
 font import          # pick your own .ttf / .otf
-font sans prompt     # the phone's own font for the prompt (or: all, off)
+font sans prompt     # the system font for the prompt (or: all, off)
 ```
 
 The terminal font is used everywhere the terminal draws text: the log, prompt, header,
@@ -116,13 +107,11 @@ suggestions, key bar and the script editor. Choices:
 
 The bundled fonts ship in Regular and Bold under the SIL Open Font License 1.1 (licence texts are
 in the app's `assets/licenses/`). `font import`, or the import card in the settings screen's font
-previews, copies a `.ttf` or `.otf` (up to 10 MB) into the app and switches to `custom`; importing
-again replaces it, and backups carry it. If the custom font goes missing or can't be read, the
-terminal falls back to the system monospace and says so once in the log. Text size stays a separate setting: `config set font.size 16`, or pinch the log.
+previews, copies a `.ttf` or `.otf` (up to 10 MB) into the app and switches to `custom`; importing again replaces it, and backups include it. If the custom font goes missing or can't be read, the terminal falls back to the system monospace and shows a message once in the log. Text size is a separate setting: `config set font.size 16`, or pinch the log.
 
-### The phone's font
+### The system font
 
-The terminal can use the phone's own font (the one Android and its apps use,
+The terminal can use the system font (the one Android and its apps use,
 including a font style you picked in the phone's settings) instead of a monospace one, at two levels:
 
 | `font.sans` | What changes |
@@ -145,10 +134,10 @@ grouped lists: switches, connected button groups, sliders and theme preview card
 and [Feeds](/guides/feeds/#feeds-screen) tabs are those screens, and `scripts` and `feeds` open
 them. A search box finds any setting, feed ones included. The pages:
 
-- **Look & feel**: theme, Always dark, font, the phone's font, text size, full screen, and your own themes.
+- **Look & feel**: theme, Always dark, font, the system font, text size, full screen, and your own themes.
 - **Home screen**: clock, header items, widgets, and how much of the phone's wallpaper shows behind the widgets page.
-- **App selector**: letters or apps as you slide, the edge it's on, where and how long, the handle or letters, only the letter's apps, icons in its list, and the phone's font.
-- **Log**: times, dimming, spacing, line height, how much of the phone's wallpaper shows behind it, how long to keep the log, and a tip a day for your first two weeks.
+- **App selector**: letters or apps as you slide, the edge it's on, where and how long, the handle or letters, only the letter's apps, icons in its list, and the system font.
+- **Log**: times, dimming, spacing, line height, how much of the phone's wallpaper shows behind it, how long to keep the log, and daily tips for your first two weeks.
 - **Typing**: suggestions, the key bar, the prompt and the keyboard.
 - **Launching & search**: instant launch, Enter, search engine.
 - **Gestures**: the three [gestures](/guides/gestures/).
@@ -158,28 +147,26 @@ Below them are the widgets and the setup checklist,
 source code on GitHub, the [crash reports](/reference/privacy/#crash-reports) kept on the phone (tap
 one to email it to the developer, share it or delete it), an email to the developer, and the version.
 
-A changed setting shows a reset icon (↺) right after its name: tap it to go back to the default. A switch is reset by switching it back.
+A changed setting shows a reset icon (↺) right after its name: tap it to restore the default. To reset a switch, switch it back.
 
-Settings only shows what applies. A setting that another one turns off stays hidden until it is on:
+Settings shows only what applies. A setting that depends on another stays hidden until that one is on:
 the key bar's rows and height appear once the key bar is on, the custom search URL once the search
-engine is `custom`, and so on. `config` reaches every setting either way.
+engine is `custom`, and so on. `config` can change every setting either way.
 
-### Seeing home while you change it
+### Previewing the home screen
 
-Settings that change how home looks show home while you change them, like the brightness slider
+Settings that change how the home screen looks show it while you change them, like the brightness slider
 in the quick settings:
 
 - **Drag a slider** for text size, line height, log spacing, key bar or prompt height, suggestions,
   chip height, the app selector's length on the edge or row height, or how much of the phone's
-  wallpaper shows behind the log or the widgets page: Settings fades away except that slider, and
-  home shows underneath at the value under your finger. Let go to save it and bring Settings back.
+  wallpaper shows behind the log or the widgets page: Settings fades except for that slider, and the home screen appears underneath at the slider's value. Let go to save it and return to Settings.
   The typing ones show home as if you were typing, with suggestions (and the key bar, if it is on);
   the selector's row height shows its list open, and the widgets page's wallpaper shows the widgets
   page.
-- **Hold the eye** (👁) at the top of Look & feel, Home screen, App selector, Log and Typing to see home with
-  your settings as they are; let go to come back.
+- **Tap and hold the eye** (👁) at the top of Look & feel, Home screen, App selector, Log and Typing to see the home screen with your current settings. Release to return.
 
-Home is only shown there: it takes no touches.
+The home screen is only a preview here: it doesn't respond to touch.
 
 ## The config command
 

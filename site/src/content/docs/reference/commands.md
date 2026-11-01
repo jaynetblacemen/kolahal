@@ -30,9 +30,9 @@ optional, and `a|b` means one of.
 
 | Usage | Aliases | Description |
 | --- | --- | --- |
-| `call <name\|number>` | `dial` | dial a contact or number (the Play build: no name opens the contact picker) |
-| `sms <name\|number> [<text>]` | `text` | start a text message (the Play build: no name opens the contact picker) |
-| `contacts [<query>]` | `contact` | find contacts (favourites when empty; the Play build: pick one, or `--forget <name>`) |
+| `call <name\|number>` | `dial` | dial a contact or number (in the Play build, no name opens the contact picker) |
+| `sms <name\|number> [<text>]` | `text` | start a text message (in the Play build, no name opens the contact picker) |
+| `contacts [<query>]` | `contact` | find contacts (favourites when empty; in the Play build, pick one, or use `--forget <name>`) |
 | `calls [<n>]` | | recent calls, incoming, outgoing and missed (20 by default; `calls --allow` asks for call log access) |
 
 ## Web
@@ -56,7 +56,7 @@ optional, and `a|b` means one of.
 
 `feed` subcommands:
 
-| Subcommand | Does |
+| Subcommand | Description |
 | --- | --- |
 | `feed`, `feed ls` | list subscriptions with unread counts, interval and status |
 | `feed add <url>` | subscribe and fetch now |
@@ -88,10 +88,10 @@ See [Media and device controls](/guides/media-and-controls/).
 | `torch [on\|off]` | | flashlight (no argument toggles) |
 | `volume [0-100\|up\|down\|mute\|unmute]` | `vol` | media volume |
 | `ring [normal\|vibrate\|silent]` | | ringer mode (`silent` needs Do Not Disturb access) |
-| `dnd [on\|off\|alarms\|none\|status\|access]` | | Do Not Disturb (no argument toggles; `access` opens the grant page) |
-| `brightness [0-100\|up\|down\|auto\|access]` | | screen brightness (needs Modify system settings; `access` opens the grant page) |
+| `dnd [on\|off\|alarms\|none\|status\|access]` | | Do Not Disturb (no argument toggles; `access` opens the permission page) |
+| `brightness [0-100\|up\|down\|auto\|access]` | | screen brightness (needs Modify system settings; `access` opens the permission page) |
 | `rotate [on\|off\|status]` | | auto-rotate (no argument toggles; needs Modify system settings) |
-| `screen-timeout [15s\|30s\|1m\|…]` | | screen-off timeout (needs Modify system settings) |
+| `screen-timeout [15s\|30s\|1m\|…]` | | screen timeout (needs Modify system settings) |
 | `wifi` | | Wi-Fi panel |
 | `bt` | `bluetooth` | Bluetooth settings |
 | `nfc` | | NFC panel |
@@ -109,14 +109,14 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `todo edit <n> <text>` | | change an item's text |
 | `todo all` / `todo clear` | | include finished items / delete finished items |
 | `note <text>` | | save a quick note |
-| `notes [grep <text>\|rm <n>]` | | notes, newest first; tap copies |
-| `remind <when> <text>` | | notification later: `10m`, `2h`, `1h30m`, `18:30`, `6pm`, `tomorrow 9:00`, `fri 8am`, `dec 3 10:00`; again and again: `every day 8:00`, `every weekday`, `every mon,thu 19:00`, `every month 1st`, `every year mar 14`. A time before 6 AM asks first; `remind --yes <when> <text>` doesn't |
+| `notes [grep <text>\|rm <n>]` | | notes, newest first (tap to copy) |
+| `remind <when> <text>` | | set a reminder: `10m`, `2h`, `1h30m`, `18:30`, `6pm`, `tomorrow 9:00`, `fri 8am`, `dec 3 10:00`; repeating: `every day 8:00`, `every weekday`, `every mon,thu 19:00`, `every month 1st`, `every year mar 14`. A time before 6 AM asks for confirmation; `remind --yes <when> <text>` doesn't |
 | `reminders` / `remind rm <n>` | | pending reminders / cancel one |
 | `remind exact` | | allow exact alarms, so reminders fire on time |
 | `timer <5m\|1h30m\|25> [<label>]` | | start a timer in the clock app (no args: show timers) |
 | `alarm <HH:MM\|7am> [<label>]` | | set an alarm in the clock app (no args: show alarms) |
 | `alarms` / `stopwatch` | | open the clock app |
-| `agenda [<days>]` | | upcoming calendar events (3 days by default, up to 31); tap opens one |
+| `agenda [<days>]` | | upcoming calendar events (3 days by default, up to 31); tap to open one |
 | `agenda --allow` / `agenda --settings` | | ask for calendar access / open Kolahal's app settings |
 
 ## Scripts
@@ -132,7 +132,7 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 
 `script` subcommands:
 
-| Subcommand | Does |
+| Subcommand | Description |
 | --- | --- |
 | `script ls` | list scripts with timers, flags and last result (also plain `script`) |
 | `script lib` | the bundled [library](/scripting/library/) |
@@ -142,7 +142,7 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `script edit <name>` | open the editor |
 | `script run <name> [<words>]` | run now; the words are its `args`, as when it runs by name |
 | `script cat <name>` | print the code with line numbers (alias `show`) |
-| `script diff <name>` | a library script against the library version: lines only in it `-` (red), only in yours `+`, three unchanged around each; Copy text on its first line copies it as a plain diff |
+| `script diff <name>` | compare your copy with the library version: library-only lines as `-` (red), your lines as `+`, three unchanged lines around each change; Copy text on the first line copies a plain diff |
 | `script every <name> <15m\|30m\|2h\|1d\|off>` | interval timer |
 | `script at <name> <HH:mm[,HH:mm…]\|off>` | daily times |
 | `script notify <name> on\|off` | allow `notify()` for this script |
@@ -150,8 +150,8 @@ See [Productivity](/guides/productivity/). `<n>` is the number shown in the list
 | `script triggers` | scripts with `@on` lines and the events they run on (alias `events`) |
 | `script access <name>` | each [access switch](/scripting/overview/#switching-access-off), on or off; tap one to put the command that changes it in the prompt |
 | `script allow\|deny <name> <what…>` | switch access on or off: `internet`, `header`, an `@uses` item, an `@on` event, or `notify` |
-| `script secret <name> [<NAME> [--clear]]` | its [secrets](/scripting/overview/#api-keys-and-other-secrets), set or not; with a name, a box to set it (`--clear` forgets it) |
-| `script set <name> [<option> [<value>\|--reset]]` | its [options](/scripting/overview/#options) and their values; with an option and a value, sets it (`--reset` puts its default back) |
+| `script secret <name> [<NAME> [--clear]]` | its [secrets](/scripting/overview/#api-keys-and-other-secrets), and whether each is set; with a name, opens a box to set it (`--clear` deletes it) |
+| `script set <name> [<option> [<value>\|--reset]]` | its [options](/scripting/overview/#options) and their values; with an option and a value, sets it (`--reset` restores its default) |
 | `script mv <name> <new-name>` | [rename it](/scripting/overview/#renaming-a-script) (alias `rename`) |
 | `script rm <name>` | delete it with its timers, data and status line (alias `delete`) |
 | `script dir` | pick a sync folder |
@@ -173,9 +173,9 @@ Script names use lowercase letters, digits, `-` and `_` (up to 40), and can't be
 | `restart [scripts]` | `reboot` | restart the launcher, or stop running scripts |
 | `alias [name = command]` | | list or define aliases |
 | `unalias <name>` | | remove an alias |
-| `config [ls\|set\|get\|reset] <key> <v>` | `set` | settings (no args opens the settings page) |
+| `config [ls\|set\|get\|reset] <key> <v>` | `set` | settings (no args opens the settings screen) |
 | `theme <name>` | | `green` `amber` `mono` `dracula` `solarized` `gruvbox` `gruvbox-material`; each in a [dark and a light version](/guides/themes-and-settings/#light-and-dark) |
-| `font [<name>\|import\|sans [off\|prompt\|all]]` | | terminal font: `system` `jetbrains-mono` `fira-code` `ibm-plex-mono` `source-code-pro` `custom`; no args lists them (tap to apply), `import` picks a .ttf/.otf; `sans prompt` or `sans all` uses the phone's font for the prompt or everything (`font.sans`) |
+| `font [<name>\|import\|sans [off\|prompt\|all]]` | | terminal font: `system` `jetbrains-mono` `fira-code` `ibm-plex-mono` `source-code-pro` `custom`; no args lists them (tap to apply), `import` picks a .ttf/.otf; `sans prompt` or `sans all` uses the system font for the prompt or everything (`font.sans`) |
 | `echo <text>` | | print text |
 | `date [<place>...]` | `time` | current date and time; with places, the time in each and how far ahead or behind it is: a city (`tokyo`, `new york`), a zone (`Asia/Tokyo`), `utc`, or an offset like `+5:30` |
 | `cal [<month>] [<year>]` | | the month as a calendar, today in bold: `cal`, `cal dec`, `cal dec 2027`, `cal 2027-12` |
@@ -196,16 +196,16 @@ See [Widgets](/guides/widgets/).
 | --- | --- | --- |
 | `settings` | `prefs` | Kolahal settings screen (+ backup import/export) |
 | `setup [text]` | | setup checklist page (`text`: print it in the log) |
-| `tour` | | how Kolahal works, a page at a time, with a few first settings |
+| `tour` | | how Kolahal works, a page at a time, with a few initial settings |
 | `source` | | Kolahal's source code on GitHub |
-| `wallpaper [match]` | | whose the home screen's wallpaper is; `match` puts it in this theme's colour, so it doesn't flash on the way home by gesture, and it follows the theme until you set another wallpaper. It asks first: the old wallpaper can't be brought back. The lock screen keeps its own |
+| `wallpaper [match]` | | shows whether the home screen wallpaper is Kolahal's or yours; `match` sets it to this theme's colour, so it doesn't flash when you swipe home, and it follows the theme until you set another wallpaper. It asks for confirmation first, because the old wallpaper can't be restored. The lock screen wallpaper isn't changed |
 | `unlocks [<days>]` | | unlock counts (1–30 days) |
 | `fetch` | `neofetch`, `fastfetch` | this phone and Kolahal at a glance, fastfetch style, under `name@device` (`user.name`): Kolahal's icon beside the Android version, device, kernel, uptime, Kolahal's version, apps, scripts, feeds, theme, font, display, CPU, memory, storage, battery, network and today's unlocks, then the theme's colours |
 | `notifications [settings]` | | allow script notifications |
 | `usage-access` | | grant usage access (unlock count) |
 | `crashes [share\|clear] [<n>]` | | crash reports kept on this phone, newest first (tap one to share it); `share` opens the share sheet with report `n` (default: the newest), `clear` deletes them all. See [Privacy](/reference/privacy/#crash-reports) |
 | `battery` | | battery optimization settings |
-| `home` | | choose the default launcher |
+| `home` | | choose the default home app |
 | `lock` | | lock the screen (needs the accessibility service) |
 | `shade` | | pull down the notification shade |
 | `accessibility` | | enable the screen-lock service for double-tap |

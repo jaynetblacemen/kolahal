@@ -27,8 +27,7 @@ contacts sam              # search (alias: contact)
 
 ## In the Play build
 
-The [Play build](/getting-started/install/#the-play-build) doesn't read your contacts: Google Play
-wants apps to use Android's contact picker when it's enough. So `call`, `sms` and `contacts` work
+The [Play build](/getting-started/install/#the-play-build) doesn't read your contacts: Google Play requires apps to use Android's contact picker when it's enough. So `call`, `sms` and `contacts` work
 from the people you pick:
 
 ```sh
@@ -38,13 +37,10 @@ contacts                  # pick someone and show them in the log
 contacts --forget alice   # Kolahal forgets Alice
 ```
 
-- With no name, or a name Kolahal doesn't know yet, Android's contact picker opens. Pick someone
-  and Kolahal carries on: dials them, starts the message (with your text) or shows them in the log.
-- Kolahal sees only the person you pick, and keeps only their name and numbers, on the phone, so
-  the name works by itself next time: `call alice`. They are your suggestions after `call `, `sms `
+- With no name, or a name Kolahal doesn't know yet, Android's contact picker opens. Pick someone and Kolahal continues: it dials them, starts the message (with your text) or shows them in the log.
+- Kolahal sees only the person you pick, and keeps only their name and numbers, on the phone, so next time you can use just the name: `call alice`. They appear as suggestions after `call `, `sms `
   and `contacts `, with **Pick a contact** at the end to add someone.
-- `contacts --forget <name>` forgets someone. Uninstalling Kolahal or clearing its data forgets
-  everyone.
+- `contacts --forget <name>` removes someone. Uninstalling Kolahal or clearing its data removes everyone.
 
 ## Calls in the log
 
@@ -64,8 +60,8 @@ The arrow at the end is the direction (↙ incoming, ↗ outgoing); missed and d
 ✕, blocked ones in ⊘. The number, then the time and length (or "not answered"), are on dimmed lines
 below. Tap a line to dial back; long-press to call, message, copy the number or open the contact.
 
-- `calls` lists the last 20 calls from Android's call log, with the day; `calls 50` more.
-- Access is the switch: `calls --allow`, or **Call log** in the [setup checklist](/getting-started/setup/).
+- `calls` lists the last 20 calls from Android's call log, with the day; `calls 50` lists more.
+- To turn this on, grant access: `calls --allow`, or **Call log** in the [setup checklist](/getting-started/setup/).
   Calls from before you allowed it aren't added to the log. To stop, remove the permission in
   Android's app settings (`calls --settings`).
 - Calls made while the launcher wasn't running appear when it next starts (at most the newest 30).

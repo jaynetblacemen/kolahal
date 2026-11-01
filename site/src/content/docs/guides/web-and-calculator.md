@@ -33,8 +33,7 @@ config set search.url https://search.example.org/?q=%s
 
 ## Calculator
 
-Arithmetic after `=` is worked out on the phone at once, and the answer shows above the prompt
-while you type; tap it to put it in the prompt and go on from it. Enter writes it in the log.
+Arithmetic after `=` is calculated on the phone at once, and the answer appears above the prompt while you type. Tap it to put it in the prompt and continue from it. Press Enter to add it to the log.
 
 ```sh
 = 2^10            # 1024
@@ -45,19 +44,16 @@ while you type; tap it to put it in the prompt and go on from it. Enter writes i
 = 10 mod 3        # 1 (10 % 3 too)
 ```
 
-It knows `+ - * /` (also `×`, `x`, as in `3x4`, `÷`), `^`, `mod`, `n!`, parentheses, `pi` (`π`) and `e`, and
+It supports `+ - * /` (also `×`, `x`, as in `3x4`, `÷`), `^`, `mod`, `n!`, parentheses, `pi` (`π`) and `e`, and
 `sqrt`, `cbrt`, `abs`, `round`, `floor`, `ceil`, `ln`, `log` (base 10), `log2`, `exp`, `sin`,
-`cos`, `tan` and their `a…` inverses (radians; `sin 30°` takes degrees), `min` and `max`. `2pi`
-and `3(4+5)` multiply.
+`cos`, `tan` and their `a…` inverses (radians; `sin 30°` takes degrees), `min` and `max`. `2pi` and `3(4+5)` work as multiplication.
 
 `%` before a number is the remainder: `10 % 3` is 1. Before a minus or plus it is a percent, as on
-a phone's calculator, so `10% - 3`, `10%-3` and `10 % - 3` are all -2.9. The exception is a negative
-number written as one, with the `%` apart from the number before it: `10 % -3` is the remainder,
+a phone's calculator, so `10% - 3`, `10%-3` and `10 % - 3` are all -2.9. The exception is a negative number written without a space (`-3`), with a space before the `%`: `10 % -3` is the remainder,
 -2, as `10 mod -3` is.
 
 Commas group a number's digits, in Western or Indian style: `1,500`, `1,000,000`, `1,00,000`,
-`12,34,567`. Any other single comma is a decimal comma: `0,500` is 0.5 and `1,5` is 1.5. Amounts in
-a conversion read the same. In a function's parentheses a comma separates values, so `max(1,500)`
+`12,34,567`. Any other single comma is a decimal comma: `0,500` is 0.5 and `1,5` is 1.5. Amounts in a conversion work the same way. In a function's parentheses a comma separates values, so `max(1,500)`
 is 500.
 
 Anything else after `=` is evaluated as a **Lua expression**:

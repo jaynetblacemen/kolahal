@@ -16,7 +16,7 @@ import settings from '../../../assets/parts/settings.png';
 import scripts from '../../../assets/parts/scripts-tab.png';
 import editor from '../../../assets/parts/editor.png';
 
-The guide calls each part of Kolahal by a name: *the header line*, *the strip*, *the key bar*. Here
+The guide calls each part of Kolahal by a name: *the header line*, *the suggestions*, *the key bar*. Here
 they are, numbered on the app's own screens, so you know what each one is when you read about it.
 The screenshots use the default theme, green.
 
@@ -32,12 +32,12 @@ From top to bottom: the **header** (1–4), the **log** (5–10) and the **promp
 >
 
 1. **Clock and date.** Tap for your alarms.
-2. **Header items**: unlocks, battery, open to-dos and the rest, each one tappable.
+2. **Header items**: unlocks, battery, open todos and the rest, each one tappable.
 3. **⚙︎** opens Settings.
-4. **Header line**: a script's status line (here, *countdown*'s). Tap it to run the script.
+4. **Header line**: a script's line in the header (here, *countdown*'s). Tap it to run the script.
 5. **Empty log space.** Tap it for the keyboard; double-tap it to lock the screen.
 6. **A group**: a command and its output, with a gap above it.
-7. **Gutter bar**: green beside commands, a script's colour beside its lines, red beside errors.
+7. **Coloured bar**: green beside commands, a script's colour beside its lines, red beside errors.
 8. **Time**, on each group's first line.
 9. **A command you typed.** Tap it to put it back in the prompt.
 10. **Output.** Long-press any line for its actions.
@@ -49,7 +49,7 @@ From top to bottom: the **header** (1–4), the **log** (5–10) and the **promp
 
 ## While you type
 
-The header shrinks so the suggestions get the room, and the key bar sits on the keyboard.
+The header shrinks so the suggestions have more room, and the key bar appears above the keyboard.
 
 <Annotated
 	src={typing}
@@ -58,14 +58,14 @@ The header shrinks so the suggestions get the room, and the key bar sits on the 
 >
 
 1. **The header**, one line while you type, with how many status lines it hides.
-2. **Expand**: the whole header again.
+2. **Expand**: shows the whole header.
 3. **The log**, older output dimmed.
-4. **Suggestion strip**: the apps, commands and settings that match.
-5. **A command suggestion**, with what it does.
-6. **Best match**, highlighted at the bottom, nearest your thumb: Enter (↵) opens it.
+4. **Suggestions**: the apps, commands and settings that match.
+5. **A command suggestion**, with its description.
+6. **Best match**, highlighted at the bottom, nearest your thumb: Enter (⏎) opens it.
 7. **The prompt**, with what you typed.
 8. **Clear** (✕) empties the prompt.
-9. **Key bar**: what the keyboard leaves out (symbols, the cursor, history), above the keyboard.
+9. **Key bar**: keys the keyboard leaves out (symbols, cursor, history), above the keyboard.
 
 </Annotated>
 
@@ -87,9 +87,9 @@ has the details.
 2. **Section letter**, in the panel's margin.
 3. **The letter's apps**, bright, starting level with your thumb.
 4. **Other letters' apps**, faded back.
-5. **Bubble**: the letter you're on, big beside your thumb.
+5. **Bubble**: the current letter, large, beside your thumb.
 6. **Wave**: the letters next to it, bulging out so you see which way to go.
-7. **Strip**: the part of the edge you slide on, each letter where its stretch is.
+7. **Edge strip**: the part of the edge you slide on, with each letter at its position.
 8. **Home**, dimmed while the selector is open.
 
 </Annotated>
@@ -116,10 +116,9 @@ has the details.
 	marks={[[61.1, 47.4], [44.4, 20.0], [94.4, 63.2]]}
 >
 
-1. **The list, left open**, almost as wide as the screen, so your thumb reaches every row. Fling it,
-   tap an app, or long-press one for its actions.
-2. **Room at its start**, so the letter you tapped keeps its apps beside it.
-3. **Strip**: slide along it again from here.
+1. **The list, left open**, almost as wide as the screen, so your thumb reaches every row. Scroll it, tap an app, or long-press one for its actions.
+2. **Space at the start of the list**, so the letter you tapped keeps its apps beside it.
+3. **Edge strip**: slide along it again from here.
 
 </Annotated>
 
@@ -147,13 +146,13 @@ has the details.
 >
 
 1. **Quick actions**: what the header offers, within reach of your thumb.
-2. **Live icons**: battery and network as they are right now.
+2. **Live icons**: current battery and network status.
 
 </Annotated>
 
 ## Widgets page
 
-Swipe sideways on home to reach it. See [Widgets](/guides/widgets/).
+Swipe sideways on the home screen to reach it. See [Widgets](/guides/widgets/).
 
 <Annotated
 	src={widgets}
@@ -164,7 +163,7 @@ Swipe sideways on home to reach it. See [Widgets](/guides/widgets/).
 
 1. **Widgets page**, beside the terminal.
 2. **+ Add** a widget.
-3. **Edit**: size and move your widgets.
+3. **Edit**: resize and move your widgets.
 4. **A widget.**
 
 </Annotated>
@@ -189,7 +188,7 @@ Tap ⚙︎ in the header, or type `settings`. See [Themes & settings](/guides/th
 
 ## Scripts tab
 
-The script manager: a card per script. See [Scripting](/scripting/overview/).
+The script manager, with a card for each script. See [Scripting](/scripting/overview/).
 
 <Annotated
 	src={scripts}
@@ -198,22 +197,22 @@ The script manager: a card per script. See [Scripting](/scripting/overview/).
 >
 
 1. **Filter chips**: commands, timers, events, failed, off, differs from the library and more, each
-   with how many.
+   with a count.
 2. **Search** scripts by name.
 3. **All details**: opens or closes every card's details.
 4. **A script that's on**: its card is tinted in the theme's colour.
 5. **Dot**: on, failed (red) or off (grey).
 6. **Title and file name.**
 7. **Run**, for a command script.
-8. **Details arrow**: this card's details.
+8. **Details arrow**: shows or hides this card's details.
 9. **On/off switch.**
 10. **Summary**: how it runs, its last run, and "edited" if you changed it.
 11. **Its header line**, as it is now.
-12. **Pills**: what it may use, filled when on and faded when off; a tap switches one.
+12. **Pills**: what it may use, filled when on and faded when off; tap one to switch it.
 13. **Compare** your copy with the library version.
 14. **Reset to library version.**
 15. **A script that's off**: its card fades.
-16. **Add script**: write one, or take one from the library, from other people or from a file.
+16. **Add script**: write one, or add one from the library, from other people or from a file.
 
 </Annotated>
 
@@ -231,8 +230,7 @@ The script manager: a card per script. See [Scripting](/scripting/overview/).
 2. **Find** (and replace).
 3. **[?]**: the whole scripting API, in short.
 4. **[save]**
-5. **[run]**: saves, then runs it; its lines show under the code. A long press runs it with words
-   as its arguments, or as one of its events.
+5. **[run]**: saves, then runs it; its output appears under the code. A long press runs it with arguments, or as one of its events.
 6. **[close]**: saves and closes.
 7. **Line numbers.**
 8. **Undo and redo.**

@@ -3,7 +3,7 @@ title: Notifications
 description: Your notifications in the terminal log, muting apps, and notifications posted by scripts and feeds.
 ---
 
-There are two separate things here:
+Kolahal handles notifications in two separate ways:
 
 1. **Notification access** lets Kolahal *read* your notifications, so they appear in the log.
 2. The **notifications permission** lets Kolahal *post* notifications for scripts and feeds.
@@ -11,7 +11,7 @@ There are two separate things here:
 ## Notifications in the log
 
 Grant access with `notifs enable` (or **setup → Notification access**). From then on, new
-notifications appear in the log as `title — text`, ending in the app's status-bar icon, muted.
+notifications appear in the log as `title — text`, ending in the app's status-bar icon, dimmed.
 A line whose icon isn't saved (older lines, or an app that draws its icon at
 run time) ends in the app's name instead, `· Mail`. Notifications an app marks secret are left out.
 Copying a notification line marks the copy as sensitive, so keyboards don't show it in their
@@ -23,10 +23,10 @@ clipboard previews.
 To keep the log readable, Kolahal skips its own notifications, ongoing ones (music, navigation),
 foreground-service and group-summary notifications, low-importance (silent) channels, and
 notifications without a title or text. A chat app re-posts its notification for every message:
-each new message is a line, and a re-post with the same text as its last line none. Other apps
+each new message gets a line, and a re-post with the same text as its last line doesn't. Other apps
 re-posting a notification with new text (a count going up) log at most one line per 30 seconds.
-Dismissed and posted again later, a notification is new. Other apps' silent updates (a timer counting down, a download's
-progress, a player's track) don't log at all.
+A notification that is dismissed and posted again later counts as new. Other apps' silent updates (a timer counting down, a download's
+progress, a player's track) aren't logged.
 
 ```sh
 notifs                 # active notifications
@@ -38,7 +38,7 @@ notifs log off         # stop logging notifications at all; notifs log on to res
 notifs clear           # dismiss everything and clear the list
 ```
 
-Swipe down on the header to open the system shade (see [Gestures](/guides/gestures/)).
+Swipe down on the header to open the notification shade (see [Gestures](/guides/gestures/)).
 
 Scripts can read recent notifications with
 [`notifications.recent(n)`](/scripting/api/#notificationsrecentn) while access is granted.

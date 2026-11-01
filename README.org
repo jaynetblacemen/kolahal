@@ -5,8 +5,7 @@
 #+SUBTITLE: A keyboard-first terminal launcher for Android
 
 Kolahal (=com.mtwabpin.kolahal=) is a terminal-style home screen for Android 9 and newer. Type a few
-letters and press Enter to open an app or run a command; every command and its answer stays in a
-log. It reads RSS and Atom feeds, keeps todos, notes and reminders, controls media and the device,
+letters and press Enter to open an app or run a command; every command and its output is kept in a log. It reads RSS and Atom feeds, keeps todos, notes and reminders, controls media and the device,
 runs your own scripts in *Lua 5.4* or *JavaScript (QuickJS)*, and works with the work profile and
 private space.
 
@@ -22,16 +21,13 @@ between versions, keep a [[https://mtwabpin.github.io/kolahal/guides/backup/][ba
 
 * Get it
 
-- *APK*: the [[https://github.com/mtwabpin/kolahal/releases/latest][latest release]] on GitHub has the full build, with everything in it, and the
-  Play build, the version for Google Play. The [[https://mtwabpin.github.io/kolahal/getting-started/install/][install guide]] says how
-  to sideload them.
+- *APK*: the [[https://github.com/mtwabpin/kolahal/releases/latest][latest release]] on GitHub has the full build, with every feature, and the Play build for Google Play. The [[https://mtwabpin.github.io/kolahal/getting-started/install/][install guide]] explains how to sideload them.
 Important: Google Play Protect blocks sideloaded apps (installed from a browser, a messaging app or a file manager) that declare an accessibility service or notification access, in India and some other countries. Both builds declare notification access, which shows your notifications in the log, and the full build also has an accessibility service, which only locks the screen.
 
-Install with scanning turned off: Play Store → profile → Play Protect → ⚙︎ → Scan apps with Play Protect while installing (and back on after), or with adb install. Once Kolahal is on Google Play, installing it from there avoids the block.
+To install, turn off Play Store → profile → Play Protect → ⚙︎ → Scan apps with Play Protect, then turn it back on. Or use adb install. Once Kolahal is on Google Play, installing it from there avoids the block.
 
 - *Google Play*: in a closed test; [[https://mtwabpin.github.io/kolahal/getting-started/play-testing/][join it]] to install Kolahal from the Play Store. The
-  Play version leaves out the screen lock and calls in the log, which Play's policy rules out or
-  wants an accessibility declaration for.
+  Play build leaves out the screen lock, which needs an accessibility declaration on Play, and calls in the log, which Play's policy doesn't allow.
 
 * Documentation
 
@@ -49,8 +45,8 @@ The user guide is at [[https://mtwabpin.github.io/kolahal/][mtwabpin.github.io/k
 
 * Help
 
-- Questions, ideas and help from other people using Kolahal: the [[https://discord.gg/3D25w6gXR5][Discord server]].
-- Something doesn't work, or you'd like it to do more: [[https://github.com/mtwabpin/kolahal/issues/new/choose][open an issue]] with the bug report or
+- For questions, ideas and help from other users, join the [[https://discord.gg/3D25w6gXR5][Discord server]].
+- To report a bug or request a feature, [[https://github.com/mtwabpin/kolahal/issues/new/choose][open an issue]] with the bug report or
   feature request form.
 
 * Working on Kolahal
@@ -61,15 +57,14 @@ The user guide is at [[https://mtwabpin.github.io/kolahal/][mtwabpin.github.io/k
 ./gradlew :app:testDebugUnitTest   # JVM tests
 #+end_src
 
-- [[file:docs/developing.org][docs/developing.org]]: building, the architecture, the repository layout and the usual changes.
+- [[file:docs/developing.org][docs/developing.org]]: building, the architecture, the repository layout and common changes.
 - [[file:docs/codebase-guide.org][docs/codebase-guide.org]]: a guided tour of the code, how its parts fit together and why.
 - [[file:docs/release/README.org][docs/release/]]: how releases are built, signed and published, on GitHub and Google Play.
 - [[file:site/README.md][site/README.md]]: the website, built with Astro and Starlight from =site/=.
 
 * AI policy
 
-Kolahal is built with AI assistance, and contributions may use it too. Vibe coding isn't accepted:
-changes nobody has read, understood or tested, prompted until something seemed to work.
+Kolahal is built with AI assistance, and contributions may use it too. Vibe coding (changes nobody has read, understood or tested, prompted until something seemed to work) isn't accepted.
 
 AI assistance is fine as long as you stay the author:
 
@@ -79,7 +74,7 @@ AI assistance is fine as long as you stay the author:
 
 Pull requests and issues that look generated and unchecked (large unexplained changes, calls to
 functions that don't exist, claims nobody verified) are closed without review. The same goes for
-bug reports: make the problem happen yourself first.
+bug reports: reproduce the problem yourself first.
 
 * Tests
 

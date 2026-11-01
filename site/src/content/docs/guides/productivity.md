@@ -53,13 +53,10 @@ reminders                 # pending, soonest first
 remind rm 1               # cancel
 ```
 
-A date without a year that has passed this year means next year's. After a date, a bare number is
-an hour only after `at` (`dec 3 at 10`), so `remind dec 3 2 tickets` is about two tickets.
+A date with no year that has already passed this year means next year. After a date, a number is read as an hour only after `at` (`dec 3 at 10`), so `remind dec 3 2 tickets` is a reminder about two tickets.
 
-A time before 6 AM asks first, as it may not be what you meant. `remind tomorrow 2 tickets` says it
-read 2 in the morning, sets nothing, and offers two lines to tap: 2 in the morning about `tickets`,
-or 9:00 about `2 tickets`. `remind --yes tomorrow 5:30 flight` doesn't ask, for an alias.
-A duration such as `remind 2h pills` never asks.
+A time before 6 AM needs confirmation, in case it isn't what you meant. `remind tomorrow 2 tickets` shows it read 2 AM, doesn't set a reminder, and gives two lines to tap: 2 AM for `tickets`, or 9:00 for `2 tickets`. `remind --yes tomorrow 5:30 flight` skips the question, which is useful in an alias.
+A duration such as `remind 2h pills` needs no confirmation.
 
 ### Repeating reminders
 
@@ -72,14 +69,10 @@ remind every month 1st rent           # the last day in shorter months for the 2
 remind every year mar 14 Alice's birthday
 ```
 
-A repeating reminder fires at the same time on each of its days, 9:00 when you give no time, and
-stays in `reminders` with how it repeats. `every year feb 29` is the 28th in other years. `remind rm`
-ends it.
+A repeating reminder fires at the same time on each of its days (9:00 if you give no time), and stays listed in `reminders` with its schedule. `every year feb 29` is the 28th in other years. `remind rm` cancels it.
 
 - A reminder posts a notification on the **Reminders** channel and adds a line to the log. The
-  notification's **Snooze 10 min** and **Snooze 1 hour** set it again once (a repeating one keeps its
-  own days too), and **Done** takes it away. Tapping the log line puts a 10-minute snooze in the
-  prompt.
+  notification's **Snooze 10 min** and **Snooze 1 hour** remind you once more (a repeating one also keeps its schedule), and **Done** dismisses it. Tapping the log line puts a 10-minute snooze command in the prompt.
 - Reminders survive restarts and reboots.
 - Android 12 and later let you turn off exact alarms for an app. Kolahal then schedules reminders
   normally, and they may arrive late, up to an hour. `remind` prints a line you can tap to allow
@@ -91,7 +84,7 @@ ends it.
 
 ## Timers and alarms
 
-These hand off to your clock app, so it does the ringing:
+These use your clock app, which handles the ringing:
 
 ```sh
 timer 25m focus           # starts at once (timer 25 also means 25 minutes)
