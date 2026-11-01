@@ -288,39 +288,9 @@ internal class UpdateCommands(
         onProgress(UpdateProgress(total, release.size))
     }
     }
+    
 
-        downloadClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IllegalStateException("APK download returned HTTP ${response.code}")
-            }
-
-            val body = response.body
-            if (body.contentLength() > release.size) {
-                throw IllegalStateException("Downloaded APK is larger than expected.")
-            }
-
-            var total = 0L
-
-            body.byteStream().use { input ->
-                destination.outputStream().use { output ->
-                    val buffer = ByteArray(16 * 1024)
-
-                    while (true) {
-                        val count = input.read(buffer)
-                        if (count == -1) break
-
-                        total += count
-                        if (total > release.size) {
-                            throw IllegalStateException("Downloaded APK is larger than expected.")
-                        }
-
-                        output.write(buffer, 0, count)
-                    }
-                }
-            }
-        }
-    }
-
+        
     /** Throws unless [apk] is the release's file: its size and checksum, Kolahal's, newer than this, signed with the release key. */
     private fun verify(apk: File, release: Release) {
         if (apk.length() != release.size) {
