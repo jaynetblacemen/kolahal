@@ -98,12 +98,12 @@ class SettingsScreenTest {
     @Test fun holdingTheEyeShowsHome() {
         show("look")
         home.assertDoesNotExist()
-        val eye = compose.onNodeWithContentDescription("Hold to see home")
+        val eye = compose.onNodeWithContentDescription("Hold to see the home screen")
         eye.performTouchInput { down(center) }
         compose.mainClock.advanceTimeBy(400)
         assertEquals(TerminalViewModel.Peek(null, typing = false), vm.peek.value)
         home.assertExists()
-        compose.onNodeWithText("Let go to come back").assertIsDisplayed()
+        compose.onNodeWithText("Release to return").assertIsDisplayed()
 
         eye.performTouchInput { up() }
         compose.waitForIdle()
@@ -115,8 +115,8 @@ class SettingsScreenTest {
 
     @Test fun aTapOnTheEyeSaysToHold() {
         show("typing")
-        compose.onNodeWithContentDescription("Hold to see home").performClick()
-        compose.onNodeWithText("Tap and hold the eye to see home").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Hold to see the home screen").performClick()
+        compose.onNodeWithText("Tap and hold the eye to see the home screen").assertIsDisplayed()
         assertNull(vm.peek.value)
         home.assertDoesNotExist()
     }
@@ -279,7 +279,7 @@ class SettingsScreenTest {
         compose.onNodeWithText("Backup folder").assertExists()
         compose.onNodeWithText("Back up now").assertExists()
         compose.onNode(hasScrollToKeyAction()).performScrollToKey("backup-auto")
-        compose.onNodeWithText("Back up on its own").assertExists()
+        compose.onNodeWithText("Automatic backups").assertExists()
         compose.onNode(hasScrollToKeyAction()).performScrollToIndex(0)
         compose.onNode(hasSetTextAction()).performTextInput("backup")
         compose.onNode(hasText(Keys.BACKUP_AUTO.key) and !hasSetTextAction(), useUnmergedTree = true).assertExists()
@@ -298,7 +298,7 @@ class SettingsScreenTest {
         waitForText("second sttest", substring = true)
 
         compose.onNodeWithText("second sttest", substring = true).performClick()
-        compose.onNodeWithText("Email to Us").assertIsDisplayed()
+        compose.onNodeWithText("Email us").assertIsDisplayed()
         compose.onNodeWithContentDescription("Delete").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("second sttest", substring = true).fetchSemanticsNodes().isEmpty() }
         assertEquals(listOf("IllegalStateException: first sttest"), CrashReports.list(app).map { it.text().lines()[6] })
@@ -342,7 +342,7 @@ class SettingsScreenTest {
         waitForText("shared sttest", substring = true)
         compose.onNodeWithText("shared sttest", substring = true).performClick()
 
-        val email = compose.onNodeWithText("Email to Us").getUnclippedBoundsInRoot()
+        val email = compose.onNodeWithText("Email us").getUnclippedBoundsInRoot()
         val share = compose.onNodeWithContentDescription("Share").assertIsDisplayed().getUnclippedBoundsInRoot()
         val delete = compose.onNodeWithContentDescription("Delete").getUnclippedBoundsInRoot()
         // Icons alone: the names are for screen readers.

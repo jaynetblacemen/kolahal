@@ -18,7 +18,7 @@ feed add lwn.net/headlines/rss       # https:// is assumed; feed:// links work t
 Adding a feed fetches it right away. The address is normalised, so adding the same feed twice
 returns the existing subscription. `feed://` links open as `https://`. A feed can be on your own
 network (a home server), except on Android 17 and newer, where Android blocks it and the fetch fails
-after a timeout. The newest 300 items of a feed are read.
+after a timeout. Kolahal loads the newest 300 items of a feed.
 
 ## Read
 
@@ -58,10 +58,10 @@ appear after you subscribed are unread.
 
 ### Feeds screen
 
-`feeds` (or the **Feeds** tab in Settings) opens a GUI screen for managing subscriptions: adding, removing and toggling feeds, intervals
+`feeds` (or the **Feeds** tab in Settings) opens a screen for managing subscriptions: adding, removing and toggling feeds, intervals
 and notifications, without typing ids. Tap a feed for its items (tap one to open it and mark it read).
 The top bar refreshes everything and imports or exports **OPML**, so you can move subscriptions from
-or to another feed reader. The `feed …` subcommands keep working as before.
+or to another feed reader. The `feed …` subcommands work too.
 
 Feed behaviour is at the bottom of the same screen, under **Settings**: whether new items go to the
 log and how many, the read / unread options above, refreshing on Wi-Fi only (`feeds.wifi`), and the
@@ -79,19 +79,17 @@ feed rm 2                # unsubscribe and delete its items
 
 ## How fetching works
 
-- One background job fetches the feeds that are due by their own interval. It
-  wakes only as often as your most frequent feed needs (every 15 minutes at most), and only when there
+- One background job fetches the feeds that are due by their own interval. It runs only as often as your most frequent feed needs (every 15 minutes at most), and only when there
   is a network, or only on Wi-Fi with `feeds.wifi on`.
-- Requests are conditional (ETag / Last-Modified), so an unchanged feed costs a `304` and no parsing.
+- Requests are conditional (ETag / Last-Modified), so an unchanged feed returns a `304` and isn't parsed.
 - Up to 300 items are kept per feed (unread first, then newest).
-- A failed scheduled fetch is only recorded in the feed's status (shown by `feed`). A fetch you
-  asked for (`feed fetch`) also logs the error.
+- A failed scheduled fetch is only recorded in the feed's status (shown by `feed`). A manual fetch (`feed fetch`) also logs the error.
 - Feeds run in the launcher process, not the script sandbox. For a feed you only want to see once,
   `rss <url>` prints up to 15 items into the log without subscribing.
 
 ## Feeds or a script?
 
-Built-in feeds are the easy path. For filtering, merging several feeds into one line, scoring
+Built-in feeds are the simplest option. For filtering, merging several feeds into one line, scoring
 or a header status line, write a script with
 [`rss.fresh(url)`](/scripting/api/#rssfreshurl), like the bundled
 [`hn` script](/scripting/library/#hn).

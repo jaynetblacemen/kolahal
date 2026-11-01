@@ -12,12 +12,10 @@ settings, scripts, feeds and notifications are stored in the app's private stora
 
 Kolahal itself makes network requests in exactly five cases:
 
-1. **Scripts** you write or install, through `http.*` and `rss.*`, and the picture a line of theirs
-   names (`image`), which home fetches when the line shows. They talk only to the URLs in
-   their code. The [library scripts](/scripting/library/) use wttr.in, Open-Meteo,
+1. **Scripts** you write or install, through `http.*` and `rss.*`, and any image a log line links to (`image`), which the home screen downloads when the line appears. They connect only to the URLs in their code. The [library scripts](/scripting/library/) use wttr.in, Open-Meteo,
    CoinGecko, open.er-api.com, api.ipify.org, Wikipedia, xkcd.com, ZenQuotes, Reddit, GitHub
    and hnrss.org. Requests carry a `User-Agent` of `Kolahal-Launcher/0.1 (+https://github.com/mtwabpin)` unless the
-   script sets its own. A script has the internet only if its code makes requests, puts links
+   script sets its own. A script has internet access only if its code makes requests, puts links
    on its lines or runs commands, and you can switch it off
    ([switching access off](/scripting/overview/#switching-access-off)).
 2. **Feeds** you subscribe to: one request per feed when it is due.
@@ -42,11 +40,11 @@ its stack trace (the code that was running). On Android 11 and newer it also not
 froze ("not responding") or crashed inside native code such as the script engines, from what
 Android recorded.
 
-The next time you open home, a red line says Kolahal stopped unexpectedly; tap it to share the
+The next time you open the home screen, a red line says Kolahal stopped unexpectedly; tap it to share the
 report with the share sheet (email, a chat, or paste it into a GitHub issue). `crashes` lists the
 reports, and `crashes clear` deletes them. **Settings → About → Crash reports** lists them too: tap
 one to email it to the developer (your mail app opens a draft with the report, which you send
-yourself), to share it with the share sheet, or to delete it, or delete them all at once. Nothing is sent by itself, the newest 10 are kept, and
+yourself), to share it with the share sheet, or to delete it, or delete them all at once. Nothing is sent automatically, the newest 10 are kept, and
 they are left out of Android's backup. An error message can contain a bit of what you were doing
 (a command, a file name), so read the report before you send it.
 
@@ -77,7 +75,7 @@ Declared in the manifest:
 | `SET_ALARM` | `timer` and `alarm` hand the timer or alarm to your clock app |
 | `SCHEDULE_EXACT_ALARM` | `remind` and scripts' daily times fire on time (Android 12+ lets you turn it off; they may then be up to an hour late) |
 | `RECEIVE_BOOT_COMPLETED` | pending reminders and scripts' daily times are set again after a reboot |
-| `FOREGROUND_SERVICE` | a script runs at its daily time in the foreground, for its few seconds: Android lets a launcher pause or resume the work profile only in front |
+| `FOREGROUND_SERVICE` | a script runs at its daily time in the foreground, for a few seconds: Android lets a launcher pause or resume the work profile only in the foreground |
 | `POST_NOTIFICATIONS` | notifications from scripts and feeds (Android 13+ asks at runtime) |
 | `REQUEST_DELETE_PACKAGES` | `uninstall` and the Uninstall action open Android's uninstall dialog |
 | `EXPAND_STATUS_BAR` | swipe down on the header (or `shade`) pulls down the notification shade |
@@ -109,19 +107,17 @@ These are off until you enable them, usually from the [setup checklist](/getting
 | Modify system settings | `brightness`, `rotate`, `screen-timeout` | those print a tappable line to grant it |
 | Accessibility service **Kolahal screen lock** | double-tap / `lock` locks the screen. It can't read window content and receives no events | no lock gesture |
 | Alarms & reminders (Android 12+) | `remind` and scripts' daily times on the minute | up to an hour late; a script can't pause the work profile at night |
-| Battery unrestricted | timers and feeds run on time | Android may defer them |
+| Unrestricted battery | timers and feeds run on time | Android may defer them |
 
-Before Android's Notification access screen opens (`notifs enable`, or Setup), Kolahal says what
-it reads and what for, and opens it only if you tap **Allow**. Notification text read through
+Before Android's Notification access screen opens (`notifs enable`, or Setup), Kolahal explains what it reads and why, and opens it only if you tap **Allow**. Notification text read through
 notification access stays on the device: it goes into the log and
 an in-memory list, and a copy of the 50 most recent is kept so scripts can call
 `notifications.recent()`: only scripts that ask for it with `@uses notifications` and that you
 allow, and never the private space's notifications. A script could send what it reads somewhere,
 so only install scripts you trust and read the code of ones you get from others.
-Scripts imported from a file or a backup arrive switched off for that reason, and each script's
-access switches take back what it may read.
+Scripts imported from a file or a backup are switched off for that reason, and each script's access switches can revoke what it may read.
 
 API keys you set for scripts ([secrets](/scripting/overview/#api-keys-and-other-secrets)) are
 encrypted with a key kept in Android's Keystore and never leave the phone except in requests to the
-sites their `@secret` line names, over https: the script itself only holds a stand-in. They aren't in
+sites their `@secret` line names, over https: the script itself only holds a placeholder. They aren't in
 backups, exported scripts or the log.

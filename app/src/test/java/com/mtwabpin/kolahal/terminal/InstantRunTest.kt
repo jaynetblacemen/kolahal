@@ -138,8 +138,8 @@ class InstantRunTest {
 
     /** `help` takes a command (`help todo`): it waits for Enter, and so does `help t` on the way to `help todo`. */
     @Test fun helpWaitsForItsWord() {
-        assertFalse(InstantRun.canRun("help", CommandProcessor.COMMAND_USAGES, emptyMap(), emptyList()))
-        assertFalse(InstantRun.wholeLine("help t", CommandProcessor.COMMAND_USAGES, emptyMap()))
+        assertFalse(InstantRun.canRun("help", CommandCatalog.COMMAND_USAGES, emptyMap(), emptyList()))
+        assertFalse(InstantRun.wholeLine("help t", CommandCatalog.COMMAND_USAGES, emptyMap()))
     }
 
     @Test fun calculatorLinesAreSensitive() {

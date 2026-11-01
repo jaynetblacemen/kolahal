@@ -1,9 +1,9 @@
 // reddit.js — today's top posts of a subreddit (public JSON/RSS, no API key).
 // @command
-// @desc Top posts today: reddit [subreddit] (without one: its subreddit option, android)
+// @desc Top posts today: reddit [subreddit] (default: its subreddit option, android)
 // @usage [<subreddit>]
 // @title Reddit top posts
-// @option subreddit android The subreddit when you type none
+// @option subreddit android Default subreddit
 // @option posts 5 How many posts it shows, up to 25
 //
 // Usage:

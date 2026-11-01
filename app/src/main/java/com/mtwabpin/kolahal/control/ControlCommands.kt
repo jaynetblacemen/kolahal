@@ -65,7 +65,7 @@ class ControlCommands(context: Context) : CommandGroup(context) {
 
     private fun needMediaAccess(): Boolean {
         if (media.hasAccess()) return false
-        fix("Media control needs notification access — tap to enable it", "notifs enable")
+        fix("Media control needs notification access — tap to allow it", "notifs enable")
         return true
     }
 
@@ -216,7 +216,7 @@ class ControlCommands(context: Context) : CommandGroup(context) {
 
     private fun needPolicyAccess(what: String): Boolean {
         if (hasPolicyAccess()) return false
-        fix("$what needs Do Not Disturb access — tap to grant it", "dnd access")
+        fix("$what needs Do Not Disturb access — tap to allow it", "dnd access")
         return true
     }
 
@@ -403,7 +403,7 @@ class ControlCommands(context: Context) : CommandGroup(context) {
             CommandSpec("dnd", "dnd [on|off|alarms|none|status|access]", "Do Not Disturb (no args toggles)"),
             CommandSpec("brightness", "brightness [0-100|up|down|auto|access]", "Screen brightness (needs modify system settings)"),
             CommandSpec("rotate", "rotate [on|off|status]", "Auto-rotate (no args toggles)"),
-            CommandSpec("screen-timeout", "screen-timeout [15s|30s|1m|2m|5m|10m|30m]", "Screen off timeout"),
+            CommandSpec("screen-timeout", "screen-timeout [15s|30s|1m|2m|5m|10m|30m]", "Screen timeout"),
             CommandSpec("wifi", "wifi", "Wi-Fi panel"),
             CommandSpec("bt", "bt", "Bluetooth settings"),
             CommandSpec("nfc", "nfc", "NFC panel"),

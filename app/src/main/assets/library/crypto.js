@@ -1,11 +1,11 @@
 // crypto.js — cryptocurrency prices from CoinGecko (free public API, no key).
 // @command
-// @desc Coin prices: crypto [ids…] [--vs eur] (without them: its coins and currency options)
+// @desc Coin prices: crypto [ids…] [--vs eur] (default: its coins and currency options)
 // @usage [<ids…>] [--vs <currency>]
 // @title Crypto prices
 // @every 30m
-// @option coins "bitcoin ethereum" CoinGecko ids shown when you type none
-// @option currency usd The currency prices are in, unless --vs says another
+// @option coins "bitcoin ethereum" Default CoinGecko ids
+// @option currency usd Price currency, unless set with --vs
 //
 // Usage:
 //   crypto                       its coins in its currency: bitcoin and ethereum in USD to start with

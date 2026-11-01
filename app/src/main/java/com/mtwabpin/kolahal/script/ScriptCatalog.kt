@@ -140,7 +140,7 @@ class ScriptCatalog(private val context: Context) {
         } else {
             val origin = origin(e.name) ?: throw IllegalStateException("you have your own script named ${e.name}")
             if (existing.lang != e.lang) throw IllegalStateException("your ${e.name} is a ${existing.lang.ext} script")
-            if (existing.code != origin.code && !replace) throw IllegalStateException("you edited ${e.name}; replace it to take this version")
+            if (existing.code != origin.code && !replace) throw IllegalStateException("you edited ${e.name}; replace it to install this version")
             repo.saveCode(existing.id, code)
             existing
         }

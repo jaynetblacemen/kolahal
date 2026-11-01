@@ -116,9 +116,9 @@ class TerminalFixesTest {
     /** The same message twice shows twice: each is a notice of its own. */
     @Test fun theSameMessageTwiceIsTwoNotices() {
         val vm = viewModel()
-        instrumentation.runOnMainSync { vm.newScript("Not A Name", ScriptLang.LUA, asCommand = false) }
+        instrumentation.runOnMainSync { vm.scriptActions.newScript("Not A Name", ScriptLang.LUA, asCommand = false) }
         val first = vm.notice.value!!
-        instrumentation.runOnMainSync { vm.newScript("Not A Name", ScriptLang.LUA, asCommand = false) }
+        instrumentation.runOnMainSync { vm.scriptActions.newScript("Not A Name", ScriptLang.LUA, asCommand = false) }
         val second = vm.notice.value!!
         assertEquals(first.text, second.text)
         assertTrue(first != second)
@@ -216,7 +216,7 @@ class TerminalFixesTest {
             assertTrue(lines.toString(), "+ -- mine" in lines)
             assertTrue(lines.last(), "script install countdown --replace" in lines.last())
             library.install(entry)
-            assertEquals(listOf("countdown.lua is the library version"), plain("script diff countdown"))
+            assertEquals(listOf("countdown.lua matches the library version"), plain("script diff countdown"))
             scripts.create("tfcat", ScriptLang.LUA, "return 1")
             assertTrue(plain("script diff tfcat").single().contains("isn't from the library"))
         } finally {

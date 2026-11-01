@@ -45,14 +45,14 @@ object ScriptAccess {
     }
 
     fun help(item: String): String = when (item) {
-        INTERNET -> "Web requests and feeds to any address, your local network too, and the links and pictures its lines carry; switched off, a run that needs a request stops"
-        HEADER -> "Its line at the top of home; switched off, the script still runs"
-        "notifications" -> "Reads your recent notifications; switched off, it sees none"
-        "apps" -> "Lists your installed apps; switched off, it sees none"
-        "clipboard" -> "Reads and sets the clipboard; switched off, it reads and sets nothing"
-        "commands" -> "Runs terminal commands and other scripts when you start it from the prompt; switched off, it can't"
-        "dnd" -> "Sees and turns Do Not Disturb on and off; switched off, it sees nothing and changes nothing"
-        "work" -> "Sees, pauses and resumes the work profile; switched off, it sees nothing and changes nothing"
+        INTERNET -> "Web requests and feeds to any address, including your local network, and links and images in its output; when off, a run that needs a request stops"
+        HEADER -> "Its line at the top of the home screen; when off, the script still runs"
+        "notifications" -> "Reads your recent notifications; when off, it sees none"
+        "apps" -> "Lists your installed apps; when off, it sees none"
+        "clipboard" -> "Reads and sets the clipboard; when off, it can't"
+        "commands" -> "Runs terminal commands and other scripts when you start it from the prompt; when off, it can't"
+        "dnd" -> "Reads and turns Do Not Disturb on and off; when off, it can't"
+        "work" -> "Reads, pauses and resumes the work profile; when off, it can't"
         else -> "Runs when this happens (@on $item)"
     }
 
@@ -108,7 +108,7 @@ object ScriptAccess {
     }
 
     /** "[name] asks for [items] — tap to allow": one tap allows them all ([what] words the line). */
-    fun askToAllow(context: Context, name: String, items: List<String>, what: String = "asks for") {
+    fun askToAllow(context: Context, name: String, items: List<String>, what: String = "requests") {
         if (items.isEmpty()) return
         LogRepository.get(context).add(
             LogKind.INFO, "$name $what ${items.joinToString(", ")} — tap to allow", name,

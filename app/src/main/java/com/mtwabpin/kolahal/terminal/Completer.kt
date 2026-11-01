@@ -76,7 +76,7 @@ class Completer(private val context: Context, private val data: Data) {
         val cmd = InstantRun.canonical(head)
         val scriptList = data.scripts
         if (parts.size == 1) {
-            val names = CommandProcessor.COMMAND_NAMES - CommandProcessor.UNAVAILABLE +
+            val names = CommandCatalog.COMMAND_NAMES - CommandCatalog.UNAVAILABLE +
                 data.commandNames +
                 appPrefs.aliases().keys
             // Commands used lately come first, then the rest in their usual order.
@@ -99,7 +99,7 @@ class Completer(private val context: Context, private val data: Data) {
             // then longer commands (`feed` offers `feed add` before `feeds`). TAB adds the space.
             val whole = if (cmd in names) {
                 listOf(Suggestion.Completion(head, "$head ", icon = if (head in data.commandNames) R.drawable.ic_code else null,
-                    help = helpFor(head) ?: CommandProcessor.COMMANDS.firstOrNull { it.name == cmd }?.help, enter = true))
+                    help = helpFor(head) ?: CommandCatalog.COMMANDS.firstOrNull { it.name == cmd }?.help, enter = true))
             } else emptyList()
             val options = if (cmd in names) usageOptions(cmd, listOf(head, "")).map { it.copy(label = "$head ${it.label}") } else emptyList()
             // Not a command's name: commands and settings that say they do it, after the apps.
@@ -107,7 +107,7 @@ class Completer(private val context: Context, private val data: Data) {
             return (if (enterLaunches) listOf(apps.first().copy(enter = true)) + cmds.take(3) + apps.drop(1) + about else whole + options + cmds.take(3) + apps + about).distinctBy { it.key }
         }
         // The Play build has no call log and no screen lock: nothing to offer.
-        if (cmd in CommandProcessor.UNAVAILABLE) return emptyList()
+        if (cmd in CommandCatalog.UNAVAILABLE) return emptyList()
         val specific = argSuggestions(cmd, head, parts, scriptList)
         // Commands without their own completer still get the options their usage line lists.
         val options = if (specific.isEmpty()) usageOptions(cmd, parts) else emptyList()
@@ -147,7 +147,7 @@ class Completer(private val context: Context, private val data: Data) {
         val answer = converted?.let { it to it.substringAfter("= ").substringBefore(' ').replace(",", "") }
             ?: runCatching { Calc.answer(expr) }.getOrNull()?.let { "= $it" to it }
         val row = answer?.takeIf { it.second != expr }?.let { (label, value) ->
-            Suggestion.Completion(label, "= $value", help = "the answer · tap to go on from it")
+            Suggestion.Completion(label, "= $value", help = "the answer · tap to continue from it")
         }
         return (listOfNotNull(row) + historySuggestions(text)).distinctBy { it.key }
     }
@@ -160,8 +160,8 @@ class Completer(private val context: Context, private val data: Data) {
     private fun described(word: String, shown: Set<String>): List<Suggestion> {
         if (word.length < (if (word.all(Char::isDigit)) 2 else 3)) return emptyList()
         fun says(text: String) = text.split(NOT_WORD).any { it.startsWith(word, ignoreCase = true) }
-        val builtIn = CommandProcessor.COMMANDS.asSequence()
-            .filter { it.name !in CommandProcessor.UNAVAILABLE && it.name !in shown && it.name != word }
+        val builtIn = CommandCatalog.COMMANDS.asSequence()
+            .filter { it.name !in CommandCatalog.UNAVAILABLE && it.name !in shown && it.name != word }
             // The options its usage lists count too (`ring … silent`), but not short ones such as `on`.
             .filter { spec -> says(spec.help) || says(KEYWORDS[spec.name].orEmpty()) || spec.usage.split(NOT_WORD).drop(1).any { it.length >= 4 && it.startsWith(word, ignoreCase = true) } }
             .map { Suggestion.Completion(it.name, "${it.name} ", help = it.help) }
@@ -191,7 +191,7 @@ class Completer(private val context: Context, private val data: Data) {
 
     /** Literal options at this argument position in the command's usage line (`apps [work|personal|…]`). */
     private fun usageOptions(cmd: String, parts: List<String>): List<Suggestion.Completion> {
-        val usage = CommandProcessor.COMMAND_USAGES[cmd] ?: data.scriptUsages[cmd] ?: return emptyList()
+        val usage = CommandCatalog.COMMAND_USAGES[cmd] ?: data.scriptUsages[cmd] ?: return emptyList()
         val token = UsageLine.tokens(usage).drop(1).getOrNull(parts.size - 2) ?: return emptyList()
         if (token.startsWith("<")) return emptyList() // a placeholder: <app>, <query>, …
         val inner = token.removeSurrounding("[", "]")
@@ -235,8 +235,8 @@ class Completer(private val context: Context, private val data: Data) {
                 else Suggestion.Completion("$name = $command", "$head $name = $command")
             } else emptyList()
             // `help to`: the commands.
-            "help" -> if (parts.size == 2) (CommandProcessor.COMMAND_NAMES - CommandProcessor.UNAVAILABLE).filter { it.starts(last) }
-                .map { Suggestion.Completion(it, "$head $it", help = CommandProcessor.COMMANDS.firstOrNull { c -> c.name == it }?.help) } else emptyList()
+            "help" -> if (parts.size == 2) (CommandCatalog.COMMAND_NAMES - CommandCatalog.UNAVAILABLE).filter { it.starts(last) }
+                .map { Suggestion.Completion(it, "$head $it", help = CommandCatalog.COMMANDS.firstOrNull { c -> c.name == it }?.help) } else emptyList()
             "status" -> if (parts.size == 3 && parts[1] == "clear") words(data.statusNames.toList() + "all", R.drawable.ic_code) else emptyList()
             "feed" -> when (parts.size) {
                 3 if parts[1] in FEED_ID_SUBCOMMANDS -> data.feeds
@@ -314,7 +314,7 @@ class Completer(private val context: Context, private val data: Data) {
                             key is ConfigKey.Bool -> listOf("on", "off")
                             key is ConfigKey.Choice -> key.choices
                             // A gesture's action: one of the words, or any command.
-                            key.key.startsWith("gesture.") -> listOf("lock", "shade", "quick", "none") - CommandProcessor.UNAVAILABLE
+                            key.key.startsWith("gesture.") -> listOf("lock", "shade", "quick", "none") - CommandCatalog.UNAVAILABLE
                             else -> emptyList()
                         }
                         values.filter { it.starts(last) }.map { Suggestion.Completion(it, "$prefix $it") }
@@ -339,7 +339,7 @@ class Completer(private val context: Context, private val data: Data) {
                     .map { Suggestion.Completion(it, if (it == "sans") "$head sans " else "$head $it") }
             }
             "call", "sms", "contacts" -> contactSuggestions(cmd, head, parts)
-            in CommandProcessor.PRODUCTIVITY -> productivitySuggestions(cmd, head, parts)
+            in CommandCatalog.PRODUCTIVITY -> productivitySuggestions(cmd, head, parts)
             // `log only …`: the kinds, then where the log's lines came from.
             "log" -> if (parts.size == 3 && parts[1] == "only") {
                 LogFilter.suggestions(parts[2], data.logSources).take(cap)

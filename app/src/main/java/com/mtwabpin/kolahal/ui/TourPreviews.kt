@@ -61,20 +61,20 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtwabpin.kolahal.apps.AppEntry
 import com.mtwabpin.kolahal.apps.AppRepository
 import com.mtwabpin.kolahal.data.Keys
-import com.mtwabpin.kolahal.terminal.CommandProcessor
+import com.mtwabpin.kolahal.terminal.CommandCatalog
 import com.mtwabpin.kolahal.terminal.InstantRun
 import com.mtwabpin.kolahal.terminal.Suggestion
 import com.mtwabpin.kolahal.terminal.TerminalViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // The tour's previews: a small home screen per setting, in the terminal's colours, font and text
 // size as set now, built from the real suggestion list, key bar and app selector where they can
@@ -189,7 +189,7 @@ internal fun TypingPreview(vm: TerminalViewModel) {
     val clock24 = remember(version) { vm.config[Keys.CLOCK_24H] }
     val repo = AppRepository.get(LocalContext.current)
     val apps = rememberApps()
-    val commands = CommandProcessor.COMMAND_USAGES
+    val commands = CommandCatalog.COMMAND_USAGES
 
     fun target(typed: String, m: String) = InstantRun.target(
         typed, m, minLetters,
@@ -287,8 +287,8 @@ internal fun TypingPreview(vm: TerminalViewModel) {
     PreviewCaption(
         when (mode) {
             InstantRun.OFF -> "Off: nothing runs until you press Enter or tap a suggestion."
-            InstantRun.APPS -> "Apps: an app opens once the letters can only mean it; commands wait for Enter."
-            else -> "All: an app or a command runs once the letters can only mean it."
+            InstantRun.APPS -> "Apps: an app opens once only one match is left; commands require Enter."
+            else -> "All: an app or a command runs once only one match is left."
         }
     )
 }
@@ -427,7 +427,7 @@ internal fun SelectorPreview(vm: TerminalViewModel) {
     PreviewCaption(
         if (!on) "Off: the edge is free, and you type to open apps."
         else if (browse == "letters") "Try it: touch the ${if (left) "left" else "right"} edge and slide along it to a letter; slide off it onto the list and let go."
-        else "Try it: touch the ${if (left) "left" else "right"} edge and slide along it, slowly to aim; slide off it toward the list and let go."
+        else "Try it: touch the ${if (left) "left" else "right"} edge and slide along it, slowly for one app at a time; slide off it toward the list and let go."
     )
 }
 

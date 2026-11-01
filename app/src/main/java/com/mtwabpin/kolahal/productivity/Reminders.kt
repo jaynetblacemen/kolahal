@@ -81,7 +81,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 }
                 if (next == null) {
                     store.remove(id)
-                    if (rule != null) LogRepository.get(context).add(LogKind.ERROR, "Reminder '${r.text}' had a repeat Kolahal can't read, so it won't come again")
+                    if (rule != null) LogRepository.get(context).add(LogKind.ERROR, "Reminder '${r.text}' had an invalid repeat rule, so it won't repeat")
                 } else {
                     store.setAt(id, next)
                     ReminderScheduler.schedule(context, r.copy(at = next))

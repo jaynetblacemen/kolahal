@@ -100,8 +100,7 @@ for i, text in ipairs(notes) do log(i .. ". " .. text, { copy = text }) end
 
 ## GitHub stars (JavaScript, command with caching)
 
-`stars owner/repo` shows a repo's stars. The response is cached for ten minutes, so repeated runs
-cost nothing.
+`stars owner/repo` shows a repo's stars. The response is cached for ten minutes, so repeated runs make no new request.
 
 ```js
 // stars.js

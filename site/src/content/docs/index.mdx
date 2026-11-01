@@ -4,7 +4,7 @@ description: A keyboard-first terminal launcher for Android, with scripts in Lua
 template: splash
 hero:
   title: Your home screen is a terminal.
-  tagline: Kolahal is a keyboard-first Android launcher. Type part of an app name and press Enter, and script the rest in Lua 5.4 or JavaScript.
+  tagline: Kolahal is a keyboard-first Android launcher. Type part of an app name and press Enter to open it. Write your own scripts in Lua 5.4 or JavaScript.
   actions:
     - text: Guide
       link: /getting-started/install/
@@ -28,12 +28,11 @@ import setup from '../../assets/setup.png';
 ## What it does
 
 <CardGrid>
-	<Card title="Type, Enter, done" icon="seti:shell">
-		Any text that isn't a command is matched against app names. Enter launches the highlighted best
-		match. Turn on `suggestions.idle` to see your favourites and most-used apps on an empty prompt.
+	<Card title="Launch apps by typing" icon="seti:shell">
+		Any text that isn't a command is matched against app names. Press Enter to launch the highlighted best match. Turn on `suggestions.idle` to see your favourites and most-used apps on an empty prompt.
 	</Card>
-	<Card title="A log you can act on" icon="list-format">
-		Every command and its output is a block with a coloured gutter. Tap a line for its main action.
+	<Card title="An interactive log" icon="list-format">
+		Every command and its output is a group with a coloured bar. Tap a line for its main action.
 		Long-press for an action sheet with copy, share, open, rerun and more.
 	</Card>
 	<Card title="Scripts in Lua or JS" icon="seti:lua">
@@ -44,12 +43,12 @@ import setup from '../../assets/setup.png';
 		Built-in RSS/Atom subscriptions with unread counts. With notification access, new notifications
 		show up in the log, each ending in its app's icon.
 	</Card>
-	<Card title="Little tools built in" icon="puzzle">
+	<Card title="Built-in tools" icon="puzzle">
 		`= 2^10`, `= 5 km in mi`, `= 100 usd in eur`, web search, `call`, `sms`, app shortcuts, screen
 		time and an unlock counter.
 	</Card>
 	<Card title="Work profile and private space" icon="seti:lock">
-		If you have them, their apps sit in the same list as yours, tagged `[W]` and `[S]` (`[C]` for
+		If you have them, their apps appear in the same list as your personal apps, tagged `[W]` and `[S]` (`[C]` for
 		clones). Pause or resume the work profile from the header or with `work off`.
 	</Card>
 </CardGrid>
@@ -71,7 +70,7 @@ import setup from '../../assets/setup.png';
 	</figure>
 </div>
 
-## Themes from the terminal
+## Themes
 
 `theme green` (the default) · `amber` · `mono` · `dracula` · `solarized` · `gruvbox` · `gruvbox-material`,
 each in a dark and a light version that follow the phone's dark mode.
@@ -81,7 +80,7 @@ This site uses the green palette in dark mode and gruvbox light in light mode.
 
 <CardGrid>
 	<Card title="Get it running" icon="rocket">
-		[Download and install](/getting-started/install/), then take the [tour](/getting-started/setup/) it opens with.
+		[Download and install](/getting-started/install/), then follow the [tour](/getting-started/setup/) that opens on first start.
 	</Card>
 	<Card title="Learn the prompt" icon="open-book">
 		[Basics](/getting-started/basics/): suggestions, the key bar, tap and long-press, and keyboard shortcuts.
@@ -90,6 +89,6 @@ This site uses the green palette in dark mode and gruvbox light in light mode.
 		[Scripting overview](/scripting/overview/), the [API reference](/scripting/api/) and the [script library](/scripting/library/).
 	</Card>
 	<Card title="Get help" icon="discord">
-		Ask on the [Discord server](https://discord.gg/3D25w6gXR5). Report a bug or ask for a feature on [GitHub](https://github.com/mtwabpin/kolahal/issues/new/choose), and a security problem [privately](/reference/security/).
+		Ask on the [Discord server](https://discord.gg/3D25w6gXR5). Report a bug or ask for a feature on [GitHub](https://github.com/mtwabpin/kolahal/issues/new/choose), and report a security problem [privately](/reference/security/).
 	</Card>
 </CardGrid>

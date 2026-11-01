@@ -89,11 +89,11 @@ private val ROLE_TEXT = mapOf(
     "muted" to ("Muted text" to "Times, hints and older output"),
     "accent" to ("Accent" to "The prompt, $ and highlights; Settings use it too"),
     "link" to ("Links" to "Links and feed items"),
-    "info" to ("Info" to "Notes from Kolahal"),
+    "info" to ("Info" to "Messages from Kolahal"),
     "script" to ("Script output" to "Lines your scripts write"),
     "error" to ("Errors" to "Errors and failed commands"),
-    "good" to ("Good" to "Scripts' up, done and passing: fmt.color(\"good\", …)"),
-    "warn" to ("Warning" to "Scripts' warnings, short of an error: fmt.color(\"warn\", …)"),
+    "good" to ("Good" to "Script success states: fmt.color(\"good\", …)"),
+    "warn" to ("Warning" to "Script warnings: fmt.color(\"warn\", …)"),
     "personal" to ("Personal apps" to "Your own apps"),
     "work" to ("Work apps" to "Apps in a work profile, marked [W]"),
     "private" to ("Private space" to "Apps in the private space, marked [S]"),
@@ -168,7 +168,7 @@ fun ThemeBuilderScreen(vm: TerminalViewModel) {
                     },
                     enabled = nameError == null,
                     modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
-                ) { Text("Save and use") }
+                ) { Text("Save and apply") }
             },
         ) { padding ->
             Column(Modifier.fillMaxSize().padding(padding)) {
@@ -195,7 +195,7 @@ fun ThemeBuilderScreen(vm: TerminalViewModel) {
                             label = { Text("Name") },
                             singleLine = true,
                             isError = nameError != null,
-                            supportingText = { Text(nameError ?: "Also: theme $name") },
+                            supportingText = { Text(nameError ?: "Command: theme $name") },
                             textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, imeAction = ImeAction.Done),
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp).testTag("theme-name"),
@@ -256,7 +256,7 @@ fun ThemeBuilderScreen(vm: TerminalViewModel) {
                 onDismissRequest = { confirmDelete = false },
                 icon = { Icon(painterResource(R.drawable.ic_delete), null) },
                 title = { Text("Delete $editing?") },
-                text = { Text("If it is in use, Kolahal goes back to the green theme.") },
+                text = { Text("If it is in use, Kolahal switches to the green theme.") },
                 confirmButton = {
                     TextButton(
                         onClick = {

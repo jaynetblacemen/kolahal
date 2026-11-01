@@ -5,7 +5,7 @@ description: Double-tap to lock, swipe down for the shade, an optional swipe up,
 
 import GestureMap from '../../../components/GestureMap.astro';
 
-Every touch gesture on home, at a glance:
+Every touch gesture on the home screen, at a glance:
 
 <GestureMap>
 
@@ -27,7 +27,7 @@ Three gestures are configurable, in **Settings → Gestures** or with `config se
 | --- | --- | --- |
 | Double-tap empty log space | `gesture.double-tap` | `lock` (`none` in the Play build, which has no screen lock) |
 | Swipe down on the header | `gesture.swipe-down` | `shade` |
-| Swipe up on the prompt | `gesture.swipe-up` | `none` (off: it fires by accident easily) |
+| Swipe up on the prompt | `gesture.swipe-up` | `none` (off: it's easy to trigger by accident) |
 
 Each value is one of:
 
@@ -48,7 +48,7 @@ config set gesture.swipe-down none
 
 ## Locking needs an accessibility service
 
-Android only lets an app lock the screen through an accessibility service. Kolahal ships a tiny one,
+Android only lets an app lock the screen through an accessibility service. Kolahal includes a small one,
 **Kolahal screen lock**, that does nothing else. It is declared with `canRetrieveWindowContent="false"`
 and scoped to a package that doesn't exist, so it receives no accessibility events and can't read
 the screen. All it does is call the system "lock screen" action.
@@ -60,12 +60,11 @@ tappable line that takes you to the setting.
 
 These are fixed:
 
-- **Pinch** the log to change the text size. When you let go, a toast says the new size.
+- **Pinch** the log to change the text size. When you let go, a short message shows the new size.
 - **Tap** empty space to show the keyboard.
 - **Drag sideways** across the key bar to move the cursor.
 
-## A flash of wallpaper on the way home
+## Wallpaper flash when going home
 
 Swiping home from an app can show your wallpaper for an instant. That comes from your phone's own
-launcher, not from Kolahal: the [FAQ](/reference/faq/#why-does-my-wallpaper-flash-when-i-go-home) says
-why, and how to stop it with three-button navigation or `wallpaper match`.
+launcher, not from Kolahal: the [FAQ](/reference/faq/#why-does-my-wallpaper-flash-when-i-go-home) explains why, and how to stop it with three-button navigation or `wallpaper match`.

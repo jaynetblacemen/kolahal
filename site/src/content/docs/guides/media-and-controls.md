@@ -10,9 +10,9 @@ find in the quick settings. Every one of them prints a status line, and the line
 
 Media control reads the active media sessions, which Android only allows for apps with
 **notification access**. Grant it with `notifs enable` (or **setup → Notification access**).
-Without it, media commands print a tappable line that opens the grant page.
+Without it, media commands print a tappable line that opens the permission page.
 
-| Command | Does |
+| Command | Action |
 | --- | --- |
 | `media` | now playing: `♪ Title — Artist`, with app, state and position / duration. Tap the line to play or pause |
 | `media play` / `media pause` / `media toggle` | start, pause or toggle playback |
@@ -20,13 +20,12 @@ Without it, media commands print a tappable line that opens the grant page.
 | `mp` | play / pause |
 | `next`, `prev` | next / previous track |
 
-Kolahal follows the session that is playing; when nothing plays, the most recently played one.
+Kolahal controls the session that is playing or, if nothing is playing, the most recently played one.
 
 ### In the header
 
 With `header.media` on (the default), the header shows `♪ Title — Artist` under the clock while
-something plays, and `‖ Title — Artist` while it is paused. A thin bar under the line fills as the
-track plays, and follows you when you seek or start another track; for a stream with no length it
+something plays, and `‖ Title — Artist` while it is paused. A thin progress bar under the line fills as the track plays, and updates when you seek or start another track; for a stream with no length it
 stays empty.
 
 - **Tap** the line to play or pause.
@@ -38,7 +37,7 @@ The line disappears 30 minutes after playback was paused. When the header is col
 
 ## Toggles
 
-| Command | Does | Needs |
+| Command | Action | Requires |
 | --- | --- | --- |
 | `torch [on\|off]` | flashlight; no argument toggles | nothing |
 | `volume [0-100\|up\|down\|mute\|unmute]` | media volume; prints the new level | nothing |
@@ -46,7 +45,7 @@ The line disappears 30 minutes after playback was paused. When the header is col
 | `dnd [on\|off\|alarms\|none]` | Do Not Disturb: `on` is priority only, `alarms` alarms only, `none` total silence; no argument toggles; `dnd status` shows it | Do Not Disturb access |
 | `brightness [0-100\|up\|down\|auto]` | screen brightness; a level switches adaptive brightness off, `auto` turns it on | Modify system settings |
 | `rotate [on\|off]` | auto-rotate; no argument toggles | Modify system settings |
-| `screen-timeout <15s\|30s\|1m\|5m\|…>` | screen-off timeout; no argument shows it | Modify system settings |
+| `screen-timeout <15s\|30s\|1m\|5m\|…>` | screen timeout; no argument shows it | Modify system settings |
 | `wifi`, `bt`, `nfc`, `data` | open the Wi-Fi, Bluetooth, NFC or Internet panel | nothing |
 | `toggles` | one line per toggle with its current state | nothing |
 

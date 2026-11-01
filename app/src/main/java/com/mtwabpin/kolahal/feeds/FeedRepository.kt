@@ -79,7 +79,7 @@ class FeedRepository private constructor(private val context: Context) {
             put("notify", if (config[com.mtwabpin.kolahal.data.Keys.FEEDS_NOTIFY]) 1 else 0)
         }, SQLiteDatabase.CONFLICT_IGNORE)
         changed()
-        return byUrl(normalized) ?: error("Feed insert failed")
+        return byUrl(normalized) ?: error("Couldn't add the feed")
     }
 
     fun remove(id: Long) {

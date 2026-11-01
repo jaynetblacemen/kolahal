@@ -17,14 +17,13 @@ Every release comes with two APKs. The newest is Kolahal {VERSION}:
 	<LinkButton href={PLAY_APK} icon="download" iconPlacement="start" variant="secondary">Kolahal {VERSION}, Play build</LinkButton>
 </div>
 
-Take the first one, the full build: it has everything. The second is the Play build, the version
+Download the first one, the full build, which has every feature. The second is the Play build, the version
 for Google Play ([below](#the-play-build)). Release notes and older versions are on the
 [releases page](https://github.com/mtwabpin/kolahal/releases). Both APKs have the same package and
 key, so either installs over the other or over an earlier version (0.3.1 or later), keeping your
 data. Then [sideload it](#sideload-the-apk).
 
-Kolahal is also in a closed test on Google Play: to install it from the Play Store, and help it get
-there for everyone, [join the test](/getting-started/play-testing/).
+Kolahal is also in a closed test on Google Play: to install it from the Play Store and help bring it to everyone, [join the test](/getting-started/play-testing/).
 
 ### If Play Protect blocks it
 
@@ -33,8 +32,7 @@ manager) that declare an accessibility service or notification access, in India 
 countries. Both builds declare notification access, which shows your notifications in the log,
 and the full build also has an accessibility service, which only locks the screen.
 
-Install with scanning turned off: **Play Store → profile → Play Protect → ⚙︎ → Scan apps with Play
-Protect** while installing (and back on after), or with `adb install`. Once Kolahal is on Google
+To install, turn off **Play Store → profile → Play Protect → ⚙︎ → Scan apps with Play Protect**, then turn it back on. Or use `adb install`. Once Kolahal is on Google
 Play, installing it from there avoids the block.
 
 ### Updating
@@ -44,25 +42,20 @@ checks it's signed with Kolahal's key and opens Android's installer. The first t
 to let Kolahal install apps. The Play build updates through Google Play; its APK from GitHub has no
 `update`, so install a new one by hand.
 
-### Coming from 0.3.0 or earlier
+### Upgrading from 0.3.0 or earlier
 
 Versions up to 0.3.0 were signed with a different key, so later ones can't install over them.
-Move once, keeping everything: **Settings → Backup → Export everything**, uninstall Kolahal,
+To upgrade and keep your data: **Settings → Backup → Export everything**, uninstall Kolahal,
 install the new version and make it your home app, then **Settings → Backup → Import a backup**.
-Run `setup` to grant the permissions again, and add your widgets again: a backup lists them but
-can't carry them ([Backup](/guides/backup/)). If you had the lite APK, take the Play build, the
-nearest to it.
+Run `setup` to grant the permissions again, and add your widgets again: a backup lists them but can't restore them ([Backup](/guides/backup/)). If you had the lite APK, install the Play build, which is the closest to it.
 
 ### The Play build
 
-The Play build is the version for Google Play, where Kolahal is coming, and its APK is on every
-release. Play's policy doesn't let a launcher read the call log, and asks for a declaration and a
+The Play build is the version for Google Play, where Kolahal will be available soon. Every release includes its APK. Play's policy doesn't let a launcher read the call log, and asks for a declaration and a
 video for an accessibility service, so the Play build leaves those two out: no `lock` or
-double-tap lock, and no calls in the log or `calls`. It doesn't read your contacts either, as Play
-asks of apps that Android's contact picker serves: `call`, `sms` and `contacts` open the picker and
+double-tap lock, and no calls in the log or `calls`. It doesn't read your contacts either, because Play requires apps to use Android's contact picker when that's enough: `call`, `sms` and `contacts` open the picker and
 remember who you pick ([People](/guides/people/#in-the-play-build)). Everything else is the same,
-notification access included: before Android's Notification access screen opens, Kolahal says what
-it reads and asks, as Play asks of apps that read notifications.
+notification access included: before Android's Notification access screen opens, Kolahal explains what it reads and asks for permission, as Play requires of apps that read notifications.
 
 ## Build from source
 
@@ -135,7 +128,6 @@ first few things; run [`setup`](/getting-started/setup/) any time for the rest o
 
 ## Work profile and private space
 
-Only if you use them: a work profile (apps your employer manages, shown with a briefcase) or
-Android 15's private space. Kolahal lists their apps next to your own, and as the default launcher
+This applies only if you use a work profile (apps your employer manages, shown with a briefcase) or Android 15's private space. Kolahal lists their apps next to your own, and as the default launcher
 it can pause and resume the work profile (Android 10 and newer) and see the private space
 (Android 15 and newer). See [Work profile & private space](/guides/profiles/).

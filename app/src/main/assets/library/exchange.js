@@ -3,8 +3,8 @@
 // @desc Convert currency: exchange [amount] <from> [to…] (e.g. exchange 100 usd inr eur)
 // @usage [<amount>] <from> [<to…>]
 // @title Currency converter
-// @option from USD The currency converted from when you type none
-// @option to "EUR GBP INR JPY" The currencies it converts to then
+// @option from USD Default currency to convert from
+// @option to "EUR GBP INR JPY" Default currencies to convert to
 //
 // Usage:
 //   exchange 100 usd inr       100 US dollars in Indian rupees

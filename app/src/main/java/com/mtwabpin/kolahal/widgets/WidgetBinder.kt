@@ -66,7 +66,7 @@ class WidgetBinder(private val activity: ComponentActivity, private val onAdded:
             .putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, entry.info.provider)
             .putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER_PROFILE, entry.user)
             .putExtra(AppWidgetManager.EXTRA_APPWIDGET_OPTIONS, options)
-        runCatching { bindLauncher.launch(intent) }.onFailure { cancel(req, "Can't ask to bind widgets: ${it.message}") }
+        runCatching { bindLauncher.launch(intent) }.onFailure { cancel(req, "Can't request widget permission: ${it.message}") }
     }
 
     private fun configure(req: Request) {

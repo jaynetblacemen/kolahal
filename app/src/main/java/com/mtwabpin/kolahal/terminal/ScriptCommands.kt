@@ -44,7 +44,7 @@ class ScriptCommands(
         val script = scripts.byName(name)?.takeIf { ScriptMeta.isCommand(it.code) } ?: return null
         // A switched-off script (an import not reviewed yet) doesn't run by its name.
         if (!script.enabled) {
-            logs.add(LogKind.ERROR, "${script.name} is switched off — tap to turn it on", ctx = LogContext.of(LogContext.RUN to "script on ${script.name}"))
+            logs.add(LogKind.ERROR, "${script.name} is off — tap to turn it on", ctx = LogContext.of(LogContext.RUN to "script on ${script.name}"))
             return Unit
         }
         ScriptScheduler.runNow(context, script, args)
@@ -123,10 +123,10 @@ class ScriptCommands(
             "new" -> {
                 val (name, lang) = parseName(target ?: return error("Usage: script new <name>[.lua|.js] [lua|js] [--cmd]"))
                 if (!ScriptNames.NAME.matches(name)) return error("Script names: lowercase letters, digits, - and _ only")
-                if (name in CommandProcessor.RESERVED_NAMES) return error("'$name' is a built-in command, pick another name")
+                if (name in CommandCatalog.RESERVED_NAMES) return error("'$name' is a built-in command, pick another name")
                 val asCommand = "--cmd" in args || "cmd" in args
                 val chosen = args.drop(2).firstNotNullOfOrNull(ScriptLang::of) ?: lang ?: ScriptLang.LUA
-                if (scripts.byName(name) != null) return error("Script '$name' exists — 'script edit $name'")
+                if (scripts.byName(name) != null) return error("Script '$name' already exists — 'script edit $name'")
                 val template = if (asCommand) ScriptTemplates.command(chosen, name) else ScriptTemplates.forLang(chosen, name)
                 val script = scripts.create(name, chosen, template)
                 info("Created ${script.name}.${script.lang.ext}", scriptCtx(script))
@@ -157,7 +157,7 @@ class ScriptCommands(
             "at" -> withScript(target) { s ->
                 val specs = CommandParsing.clockWords(args.drop(2))
                 if (specs.isEmpty()) return error("Usage: script at <name> <HH:mm[,HH:mm…]|off>")
-                val times = if (specs[0] == "off") emptyList() else specs.map { ScriptScheduler.normalizeTime(it) ?: return error("Bad time '$it' — use HH:mm") }
+                val times = if (specs[0] == "off") emptyList() else specs.map { ScriptScheduler.normalizeTime(it) ?: return error("Invalid time '$it' — use HH:mm") }
                 scripts.setAtTimes(s.id, times.distinct().sorted())
                 if (times.isNotEmpty() && !s.enabled) {
                     scripts.setEnabled(s.id, true)
@@ -181,12 +181,12 @@ class ScriptCommands(
                 // Typed by you: the go-ahead for what it declares, said in the next line.
                 scripts.setEnabled(s.id, enabled, grant = enabled)
                 scripts.byId(s.id)?.let { ScriptScheduler.sync(context, it) }
-                info("${s.name}: ${if (enabled) "enabled" else "disabled"}", scriptCtx(s))
+                info("${s.name}: ${if (enabled) "turned on" else "turned off"}", scriptCtx(s))
                 // Switching a script on allows what it declares and nobody decided yet: say what it may use.
                 val grants = scripts.byId(s.id)?.grants
                 val uses = grants?.declared.orEmpty().filter { grants?.allows(it) == true }
                 if (enabled && uses.isNotEmpty()) {
-                    info("${s.name} can use: ${uses.joinToString()} — 'script deny ${s.name} <what>' switches one off", scriptCtx(s))
+                    info("${s.name} can use: ${uses.joinToString()} — 'script deny ${s.name} <what>' turns one off", scriptCtx(s))
                 }
                 if (enabled) scripts.byId(s.id)?.let { ScriptAccess.askForSecrets(context, it) }
             }
@@ -289,7 +289,7 @@ class ScriptCommands(
         info("Installed ${s.name}.${s.lang.ext} from ${ScriptCatalog.SOURCE}" + timer.joinToString("") { " · $it" }, scriptCtx(s))
         val grants = s.grants
         val uses = grants.declared.filter(grants::allows)
-        if (uses.isNotEmpty()) info("${s.name} can use: ${uses.joinToString()} — 'script deny ${s.name} <what>' switches one off", scriptCtx(s))
+        if (uses.isNotEmpty()) info("${s.name} can use: ${uses.joinToString()} — 'script deny ${s.name} <what>' turns one off", scriptCtx(s))
     }
 
     /**
@@ -324,7 +324,7 @@ class ScriptCommands(
                 store.set(s.name, d.name, null, d.hosts)
                 info("${s.name}: ${d.name} cleared", scriptCtx(s))
             }
-            rest.joinToString(" ").length < SecretStore.MIN_LENGTH -> error("${d.name}: at least ${SecretStore.MIN_LENGTH} characters")
+            rest.joinToString(" ").length < SecretStore.MIN_LENGTH -> error("${d.name} must be at least ${SecretStore.MIN_LENGTH} characters")
             else -> {
                 store.set(s.name, d.name, rest.joinToString(" "), d.hosts)
                 info("${s.name}: ${d.name} set (that line isn't logged; next time 'script secret ${s.name} ${d.name}' opens a box the keyboard doesn't learn from)", scriptCtx(s))
@@ -361,11 +361,11 @@ class ScriptCommands(
             rest.isEmpty() -> info("${s.name}: ${o.name} = ${shown(store.values(s.name, listOf(o)).getValue(o.name))}", scriptCtx(s))
             rest == listOf("--reset") -> {
                 store.set(s.name, o.name, null)
-                info("${s.name}: ${o.name} back to its default, ${shown(o.default)}", scriptCtx(s))
+                info("${s.name}: ${o.name} reset to default, ${shown(o.default)}", scriptCtx(s))
             }
             else -> {
                 val value = rest.joinToString(" ")
-                if (o.choices.isNotEmpty() && value !in o.choices) return error("${o.name}: one of ${o.choices.joinToString(", ")}")
+                if (o.choices.isNotEmpty() && value !in o.choices) return error("${o.name} must be one of ${o.choices.joinToString(", ")}")
                 store.set(s.name, o.name, value)
                 info("${s.name}: ${o.name} = $value", scriptCtx(s))
             }
@@ -377,7 +377,7 @@ class ScriptCommands(
         val grants = s.grants
         val items = ScriptAccess.items(s.code)
         if (items.isEmpty() && !ScriptMeta.postsNotifications(s.code)) {
-            return info("${s.name}.${s.lang.ext} uses nothing with a switch: no internet, header line, notifications, @uses or @on", scriptCtx(s))
+            return info("${s.name}.${s.lang.ext} has no access switches: no internet, header line, notifications, @uses or @on", scriptCtx(s))
         }
         info("${s.name}.${s.lang.ext} — 'script allow|deny ${s.name} <what>'", scriptCtx(s))
         fun row(item: String) {
@@ -417,7 +417,7 @@ class ScriptCommands(
             val has = all + listOfNotNull("notify".takeIf { ScriptMeta.postsNotifications(s.code) })
             return error(
                 if (item in ScriptMeta.USES) "${s.name} doesn't declare @uses $item"
-                else "No '$item' for ${s.name} — " + if (has.isEmpty()) "it has nothing to switch" else "it has: ${has.joinToString(" ")}"
+                else "No '$item' for ${s.name} — " + if (has.isEmpty()) "it has no access switches" else "it has: ${has.joinToString(" ")}"
             )
         }
         for (item in items) {
@@ -450,7 +450,7 @@ class ScriptCommands(
                 if (ScriptMeta.isCommand(s.code)) add("command")
                 ScriptMeta.events(s.code).takeIf { it.isNotEmpty() }?.let { add("on " + it.joinToString(",")) }
                 if (s.notify && ScriptMeta.postsNotifications(s.code)) add("notify")
-                if (!s.enabled) add("disabled")
+                if (!s.enabled) add("off")
                 add(last)
             }
             out("${s.name}.${s.lang.ext}", scriptCtx(s) + mapOf(LogContext.DESC to parts.joinToString(" · ")))
@@ -471,7 +471,7 @@ class ScriptCommands(
             val parts = buildList {
                 add(if (events.isEmpty()) "no known events" else "on " + events.joinToString(", "))
                 if (unknown.isNotEmpty()) add("unknown: " + unknown.joinToString(", "))
-                if (!s.enabled) add("disabled")
+                if (!s.enabled) add("off")
             }
             out("${s.name}.${s.lang.ext}", scriptCtx(s) + mapOf(LogContext.DESC to parts.joinToString(" · ")))
         }
@@ -498,7 +498,7 @@ class ScriptCommands(
         val entry = library.entries.firstOrNull { it.name == s.name && it.lang == s.lang }
             ?: return info("$file isn't from the library, so there is nothing to compare it with", scriptCtx(s))
         val hunks = LineDiff.hunks(LineDiff.lines(library.code(entry), s.code))
-        if (hunks.isEmpty()) return info("$file is the library version", scriptCtx(s))
+        if (hunks.isEmpty()) return info("$file matches the library version", scriptCtx(s))
         val changed = hunks.flatMap { it.lines }
         fun lines(n: Int) = if (n == 1) "1 line" else "$n lines"
         val removed = lines(changed.count { it.kind == LineDiff.Kind.REMOVED })
@@ -512,12 +512,12 @@ class ScriptCommands(
         val out = ArrayList<LogRepository.Pending>()
         fun add(text: String, ctx: LogContext = LogContext(LogContext.ALIGNED)) { out += LogRepository.Pending(LogKind.OUTPUT, text, null, ctx, at) }
         add(
-            "$file against the library version: " + StyledText.colour(StyledText.Colour.BAD, "- $removed only there") +
+            "$file against the library version: " + StyledText.colour(StyledText.Colour.BAD, "- $removed only in the library") +
                 ", " + StyledText.colour(StyledText.Colour.ACCENT, "+ $added only in yours"),
             LogContext.of(LogContext.COPY to plain) + scriptCtx(s).values,
         )
         for ((skipped, hunkLines) in hunks) {
-            if (skipped > 0) add(StyledText.colour(StyledText.Colour.MUTED, "⋯ ${lines(skipped)} the same"))
+            if (skipped > 0) add(StyledText.colour(StyledText.Colour.MUTED, "⋯ ${lines(skipped)} unchanged"))
             for ((kind, line) in hunkLines) {
                 val text = "${sign.getValue(kind)} ${line.replace("\t", "    ")}"
                 add(when (kind) {
@@ -530,7 +530,7 @@ class ScriptCommands(
         logs.addAll(out)
         // Back to the library version: an edited copy only when asked, as Reset in the script manager.
         if (library.state(entry, scripts.all()) == ScriptLibrary.State.MODIFIED) {
-            info("'script install ${s.name} --replace' takes the library version (export yours first to keep it)", scriptCtx(s))
+            info("'script install ${s.name} --replace' restores the library version (export yours first to keep it)", scriptCtx(s))
         } else {
             info("'script install ${s.name}' updates it to the library version", scriptCtx(s))
         }

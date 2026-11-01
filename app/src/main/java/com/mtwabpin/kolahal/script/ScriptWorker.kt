@@ -120,10 +120,10 @@ internal object ScriptRun {
             } else if (off != null) {
                 // Stopped by a switch the user turned off: say which, with a tap to allow it.
                 logs.add(
-                    LogKind.ERROR, "$name: ${ScriptAccess.label(off).lowercase()} is switched off for this script — tap to allow", name,
+                    LogKind.ERROR, "$name: ${ScriptAccess.label(off).lowercase()} is off for this script — tap to allow", name,
                     errorCtx + mapOf(LogContext.RUN to "script allow $name $off"),
                 )
-                "stopped: ${ScriptAccess.label(off).lowercase()} switched off"
+                "stopped: ${ScriptAccess.label(off).lowercase()} off"
             } else {
                 // An error can quote a URL or a header: masked like everything else a run shows.
                 val message = e.message?.let(host::redact)
@@ -142,7 +142,7 @@ internal object ScriptRun {
         host.finish()
         // A run you started that asked for what nobody allowed yet got empty answers: offer to allow it.
         if (script != null && host.undecided.isNotEmpty() && inputData.getBoolean(ScriptWorker.KEY_INTERACTIVE, false)) {
-            ScriptAccess.askToAllow(ctx, name, host.undecided.toList(), "hasn't been allowed")
+            ScriptAccess.askToAllow(ctx, name, host.undecided.toList(), "needs permission for")
         }
         script?.let {
             scripts.recordRun(it.id, status)

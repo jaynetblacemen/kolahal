@@ -3,7 +3,7 @@ title: Scripting overview
 description: Lua 5.4 and JavaScript scripts in Kolahal, timers, notifications, status lines, command scripts and the sandbox.
 ---
 
-Scripts are small programs that live inside the launcher. They can fetch things from the web,
+Scripts are small programs that run inside the launcher. They can fetch things from the web,
 print lines into the log, post notifications, pin a status line in the header, or become new
 terminal commands. Write them in **Lua 5.4** or **JavaScript** (QuickJS). Both languages get the
 same [API](/scripting/api/).
@@ -23,7 +23,7 @@ script run hn              # run it now
 script every hn 30m        # and every 30 minutes
 ```
 
-The fastest start is the [script library](/scripting/library/): `script lib` lists 16 ready-made
+The fastest way to start is the [script library](/scripting/library/): `script lib` lists 16 ready-made
 scripts and `script install weather` installs one with sensible timers.
 
 ## Lua or JavaScript?
@@ -55,24 +55,20 @@ A run on an interval waits for a network only if the script goes online (`http`,
 
 Daily times are alarms. With **Alarms & reminders** allowed for Kolahal (Android's setting; `remind
 exact` asks for it), a script runs on the minute, even while the phone sleeps, and in the
-foreground for its few seconds; otherwise it runs within the hour. A run at a daily time knows
-which one it was ([`event.time`](/scripting/api/#event)), and it waits for a network only if the
+foreground for its few seconds; otherwise it runs within the hour. A script run at a daily time can tell which time it was ([`event.time`](/scripting/api/#event)), and it waits for a network only if the
 script makes requests and there is none.
 
 `script ls` shows every script with its timers, whether it is a command, notification state and the
 last run's result. The script manager (`scripts`, or the **Scripts** tab in Settings;
 [its parts, numbered](/getting-started/parts/#scripts-tab)) shows a card per
 script: its title, how it runs and how its last run went (red if it failed), **Run** for a command,
-and its on/off switch; an on script's card is tinted in the theme's colour, an off one's fades. The
-arrow on a card, or the one at the top for all of them, shows its details: its header line, next
-run, usage, and a pill for everything it may do (internet, its header line, notifications, what it
-declares, its events): filled in the theme's colour when on, faded when off, and a tap switches it.
+and its on/off switch; a card is tinted in the theme's colour when its script is on, and faded when it's off. The arrow on a card, or the one at the top for all of them, shows its details: its header line, next run, usage, and a pill for everything it may do (internet, its header line, notifications, what it declares, its events). A pill is filled in the theme's colour when on and faded when off. Tap it to switch it.
 A library script you edited (its summary says "edited") gets **Compare** and **Reset to library
 version** there too.
 Chips filter the cards (commands, timers, events, in the header, failed, off, needs a key, differs
 from the library, and what they use), and the search icon finds one by name.
 Tap a card for **Run**, **Edit**, **Export**, access, notifications, timers and **Delete**.
-**Add script** writes a new one, or takes one from the library, from
+**Add script** creates a new one, or adds one from the library, from
 [the scripts people share](#getting-scripts-from-others) or from a file.
 
 The script's **return value** is printed into the log (tables and objects as JSON). The first line
@@ -167,8 +163,7 @@ status((b.charging and "charging " or "on battery ") .. tostring(b.level) .. "%"
 
 ## Describing a script
 
-A few more comment lines describe a script, so the file is complete on its own: the Scripts screen
-shows them, and the [library](/scripting/library/) scripts carry them too.
+A few more comment lines describe a script, so the file is complete on its own: the script manager shows them, and the [library](/scripting/library/) scripts carry them too.
 
 ```lua
 -- @title Hacker News
@@ -182,13 +177,13 @@ shows them, and the [library](/scripting/library/) scripts carry them too.
 
 | Line | What it does |
 | --- | --- |
-| `@title <text>` | its name for people, shown above its file name |
-| `@desc <text>` | one line about it, in `help`, suggestions and the Scripts screen |
-| `@author <name>`, `@version <x.y>` | shown in its sheet in the Scripts screen |
+| `@title <text>` | its display name, shown above its file name |
+| `@desc <text>` | a one-line description, in `help`, suggestions and the script manager |
+| `@author <name>`, `@version <x.y>` | shown in its sheet in the script manager |
 | `@every <15m\|1h\|1d>`, `@at <HH:mm>[, …]` | the timer it suggests, set when it is added from a file, a folder or the library |
 | `@notify` | it suggests posting notifications, switched on when it is added |
-| `@tags <word>[, …]` | words to find it by in Get more scripts |
-| `@requires <x.y.z>` | the oldest Kolahal it works with: Kolahal won't add it from a file, a folder, a backup or Get more scripts until it is that new |
+| `@tags <word>[, …]` | search keywords for Get more scripts |
+| `@requires <x.y.z>` | the minimum Kolahal version it needs: Kolahal won't add it from a file, a folder, a backup or Get more scripts until it has that version or newer |
 
 ## Sandbox and limits
 
@@ -200,7 +195,7 @@ Scripts run in a separate `:script` process, so a crashing engine can't take dow
 - At most **500 log lines** and **256K characters** per run, error lines and each line's link and
   other details included; past either, one line says the rest weren't logged.
 - At most **10 commands** per run with `launcher.run`. A script started by another script's
-  `launcher.run` can't send any, so scripts can't start each other without end.
+  `launcher.run` can't send any, so scripts can't start each other endlessly.
 - **Lua**: a fresh state per run. `java`, `io`, `package`, `require`, `debug`, `dofile`, `loadfile`
   and process-level `os` functions are removed (`os.time`, `os.date`, `os.clock`, `os.difftime`
   remain), and only text chunks can be loaded. The timeout and memory cap are enforced by an
@@ -213,9 +208,7 @@ Scripts run in a separate `:script` process, so a crashing engine can't take dow
 
 ## What a script may use
 
-Your notifications, the clipboard, the list of your apps, running
-commands, Do Not Disturb and the work profile are only for scripts that ask, with a `@uses` line at
-the top:
+Scripts can use your notifications, the clipboard, the list of your apps, running commands, Do Not Disturb and the work profile only if they ask, with a `@uses` line at the top:
 
 ```lua
 -- @uses notifications, clipboard
@@ -231,8 +224,7 @@ the top:
 | `work` | [`device.work` and `device.setWork`](/scripting/api/#devicework--devicesetworkon): seeing, pausing and resuming the work profile |
 
 Calling one of these without its `@uses` line stops the script with an error saying what to add.
-Code you type at the prompt (`lua`, `js`, `=`) may use everything. The internet has no `@uses` line, and
-it takes in every address: a script that may use it can also reach this phone and your local network
+Code you type at the prompt (`lua`, `js`, `=`) may use everything. Internet access has no `@uses` line and covers every address: a script that has it can also reach this phone and your local network
 ([HTTP](/scripting/api/#http)).
 
 ### Switching access off
@@ -243,8 +235,7 @@ in its card's details switch the same things, in the same two groups. What it us
 code: **Internet** when it uses `http` or `rss`, puts links or pictures on its lines (`url`,
 `image`), or runs commands (`launcher.run`, as a search reaches a site); **Header line** when it calls `status`; **Post notifications** when it calls `notify`;
 and what its `@uses` line names. A script gets only those: one that never mentions `http` can't go
-online. Switched off, a script gets nothing where nothing is an honest answer, and
-stops where it isn't:
+online. With a switch off, a call returns nothing where that's a valid result, and the script stops where it isn't:
 
 | Switch | Switched off, the script… |
 | --- | --- |
@@ -259,12 +250,7 @@ Long-press a script's line in the header for **Hide from header**. In the termin
 `script deny <name> <what…>` change them (`notify` is the notifications switch). A script can
 check with [`allowed(what)`](/scripting/api/#allowedwhat) and do something else.
 
-Scripts from outside (a file, a folder, a backup) arrive **switched off**, and so does a script
-whose code one of them replaces: what it was allowed has to be allowed again. Switching one on in
-the Scripts screen asks about what it declares with `@uses`, all on, so you can switch off what you
-don't want first; `script on <name>` allows it all and says what that is. Turning a script on
-another way (giving it a timer, or an import of one that was on) allows nothing it asks for: a line
-in the log offers to. If an update from the library or Get more scripts declares something more,
+Imported scripts (from a file, a folder or a backup) are **switched off**, and so is a script whose code one of them replaces. You have to allow its access again. Switching one on in the script manager lists what it declares with `@uses`, all on, so you can switch off what you don't want first. `script on <name>` allows everything and lists it. Turning a script on another way (giving it a timer, or importing one that was on) doesn't allow anything it asks for: a line in the log lets you allow it. If an update from the library or Get more scripts declares something more,
 or runs on a new event, that starts switched off and a line in the log offers to allow it.
 Restoring a backup brings back only the switches you turned off, never the ones you turned on.
 
@@ -285,34 +271,28 @@ local r = http.get("https://api.openweathermap.org/data/2.5/weather?q=Pune&appid
 ```
 
 The line gives the key's name, the site it may be sent to (and its subdomains; several with commas,
-`*` for any), and a few words for you. Set the value in the script's sheet (Scripts → tap the script → **Secrets**),
-or with `script secret <name> <NAME>`, which opens a box the keyboard doesn't learn from. Switching
-on a script whose keys aren't set leaves a line to tap to set them.
+`*` for any), and a short description. Set the value in the script's sheet (Scripts → tap the script → **Secrets**),
+or with `script secret <name> <NAME>`, which opens a box the keyboard doesn't learn from. Switching on a script whose keys aren't set adds a line to the log. Tap it to set them.
 
 - Values are encrypted with a key kept in Android's Keystore, and stay on this phone: they are left
-  out of the [backup file](/guides/backup/), Android's backups and exported scripts. Deleting a
-  script forgets them.
-- `secrets.get` returns a stand-in for the value, never the value, or nil until the value is set.
+  out of the [backup file](/guides/backup/), Android's backups and exported scripts. Deleting a script deletes them.
+- `secrets.get` returns a placeholder for the value, never the value, or nil until the value is set.
   The script puts it where the request needs the key, and the value goes in its place only in a
   request to a site the `@secret` line names, over https. A script that needs to work on the key
   itself (encode it, sign with it) can't. Reading a name without its `@secret` line stops the script
   with an error, and code typed at the prompt can't read secrets.
-- A value is at least 4 characters, and never shows: in log lines, the header, notifications,
-  results and errors it reads `••••`.
+- A value must be at least 4 characters and is never displayed: in log lines, the header, notifications, results and errors it appears as `••••`.
 - A value goes only to the sites its `@secret` line named when you set it. A request carrying it
   anywhere else stops the script, redirects included. The clipboard, the script's store and
-  `launcher.run` refuse a stand-in; anywhere else (a line, a notification's link) it stays just that,
-  a stand-in, shown as `••••`. If an update or another file names
-  other sites for the key, it isn't used until you set it again; a line in the log says so. New
-  code without the key's `@secret` line forgets its value.
+  `launcher.run` reject a placeholder; anywhere else (a line, a notification's link) it remains a placeholder, shown as `••••`. If an update or another file names
+  other sites for the key, it isn't used until you set it again; a line in the log says so. New code without the key's `@secret` line deletes its value.
 - A script never holds the value, so it can't send it anywhere else. It can still use the key at its
   site the way the site allows, so give keys to scripts you trust.
 
 ## Options
 
 Settings a script reads as it runs (a city, a feed's address, units) are `@option` lines, so you
-change them without editing its code. An edited library script stops taking the library's updates;
-one whose options you changed keeps taking them.
+change them without editing its code. An edited library script stops getting the library's updates; one whose options you changed still gets them.
 
 ```lua
 -- @option city London The city to show
@@ -320,27 +300,22 @@ one whose options you changed keeps taking them.
 local r = http.get("https://wttr.in/" .. options.city .. "?format=3&" .. (options.units == "metric" and "m" or "u"))
 ```
 
-The line gives the option's name (letters, digits and `_`), its default, and a few words for you. A
+The line gives the option's name (letters, digits and `_`), its default, and a short description. A
 default is one word, `"several words"` in quotes, or `""` for none; `metric|imperial` makes a
-choice, the first being the default. The script reads `options.city`, always as text (`tonumber` or
-`Number()` it). Change one in the script's sheet (Scripts → tap the script → **Options**), or with
+choice, the first being the default. The script reads `options.city`, always as text (convert it with `tonumber` or `Number()`). Change one in the script's sheet (Scripts → tap the script → **Options**), or with
 `script set <name> <option> <value>`; `script set <name>` lists them, and `--reset` puts the
 default back.
 
-- Your values are kept apart from the code, by script name: they stay through updates and a
-  rename, go into the [backup file](/guides/backup/), and go when you delete the script.
+- Your values are stored separately from the code, by script name. They are kept through updates and renames, included in the [backup file](/guides/backup/), and deleted with the script.
 - A value that isn't one of the choices (an update dropped it) reads as the default.
 
 ## Getting scripts from others
 
 **Scripts → Add script → Get more scripts** lists the scripts people share in
-[kolahal-scripts](https://github.com/mtwabpin/kolahal-scripts) on GitHub. Each one is checked and
-read before it is added. Tap one to see what it does, what it uses and its code. **Install** asks
-about what it uses first (everything on, to switch off what you don't want), then switches it on
-with the timer it suggests.
+[kolahal-scripts](https://github.com/mtwabpin/kolahal-scripts) on GitHub. Each one is reviewed before it is added. Tap one to see what it does, what it uses and its code. When you tap **Install**, you choose what it can use (everything starts on), then it switches on with the timer it suggests.
 
 When Get more scripts (or `script get`) finds a newer version of a shared script you haven't
-edited, the Scripts screen says "update available" and its sheet has an **Update to …** button.
+edited, the script manager shows "update available" and its sheet has an **Update to …** button.
 Anything new it asks for starts switched off. A copy you edited is only replaced when you say so.
 
 In the terminal, `script get` lists them and `script get <name>` installs or updates one. The list

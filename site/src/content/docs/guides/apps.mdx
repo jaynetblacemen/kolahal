@@ -27,15 +27,13 @@ apps -a              # include hidden apps
 apps work            # one profile: work, personal, private
 ```
 
-Tap a chip to launch it; long-press for launch, shortcuts, app info, copy package name, hide,
-uninstall and the other-profile copy.
+Tap a chip to launch it; long-press for launch, shortcuts, app info, copy package name, hide, uninstall and launching the copy in another profile.
 
 <Image src={grid} alt="The apps grid: personal apps, then work apps marked W" class="shot shot-single" width={320} />
 
 ## Favourites
 
-With **Favourites & most-used on empty prompt** (`suggestions.idle`, off by default), pinned apps lead
-the suggestions whenever the prompt is empty, in the order you pinned them, followed by your most-used apps.
+With **Favourites & most-used on empty prompt** (`suggestions.idle`, off by default), pinned apps appear first in the suggestions whenever the prompt is empty, in the order you pinned them, followed by your most-used apps.
 
 ```sh
 pin maps                     # or long-press an app → Pin to favourites
@@ -61,14 +59,14 @@ Hidden apps and custom labels are part of the [backup file](/guides/backup/).
 ## App shortcuts
 
 Launcher shortcuts (the menu you get by long-pressing an icon in other launchers) work too. They
-need Kolahal as the default launcher.
+need Kolahal as the default home app.
 
 ```sh
 shortcuts maps               # list them; tap one to start it
 open maps:home               # start the shortcut whose label best matches "home"
 ```
 
-They also appear in every app's long-press sheet.
+They also appear in every app's action sheet.
 
 ## Aliases
 
@@ -95,8 +93,7 @@ Installs, updates and uninstalls show up in the log: the app name, then its pack
 on dimmed lines below, with a profile tag and `+` / `↻` / `−` at the end of the first line
 (`Updated Maps [W] ↻`). An update is always one line, and so is an uninstall followed by
 a reinstall within 20 seconds. Because of that window, an uninstall line appears about 20 seconds
-after the app is gone, or as soon as you come back to the home screen after that. Changes made while
-the launcher wasn't running are caught up when it starts. `installs [<n>]` lists the recent history
+after the app is gone, or as soon as you come back to the home screen after that. Changes made while the launcher wasn't running are logged when it next starts. `installs [<n>]` lists the recent history
 with dates.
 
 ## Screen time and unlocks
@@ -108,5 +105,5 @@ unlocks          # today's unlock count
 unlocks 7        # one line per day for the last week (1–30)
 ```
 
-`usage` needs **Usage Access** (`usage-access`). Unlock counts use Usage Access when granted and
+`usage` needs **Usage access** (`usage-access`). Unlock counts use usage access when granted and
 fall back to counting `ACTION_USER_PRESENT` broadcasts while the launcher is running.

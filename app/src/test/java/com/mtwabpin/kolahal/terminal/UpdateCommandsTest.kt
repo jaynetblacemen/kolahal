@@ -24,7 +24,7 @@ class UpdateCommandsTest {
 
     /** Play allows no update but its own. */
     @Test fun thePlayBuildDoesntOfferIt() {
-        assertEquals(!BuildConfig.SELF_UPDATE, "update" in CommandProcessor.UNAVAILABLE)
+        assertEquals(!BuildConfig.SELF_UPDATE, "update" in CommandCatalog.UNAVAILABLE)
     }
 
     /** Only when you ask: not by a prefix or from a script, with or without a pipe. */

@@ -676,7 +676,7 @@ private fun RunOutput(lines: List<com.mtwabpin.kolahal.data.LogEntry>, maxHeight
     Column(Modifier.fillMaxWidth().background(Term.surface.copy(alpha = 0.6f)).testTag("run-output")) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 12.dp)) {
             Text(
-                if (lines.isEmpty()) "output · nothing" else "output · ${lines.size} line${if (lines.size == 1) "" else "s"}",
+                if (lines.isEmpty()) "output · none" else "output · ${lines.size} line${if (lines.size == 1) "" else "s"}",
                 style = Term.code.copy(color = Term.dim),
                 modifier = Modifier.weight(1f),
             )

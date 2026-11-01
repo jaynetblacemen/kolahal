@@ -68,7 +68,7 @@ class CommandFamiliesTest {
 
     @Test fun helpListsEveryCommandAndPipesFilterIt() {
         val help = run("help")
-        for (spec in CommandProcessor.COMMANDS) assertTrue("${spec.usage} missing from help", spec.usage in help)
+        for (spec in CommandCatalog.COMMANDS) assertTrue("${spec.usage} missing from help", spec.usage in help)
         val grepped = run("help | grep crashes")
         assertTrue(grepped.toString(), grepped.isNotEmpty() && grepped.all { it.contains("crashes", ignoreCase = true) })
         assertEquals(2, run("help | grep -v zzz | head 2").size)
@@ -76,11 +76,11 @@ class CommandFamiliesTest {
 
     /** `help todo` is that command alone; a synonym finds its command, a near miss the nearest ones. */
     @Test fun helpForOneCommand() {
-        val todo = CommandProcessor.COMMANDS.first { it.name == "todo" }
+        val todo = CommandCatalog.COMMANDS.first { it.name == "todo" }
         val one = run("help todo")
         assertEquals(todo.usage, one.first())
         assertTrue(one.toString(), one.size <= 3)
-        assertTrue(run("help cls").let { it.first() == CommandProcessor.COMMANDS.first { c -> c.name == "clear" }.usage && "Also typed as cls" in it })
+        assertTrue(run("help cls").let { it.first() == CommandCatalog.COMMANDS.first { c -> c.name == "clear" }.usage && "Also known as cls" in it })
         assertTrue(run("help tod").toString(), todo.usage in run("help tod"))
         assertTrue(run("help zzzzzz").single().startsWith("No command called 'zzzzzz'"))
     }
@@ -107,7 +107,7 @@ class CommandFamiliesTest {
     }
 
     @Test fun notesAddFindRemove() {
-        assertTrue(run("note cptest idea").single().startsWith("Noted"))
+        assertTrue(run("note cptest idea").single().startsWith("Note saved"))
         assertTrue(run("notes").any { it.contains("cptest idea") })
         assertTrue(run("notes grep cptest").any { it.contains("cptest idea") })
         assertTrue(run("notes rm 1").single().contains("cptest idea"))
@@ -223,7 +223,7 @@ class CommandFamiliesTest {
             assertTrue(run("script set cptestopt").toString(), run("script set cptestopt").any { it.startsWith("city") && it.endsWith("London (default)") })
             assertEquals(listOf("cptestopt: city = New York"), run("script set cptestopt city New York"))
             assertTrue(run("script set cptestopt").any { it.startsWith("city") && it.endsWith("New York") })
-            assertEquals(listOf("cptestopt: city back to its default, London"), run("script set cptestopt city --reset"))
+            assertEquals(listOf("cptestopt: city reset to default, London"), run("script set cptestopt city --reset"))
             assertTrue(run("script set cptestopt town x").single().startsWith("cptestopt has no @option town"))
         } finally {
             repo.delete(s.id)
@@ -245,7 +245,7 @@ class CommandFamiliesTest {
         fun said(line: String) = run(line).filterNot { it.startsWith(failed) }
         val before = logs.maxId()
         try {
-            assertTrue(said("backup every weekly").first().startsWith("Backups weekly to "))
+            assertTrue(said("backup every weekly").first().startsWith("Backing up weekly to "))
             assertEquals("weekly", config[Keys.BACKUP_AUTO])
             val scheduled = setOf(androidx.work.WorkInfo.State.ENQUEUED, androidx.work.WorkInfo.State.RUNNING)
             assertTrue("scheduled: ${state()}", waitFor { state() in scheduled })
@@ -290,7 +290,7 @@ class CommandFamiliesTest {
 
             val before = wallpapers.getWallpaperId(system)
             val asked = run("wallpaper match")
-            assertTrue(asked.toString(), asked.first().contains("can't bring the old one back"))
+            assertTrue(asked.toString(), asked.first().contains("can't restore the old one"))
             assertEquals("Tap to replace it", asked.last())
             assertEquals("wallpaper match --yes", logs.recent(1).last().ctx.values[LogContext.RUN])
             assertEquals("only asked so far", before, wallpapers.getWallpaperId(system))
@@ -355,7 +355,7 @@ class CommandFamiliesTest {
         assertTrue(run("font sans bogus").single().startsWith("Invalid value"))
         assertEquals("prompt", config[Keys.FONT_SANS])
         assertTrue(run("font sans").single().startsWith("font.sans = prompt"))
-        assertTrue(run("font").any { it.startsWith("The phone's font: prompt") })
+        assertTrue(run("font").any { it.startsWith("System font: prompt") })
     }
 
     @Test fun historyAndClear() {
@@ -391,9 +391,9 @@ class CommandFamiliesTest {
         assertTrue(run("date").single().isNotBlank())
         // The time elsewhere: each place on a line of its own, the detail in its second column.
         assertEquals(listOf("Tokyo", "New York"), run("date tokyo new york"))
-        assertTrue(run("date nowhere").single().startsWith("No place called"))
+        assertTrue(run("date nowhere").single().startsWith("Unknown place"))
         val cal = run("cal")
         assertTrue(cal.toString(), cal.size in 7..8 && cal[1].trim().split(" ").size == 7)
-        assertTrue(run("cal nope").single().startsWith("No month"))
+        assertTrue(run("cal nope").single().startsWith("Unknown month"))
     }
 }

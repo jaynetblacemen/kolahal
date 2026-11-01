@@ -73,7 +73,7 @@ import kotlinx.coroutines.withContext
  */
 @Composable
 fun GetScriptsScreen(vm: TerminalViewModel) {
-    val shared by vm.sharedScripts.collectAsStateWithLifecycle()
+    val shared by vm.scriptActions.sharedScripts.collectAsStateWithLifecycle()
     val scripts by vm.scriptList.collectAsStateWithLifecycle()
     val notice by vm.notice.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
@@ -82,7 +82,7 @@ fun GetScriptsScreen(vm: TerminalViewModel) {
 
     // Whether each is installed, edited or has an update; the name checks read the app list.
     val states by produceState(emptyMap(), shared.entries, scripts) {
-        value = withContext(Dispatchers.IO) { shared.entries.associate { it.name to vm.scriptCatalog.state(it, scripts) } }
+        value = withContext(Dispatchers.IO) { shared.entries.associate { it.name to vm.scriptActions.scriptCatalog.state(it, scripts) } }
     }
     val shown = remember(shared.entries, query) {
         val words = query.lowercase().split(' ').filter { it.isNotBlank() }
@@ -107,7 +107,7 @@ fun GetScriptsScreen(vm: TerminalViewModel) {
                     subtitle = { Text("Shared in ${ScriptCatalog.SOURCE} on GitHub") },
                     navigationIcon = { BackButton(vm::closeScreen) },
                     actions = {
-                        IconButton(onClick = { vm.loadSharedScripts(refresh = true) }, enabled = !shared.loading) {
+                        IconButton(onClick = { vm.scriptActions.loadSharedScripts(refresh = true) }, enabled = !shared.loading) {
                             Icon(painterResource(R.drawable.ic_refresh), contentDescription = "Refresh the list")
                         }
                     },
@@ -138,7 +138,7 @@ fun GetScriptsScreen(vm: TerminalViewModel) {
                     item(key = "error") {
                         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                             Text("Can't read the list: $error", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
-                            TextButton(onClick = { vm.loadSharedScripts(refresh = true) }) { Text("Try again") }
+                            TextButton(onClick = { vm.scriptActions.loadSharedScripts(refresh = true) }) { Text("Try again") }
                         }
                     }
                 }
@@ -157,8 +157,8 @@ fun GetScriptsScreen(vm: TerminalViewModel) {
                 }
                 item(key = "about") {
                     Text(
-                        "Every script here is checked and read before it is added. A script you install asks about what " +
-                            "it uses first, and its Access switches change that later. Share your own at " +
+                        "Every script here is reviewed before it is added. When you install one, you choose what it can " +
+                            "use; its Access switches change that later. Share your own at " +
                             "github.com/mtwabpin/${ScriptCatalog.SOURCE}.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
@@ -232,7 +232,7 @@ private fun SharedSheet(vm: TerminalViewModel, e: ScriptCatalog.Entry, state: Sc
     var asking by remember(e.name) { mutableStateOf(false) }
     var confirmReplace by remember(e.name) { mutableStateOf(false) }
     // The file, downloaded and checked against the list, so you can read it before installing.
-    val code by produceState<Result<String>?>(null, e.sha256) { value = runCatching { vm.sharedScriptCode(e) } }
+    val code by produceState<Result<String>?>(null, e.sha256) { value = runCatching { vm.scriptActions.sharedScriptCode(e) } }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
         Column(
@@ -253,7 +253,7 @@ private fun SharedSheet(vm: TerminalViewModel, e: ScriptCatalog.Entry, state: Sc
             // From the file once it is here (checked against the list): that is what installing grants.
             val text = code?.getOrNull()
             val uses = remember(text) { text?.let { ScriptMeta.uses(it).toList() } ?: e.uses }
-            Fact("Runs", remember(text) { text?.let { runs(it) } ?: runs(e) }.ifEmpty { "when you run it" })
+            Fact("Runs", remember(text) { text?.let { runs(it) } ?: runs(e) }.ifEmpty { "manually" })
             Fact("Uses", if (uses.isEmpty()) "nothing private" else uses.joinToString(", ") { ScriptAccess.label(it).lowercase() })
             code?.getOrNull()?.let(ScriptMeta::secrets)?.takeIf { it.isNotEmpty() }?.let { keys ->
                 Fact("Keys", keys.joinToString(", ") { "${it.name} (you set it; sent only to ${it.hosts.joinToString()})" })
@@ -264,14 +264,14 @@ private fun SharedSheet(vm: TerminalViewModel, e: ScriptCatalog.Entry, state: Sc
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 when (state) {
                     ScriptCatalog.State.NOT_INSTALLED, null -> Button(
-                        onClick = { if (uses.isEmpty()) vm.installSharedScript(e) else asking = true },
+                        onClick = { if (uses.isEmpty()) vm.scriptActions.installSharedScript(e) else asking = true },
                         enabled = code?.isSuccess == true,
                     ) {
                         Icon(painterResource(R.drawable.ic_download), null, Modifier.size(ButtonDefaults.IconSize))
                         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                         Text("Install")
                     }
-                    ScriptCatalog.State.UPDATE_AVAILABLE -> Button(onClick = { vm.installSharedScript(e) }, enabled = code?.isSuccess == true) {
+                    ScriptCatalog.State.UPDATE_AVAILABLE -> Button(onClick = { vm.scriptActions.installSharedScript(e) }, enabled = code?.isSuccess == true) {
                         Text("Update to ${e.version}")
                     }
                     ScriptCatalog.State.MODIFIED -> TextButton(
@@ -315,7 +315,7 @@ private fun SharedSheet(vm: TerminalViewModel, e: ScriptCatalog.Entry, state: Sc
         val uses = code?.getOrNull()?.let { ScriptMeta.uses(it).toList() } ?: e.uses
         AccessDialog("Install ${e.name}.${e.lang.ext}?", uses, "Install", onDismiss = { asking = false }) { choices ->
             asking = false
-            vm.installSharedScript(e, choices)
+            vm.scriptActions.installSharedScript(e, choices)
         }
     }
     if (confirmReplace) {
@@ -325,7 +325,7 @@ private fun SharedSheet(vm: TerminalViewModel, e: ScriptCatalog.Entry, state: Sc
             text = { Text("Your copy differs from the shared one. Its code is replaced and your changes are lost. Export it first to keep a copy.") },
             confirmButton = {
                 TextButton(
-                    onClick = { confirmReplace = false; vm.installSharedScript(e, replace = true) },
+                    onClick = { confirmReplace = false; vm.scriptActions.installSharedScript(e, replace = true) },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 ) { Text("Replace") }
             },

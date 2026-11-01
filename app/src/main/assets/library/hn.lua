@@ -4,7 +4,7 @@
 -- @every 1h
 -- @notify
 -- @option points 50 Only stories with at least this many points; 0: every story
--- @option lines 10 The most stories it logs in one run
+-- @option lines 10 Maximum stories logged per run
 --
 -- Runs well on a timer (every 30-60 min). Each run logs the new front-page
 -- stories (tap a line to open it), notifies about the top new one and pins

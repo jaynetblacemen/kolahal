@@ -56,7 +56,7 @@ class ConfigCommands(context: Context, private val ui: TerminalUi) : CommandGrou
                     out("$mark ${name.padEnd(16)} ${TermFonts.label(name)}", LogContext.of(LogContext.RUN to "font $name") + LogContext.ALIGNED)
                 }
                 info("Tap a font to use it · 'font import' adds your own .ttf/.otf · size: config font.size")
-                info("The phone's font: ${conf[Keys.FONT_SANS]} · font sans prompt uses it for the prompt, font sans all for everything")
+                info("System font: ${conf[Keys.FONT_SANS]} · font sans prompt uses it for the prompt, font sans all for everything")
             }
             "import" -> ui.requestFontImport()
             "sans" -> args.getOrNull(1)?.let { setKey(Keys.FONT_SANS.key, it, "") }
@@ -75,7 +75,7 @@ class ConfigCommands(context: Context, private val ui: TerminalUi) : CommandGrou
                 // Old names (before 0.3.0) still work, and say what they are called now.
                 if (name.lowercase() != key.key) info("${name.lowercase()} is now called ${key.key}")
             }
-            name?.lowercase() in Keys.REMOVED -> name!!.lowercase().let { error("$it is gone: ${Keys.REMOVED[it]}") }
+            name?.lowercase() in Keys.REMOVED -> name!!.lowercase().let { error("$it was removed: ${Keys.REMOVED[it]}") }
             else -> error("Unknown setting '${name.orEmpty()}' — run 'config'")
         }
     }

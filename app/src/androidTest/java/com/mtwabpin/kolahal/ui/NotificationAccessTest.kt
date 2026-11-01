@@ -47,6 +47,6 @@ class NotificationAccessTest {
         compose.waitUntil(5_000) { vm.notificationAccessAsk.value }
         compose.runOnUiThread { vm.answerNotificationAccess(false) }
         assertFalse(vm.notificationAccessAsk.value)
-        compose.waitUntil(5_000) { logs.recent(50).any { it.id > before && it.text.startsWith("Notification access stays off") } }
+        compose.waitUntil(5_000) { logs.recent(50).any { it.id > before && it.text.startsWith("Notification access is off") } }
     }
 }

@@ -9,29 +9,23 @@ import setup from '../../../assets/setup.png';
 ## The tour
 
 On its first start Kolahal opens a short tour, a page at a time: typing to open apps and run
-commands, the log and its gestures, and a few settings on the way, each one tap. Above each
-page's settings is a small home screen, in your theme and with your apps, that shows what a choice
-does as you make it:
+commands, the log and its gestures, and a few settings along the way, each changed with one tap. Above each page's settings is a small preview of the home screen, in your theme and with your apps, that shows the effect of each choice as you make it:
 
-- **Type to open**: an app's first letters and then `fetch` are typed into the prompt, and run
-  when instant launch (`launch.instant`) would run them, or wait for Enter; the suggestions show
+- **Type to open**: an app's first letters and then `fetch` are typed into the prompt. They run if instant launch (`launch.instant`) would run them; otherwise they wait for Enter. the suggestions show
   as a list or chips (`suggestions.style`).
-- **Everything lands in the log**: a few lines to try tapping, long-pressing and swiping.
-- **Make it yours**: the theme, text size and clock, on the header and a few lines.
+- **Everything goes in the log**: a few lines to try tapping, long-pressing and swiping.
+- **Make it yours**: the theme, text size and clock, previewed on the header and a few log lines.
 - **Above the keyboard**: the key bar and most-used apps, over the keyboard.
-- **Every app at your thumb**: the app selector itself, on the edge you choose, to try; letting
-  go says which app would open.
+- **The app selector**: try it on the edge you choose. When you let go, it shows which app would open.
 
 Its last setup page offers the permissions most people want, each with an example of what it
 adds: the default home app, notifications, notification access, and in the full build double-tap
-to lock and contacts. Skip it at any page; `tour` or **Settings → Tour** brings it back, and
-everything it sets is in Settings too.
+to lock and contacts. You can skip it on any page. Run `tour` or open **Settings → Tour** to reopen it. Everything it sets is also in Settings.
 
 ## The setup checklist
 
 Run `setup` (or open **Settings → Setup checklist**). Each row shows whether it is done; tap
-**Fix** on an unchecked row and Kolahal opens the right system page. Come back and the list
-re-checks itself. `setup text` prints the same checklist into the log, where tapping an unchecked
+**Fix** on an unchecked row and Kolahal opens the right system page. When you return, the list updates. `setup text` prints the same checklist into the log, where tapping an unchecked
 line runs its fix.
 
 <Image src={setup} alt="The setup checklist: default home app, usage access, notifications and notification access done; double-tap to lock, system settings and contacts with Fix buttons" class="shot shot-single" width={320} />
@@ -50,8 +44,8 @@ Every row is optional. Kolahal works without any of them, with the limits listed
 | **Contacts** | `contacts --allow` | Optional. `call`, `sms` and `contacts` find people by name, with your contacts as suggestions. The full build only: the Play build uses Android's contact picker and asks for nothing. See [People](/guides/people/). |
 | **Calendar** | `agenda --allow` | Optional. Upcoming events with `agenda`. See [Productivity](/guides/productivity/). |
 | **Call log** | `calls --allow` | Optional. Your incoming, outgoing and missed calls appear in the log, and `calls` lists them. See [People](/guides/people/#calls-in-the-log). |
-| **Alarms & reminders** | `remind exact` | Optional, Android 12 and newer. Reminders and scripts' daily times run on the minute; without it, up to an hour late. A script that pauses the work profile at night ([night-work](/scripting/library/#night-work)) needs it. |
-| **Battery unrestricted** | `battery` | Timer scripts and feeds run on schedule instead of being deferred by battery optimisation. |
+| **Alarms & reminders** | `remind exact` | Optional, Android 12 and newer. Reminders and scripts' daily times run at the exact time; without it, up to an hour late. A script that pauses the work profile at night ([night-work](/scripting/library/#night-work)) needs it. |
+| **Unrestricted battery** | `battery` | Timer scripts and feeds run on schedule instead of being deferred by battery optimisation. |
 | **Work / private profiles** | (none) | Information only: lists the work, private space and clone profiles found and whether each is on or paused. |
 
 When you are done, **Continue to terminal** takes you to the prompt. Next: [Basics](/getting-started/basics/).
