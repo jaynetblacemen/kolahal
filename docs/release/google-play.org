@@ -28,8 +28,9 @@ The maintainer chose (26 October 2026) to leave the call log and the accessibili
 for good rather than risk the declaration.
 
 Neither build has =ACCESS_LOCAL_NETWORK=. The maintainer removed it (1 November 2026), with
-=@uses lan=, =local-network= and feeds on a home server: from 25 August 2027, Play lets an app
-targeting Android 17 ask for it only with a declaration, for core functionality a device picker can't serve.
+=@uses lan= and =local-network=: from 25 August 2027, Play lets an app targeting Android 17 ask for
+it only with a declaration, for core functionality a device picker can't serve. Kolahal doesn't check
+where a request goes: on Android 17, Android blocks the local network itself.
 
 Notification access is in (since 0.4.6): notifications in the log, =notifs=, media controls and
 =@on notification= scripts. Play has no declaration form for a notification listener; its User

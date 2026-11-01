@@ -231,8 +231,9 @@ the top:
 | `work` | [`device.work` and `device.setWork`](/scripting/api/#devicework--devicesetworkon): seeing, pausing and resuming the work profile |
 
 Calling one of these without its `@uses` line stops the script with an error saying what to add.
-Code you type at the prompt (`lua`, `js`, `=`) may use all of these. Nothing reaches this phone or your
-local network, not even code at the prompt: [those requests](/scripting/api/#http) fail.
+Code you type at the prompt (`lua`, `js`, `=`) may use everything. The internet has no `@uses` line, and
+it takes in every address: a script that may use it can also reach this phone and your local network
+([HTTP](/scripting/api/#http)).
 
 ### Switching access off
 

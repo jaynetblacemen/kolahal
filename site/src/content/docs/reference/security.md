@@ -20,8 +20,9 @@ Kolahal is young, and its code is still under review. Treat it as beta software:
   commands, Do Not Disturb and work profile only with an `@uses` line and your yes; the internet and
   its header line only if its code uses them. Each has a switch, per script
   ([switching access off](/scripting/overview/#switching-access-off)).
-- **Your own network stays out of reach.** No script, feed or picture in the log reaches this phone
-  or your local network, even after a redirect.
+- **A script with the internet can reach your own network.** As with any Android app, the internet
+  takes in this phone and your local network, so keep a script you don't trust off it. On Android 17
+  and newer, Android itself blocks your local network.
 - **Scripts from outside start switched off.** One from a file, a folder or a backup asks before it
   runs, and an update that asks for more (the internet included) starts with that off.
 - **A script never holds your keys.** `secrets.get` gives it a stand-in; the value goes only to the

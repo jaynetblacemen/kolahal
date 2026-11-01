@@ -99,12 +99,9 @@ class ScriptSecretsTest {
             }
         }
         val url = "http://127.0.0.1:${socket.localPort}/"
-        // Nothing else reaches this phone.
-        Net.testServer = java.net.InetSocketAddress(socket.inetAddress, socket.localPort)
         try {
             block(url)
         } finally {
-            Net.testServer = null
             socket.close()
             listOf("http.cache:", "rss.seen:").forEach { KvStore(context, "repl").deleteStartingWith(it) }
         }

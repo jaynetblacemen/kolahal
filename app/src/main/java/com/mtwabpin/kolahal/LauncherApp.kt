@@ -13,7 +13,6 @@ import com.mtwabpin.kolahal.data.LogRepository
 import com.mtwabpin.kolahal.data.Config
 import com.mtwabpin.kolahal.data.Keys
 import com.mtwabpin.kolahal.notify.Notifier
-import com.mtwabpin.kolahal.script.Net
 import com.mtwabpin.kolahal.script.ScriptScheduler
 import com.mtwabpin.kolahal.unlock.UnlockCounter
 import com.mtwabpin.kolahal.status.DeviceStatus
@@ -38,9 +37,6 @@ class LauncherApp : Application(), Configuration.Provider {
         // Before anything else can fail: a crash in either process leaves a report (see `crashes`).
         CrashReports.install(this)
         Notifier.createChannels(this)
-        // Both processes make requests (scripts in :script, feeds and images here), and none may reach
-        // this phone's own networks.
-        Net.watchLinks(this)
         // The :script process only needs the database and notifications.
         if (getProcessName() != packageName) return
 

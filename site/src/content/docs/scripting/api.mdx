@@ -258,9 +258,9 @@ Responses are `{ status, ok, body, headers }`: the numeric status, `ok` for 2xx,
 (read up to 4 MB) and response headers with lowercase names. A `User-Agent` of
 `Kolahal-Launcher/0.1 (+https://github.com/mtwabpin)` is sent unless you set your own. Network errors raise an error (Lua) or
 reject the promise (JS). An HTTP error status does **not**, so check `ok`. Plain `http://` URLs are
-allowed. Requests to this phone or your local network (a router, a home
-server, a VPN address like Tailscale's 100.x) always fail, even after a
-redirect. A JavaScript run makes at most 4 requests at a time; more wait their turn, and with 64 requests and sleeps waiting at once, another call fails.
+allowed. A request goes wherever its URL says: this phone, your local network (a router, a home
+server) and a VPN address like Tailscale's 100.x are addresses like any other. On Android 17 and newer,
+Android itself blocks your local network, and those requests fail after a timeout. A JavaScript run makes at most 4 requests at a time; more wait their turn, and with 64 requests and sleeps waiting at once, another call fails.
 
 ### http.get(url, headers?)
 

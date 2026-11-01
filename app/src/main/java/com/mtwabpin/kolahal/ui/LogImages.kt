@@ -102,7 +102,6 @@ object LogImages {
         val httpUrl = url.toHttpUrlOrNull() ?: return null
         val tmp = File(dir, "$name.${System.nanoTime()}.part")
         val ok = runCatching {
-            // A picture a script names is drawn by home: never from this phone or the local network.
             val request = okhttp3.Request.Builder().url(httpUrl).header("User-Agent", Net.USER_AGENT).build()
             Net.client.newCall(request).execute().use { resp ->
                 resp.isSuccessful && resp.body.contentLength() <= MAX_BYTES &&
