@@ -528,7 +528,7 @@ val panelXPx = 0f
                     }
                 }
             }
-            if (showHandle && !letters) {
+          if (showHandle && !letters) {
     Box(
         modifier = Modifier
             .align(
@@ -547,22 +547,11 @@ val panelXPx = 0f
             )
             .testTag("app-selector-handle")
     )
-            } 
-            {
-                    val small = text.copy(color = Term.dim.copy(alpha = 0.45f), fontSize = 8.sp, lineHeight = 9.sp)
-                    Text("A", style = small)
-                    Box(
-                        Modifier
-                            .padding(vertical = 2.dp)
-                            .width(3.dp)
-                            .height(handleH)
-                            .testTag("app-selector-handle")
-                            .background(Term.dim.copy(alpha = 0.55f), RoundedCornerShape(2.dp))
-                    )
-                    Text("Z", style = small)
-                }
-            }
-        }
+}
+
+// The letter you're at, big in a bubble beside the thumb...
+if (waveShown && letter in sectionLetters.indices) {
+    // Keep the existing wave code here.  
 
         // The letter you're at, big in a bubble beside the thumb, and the letters around it bulging
         // out from the edge toward it in a wave, growing a little, the nearest pushed apart to make
@@ -709,15 +698,22 @@ val panelXPx = 0f
                             // beyond it).
                             val yIn = cy - panelTop
                             if (!selecting) {
-                                val start = if (onlyLetter) 0 else starts[onLetter]
+    if (byLetter) {
+        val start = if (onlyLetter) 0 else starts[onLetter]
 
-// The letter's apps begin at the top of the page.
-// The app vertically aligned with the notch is the selected app.
-SelectorMath.levelWith(
-    start.toFloat(),
-    0f,
-    rowPx.toFloat()
-)
+        SelectorMath.levelWith(
+            start.toFloat(),
+            0f,
+            rowPx.toFloat()
+        )
+    } else {
+        SelectorMath.levelWith(
+            at,
+            yIn,
+            rowPx.toFloat()
+        )
+    }
+                            }
                                 {
                                     // The letter's apps start level with its place on the edge, the first one at
                                     // the thumb's height, so every one is a short move away; moved up only as far
@@ -860,67 +856,52 @@ state.listY = scroll
                                     break
                                 }
                                 if (!change.pressed) {
-                                    // A cancel (e.g. the system took the touch for the back gesture)
-                                    // arrives as an already-consumed release: never launch on it.
-                                    if (change.isConsumed) {
-    state.close()
-
-} else if (pageDrag) {
-    // The user entered the page: leave it open.
-    // The user must explicitly tap an app.
-    state.contact = Float.NaN
-    state.hold = 0f
-    state.mode = Mode.OPEN
-    state.interaction++
-
-} else if (selecting) {
-                                    {
-                                        val app = list[focus].item
-                                        val far = state.far
-                                        state.close()
-                                        if (far) {
-                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            longPress(app)
-                                        } else {
-                                            launch(app)
-                                        }
-                                    } else if (byLetter) {
-    // V2: release on the notch launches the app
-    // vertically aligned with the finger.
-    val app = list.getOrNull(focus)?.item
-
-    if (app != null) {
-        haptics.performHapticFeedback(
-            HapticFeedbackType.Confirm
-        )
+    if (change.isConsumed) {
         state.close()
-        launch(app)
-    } else {
+    } else if (pageDrag) {
+        // Entered the app page: leave it open.
+        // App launch requires an explicit tap.
+        state.contact = Float.NaN
+        state.hold = 0f
         state.mode = Mode.OPEN
+        state.interaction++
+    } else if (selecting) {
+        val app = list.getOrNull(focus)?.item
+        val far = state.far
+
+        state.close()
+
+        if (app != null) {
+            if (far) {
+                haptics.performHapticFeedback(
+                    HapticFeedbackType.LongPress
+                )
+                longPress(app)
+            } else {
+                launch(app)
+            }
+        }
+    } else if (byLetter) {
+        // Released on the notch: launch the app aligned with the finger.
+        val app = list.getOrNull(focus)?.item
+
+        if (app != null) {
+            haptics.performHapticFeedback(
+                HapticFeedbackType.Confirm
+            )
+            state.close()
+            launch(app)
+        } else {
+            state.mode = Mode.OPEN
+        }
+    } else {
+        // Released without entering the app page.
+        state.contact = Float.NaN
+        state.mode = Mode.OPEN
+        state.interaction++
     }
 
-} else {
-    // Apps browsing: leave the fullscreen page open.
-    state.contact = Float.NaN
-    state.mode = Mode.OPEN
-    state.interaction++
-                                    }
-                                            }
-                                            val (top, bottom, scroll) = SelectorMath.keepInPlace(state.scrollPx, state.shiftPx)
-                                            state.padTop = top
-                                            state.padBottom = bottom
-                                            state.listY = scroll
-                                            state.scrollPx = scroll
-                                            state.shiftPx = 0f
-                                            listState.scrollToPx(scroll, rowPx)
-                                        } else if (!onlyLetter) {
-                                            state.listY = state.scrollPx
-                                            state.shiftPx = 0f
-                                        }
-                                        state.mode = Mode.OPEN
-                                        state.interaction++
-                                    }
-                                    break
+    break
                                 }
                                 change.consume()
                                 val newY = change.position.y + zoneTopPx
