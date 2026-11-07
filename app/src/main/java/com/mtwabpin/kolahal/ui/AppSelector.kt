@@ -952,6 +952,7 @@ if (pageDrag || pageDistance > leavePx) {
         )
     }
 }
+} // closes AppSelector
 
 /** One list row: section letter in the gutter, profile tag in its colour, ★, the label. */
 @Composable
