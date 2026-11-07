@@ -350,20 +350,31 @@ fun AppSelector(
         }
         // The panel uses the whole height, whatever the strip's; a short list (or a letter's apps)
         // sits at the bottom until it is moved level with the thumb.
-        val listHPx = containerH - 2 * topPx
-        fun panelH(n: Int) = min(listHPx, (n * rowPx).toFloat()).coerceAtLeast(rowPx.toFloat())
-        fun panelTop(n: Int) = topPx + listHPx - panelH(n)
-        val panelHPx = panelH(shown.size)
-        val panelTopPx = panelTop(shown.size)
+        // V2: the app page always occupies the complete available screen.
+val listHPx = containerH
+fun panelH(n: Int) = containerH
+fun panelTop(n: Int) = 0f
+
+val panelHPx = panelH(shown.size)
+val panelTopPx = 0f
         val stripWPx = with(density) { STRIP_W.toPx() }
         // On the other side from the strip: narrower while the thumb is down, so the wave and the
         // bubble swing out clear of it, and once left open nearly to the strip, so a thumb at the
         // edge reaches every row (a row takes a tap anywhere along it), the top ones too.
-        val wideW = maxWidth - STRIP_W - OPEN_GAP
-        val narrowW = with(density) { (containerW * 0.55f).toDp() }.coerceAtLeast(minOf(200.dp, wideW)).coerceAtMost(wideW)
-        val panelW by animateDpAsState(if (state.mode == Mode.OPEN) wideW else narrowW, tween(160), label = "panel")
-        val panelWPx = with(density) { panelW.toPx() }
-        val panelXPx = if (left) containerW - panelWPx else 0f
+        // V2: expand to the full screen as soon as the notch is touched.
+val wideW = maxWidth
+val narrowW = with(density) {
+    (containerW * 0.55f).toDp()
+}.coerceAtLeast(minOf(200.dp, wideW)).coerceAtMost(wideW)
+
+val panelW by animateDpAsState(
+    if (state.mode == Mode.CLOSED) 0.dp else wideW,
+    tween(180),
+    label = "panel"
+)
+
+val panelWPx = with(density) { panelW.toPx() }
+val panelXPx = 0f
         // While the thumb is down.
         val touchWPx = with(density) { narrowW.toPx() }
         val touchXPx = if (left) containerW - touchWPx else 0f
@@ -413,14 +424,36 @@ fun AppSelector(
         }
 
         androidx.compose.animation.AnimatedVisibility(
-            visible = open && count > 0,
-            // Opaque from the first frame (no fade): readable while it slides in.
-            enter =
-                slideInHorizontally(spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)) { if (left) it / 4 else -it / 4 },
-            exit = fadeOut(tween(140)) + slideOutHorizontally(tween(160)) { if (left) it / 4 else -it / 4 },
-            modifier = Modifier.offset { IntOffset(panelXPx.roundToInt(), (panelTopPx + state.shiftPx).roundToInt()) },
-        ) {
-            val shape = if (left) RoundedCornerShape(topStart = 14.dp, bottomStart = 14.dp) else RoundedCornerShape(topEnd = 14.dp, bottomEnd = 14.dp)
+    visible = open && count > 0,
+
+    enter =
+        androidx.compose.animation.fadeIn(tween(120)) +
+        androidx.compose.animation.scaleIn(
+            initialScale = 0.94f,
+            transformOrigin = TransformOrigin(
+                if (left) 0f else 1f,
+                0.5f
+            ),
+            animationSpec = spring(
+                dampingRatio = 0.82f,
+                stiffness = Spring.StiffnessMediumLow
+            )
+        ),
+
+    exit =
+        androidx.compose.animation.fadeOut(tween(120)) +
+        androidx.compose.animation.scaleOut(
+            targetScale = 0.97f,
+            transformOrigin = TransformOrigin(
+                if (left) 0f else 1f,
+                0.5f
+            ),
+            animationSpec = tween(140)
+        ),
+
+    modifier = Modifier.fillMaxSize()
+) {
+            val shape = RoundedCornerShape(0.dp)
             LazyColumn(
                 state = listState,
                 userScrollEnabled = state.mode == Mode.OPEN,
@@ -683,8 +716,10 @@ fun AppSelector(
                             // their own stay on screen.
                             val maxScrollPx = SelectorMath.maxScroll(n, rowPx.toFloat(), panelH)
                             val (scroll, shift) = SelectorMath.place(state.listY, maxScrollPx)
-                            val shiftOn = if (onlyLetter) SelectorMath.keepOnScreen(shift, panelH, listHPx) else shift
-                            state.listY = scroll - shiftOn
+                            // V2: never move the fullscreen page itself.
+// Scrolling belongs to the app list, not the page container.
+val shiftOn = 0f
+state.listY = scroll
                             when {
                                 // Along the edge, a new letter: the list glides there rather than jumping (a
                                 // letter's apps on their own are a new list, shown at once).
