@@ -528,16 +528,27 @@ val panelXPx = 0f
                     }
                 }
             }
-            if (showHandle && !letters && !touching) {
-                // 64dp in the middle, or with gesture navigation the whole part a touch may start on.
-                val handleH = if (edgeBackGesture) with(density) { zoneHPx.toDp() } else 64.dp
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .align(if (left) Alignment.CenterStart else Alignment.CenterEnd)
-                        .padding(start = if (left) 3.dp else 0.dp, end = if (left) 0.dp else 3.dp)
-                        .graphicsLayer { alpha = if (open) 0.35f else 1f },
-                ) {
+            if (showHandle && !letters) {
+    Box(
+        modifier = Modifier
+            .align(
+                if (left) Alignment.CenterStart
+                else Alignment.CenterEnd
+            )
+            .padding(
+                start = if (left) 3.dp else 0.dp,
+                end = if (left) 0.dp else 3.dp
+            )
+            .width(3.dp)
+            .height(with(density) { stripHPx.toDp() })
+            .background(
+                androidx.compose.ui.graphics.Color.White,
+                RoundedCornerShape(3.dp)
+            )
+            .testTag("app-selector-handle")
+    )
+            } 
+            {
                     val small = text.copy(color = Term.dim.copy(alpha = 0.45f), fontSize = 8.sp, lineHeight = 9.sp)
                     Text("A", style = small)
                     Box(
