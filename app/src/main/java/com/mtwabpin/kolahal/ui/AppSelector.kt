@@ -655,6 +655,7 @@ val panelXPx = 0f
                         var x = down.position.x
                         var y = down.position.y + zoneTopPx
                         var selecting = false
+                        var pageDrag = false
                         var lastSection = -1
                         // The row last felt as a tick (the list) and the state last felt (letters or list).
                         var tickedRow = -1
@@ -708,7 +709,16 @@ val panelXPx = 0f
                             // beyond it).
                             val yIn = cy - panelTop
                             if (!selecting) {
-                                state.listY = if (byLetter) {
+                                val start = if (onlyLetter) 0 else starts[onLetter]
+
+// The letter's apps begin at the top of the page.
+// The app vertically aligned with the notch is the selected app.
+SelectorMath.levelWith(
+    start.toFloat(),
+    0f,
+    rowPx.toFloat()
+)
+                                {
                                     // The letter's apps start level with its place on the edge, the first one at
                                     // the thumb's height, so every one is a short move away; moved up only as far
                                     // as keeps them on screen. The list holds still until the letter changes.
@@ -752,7 +762,11 @@ state.listY = scroll
                             }
                             // Picking: the app level with the finger, as it moves up and down. Along the
                             // edge with letters, no app is at the thumb yet: the letter is.
-                            state.contact = if (byLetter && !selecting) Float.NaN else SelectorMath.contact(state.listY, yIn, rowPx.toFloat())
+                            state.contact = SelectorMath.contact(
+    state.listY,
+    yIn,
+    rowPx.toFloat()
+)
                             if (!state.contact.isNaN()) state.lensAt = state.contact
                             val f = SelectorMath.focusedIndex(state.contact, n)
                             val section = if (f >= 0) list[f].sectionIndex else onLetter
@@ -890,6 +904,34 @@ state.listY = scroll
                                 }
                                 change.consume()
                                 val newY = change.position.y + zoneTopPx
+                                val newX = change.position.x
+
+// Has the finger moved from the notch into the app page?
+val pageDistance = if (left) {
+    newX - stripWPx
+} else {
+    -newX
+}
+
+if (pageDrag || pageDistance > leavePx) {
+    pageDrag = true
+
+    // Stop letter scrubbing and app selection.
+    state.mode = Mode.OPEN
+    state.contact = Float.NaN
+    state.hold = 0f
+    state.far = false
+
+    glide?.cancel()
+
+    // Forward vertical movement to the actual app list.
+    listState.dispatchRawDelta(-(newY - y))
+
+    x = newX
+    y = newY
+
+    continue
+}
                                 // Plan C: how fast the thumb slides along the edge decides between a glide
                                 // and an aim (apps only: letters go a letter at a time).
                                 val dt = (change.uptimeMillis - lastMoveAt).coerceAtLeast(1L)
