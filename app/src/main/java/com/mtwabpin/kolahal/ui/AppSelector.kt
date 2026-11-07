@@ -549,10 +549,6 @@ val panelXPx = 0f
     )
 }
 
-// The letter you're at, big in a bubble beside the thumb...
-if (waveShown && letter in sectionLetters.indices) {
-    // Keep the existing wave code here.  
-
         // The letter you're at, big in a bubble beside the thumb, and the letters around it bulging
         // out from the edge toward it in a wave, growing a little, the nearest pushed apart to make
         // room for it: you see where you are and which way the letter you want is.
@@ -714,21 +710,8 @@ if (waveShown && letter in sectionLetters.indices) {
         )
     }
                             }
-                                {
-                                    // The letter's apps start level with its place on the edge, the first one at
-                                    // the thumb's height, so every one is a short move away; moved up only as far
-                                    // as keeps them on screen. The list holds still until the letter changes.
-                                    val size = starts[onLetter + 1] - starts[onLetter]
-                                    val start = if (onlyLetter) 0 else starts[onLetter]
-                                    val letterY = stripTopPx + edgeMiddles[onLetter] * stripHPx
-                                    val top = SelectorMath.letterTop(letterY, size, rowPx.toFloat(), topPx, topPx + listHPx)
-                                    SelectorMath.levelWith(start.toFloat(), top - panelTop, rowPx.toFloat())
-                                } else {
-                                    // The whole list (its top the first app, its bottom the last), or a slow
-                                    // slide's aim, brought level with the finger, as Niagara does.
-                                    SelectorMath.levelWith(at, yIn, rowPx.toFloat())
-                                }
-                            }
+                                
+                                
                             // Scrolled, and past the list's ends the panel moved; a letter's apps on
                             // their own stay on screen.
                             val maxScrollPx = SelectorMath.maxScroll(n, rowPx.toFloat(), panelH)
