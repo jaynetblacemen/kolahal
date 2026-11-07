@@ -863,8 +863,18 @@ state.listY = scroll
                                     // A cancel (e.g. the system took the touch for the back gesture)
                                     // arrives as an already-consumed release: never launch on it.
                                     if (change.isConsumed) {
-                                        state.close()
-                                    } else if (selecting) {
+    state.close()
+
+} else if (pageDrag) {
+    // The user entered the page: leave it open.
+    // The user must explicitly tap an app.
+    state.contact = Float.NaN
+    state.hold = 0f
+    state.mode = Mode.OPEN
+    state.interaction++
+
+} else if (selecting) {
+                                    {
                                         val app = list[focus].item
                                         val far = state.far
                                         state.close()
@@ -874,17 +884,27 @@ state.listY = scroll
                                         } else {
                                             launch(app)
                                         }
-                                    } else {
-                                        // Lifted on the edge: leave the list open for a tap or a fling. A tapped
-                                        // letter's apps stay where they are, beside it, the whole list keeping them
-                                        // there with room at its ends, so it still scrolls to every app; with apps,
-                                        // the list goes back in its place (scrolled as far as it went).
-                                        state.contact = Float.NaN
-                                        if (byLetter && !onlyLetter) {
-                                            if (glide?.isActive == true) {
-                                                glide.cancel()
-                                                val (s, sh) = SelectorMath.place(state.listY, SelectorMath.maxScroll(list.size, rowPx.toFloat(), panelH(list.size)))
-                                                show(s, sh)
+                                    } else if (byLetter) {
+    // V2: release on the notch launches the app
+    // vertically aligned with the finger.
+    val app = list.getOrNull(focus)?.item
+
+    if (app != null) {
+        haptics.performHapticFeedback(
+            HapticFeedbackType.Confirm
+        )
+        state.close()
+        launch(app)
+    } else {
+        state.mode = Mode.OPEN
+    }
+
+} else {
+    // Apps browsing: leave the fullscreen page open.
+    state.contact = Float.NaN
+    state.mode = Mode.OPEN
+    state.interaction++
+                                    }
                                             }
                                             val (top, bottom, scroll) = SelectorMath.keepInPlace(state.scrollPx, state.shiftPx)
                                             state.padTop = top
